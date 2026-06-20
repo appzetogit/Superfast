@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { QuickCategory } from '../models/category.model.js';
 import { QuickProduct } from '../models/product.model.js';
@@ -1192,7 +1192,7 @@ export const approveAdminSellerRequest = async (req, res) => {
           {
               title: 'Congratulations! 🎉',
               body: `Your vendor account "${seller.shopName || seller.name}" has been verified. You can now start receiving orders!`,
-              image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
+              image: 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png',
               data: {
                   type: 'seller_approved',
                   sellerId: String(seller._id)

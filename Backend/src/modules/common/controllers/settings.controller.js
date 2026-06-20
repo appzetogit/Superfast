@@ -1,4 +1,4 @@
-import { GlobalSettings } from '../models/settings.model.js';
+﻿import { GlobalSettings } from '../models/settings.model.js';
 import { sendResponse } from '../../../utils/response.js';
 import { uploadImageBufferDetailed } from '../../../services/cloudinary.service.js';
 import { FoodUser } from '../../../core/users/user.model.js';
@@ -13,8 +13,8 @@ export async function getGlobalSettings(req, res, next) {
         if (!settings) {
             // Create default settings if none exist
             settings = await GlobalSettings.create({
-                companyName: 'Appzeto',
-                email: 'admin@appzeto.com'
+                companyName: 'SUPERFAST',
+                email: 'admin@SUPERFAST.com'
             });
         }
         return sendResponse(res, 200, 'Global settings fetched successfully', settings);

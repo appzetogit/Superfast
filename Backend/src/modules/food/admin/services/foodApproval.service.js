@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodItem } from '../models/food.model.js';
 import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
@@ -120,7 +120,7 @@ export async function approveFoodItem(id) {
                 {
                     title: 'Dish Approved! 🍲',
                     body: `Your dish "${updated.name}" has been approved and is now visible to customers.`,
-                    image: updated.image || 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
+                    image: updated.image || 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png',
                     data: {
                         type: 'food_approved',
                         foodId: String(updated._id),
@@ -158,7 +158,7 @@ export async function rejectFoodItem(id, reason) {
                 {
                     title: 'Dish Rejected ❌',
                     body: `Your dish "${updated.name}" was rejected. Reason: ${r}`,
-                    image: updated.image || 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
+                    image: updated.image || 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png',
                     data: {
                         type: 'food_rejected',
                         foodId: String(updated._id),

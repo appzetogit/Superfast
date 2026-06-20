@@ -1,4 +1,4 @@
-// Order Service - Backend Logic
+﻿// Order Service - Backend Logic
 import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 // import { paymentSnapshotFromOrder } from './foodOrderPayment.service.js';
@@ -2284,7 +2284,7 @@ export async function createOrder(userId, dto) {
           : orderType === "quick"
           ? `Your quick order #${orderId} has been placed successfully.`
           : `Your order #${orderId} from ${primaryRestaurant?.sourceName || "the restaurant"} has been placed successfully.`,
-      image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+      image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
       data: {
         type: isAwaitingOnlinePayment
           ? "order_created_pending_payment"
@@ -2431,7 +2431,7 @@ export async function verifyPayment(userId, dto) {
   await notifyOwnersSafely([{ ownerType: "USER", ownerId: userId }], {
     title: "Payment Successful! ✅",
     body: `We have received your payment of ₹${order.payment.amountDue} for Order #${order.orderId}.`,
-    image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+    image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
     data: {
       type: "payment_success",
       orderId: String(order.orderId),
@@ -2837,7 +2837,7 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
     {
       title: "Order Cancelled ❌",
       body: `Order #${order.orderId} has been cancelled successfully.${refundPolicyDetail}`,
-      image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+      image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
       data: {
         type: "order_cancelled",
         orderId: String(order.orderId),
@@ -3050,7 +3050,7 @@ export async function updateOrderStatusRestaurant(
       {
         title: title,
         body: body,
-        image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+        image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
         data: {
           type: "order_status_update",
           orderId: order.orderId,
@@ -3066,7 +3066,7 @@ export async function updateOrderStatusRestaurant(
       {
         title: title,
         body: body,
-        image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+        image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
         data: {
           type: "order_status_update",
           orderId: order.orderId,
@@ -3108,7 +3108,7 @@ export async function updateOrderStatusRestaurant(
         {
           title: riderTitle,
           body: riderBody,
-          image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+          image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
           data: {
             type: "order_status_update",
             orderId: order.orderId,
@@ -3814,7 +3814,7 @@ export async function confirmReachedPickupDelivery(orderId, deliveryPartnerId) {
       {
         title: "Rider Arrived! 🛵",
         body: `${partner?.name || "The delivery partner"} has arrived at your restaurant to pick up the order.`,
-        image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+        image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
         data: {
           type: "rider_arrived",
           orderId: String(order.orderId),

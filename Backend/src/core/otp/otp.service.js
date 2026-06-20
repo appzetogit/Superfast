@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+﻿import crypto from 'crypto';
 import ms from 'ms';
 import { FoodOtp } from './otp.model.js';
 import { config } from '../../config/env.js';
@@ -42,7 +42,7 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
 
         // EXACT DLT TEMPLATE provided by user:
         // "Welcome to the ##var## powered by SMSINDIAHUB. Your OTP for registration is ##var##"
-        const message = `Welcome to the Appzeto powered by SMSINDIAHUB. Your OTP for registration is ${otp}`;
+        const message = `Welcome to the SUPERFAST powered by SMSINDIAHUB. Your OTP for registration is ${otp}`;
 
         // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
         const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');

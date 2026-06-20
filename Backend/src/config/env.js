@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+﻿import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -92,7 +92,7 @@ export const env = {
     nodeEnv: config.nodeEnv,
     port: Number(config.port),
     mongoUri: config.mongodbUri,
-    mongoDbName: process.env.MONGODB_DB_NAME || 'appzeto_food',
+    mongoDbName: process.env.MONGODB_DB_NAME || 'SUPERFAST_food',
     jwtSecret: config.jwtAccessSecret,
     jwtExpiresIn: config.jwtAccessExpiresIn,
     corsOrigin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
@@ -100,7 +100,7 @@ export const env = {
         cloudName: config.cloudinaryCloudName || '',
         apiKey: config.cloudinaryApiKey || '',
         apiSecret: config.cloudinaryApiSecret || '',
-        folder: process.env.CLOUDINARY_FOLDER || 'appzeto-food',
+        folder: process.env.CLOUDINARY_FOLDER || 'SUPERFAST-food',
     },
     firebase: {
         databaseURL: process.env.FIREBASE_DATABASE_URL || config.firebaseDatabaseUrl || '',

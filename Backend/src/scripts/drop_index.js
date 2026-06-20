@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 
-const mongoUri = 'mongodb+srv://Appzeto:Appzeto123@cluster0.jkxcmhk.mongodb.net/Appzeto-Master-Product';
+const mongoUri = 'mongodb+srv://SUPERFAST:SUPERFAST123@cluster0.jkxcmhk.mongodb.net/SUPERFAST-Master-Product';
 
 async function dropIndex() {
     try {
