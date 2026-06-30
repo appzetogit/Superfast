@@ -32,7 +32,14 @@ export default function OTP() {
     // Redirect to home if already authenticated
     const isAuthenticated = localStorage.getItem("user_authenticated") === "true"
     if (isAuthenticated) {
-      navigate("/food/user", { replace: true })
+      const userStr = localStorage.getItem("user")
+      let hasSetPrefs = false
+      if (userStr) {
+        try {
+          hasSetPrefs = JSON.parse(userStr).hasSetPreferences === true
+        } catch (e) {}
+      }
+      navigate(hasSetPrefs ? "/food/user" : "/food/user/preferences", { replace: true })
       return
     }
 
@@ -256,9 +263,9 @@ export default function OTP() {
 
       setSuccess(true)
 
-      // Redirect to user home after short delay
+      const targetPath = user?.hasSetPreferences === true ? "/food/user" : "/food/user/preferences";
       setTimeout(() => {
-        navigate("/food/user")
+        navigate(targetPath)
       }, 500)
     } catch (err) {
       const status = err?.response?.status
@@ -344,7 +351,7 @@ export default function OTP() {
       setSuccess(true)
 
       setTimeout(() => {
-        navigate("/food/user")
+        navigate("/food/user/preferences")
       }, 500)
     } catch (err) {
       const message =

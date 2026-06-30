@@ -61,17 +61,7 @@ export const quickAdminSidebarMenu = [
           { label: "Seller Commission", path: "/admin/quick-commerce/sellers/commission" },
         ],
       },
-      {
-        type: "expandable",
-        label: "Delivery Drivers",
-        icon: "Truck",
-        subItems: [
-          { label: "Active Drivers", path: "/admin/quick-commerce/delivery-boys/active" },
-          { label: "Waiting for Review", path: "/admin/quick-commerce/delivery-boys/pending" },
-          { label: "Track Drivers", path: "/admin/quick-commerce/tracking" },
-          { label: "Send Money", path: "/admin/quick-commerce/delivery-funds" },
-        ],
-      },
+
       // { type: "link", label: "Wallet", path: "/admin/quick-commerce/wallet", icon: "Wallet" },
       { type: "link", label: "Transaction Report", path: "/admin/quick-commerce/transactions", icon: "FileText" },
       { type: "link", label: "Money Requests", path: "/admin/quick-commerce/withdrawals", icon: "CreditCard" },

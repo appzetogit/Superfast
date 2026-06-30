@@ -2722,6 +2722,15 @@ export async function getCategories(query) {
 export async function createCategory(body) {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw new ValidationError('Category name is required');
+    
+    const existing = await FoodCategory.findOne({
+        name: { $regex: new RegExp(`^${name}$`, 'i') },
+        restaurantId: { $in: [null, undefined] }
+    });
+    if (existing) {
+        throw new ValidationError(`A global category with the name "${existing.name}" already exists`);
+    }
+
     const doc = new FoodCategory({
         name,
         image: typeof body.image === 'string' ? body.image.trim() : '',
@@ -2797,6 +2806,15 @@ export async function makeCategoryGlobal(id) {
     }
     if (String(doc.approvalStatus || '') !== 'approved' && doc.isApproved !== true) {
         throw new ValidationError('Only approved categories can be made global');
+    }
+
+    const normalizedName = doc.name.trim();
+    const duplicate = await FoodCategory.findOne({
+        name: { $regex: new RegExp(`^${normalizedName}$`, 'i') },
+        restaurantId: { $in: [null, undefined] }
+    });
+    if (duplicate && String(duplicate._id) !== String(doc._id)) {
+        throw new ValidationError(`A global category with the name "${duplicate.name}" already exists`);
     }
 
     doc.createdByRestaurantId = doc.createdByRestaurantId || doc.restaurantId;
@@ -5155,12 +5173,13 @@ export async function getSidebarBadges() {
             pendingEarningAddons,
             pendingSafetyReports,
             pendingEmergencyHelp,
-            pendingRestaurantComplaints
+            pendingRestaurantComplaints,
+            pendingCategories
         ] = await Promise.all([
             FoodRestaurant.countDocuments({ status: 'pending' }),
             FoodDeliveryPartner.countDocuments({ status: 'pending' }),
-            FoodItem.countDocuments({ status: 'pending' }),
-            FoodAddon.countDocuments({ status: 'pending' }),
+            FoodItem.countDocuments({ approvalStatus: 'pending' }),
+            FoodAddon.countDocuments({ approvalStatus: 'pending' }),
             FoodOrder.countDocuments({ orderStatus: { $in: ['created', 'placed'] } }),
             FoodOrder.countDocuments({ paymentMethod: 'offline_payment', orderStatus: { $in: ['created', 'placed'] } }),
             FoodRestaurantWithdrawal.countDocuments({ status: 'pending' }),
@@ -5170,7 +5189,8 @@ export async function getSidebarBadges() {
             FoodEarningAddonHistory.countDocuments({ status: 'pending' }),
             FoodSafetyEmergencyReport.countDocuments({ status: 'pending' }),
             FoodDeliveryEmergencyHelp.countDocuments({ status: 'pending' }),
-            FoodSupportTicket.countDocuments({ status: 'open', restaurantId: { $exists: true } })
+            FoodSupportTicket.countDocuments({ status: 'open', restaurantId: { $exists: true } }),
+            FoodCategory.countDocuments({ approvalStatus: 'pending' })
         ]);
 
         return {
@@ -5178,6 +5198,8 @@ export async function getSidebarBadges() {
             deliveryPartners: pendingDeliveryPartners,
             foods: pendingFoods + pendingAddons,
             foodApprovals: pendingFoods,
+            addons: pendingAddons,
+            categories: pendingCategories,
             orders: pendingOrders,
             offlinePayments: pendingOfflinePayments,
             restaurantWithdrawals: pendingRestaurantWithdrawals,

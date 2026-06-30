@@ -318,7 +318,7 @@ export default function useAdminNotifications(options = {}) {
     });
 
     socket.on("admin_notification", () => {
-      loadNotifications();
+      dispatchAdminNotificationsUpdated();
     });
 
     return () => {

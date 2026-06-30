@@ -205,6 +205,14 @@ const userSchema = new mongoose.Schema(
                 type: Date,
                 default: null
             }
+        },
+        preferences: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodCategory'
+        }],
+        hasSetPreferences: {
+            type: Boolean,
+            default: false
         }
     },
     {

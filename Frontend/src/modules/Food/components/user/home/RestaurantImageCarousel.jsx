@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import OptimizedImage from "@food/components/OptimizedImage";
 
 const WEBVIEW_SESSION_CACHE_BUSTER = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -6,7 +7,10 @@ const WEBVIEW_SESSION_CACHE_BUSTER = `${Date.now()}-${Math.random().toString(36)
 const RestaurantImageCarousel = React.memo(
   ({ restaurant, priority = false, backendOrigin = "" }) => {
     const webviewSessionKeyRef = useRef(WEBVIEW_SESSION_CACHE_BUSTER);
-    const imageElementRef = useRef(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const touchStartX = useRef(0);
+    const touchEndX = useRef(0);
+    const isSwiping = useRef(false);
 
     const withCacheBuster = useCallback(
       (url) => {
@@ -45,7 +49,8 @@ const RestaurantImageCarousel = React.memo(
       [backendOrigin],
     );
 
-    const images = useMemo(() => {
+    // Build slides from standard restaurant images first, falling back to famousDishes
+    const slides = useMemo(() => {
       const sourceImages =
         Array.isArray(restaurant?.images) && restaurant.images.length > 0
           ? restaurant.images
@@ -56,47 +61,59 @@ const RestaurantImageCarousel = React.memo(
         .map((img) => img.trim())
         .filter(Boolean);
 
-      return validImages.map((img) => withCacheBuster(img));
-    }, [restaurant?.images, restaurant?.image, withCacheBuster]);
+      // If the restaurant has multiple custom uploaded cover/profile images, prioritize showing them
+      if (validImages.length > 1) {
+        return validImages.map((img, idx) => ({
+          id: `img-${idx}`,
+          imageUrl: withCacheBuster(img),
+          isDish: false
+        }));
+      }
 
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [loadedBySrc, setLoadedBySrc] = useState({});
-    const [, setAttemptedSrcs] = useState({});
-    const [isImageUnavailable, setIsImageUnavailable] = useState(false);
-    const [showShimmer, setShowShimmer] = useState(true);
-    const [lastGoodSrc, setLastGoodSrc] = useState("");
-    const touchStartX = useRef(0);
-    const touchEndX = useRef(0);
-    const isSwiping = useRef(false);
+      // Fall back to famous dishes if no custom multiple images exist
+      if (Array.isArray(restaurant?.famousDishes) && restaurant.famousDishes.length > 0) {
+        return restaurant.famousDishes.map((dish) => ({
+          id: dish.id || dish._id,
+          name: dish.name,
+          price: dish.price,
+          imageUrl: withCacheBuster(dish.imageUrl || dish.image),
+          isDish: true,
+          isVeg: dish.isVeg !== false // default to veg
+        }));
+      }
 
-    const safeIndex =
-      images.length > 0
-        ? ((currentIndex % images.length) + images.length) % images.length
-        : 0;
-    const renderSrc = images[safeIndex] || lastGoodSrc;
+      // Default fallback for single image
+      const result = validImages.map((img, idx) => ({
+        id: `img-${idx}`,
+        imageUrl: withCacheBuster(img),
+        isDish: false
+      }));
 
+      console.log("RestaurantImageCarousel slides for:", restaurant?.name, {
+        images: restaurant?.images,
+        coverImages: restaurant?.coverImages,
+        slidesResult: result,
+        slidesLength: result.length
+      });
+
+      return result;
+    }, [restaurant?.famousDishes, restaurant?.images, restaurant?.image, withCacheBuster]);
+
+    // Reset index on restaurant change
     useEffect(() => {
       setCurrentIndex(0);
-      setLoadedBySrc({});
-      setAttemptedSrcs({});
-      setIsImageUnavailable(images.length === 0);
-      setShowShimmer(images.length > 0);
-    }, [restaurant?.id, restaurant?.slug, restaurant?.updatedAt, images]);
-
-    useEffect(() => {
-      setLastGoodSrc("");
     }, [restaurant?.id, restaurant?.slug]);
 
+    // Auto-scroll images every 4 seconds when multiple slides are available
     useEffect(() => {
-      if (!renderSrc) return;
+      if (slides.length <= 1) return;
 
-      setShowShimmer(true);
-      const shimmerTimeout = setTimeout(() => {
-        setShowShimmer(false);
-      }, 2500);
+      const timer = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % slides.length);
+      }, 4000);
 
-      return () => clearTimeout(shimmerTimeout);
-    }, [renderSrc]);
+      return () => clearInterval(timer);
+    }, [slides.length]);
 
     const handleTouchStart = (e) => {
       touchStartX.current = e.touches[0].clientX;
@@ -117,91 +134,100 @@ const RestaurantImageCarousel = React.memo(
       const diff = touchStartX.current - touchEndX.current;
       const minSwipeDistance = 50;
 
-      if (Math.abs(diff) > minSwipeDistance) {
+      if (Math.abs(diff) > minSwipeDistance && slides.length > 0) {
         if (diff > 0) {
-          setCurrentIndex((prev) => (prev + 1) % images.length);
+          setCurrentIndex((prev) => (prev + 1) % slides.length);
         } else {
-          setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+          setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
         }
       }
       isSwiping.current = false;
     };
 
+    if (slides.length === 0) {
+      return (
+        <div className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-md flex-shrink-0 bg-slate-100 flex items-center justify-center">
+          <span className="text-xs text-gray-400 font-medium">No image available</span>
+        </div>
+      );
+    }
+
+    const currentSlide = slides[currentIndex];
+
     return (
       <div
-        className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-md flex-shrink-0 group"
+        className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-[28px] flex-shrink-0 group"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}>
-        {showShimmer && !isImageUnavailable && Boolean(renderSrc) && (
-          <div className="absolute inset-0 z-[1] overflow-hidden bg-gray-200">
-            <div className="h-full w-full animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200" />
-          </div>
-        )}
-
-        <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-110">
-          {renderSrc && (
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Slides rendering with CSS transition crossfade */}
+        {slides.map((slide, idx) => (
+          <div
+            key={slide.id || idx}
+            className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
+              idx === currentIndex ? "opacity-100 z-0" : "opacity-0 pointer-events-none"
+            }`}
+          >
             <OptimizedImage
-              src={renderSrc}
-              alt={`${restaurant?.name} - Image ${safeIndex + 1}`}
-              className="w-full h-full object-cover"
-              priority={priority}
+              src={slide.imageUrl}
+              alt={slide.isDish ? slide.name : `${restaurant?.name} image`}
+              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+              priority={priority && idx === 0}
               backendOrigin={backendOrigin}
-              onLoad={() => {
-                setLoadedBySrc((prev) => ({ ...prev, [renderSrc]: true }));
-                setLastGoodSrc(renderSrc);
-                setShowShimmer(false);
-              }}
-              onError={() => {
-                setAttemptedSrcs((prev) => {
-                  const next = { ...prev, [renderSrc]: true };
-                  const attemptedCount = Object.keys(next).length;
-                  if (attemptedCount >= images.length) {
-                    setIsImageUnavailable(true);
-                  } else if (images.length > 1) {
-                    setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-                  }
-                  return next;
-                });
-                if (images.length === 1) {
-                  setIsImageUnavailable(true);
-                }
-              }}
             />
-          )}
-        </div>
+          </div>
+        ))}
 
-        {isImageUnavailable && (
-          <div className="absolute inset-0 z-[2] flex items-center justify-center bg-gray-100">
-            <span className="text-xs text-gray-500">Image unavailable</span>
+        {/* Famous Dish Info Overlay (Top-Left) */}
+        {currentSlide?.isDish && (
+          <div className="absolute left-4 top-4 z-10 flex items-center transform transition-transform duration-300 group-hover:scale-105">
+            <div className="flex items-center rounded-full border border-white/20 bg-black/70 px-3 py-1 text-[11px] font-semibold tracking-tight text-white shadow-2xl backdrop-blur-md">
+              {/* Veg Icon representation */}
+              <span className={`inline-flex items-center justify-center border w-3 h-3 mr-1.5 flex-shrink-0 bg-white ${
+                currentSlide.isVeg ? "border-emerald-600" : "border-red-600"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  currentSlide.isVeg ? "bg-emerald-600" : "bg-red-600"
+                }`} />
+              </span>
+              {currentSlide.name} · ₹{currentSlide.price}
+            </div>
           </div>
         )}
 
-        {images.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center z-10 -space-x-2">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentIndex(index);
-                }}
-                className="w-10 h-10 flex items-center justify-center focus:outline-none group/btn rounded-full"
-                aria-label={`Go to image ${index + 1}`}>
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === currentIndex
-                      ? "w-6 bg-white"
-                      : "w-1.5 bg-white/50 group-hover/btn:bg-white/75"
-                  }`}
-                />
-              </button>
+        {/* Circular Next Button (Middle-Right) */}
+        {slides.length > 1 && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setCurrentIndex((prev) => (prev + 1) % slides.length);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md text-gray-800 transition-all duration-300 hover:bg-white hover:scale-110 opacity-0 group-hover:opacity-100"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-4 h-4 stroke-[3]" />
+          </button>
+        )}
+
+        {/* Subtle Pagination Indicators (Bottom-Right Corner) */}
+        {slides.length > 1 && (
+          <div className="absolute bottom-4 right-4 flex items-center z-10 gap-1.5">
+            {slides.map((_, idx) => (
+              <div
+                key={idx}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  idx === currentIndex ? "w-4 bg-white" : "w-1.5 bg-white/50"
+                }`}
+              />
             ))}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-1000 group-hover:animate-shine" />
+
+        {/* Shine hover effect overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full transition-transform duration-1000 group-hover:animate-shine pointer-events-none" />
       </div>
     );
   }

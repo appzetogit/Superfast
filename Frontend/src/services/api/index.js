@@ -2876,3 +2876,9 @@ export const customCakeAPI = {
   quoteRequest: (id, body) => apiClient.patch(`/food/restaurant/custom-cakes/requests/${id}/quote`, body, { contextModule: "restaurant" }),
   rejectRequest: (id, body) => apiClient.patch(`/food/restaurant/custom-cakes/requests/${id}/reject`, body, { contextModule: "restaurant" }),
 };
+
+export const preferencesAPI = {
+  getCategories: () => apiClient.get("/preferences/categories", { contextModule: "user" }),
+  savePreferences: (categoryIds) => apiClient.post("/preferences/save", { categoryIds }, { contextModule: "user" }),
+  getRecommendations: () => apiClient.get("/preferences/recommendations", { contextModule: "user" }),
+};

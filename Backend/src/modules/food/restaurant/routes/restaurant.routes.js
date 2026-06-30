@@ -16,6 +16,7 @@ import {
     getRestaurantComplaintsController,
     deleteRestaurantAccountController
 } from '../controllers/restaurant.controller.js';
+import { FoodRestaurant } from '../models/restaurant.model.js';
 import {
     createRestaurantSupportTicketController,
     listRestaurantSupportTicketsController
@@ -136,6 +137,7 @@ router.post(
     requireRestaurant,
     upload.array('files', 20),
     async (req, res, next) => {
+        await invalidateCache('restaurants:*');
         await invalidateCache('restaurant_detail:*');
         next();
     },

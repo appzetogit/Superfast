@@ -286,9 +286,9 @@ export default function BillingCharges() {
     <div className="space-y-8 pb-10">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="admin-h1">Quick Billing Settings</h1>
+          <h1 className="admin-h1 font-bold">Quick Billing Settings</h1>
           <p className="admin-description mt-1">
-            Food admin fee settings aur delivery commission slabs ke same quick-commerce controls.
+            Manage quick-commerce billing settings, fee rules, and delivery commission structures.
           </p>
         </div>
       </div>
@@ -301,7 +301,7 @@ export default function BillingCharges() {
               Fee Settings
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Order value ke hisaab se delivery fee, platform fee, GST aur return commission set karein.
+              Configure delivery fee, platform fee, GST, and return commission based on the order value.
             </p>
           </div>
           <button
@@ -367,7 +367,7 @@ export default function BillingCharges() {
               <div className="mb-4">
                 <h3 className="text-base font-bold text-slate-900">Delivery Fee Ranges</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Food fee settings ki tarah order value range ke basis par delivery fee set karein.
+                  Set delivery fees based on order value ranges, similar to food fee settings.
                 </p>
               </div>
 
@@ -465,7 +465,7 @@ export default function BillingCharges() {
             Delivery Boy Commission Rules
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            `/admin/food/delivery-boy-commission` jaisa slab setup, but quick-commerce ke liye isolated.
+            Configure delivery commission slabs specifically isolated for quick-commerce orders.
           </p>
         </div>
 

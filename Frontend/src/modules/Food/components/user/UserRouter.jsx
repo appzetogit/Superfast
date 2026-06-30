@@ -3,6 +3,7 @@ import UserLayout from "./UserLayout"
 import { Suspense, lazy } from "react"
 import Loader from "@food/components/Loader"
 import ProtectedRoute from "@food/components/ProtectedRoute"
+import OnboardingGuard from "./OnboardingGuard"
 
 // Lazy Loading Pages
 
@@ -73,6 +74,7 @@ const ReferEarn = lazy(() => import("@food/pages/user/profile/ReferEarn"))
 const SignIn = lazy(() => import("@food/pages/user/auth/SignIn"))
 const OTP = lazy(() => import("@food/pages/user/auth/OTP"))
 const AuthCallback = lazy(() => import("@food/pages/user/auth/AuthCallback"))
+const Preferences = lazy(() => import("@food/pages/user/preferences/Preferences"))
 
 // Help
 const Help = lazy(() => import("@food/pages/user/help/Help"))
@@ -94,7 +96,7 @@ export default function UserRouter() {
       <Routes>
         <Route element={<UserLayout />}>
           {/* Home & Discovery */}
-          <Route path="" element={<Home />} />
+          <Route path="" element={<OnboardingGuard mode="requirePreferences"><Home /></OnboardingGuard>} />
           <Route path="quick" element={<Navigate to="/quick" replace />} />
           <Route path="dining" element={<Dining />} />
           <Route path="dining/restaurants" element={<Navigate to="/food/user/dining" replace />} />
@@ -278,6 +280,10 @@ export default function UserRouter() {
           <Route path="auth/sign-in" element={<Navigate to={`/user/auth/login${location.search}`} replace />} />
           <Route path="auth/otp" element={<OTP />} />
           <Route path="auth/callback" element={<AuthCallback />} />
+          <Route
+            path="preferences"
+            element={<OnboardingGuard mode="preventPreferences"><Preferences /></OnboardingGuard>}
+          />
 
           {/* Help */}
           <Route path="help" element={<Help />} />

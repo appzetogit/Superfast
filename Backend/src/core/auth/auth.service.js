@@ -211,6 +211,7 @@ export const verifyUserOtpAndLogin = async (
 
   const user = {
     ...userDoc.toObject(),
+    hasSetPreferences: userDoc.hasSetPreferences === true,
     walletBalance: await getResolvedUserWalletBalance(
       userDoc._id,
       userDoc.walletBalance,
@@ -580,6 +581,7 @@ export const getProfile = async (userId, role) => {
       if (!userProfile) break;
       profile = {
         ...userProfile,
+        hasSetPreferences: userProfile.hasSetPreferences === true,
         walletBalance: await getResolvedUserWalletBalance(
           userProfile._id,
           userProfile.walletBalance,

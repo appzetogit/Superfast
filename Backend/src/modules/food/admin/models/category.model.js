@@ -31,8 +31,11 @@ const foodCategorySchema = new mongoose.Schema(
          * - When null/undefined: category is global (visible for all zones).
          */
         zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', index: true, default: undefined },
+        sortOrder: { type: Number, default: 0, index: true },
         isActive: { type: Boolean, default: true, index: true },
-        sortOrder: { type: Number, default: 0, index: true }
+        slug: { type: String, unique: true, sparse: true, trim: true },
+        imageUrl: { type: String, trim: true, default: '' },
+        displayOrder: { type: Number, default: 0, index: true }
     },
     {
         collection: 'food_categories',

@@ -56,7 +56,7 @@ const FoodRestaurantCard = memo(({
                 backendOrigin={backendOrigin}
               />
 
-              {restaurant.featuredDish && (
+              {restaurant.featuredDish && (!restaurant.famousDishes || restaurant.famousDishes.length === 0) && (
                 <div className="absolute left-4 top-4 z-10 flex items-center transform transition-transform duration-300 group-hover:scale-105">
                   <div className="flex items-center rounded-full border border-white/20 bg-black/70 px-4 py-1.5 text-[11px] font-medium tracking-tight text-white shadow-2xl backdrop-blur-lg">
                     {restaurant.featuredDish} {restaurant.featuredPrice ? `• ₹${restaurant.featuredPrice}` : ""}

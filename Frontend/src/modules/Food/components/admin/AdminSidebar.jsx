@@ -173,8 +173,13 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
       }
     }
     fetchBadges()
+    
+    window.addEventListener("adminNotificationsUpdated", fetchBadges)
     const timer = setInterval(fetchBadges, 60000)
-    return () => clearInterval(timer)
+    return () => {
+      window.removeEventListener("adminNotificationsUpdated", fetchBadges)
+      clearInterval(timer)
+    }
   }, [])
 
   const getBadgeCount = (label = "", path = "") => {
@@ -183,6 +188,9 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
     if (l.includes("food approval")) return badges.foodApprovals
     if (l === "foods") return badges.foods
+    if (l.includes("restaurant foods list")) return badges.foodApprovals
+    if (l.includes("restaurant addons list")) return badges.addons
+    if (l === "categories" || l === "category") return badges.categories
     if (l === "restaurants" || l.includes("new joining request")) return badges.restaurants
     if (l.includes("restaurant complaints")) return badges.restaurantComplaints
     if (p.includes("orders/pending")) return badges.orders

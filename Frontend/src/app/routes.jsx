@@ -10,6 +10,7 @@ import ProtectedRoute from '@core/guards/ProtectedRoute'
 import RoleGuard from '@core/guards/RoleGuard'
 import { UserRole } from '@core/constants/roles'
 import SellerAuthPage from '../modules/seller/pages/Auth'
+import OnboardingGuard from '../modules/Food/components/user/OnboardingGuard'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
@@ -76,7 +77,9 @@ const SharedFoodHomeRoute = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <FoodUserLayout>
-        <FoodHomePage />
+        <OnboardingGuard mode="requirePreferences">
+          <FoodHomePage />
+        </OnboardingGuard>
       </FoodUserLayout>
     </Suspense>
   )

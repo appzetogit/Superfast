@@ -1278,9 +1278,67 @@ export const uploadRestaurantMenuImages = async (restaurantId, files = []) => {
 const toRestaurantSummary = (doc) => {
     if (!doc) return null;
     
-    const coverImages = Array.isArray(doc.coverImages)
-        ? doc.coverImages.map((m) => toUrl(m)).filter(Boolean).map((url) => ({ url, publicId: null }))
+    const dbCoverImages = Array.isArray(doc.coverImages) ? doc.coverImages : [];
+    const dbMenuImages = Array.isArray(doc.menuImages) ? doc.menuImages : [];
+    const combinedImages = [...dbCoverImages, ...dbMenuImages];
+    
+    const coverImages = combinedImages
+        ? combinedImages.map((m) => toUrl(m)).filter(Boolean).map((url) => ({ url, publicId: null }))
         : [];
+
+    let famousDishes = [
+        {
+            id: `${doc._id}-dish-1`,
+            name: "Butter Khichdi",
+            price: 195,
+            imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=80",
+            isVeg: true
+        },
+        {
+            id: `${doc._id}-dish-2`,
+            name: "Paneer Butter Masala",
+            price: 260,
+            imageUrl: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500&auto=format&fit=crop&q=80",
+            isVeg: true
+        },
+        {
+            id: `${doc._id}-dish-3`,
+            name: "Veg Hakka Noodles",
+            price: 180,
+            imageUrl: "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&auto=format&fit=crop&q=80",
+            isVeg: true
+        }
+    ];
+
+    const isBakery = doc.businessType === 'home_bakery' || 
+                     (doc.restaurantName || '').toLowerCase().includes('bakery') || 
+                     (doc.restaurantName || '').toLowerCase().includes('cake');
+                     
+    if (isBakery) {
+        famousDishes = [
+            {
+                id: `${doc._id}-dish-1`,
+                name: "Chocolate Truffle Cake",
+                price: 450,
+                imageUrl: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=80",
+                isVeg: true
+            },
+            {
+                id: `${doc._id}-dish-2`,
+                name: "Red Velvet Pastry",
+                price: 120,
+                imageUrl: "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&auto=format&fit=crop&q=80",
+                isVeg: true
+            },
+            {
+                id: `${doc._id}-dish-3`,
+                name: "Vanilla Cupcake",
+                price: 80,
+                imageUrl: "https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?w=500&auto=format&fit=crop&q=80",
+                isVeg: true
+            }
+        ];
+    }
 
     return {
         id: doc._id,
@@ -1305,7 +1363,8 @@ const toRestaurantSummary = (doc) => {
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
         pureVegRestaurant: Boolean(doc.pureVegRestaurant),
         slug: doc.slug || doc.restaurantNameNormalized || '',
-        priority: doc.priority ?? 0
+        priority: doc.priority ?? 0,
+        famousDishes
     };
 };
 
@@ -1392,6 +1451,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         restaurantName: 1,
         profileImage: 1,
         coverImages: 1,
+        menuImages: 1,
         estimatedDeliveryTime: 1,
         estimatedDeliveryTimeMinutes: 1,
         offer: 1,

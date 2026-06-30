@@ -112,6 +112,7 @@ import bakeryIcon from "@food/assets/explore more icons/bakery.png";
 import BannerSection from "@food/components/user/home/BannerSection";
 import CategoryRail from "@food/components/user/home/CategoryRail";
 import RecommendedSection from "@food/components/user/home/RecommendedSection";
+import RecommendationsSection from "@food/components/user/home/RecommendationsSection";
 import RestaurantGrid from "@food/components/user/home/RestaurantGrid";
 import SortFilterSection from "@food/components/user/home/SortFilterSection";
 import ExploreMoreSection from "@food/components/user/home/ExploreMoreSection";
@@ -150,7 +151,7 @@ export default function Home() {
   const [heroSearch, setHeroSearch] = useState("");
   const { openSearch, closeSearch, searchValue, setSearchValue } = useSearchOverlay();
   const { openLocationSelector } = useLocationSelector();
-  const { vegMode, setVegMode: setVegModeContext, isFavorite, addFavorite, removeFavorite, getDefaultAddress } = useProfile();
+  const { vegMode, setVegMode: setVegModeContext, isFavorite, addFavorite, removeFavorite, getDefaultAddress, userProfile } = useProfile();
   const { cart } = useCart();
   const hasFoodCartItems = useMemo(
     () => cart.some((item) => (item?.orderType || "food") !== "quick"),
@@ -227,6 +228,21 @@ export default function Home() {
     }
     return items;
   }, [landing?.exploreMore]);
+
+  const userPreferredCategories = useMemo(() => {
+    const rawCategories = categories.display;
+    const userPrefs = userProfile?.preferences || [];
+    if (!userPrefs || userPrefs.length === 0) {
+      return rawCategories;
+    }
+    
+    const prefIds = userPrefs.map(pref => typeof pref === "string" ? pref : String(pref._id || pref));
+    const filtered = rawCategories.filter(cat => 
+      prefIds.includes(String(cat.id)) || prefIds.includes(String(cat._id)) || prefIds.includes(String(cat.slug))
+    );
+    
+    return filtered.length > 0 ? filtered : rawCategories;
+  }, [categories.display, userProfile?.preferences]);
 
   // --- UI Effects ---
   useEffect(() => {
@@ -355,21 +371,6 @@ export default function Home() {
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="bg-white dark:bg-[#0a0a0a]"
           >
-            <Suspense fallback={<CategoryChipRowSkeleton className="py-1" />}>
-              <CategoryRail
-                displayCategories={categories.display}
-                showCategorySkeleton={categories.loading}
-                navigate={navigate}
-                setShowAllCategoriesModal={setShowAllCategoriesModal}
-                backendOrigin={BACKEND_ORIGIN}
-              />
-            </Suspense>
-
-            <Suspense fallback={null}>
-              <RecommendedSection recommendedForYouRestaurants={meta.recommended} />
-            </Suspense>
-
-
             {(banners.loading || (banners?.images?.length > 0)) && (
               <Suspense fallback={<HeroBannerSkeleton className="h-full w-full px-4 mt-3" />}>
                 <section className="content-auto px-4 pt-3 sm:pt-4 lg:pt-5">
@@ -389,12 +390,26 @@ export default function Home() {
               </Suspense>
             )}
 
+            <Suspense fallback={<CategoryChipRowSkeleton className="py-1" />}>
+              <CategoryRail
+                displayCategories={userPreferredCategories}
+                showCategorySkeleton={categories.loading}
+                navigate={navigate}
+                setShowAllCategoriesModal={setShowAllCategoriesModal}
+                backendOrigin={BACKEND_ORIGIN}
+              />
+            </Suspense>
+
             <Suspense fallback={null}>
               <SortFilterSection
                 activeFilters={state.activeFilters}
                 toggleFilter={actions.toggleFilter}
                 setIsFilterOpen={(val) => { }} // Hook handles internal apply
               />
+            </Suspense>
+
+            <Suspense fallback={null}>
+              <RecommendationsSection fallbackRestaurants={meta.recommended} />
             </Suspense>
 
             <Suspense fallback={null}>

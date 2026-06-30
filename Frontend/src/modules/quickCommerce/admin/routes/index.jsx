@@ -15,9 +15,7 @@ const ProductManagement = React.lazy(() => import("../pages/ProductManagement"))
 const ActiveSellers = React.lazy(() => import("../pages/ActiveSellers"))
 const PendingSellers = React.lazy(() => import("../pages/PendingSellers"))
 const SellerLocations = React.lazy(() => import("../pages/SellerLocations"))
-const ActiveDeliveryBoys = React.lazy(() => import("../pages/ActiveDeliveryBoys"))
-const PendingDeliveryBoys = React.lazy(() => import("../pages/PendingDeliveryBoys"))
-const DeliveryFunds = React.lazy(() => import("../pages/DeliveryFunds"))
+
 const TransactionReport = React.lazy(() => import("../pages/TransactionReport"))
 const AdminWallet = React.lazy(() => import("../pages/AdminWallet"))
 const WithdrawalRequests = React.lazy(() => import("../pages/WithdrawalRequests"))
@@ -31,7 +29,7 @@ const OrderDetail = React.lazy(() => import("../pages/OrderDetail"))
 const SellerDetail = React.lazy(() => import("../pages/SellerDetail"))
 const SupportTickets = React.lazy(() => import("../pages/SupportTickets"))
 const ReviewModeration = React.lazy(() => import("../pages/ReviewModeration"))
-const FleetTracking = React.lazy(() => import("../pages/FleetTracking"))
+
 const CouponManagement = React.lazy(() => import("../pages/CouponManagement"))
 const ContentManager = React.lazy(() => import("../pages/ContentManager"))
 const HeroCategoriesPerPage = React.lazy(() => import("../pages/HeroCategoriesPerPage"))
@@ -80,10 +78,7 @@ function QuickCommerceAdminRoutesInner() {
       <Route path="/coupons" element={<CouponManagement />} />
       <Route path="/sellers/pending" element={<PendingSellers />} />
       <Route path="/seller-locations" element={<SellerLocations />} />
-      <Route path="/delivery-boys/active" element={<ActiveDeliveryBoys />} />
-      <Route path="/delivery-boys/pending" element={<PendingDeliveryBoys />} />
-      <Route path="/tracking" element={<FleetTracking />} />
-      <Route path="/delivery-funds" element={<DeliveryFunds />} />
+
       <Route path="/wallet" element={<AdminWallet />} />
       <Route path="/transactions" element={<TransactionReport />} />
       <Route path="/withdrawals" element={<WithdrawalRequests />} />

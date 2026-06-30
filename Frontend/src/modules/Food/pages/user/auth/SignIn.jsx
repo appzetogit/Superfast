@@ -5,6 +5,7 @@ import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { authAPI } from "@food/api"
+import { clearUserSession } from "@food/utils/auth"
 import AuthBrandHeader from "@/modules/auth/components/AuthBrandHeader"
 import { SUPERFAST_BRAND } from "@/modules/auth/constants/brand"
 
@@ -26,6 +27,7 @@ export default function SignIn() {
   const submittingRef = useRef(false)
 
   useEffect(() => {
+    clearUserSession()
     const stored = sessionStorage.getItem("userAuthData")
     if (!stored) return
 

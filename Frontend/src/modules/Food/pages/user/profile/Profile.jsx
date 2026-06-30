@@ -26,6 +26,8 @@ import {
   Calendar,
   Trash2,
   Undo,
+  Sparkles,
+  ClipboardList,
 } from "lucide-react";
 
 import AnimatedPage from "@food/components/user/AnimatedPage";
@@ -652,8 +654,8 @@ export default function Profile() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 flex-1">
                     Invite a friend. Reward is added to your wallet when they
                     sign up.
                   </p>
@@ -664,7 +666,7 @@ export default function Profile() {
                       e.stopPropagation();
                       handleShareReferral();
                     }}
-                    className="inline-flex items-center gap-1 text-xs text-[#cc2532] font-medium ml-2 px-2 py-1 rounded-md"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#cc2532] font-semibold bg-[#cc2532]/5 hover:bg-[#cc2532]/10 transition-colors px-3 py-1.5 rounded-full flex-shrink-0"
                     disabled={!referralLink}>
                     <Share2 className="h-3.5 w-3.5" />
                     Refer
@@ -808,6 +810,38 @@ export default function Profile() {
                       <span className="text-base font-medium text-gray-900 dark:text-white">
                         Food wishlist
                       </span>
+                    </div>
+                    <motion.div
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.2 }}>
+                      <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                    </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Link>
+
+            <Link to="/food/user/preferences?edit=true" className="block">
+              <motion.div
+                whileHover={{ x: 4, scale: 1.01 }}
+                transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
+                <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
+                        whileHover={{ rotate: 15, scale: 1.1 }}
+                        transition={{ duration: 0.3 }}>
+                        <ClipboardList className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                      </motion.div>
+                      <div>
+                        <span className="text-base font-medium text-gray-900 dark:text-white block">
+                          Manage recommendations
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          Update your food preferences
+                        </span>
+                      </div>
                     </div>
                     <motion.div
                       whileHover={{ x: 4 }}

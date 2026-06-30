@@ -172,6 +172,7 @@ export function ProfileProvider({ children }) {
         if (userData) {
           setUserProfile(userData)
           // Update localStorage
+          localStorage.setItem("user", JSON.stringify(userData))
           localStorage.setItem("user_user", JSON.stringify(userData))
           localStorage.setItem("userProfile", JSON.stringify(userData))
         }
