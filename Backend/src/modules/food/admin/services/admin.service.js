@@ -1234,6 +1234,24 @@ export async function getCustomers(query = {}) {
         }
     }
 
+    if (query.orderDate && String(query.orderDate).trim()) {
+        const d = new Date(String(query.orderDate));
+        if (!Number.isNaN(d.getTime())) {
+            const start = new Date(d);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(d);
+            end.setHours(23, 59, 59, 999);
+            
+            const userIds = await FoodOrder.distinct('userId', {
+                orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES },
+                createdAt: { $gte: start, $lte: end },
+                userId: { $exists: true, $ne: null }
+            });
+            
+            filter._id = { $in: userIds };
+        }
+    }
+
     if (query.search && String(query.search).trim()) {
         const raw = String(query.search).trim().slice(0, 80);
         const term = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1272,7 +1290,8 @@ export async function getCustomers(query = {}) {
             {
                 $match: {
                     userId: { $in: userIds },
-                    orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES }
+                    orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES },
+                    orderStatus: 'delivered'
                 }
             },
             {
@@ -1335,6 +1354,7 @@ export async function getCustomerById(id) {
             $match: {
                 userId: customerObjectId,
                 orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES },
+                orderStatus: 'delivered'
             }
         },
         {

@@ -1,6 +1,7 @@
 // Order Service - Backend Logic
 import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
+import { FoodItem } from '../../admin/models/food.model.js';
 // import { paymentSnapshotFromOrder } from './foodOrderPayment.service.js';
 import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
@@ -216,6 +217,56 @@ function normalizeOrderItems(items = [], fallbackOrderType = "food") {
           : item?.restaurant || item?.restaurantName || ""),
     };
   });
+}
+
+async function syncItemsWithDatabase(items = []) {
+  const foodItemIds = items
+    .filter((item) => item.type === "food" && !item.isCustomCake)
+    .map((item) => item.itemId || item.id)
+    .filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+  if (foodItemIds.length === 0) return items;
+
+  const dbItems = await FoodItem.find({
+    _id: { $in: foodItemIds },
+    approvalStatus: 'approved'
+  }).lean();
+
+  const dbItemsMap = new Map(dbItems.map(item => [String(item._id), item]));
+
+  for (const item of items) {
+    if (item.type !== "food" || item.isCustomCake) continue;
+    const itemIdStr = String(item.itemId || item.id);
+    const dbItem = dbItemsMap.get(itemIdStr);
+    
+    if (dbItem) {
+      item.name = dbItem.name;
+      item.image = dbItem.image || item.image || '';
+      item.isVeg = dbItem.foodType === 'Veg';
+      item.isAvailable = dbItem.isAvailable !== false;
+      
+      if (item.variantId && mongoose.Types.ObjectId.isValid(item.variantId)) {
+        const variantIdStr = String(item.variantId);
+        const dbVariant = dbItem.variants?.find(v => String(v._id) === variantIdStr);
+        if (dbVariant) {
+          item.variantName = dbVariant.name;
+          item.variantPrice = dbVariant.price;
+          item.price = dbVariant.price;
+        } else {
+          item.variantPrice = dbItem.price;
+          item.price = dbItem.price;
+        }
+      } else {
+        item.price = dbItem.price;
+        if (item.variantPrice) {
+          item.variantPrice = dbItem.price;
+        }
+      }
+    } else {
+      item.isAvailable = false;
+    }
+  }
+  return items;
 }
 
 function getPointLatLng(locationLike) {
@@ -1584,6 +1635,7 @@ export async function updateDispatchSettings(dispatchMode, adminId) {
 // ----- Calculate (validation + return pricing from payload) -----
 export async function calculateOrder(userId, dto) {
   const items = normalizeOrderItems(dto.items, dto.orderType);
+  await syncItemsWithDatabase(items);
 
   if (dto.isCustomCake) {
     if (!dto.customCakeRequestId) {
@@ -1893,6 +1945,7 @@ export async function calculateOrder(userId, dto) {
         ]
       : [];
   return {
+    items,
     pricing: {
       subtotal,
       tax,
@@ -1902,23 +1955,24 @@ export async function calculateOrder(userId, dto) {
       discount,
       total,
       currency: "INR",
-        couponCode: appliedCoupon?.code || codeRaw || null,
-        appliedCoupon,
-        deliveryOptions,
-        pickupDistanceKm: eligibility.pickupDistanceKm,
-        combinedPickupEligible: eligibility.eligible,
-        mixedOrderDistanceLimit: eligibility.distanceLimitKm,
-        mixedOrderAngleLimit: eligibility.angleLimitDeg,
-        sameDirection: eligibility.sameDirection,
-        eligibilityReason: eligibility.reason,
-        pickupPoints,
-      },
-    };
+      couponCode: appliedCoupon?.code || codeRaw || null,
+      appliedCoupon,
+      deliveryOptions,
+      pickupDistanceKm: eligibility.pickupDistanceKm,
+      combinedPickupEligible: eligibility.eligible,
+      mixedOrderDistanceLimit: eligibility.distanceLimitKm,
+      mixedOrderAngleLimit: eligibility.angleLimitDeg,
+      sameDirection: eligibility.sameDirection,
+      eligibilityReason: eligibility.reason,
+      pickupPoints,
+    },
+  };
 }
 
 // ----- Create order -----
 export async function createOrder(userId, dto) {
   const items = normalizeOrderItems(dto.items, dto.orderType);
+  await syncItemsWithDatabase(items);
 
   if (dto.isCustomCake) {
     if (!dto.customCakeRequestId) {

@@ -121,6 +121,7 @@ export default function Customers() {
           ...(searchQuery && { search: searchQuery }),
           ...(filters.status && { status: filters.status }),
           ...(filters.joiningDate && { joiningDate: filters.joiningDate }),
+          ...(filters.orderDate && { orderDate: filters.orderDate }),
           ...(filters.sortBy && { sortBy: filters.sortBy }),
           ...(filters.chooseFirst && { chooseFirst: filters.chooseFirst }),
         }
@@ -155,7 +156,7 @@ export default function Customers() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [searchQuery, filters.status, filters.joiningDate, filters.sortBy, filters.chooseFirst])
+  }, [searchQuery, filters.status, filters.joiningDate, filters.orderDate, filters.sortBy, filters.chooseFirst])
 
   const [searchParams] = useSearchParams()
   const userIdFromUrl = searchParams.get("userId")

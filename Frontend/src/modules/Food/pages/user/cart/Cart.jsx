@@ -182,7 +182,8 @@ export default function Cart() {
     addToCart, 
     getCartCount, 
     clearCart, 
-    cleanCartForRestaurant 
+    cleanCartForRestaurant,
+    replaceCart
   } = cartContext;
 
   // For the Food Cart page, we only care about food items
@@ -191,6 +192,7 @@ export default function Cart() {
   const hasFoodItems = foodItems.length > 0;
   const hasQuickItems = quickItems.length > 0;
   const isQuickCart = false; // This page is always a food cart view
+  const hasUnavailableItems = foodItems.some(item => item.isAvailable === false)
 
   const { vegMode, getDefaultAddress, getDefaultPaymentMethod, setDefaultAddress, addresses, paymentMethods, userProfile } = useProfile()
   const { createOrder } = useOrders()
@@ -246,10 +248,13 @@ export default function Cart() {
     if (settings?.codEnabled === false && selectedPaymentMethod === "cash") {
       setSelectedPaymentMethod("razorpay")
     }
+    if (userProfile?.isCodBlocked && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("razorpay")
+    }
     if (settings?.onlinePaymentEnabled === false && (selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet")) {
       setSelectedPaymentMethod("cash")
     }
-  }, [settings?.codEnabled, settings?.onlinePaymentEnabled, selectedPaymentMethod])
+  }, [settings?.codEnabled, settings?.onlinePaymentEnabled, selectedPaymentMethod, userProfile?.isCodBlocked])
   const [scheduledDate, setScheduledDate] = useState("")
   const [scheduledTime, setScheduledTime] = useState("")
   const [orderProgress, setOrderProgress] = useState(0)
@@ -991,6 +996,70 @@ export default function Cart() {
             const coupon = availableCoupons.find(c => c.code === response.data.data.pricing.appliedCoupon.code)
             if (coupon) {
               setAppliedCoupon(coupon)
+            }
+          }
+
+          // Sync all item fields (price, name, image, isVeg, isAvailable, variantName) from backend
+          const backendItems = response?.data?.data?.items
+          if (Array.isArray(backendItems) && backendItems.length > 0) {
+            let cartUpdated = false
+            const updatedMasterCart = masterCart.map(cartItem => {
+              // Only sync food items
+              if (cartItem.orderType === "quick" || cartItem.type === "quick" || cartItem.isCustomCake) {
+                return cartItem
+              }
+              const matchedBackendItem = backendItems.find(bItem => 
+                String(bItem.itemId || bItem.id) === String(cartItem.itemId || cartItem.id) &&
+                String(bItem.variantId || '') === String(cartItem.variantId || '')
+              )
+              if (matchedBackendItem) {
+                const newPrice = Number(matchedBackendItem.price)
+                const newVariantPrice = Number(matchedBackendItem.variantPrice ?? matchedBackendItem.price)
+                const newName = matchedBackendItem.name ?? cartItem.name
+                const newImage = matchedBackendItem.image ?? cartItem.image
+                const newIsVeg = matchedBackendItem.isVeg ?? cartItem.isVeg
+                const newIsAvailable = matchedBackendItem.isAvailable ?? true
+                const newVariantName = matchedBackendItem.variantName ?? cartItem.variantName
+
+                const hasChanges = (
+                  cartItem.price !== newPrice ||
+                  cartItem.variantPrice !== newVariantPrice ||
+                  cartItem.name !== newName ||
+                  cartItem.image !== newImage ||
+                  cartItem.isVeg !== newIsVeg ||
+                  cartItem.isAvailable !== newIsAvailable ||
+                  cartItem.variantName !== newVariantName
+                )
+
+                if (hasChanges) {
+                  cartUpdated = true
+                  return {
+                    ...cartItem,
+                    price: newPrice,
+                    variantPrice: newVariantPrice,
+                    name: newName,
+                    image: newImage,
+                    isVeg: newIsVeg,
+                    isAvailable: newIsAvailable,
+                    variantName: newVariantName,
+                  }
+                }
+              } else {
+                // Item not found in backend sync response — mark unavailable
+                if (cartItem.isAvailable !== false) {
+                  cartUpdated = true
+                  return { ...cartItem, isAvailable: false }
+                }
+              }
+              return cartItem
+            })
+
+            if (cartUpdated) {
+              replaceCart(updatedMasterCart)
+              const hasUnavailableInUpdate = updatedMasterCart.some(i => i.isAvailable === false && i.type !== 'quick')
+              if (hasUnavailableInUpdate) {
+                toast.warning("Some items in your cart are no longer available.")
+              }
             }
           }
         }
@@ -2070,7 +2139,7 @@ export default function Cart() {
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="space-y-3 md:space-y-4">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex min-w-0 items-start gap-2 md:gap-4">
+                    <div key={item.id} className={`flex min-w-0 items-start gap-2 md:gap-4 ${item.isAvailable === false ? 'opacity-50' : ''}`}>
                       {/* Veg/Non-veg indicator */}
                       <div className={`w-4 h-4 md:w-5 md:h-5 border-2 ${item.isVeg !== false ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-1 flex-shrink-0`}>
                         <div className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${item.isVeg !== false ? 'bg-green-600' : 'bg-red-600'}`} />
@@ -2081,11 +2150,23 @@ export default function Cart() {
                         {item.variantName ? (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variantName}</p>
                         ) : null}
+                        {item.isAvailable === false && (
+                          <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
+                            Unavailable – please remove
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex shrink-0 items-center gap-2 md:gap-4">
-                        {/* Quantity controls */}
-                        {item.isCustomCake ? (
+                        {/* Quantity controls — hidden for unavailable items */}
+                        {item.isAvailable === false ? (
+                          <button
+                            className="px-2 py-1 text-xs font-semibold text-red-600 border border-red-300 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => updateQuantity(item.id, 0)}
+                          >
+                            Remove
+                          </button>
+                        ) : item.isCustomCake ? (
                           <div className="flex items-center border border-red-500 rounded">
                             <button
                               className="px-2 md:px-3 py-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
@@ -2785,7 +2866,7 @@ export default function Cart() {
             {/* Place Order Button */}
             <button
               onClick={handlePlaceOrder}
-              disabled={isPlacingOrder || (selectedPaymentMethod === "wallet" && walletBalance < total)}
+              disabled={isPlacingOrder || hasUnavailableItems || (selectedPaymentMethod === "wallet" && walletBalance < total)}
               className="w-full bg-gradient-to-r from-[#cc2532] to-[#E23744] hover:from-[#a81e29] hover:to-[#CF2834] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#cc2532]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
             >
               {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
@@ -2797,9 +2878,11 @@ export default function Cart() {
               <div className="flex items-center gap-1 mx-auto text-sm md:text-lg tracking-wide">
                 {isPlacingOrder
                   ? "Processing..."
-                  : !hasSavedAddress
-                    ? "Select Address"
-                    : "Place Order"}
+                  : hasUnavailableItems
+                    ? "Remove unavailable items"
+                    : !hasSavedAddress
+                      ? "Select Address"
+                      : "Place Order"}
                 <div className="flex align-center h-full">
                   <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
                 </div>
@@ -3068,7 +3151,7 @@ export default function Cart() {
                             disabledText: 'Low Balance'
                           }
                         ] : []),
-                        ...(settings?.codEnabled !== false ? [{
+                        ...(settings?.codEnabled !== false && !userProfile?.isCodBlocked ? [{
                           id: 'cash',
                           name: 'Cash on Delivery',
                           description: 'Pay when order arrives',
