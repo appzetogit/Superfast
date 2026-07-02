@@ -9,7 +9,7 @@ const DraggableModuleSwitcher = () => {
     const pathname = location.pathname;
 
     let targetPath = "/food/user";
-    let targetName = "Superfast FoodWala";
+    let targetName = "SuperfastMart";
     let themeColor = "text-red-600";
     let bgColor = "bg-red-50";
     let icon = <UtensilsCrossed className="h-3 w-3" strokeWidth={2.6} />;
@@ -22,7 +22,7 @@ const DraggableModuleSwitcher = () => {
         icon = <ShoppingBag className="h-3 w-3" strokeWidth={2.6} />;
     } else if (pathname.startsWith('/quick')) {
         targetPath = "/food/user";
-        targetName = "Superfast FoodWala";
+        targetName = "SuperfastMart";
         themeColor = "text-red-600";
         bgColor = "bg-red-50";
         icon = <UtensilsCrossed className="h-3 w-3" strokeWidth={2.6} />;

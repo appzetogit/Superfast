@@ -7,5 +7,5 @@ export const SUPERFAST_BRAND = {
   orangeDeep: "#EA580C",
   cream: "#FDF4EC",
   tint: "#FFF7ED",
-  tagline: "Har Ghar Ka Chota Saathi",
+  tagline: "Minutes To Your Doorstep",
 }
