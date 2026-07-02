@@ -578,6 +578,16 @@ export const adminAPI = {
       { isActive: isActive !== false },
       { contextModule: "admin" },
     ),
+  toggleCustomerCodBlock: (id, isCodBlocked) =>
+    apiClient.patch(
+      `/food/admin/customers/${String(id)}/block-cod`,
+      { isCodBlocked: Boolean(isCodBlocked) },
+      { contextModule: "admin" },
+    ),
+  deleteCustomer: (id) =>
+    apiClient.delete(`/food/admin/customers/${String(id)}`, {
+      contextModule: "admin",
+    }),
   /** Orders (admin) – list, get by id, assign delivery partner */
   getOrders: (params = {}) =>
     apiClient.get("/food/admin/orders", {

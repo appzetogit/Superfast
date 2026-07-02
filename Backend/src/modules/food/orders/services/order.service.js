@@ -1994,6 +1994,14 @@ export async function createOrder(userId, dto) {
   const paymentMethod =
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
   const isCash = paymentMethod === "cash";
+  
+  if (isCash) {
+    const user = await FoodUser.findById(userId).select('isCodBlocked').lean();
+    if (user?.isCodBlocked) {
+      throw new ValidationError("Cash on Delivery (COD) is blocked for this account. Please use online payment.");
+    }
+  }
+
   const isWallet = paymentMethod === "wallet";
   const pickupPoints = buildPickupPointsFromItems(items, sourceMap);
   const combinedPickup = await evaluateCombinedPickupEligibility(

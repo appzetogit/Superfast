@@ -1215,6 +1215,7 @@ export async function getCustomers(query = {}) {
 
     const filter = {
         role: 'USER',
+        isDeleted: { $ne: true }
     };
 
     if (query.status) {
@@ -1254,7 +1255,7 @@ export async function getCustomers(query = {}) {
             .sort(sort)
             .skip(skip)
             .limit(limit)
-            .select('name email phone countryCode isVerified isActive createdAt profileImage')
+            .select('name email phone countryCode isVerified isActive createdAt profileImage isCodBlocked')
             .lean(),
         FoodUser.countDocuments(filter)
     ]);
@@ -1307,6 +1308,7 @@ export async function getCustomers(query = {}) {
         status: u.isActive !== false,
         isActive: u.isActive !== false,
         isVerified: u.isVerified === true,
+        isCodBlocked: u.isCodBlocked === true,
         totalOrder: stats.totalOrder,
         totalOrderAmount: stats.totalOrderAmount,
         joiningDate: u.createdAt,
@@ -1360,6 +1362,7 @@ export async function getCustomerById(id) {
         status: u.isActive !== false,
         isActive: u.isActive !== false,
         isVerified: u.isVerified === true,
+        isCodBlocked: u.isCodBlocked === true,
         totalOrders: Number(stats.totalOrders || 0),
         totalOrder: Number(stats.totalOrders || 0),
         totalOrderAmount: Number(stats.totalOrderAmount || 0),
@@ -1389,6 +1392,34 @@ export async function updateCustomerStatus(id, isActive) {
         await FoodRefreshToken.deleteMany({ userId: updated._id });
     }
     return updated;
+}
+
+export async function updateCustomerCodBlock(id, isCodBlocked) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const updatedDoc = await FoodUser.findByIdAndUpdate(
+        id,
+        { $set: { isCodBlocked: Boolean(isCodBlocked) } },
+        { new: true }
+    );
+    if (!updatedDoc) return null;
+    return updatedDoc.toObject();
+}
+
+export async function deleteCustomer(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    // Revoke all refresh tokens first so the user is logged out immediately
+    try {
+        await FoodRefreshToken.deleteMany({ userId: id });
+    } catch (e) {
+        // Non-fatal
+    }
+
+    // Permanently delete the user document from the database
+    const deletedDoc = await FoodUser.findByIdAndDelete(id);
+    if (!deletedDoc) return null;
+
+    return { id };
 }
 
 export async function getSupportTickets(query = {}) {

@@ -5,6 +5,7 @@ const addonPayloadSchema = new mongoose.Schema(
         name: { type: String, required: true, trim: true },
         description: { type: String, trim: true, default: '' },
         price: { type: Number, required: true, min: 0 },
+        isVeg: { type: Boolean, default: true },
         image: { type: String, trim: true, default: '' },
         images: { type: [String], default: [] }
     },

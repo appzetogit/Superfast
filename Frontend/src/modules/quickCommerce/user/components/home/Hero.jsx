@@ -132,13 +132,14 @@ const Hero = () => {
                 <div className="relative w-full flex justify-center md:justify-end animate-in fade-in zoom-in duration-1000 delay-200">
                     <div className="relative z-10 w-full max-w-[700px] aspect-video overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] shadow-lg transform hover:scale-[1.01] transition-transform duration-500">
                         <video
-                            src={heroVideo}
                             autoPlay
                             loop
                             muted
                             playsInline
                             className="w-full h-full object-cover scale-[1.02]"
-                        />
+                        >
+                            <source src={heroVideo} type="video/mp4" />
+                        </video>
                         <div className="absolute inset-0 ring-1 ring-black/5 rounded-[1.5rem] md:rounded-[2.5rem] pointer-events-none"></div>
                     </div>
                 </div>

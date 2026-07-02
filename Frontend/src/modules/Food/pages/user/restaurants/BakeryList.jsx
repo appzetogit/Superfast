@@ -107,6 +107,7 @@ export default function BakeryList() {
             distance: distanceStr,
             priceRange: bakery?.priceRange || "$$",
             image: pickRestaurantImage(bakery),
+            coverImages: bakery?.coverImages,
           }
         })
 

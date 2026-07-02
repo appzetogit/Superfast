@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { motion } from "framer-motion";
 import { HeroBannerSkeleton } from "@food/components/ui/loading-skeletons";
+import { optimizeCloudinaryVideoUrl } from "@shared/utils/cloudinaryUtils";
 
 const TypewriterText = ({ text, isActive, delay = 0 }) => {
   const words = text.split(" ");
@@ -100,14 +101,17 @@ const BannerSection = memo(({
                 }}>
                 {isVideo ? (
                   <video
-                    src={image}
                     autoPlay
                     loop
                     muted
                     playsInline
                     className="h-full w-full object-contain"
                     style={{ filter: "brightness(0.95)" }}
-                  />
+                  >
+                    <source src={optimizeCloudinaryVideoUrl(image, { format: 'webm' })} type="video/webm" />
+                    <source src={optimizeCloudinaryVideoUrl(image, { format: 'mp4' })} type="video/mp4" />
+                    <source src={image} />
+                  </video>
                 ) : (
                     <OptimizedImage
                       src={image}

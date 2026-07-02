@@ -89,3 +89,39 @@ export const getCloudinarySrcSet = (url, widths = [300, 600, 900, 1200]) => {
     })
     .join(", ");
 };
+
+/**
+ * Optimizes a Cloudinary Video URL by injecting transformations.
+ */
+export const optimizeCloudinaryVideoUrl = (url, options = {}) => {
+  if (!url || typeof url !== "string") return url || "";
+
+  // Process Cloudinary Video URLs
+  if (!/res\.cloudinary\.com/i.test(url) || !/\/video\/upload\//i.test(url)) {
+    return url;
+  }
+
+  const {
+    format = "auto",
+    quality = "auto",
+    width,
+    height,
+    crop,
+  } = options;
+
+  try {
+    const parts = url.split("/upload/");
+    if (parts.length !== 2) return url;
+
+    const [prefix, suffix] = parts;
+    let transformStr = `f_${format},q_${quality}`;
+    if (width) transformStr += `,w_${width}`;
+    if (height) transformStr += `,h_${height}`;
+    if (crop) transformStr += `,c_${crop}`;
+
+    return `${prefix}/upload/${transformStr}/${suffix}`;
+  } catch (err) {
+    console.error("Error optimizing Cloudinary Video URL:", err);
+    return url;
+  }
+};

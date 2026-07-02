@@ -29,6 +29,7 @@ import {
 import { Badge } from "@food/components/ui/badge";
 import foodPattern from "@food/assets/food_pattern_background.png";
 import useNotificationInbox from "@food/hooks/useNotificationInbox";
+import { optimizeCloudinaryVideoUrl } from "@shared/utils/cloudinaryUtils";
 
 const tabs = [
   {
@@ -292,7 +293,6 @@ export default function HomeHeader({
         <div className="absolute inset-x-0 bottom-0 z-0 flex justify-center overflow-hidden" style={{ top: '130px' }}>
           <video
             ref={videoRef}
-            src={headerVideoUrl}
             autoPlay
             loop
             muted
@@ -302,7 +302,11 @@ export default function HomeHeader({
             className={`h-full w-full object-cover object-center transition-opacity duration-200 ${
               isFood ? "opacity-100" : "opacity-0"
             }`}
-          />
+          >
+            <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'webm' })} type="video/webm" />
+            <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'mp4' })} type="video/mp4" />
+            <source src={headerVideoUrl} />
+          </video>
           <div
             className="absolute inset-0"
             style={{

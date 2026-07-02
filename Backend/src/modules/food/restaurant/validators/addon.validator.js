@@ -5,6 +5,7 @@ const addonPayloadSchema = z.object({
     name: z.string().min(1, 'Add-on name is required').max(200),
     description: z.string().max(2000).optional().default(''),
     price: z.coerce.number().min(0, 'Price must be >= 0'),
+    isVeg: z.coerce.boolean().optional().default(true),
     image: z.string().max(2000).optional().default(''),
     images: z.array(z.string().max(2000)).max(10).optional().default([])
 });

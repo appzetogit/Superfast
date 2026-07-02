@@ -51,6 +51,20 @@ const RestaurantImageCarousel = React.memo(
 
     // Build slides from standard restaurant images first, falling back to famousDishes
     const slides = useMemo(() => {
+      // 1. If we have custom cover images, build slides from them (with label support)
+      if (Array.isArray(restaurant?.coverImages) && restaurant.coverImages.length > 0) {
+        return restaurant.coverImages.map((img, idx) => {
+          const url = typeof img === 'object' && img !== null ? img.url : img;
+          const label = typeof img === 'object' && img !== null ? img.label : '';
+          return {
+            id: `cover-${idx}`,
+            imageUrl: withCacheBuster(url),
+            isDish: false,
+            label: label || ''
+          };
+        }).filter(slide => Boolean(slide.imageUrl));
+      }
+
       const sourceImages =
         Array.isArray(restaurant?.images) && restaurant.images.length > 0
           ? restaurant.images
@@ -66,7 +80,8 @@ const RestaurantImageCarousel = React.memo(
         return validImages.map((img, idx) => ({
           id: `img-${idx}`,
           imageUrl: withCacheBuster(img),
-          isDish: false
+          isDish: false,
+          label: ''
         }));
       }
 
@@ -86,7 +101,8 @@ const RestaurantImageCarousel = React.memo(
       const result = validImages.map((img, idx) => ({
         id: `img-${idx}`,
         imageUrl: withCacheBuster(img),
-        isDish: false
+        isDish: false,
+        label: ''
       }));
 
       console.log("RestaurantImageCarousel slides for:", restaurant?.name, {
@@ -97,7 +113,7 @@ const RestaurantImageCarousel = React.memo(
       });
 
       return result;
-    }, [restaurant?.famousDishes, restaurant?.images, restaurant?.image, withCacheBuster]);
+    }, [restaurant?.famousDishes, restaurant?.images, restaurant?.image, restaurant?.coverImages, withCacheBuster]);
 
     // Reset index on restaurant change
     useEffect(() => {
@@ -192,6 +208,24 @@ const RestaurantImageCarousel = React.memo(
                 }`} />
               </span>
               {currentSlide.name} · ₹{currentSlide.price}
+            </div>
+          </div>
+        )}
+
+        {/* Cover Image Custom Label Overlay (Top-Left) */}
+        {!currentSlide?.isDish && currentSlide?.label && (
+          <div className="absolute left-4 top-4 z-10 flex items-center transform transition-transform duration-300 group-hover:scale-105">
+            <div className="flex items-center rounded-full border border-white/20 bg-black/70 px-3 py-1 text-[11px] font-semibold tracking-tight text-white shadow-2xl backdrop-blur-md">
+              {currentSlide.label}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback to Static Featured Dish Info (Top-Left) if no other label is active */}
+        {!currentSlide?.isDish && !currentSlide?.label && restaurant?.featuredDish && (
+          <div className="absolute left-4 top-4 z-10 flex items-center transform transition-transform duration-300 group-hover:scale-105">
+            <div className="flex items-center rounded-full border border-white/20 bg-black/70 px-4 py-1.5 text-[11px] font-medium tracking-tight text-white shadow-2xl backdrop-blur-lg">
+              {restaurant.featuredDish} {restaurant.featuredPrice ? `• ₹${restaurant.featuredPrice}` : ""}
             </div>
           </div>
         )}

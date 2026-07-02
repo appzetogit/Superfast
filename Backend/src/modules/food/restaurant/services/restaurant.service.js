@@ -137,7 +137,12 @@ const toRestaurantProfile = (doc) => {
         ? doc.menuImages.map((m) => toUrl(m)).filter(Boolean).map((url) => ({ url, publicId: null }))
         : [];
     const coverImages = Array.isArray(doc.coverImages)
-        ? doc.coverImages.map((m) => toUrl(m)).filter(Boolean).map((url) => ({ url, publicId: null }))
+        ? doc.coverImages.map((m) => {
+            if (typeof m === 'object' && m !== null) {
+                return { url: toUrl(m.url), label: m.label || '', publicId: m.publicId || null };
+            }
+            return { url: toUrl(m), label: '', publicId: null };
+          }).filter((item) => Boolean(item.url))
         : [];
 
     return {
@@ -888,11 +893,18 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         if (!Array.isArray(body.coverImages)) {
             throw new ValidationError('coverImages must be an array');
         }
-        const urls = body.coverImages
-            .map((m) => toUrl(m))
+        const parsed = body.coverImages
+            .map((m) => {
+                if (typeof m === 'object' && m !== null) {
+                    const cleanUrl = toUrl(m.url);
+                    return cleanUrl ? { url: cleanUrl, label: m.label || '', publicId: m.publicId || null } : null;
+                }
+                const cleanUrl = toUrl(m);
+                return cleanUrl ? { url: cleanUrl, label: '', publicId: null } : null;
+            })
             .filter(Boolean)
             .slice(0, 20);
-        update.coverImages = urls;
+        update.coverImages = parsed;
     }
 
     if (body.profileImage !== undefined) {
@@ -1182,12 +1194,18 @@ export const uploadRestaurantCoverImages = async (restaurantId, files = []) => {
         validFiles.slice(0, 20).map((file) => uploadImageBuffer(file.buffer, 'food/restaurants/cover'))
     );
     const existingCoverImages = Array.isArray(currentRestaurant.coverImages)
-        ? currentRestaurant.coverImages.map((image) => toUrl(image)).filter(Boolean)
+        ? currentRestaurant.coverImages.map((image) => {
+            if (typeof image === 'object' && image !== null) {
+                return { url: toUrl(image.url), label: image.label || '', publicId: image.publicId || null };
+            }
+            return { url: toUrl(image), label: '', publicId: null };
+          }).filter((item) => Boolean(item.url))
         : [];
     const nextCoverImages = [...existingCoverImages];
 
     uploadedUrls.forEach((url) => {
-        if (!nextCoverImages.includes(url)) nextCoverImages.push(url);
+        const alreadyExists = nextCoverImages.some((img) => img.url === url);
+        if (!alreadyExists) nextCoverImages.push({ url, label: '', publicId: null });
     });
 
     const update = {
@@ -1283,7 +1301,12 @@ const toRestaurantSummary = (doc) => {
     const combinedImages = [...dbCoverImages, ...dbMenuImages];
     
     const coverImages = combinedImages
-        ? combinedImages.map((m) => toUrl(m)).filter(Boolean).map((url) => ({ url, publicId: null }))
+        ? combinedImages.map((m) => {
+            if (typeof m === 'object' && m !== null) {
+                return { url: toUrl(m.url), label: m.label || '', publicId: m.publicId || null };
+            }
+            return { url: toUrl(m), label: '', publicId: null };
+          }).filter((item) => Boolean(item.url))
         : [];
 
     let famousDishes = [

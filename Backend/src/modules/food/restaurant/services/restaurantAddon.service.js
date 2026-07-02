@@ -22,6 +22,7 @@ const normalizeAddonDoc = (doc) => {
         name: draft.name || '',
         description: draft.description || '',
         price: Number(draft.price) || 0,
+        isVeg: draft.isVeg !== false,
         image: draft.image || '',
         images: Array.isArray(draft.images) ? draft.images : [],
         // Published snapshot (what user app sees)
@@ -30,6 +31,7 @@ const normalizeAddonDoc = (doc) => {
                 name: published.name || '',
                 description: published.description || '',
                 price: Number(published.price) || 0,
+                isVeg: published.isVeg !== false,
                 image: published.image || '',
                 images: Array.isArray(published.images) ? published.images : []
             }
@@ -106,6 +108,7 @@ export async function createRestaurantAddon(restaurantId, body) {
             name,
             description: String(body.description || '').trim(),
             price: Number(body.price) || 0,
+            isVeg: body.isVeg !== false,
             image: String(body.image || '').trim(),
             images: Array.isArray(body.images) ? body.images.filter(Boolean).slice(0, 10) : []
         },
@@ -186,6 +189,7 @@ export async function updateRestaurantAddon(restaurantId, addonId, updateDto) {
             const imgs = Array.isArray(d.images) ? d.images.filter(Boolean).slice(0, 10) : [];
             set['draft.images'] = imgs;
         }
+        if (d.isVeg !== undefined) set['draft.isVeg'] = d.isVeg !== false;
 
         // Any draft content change must go through admin approval again.
         set.approvalStatus = 'pending';

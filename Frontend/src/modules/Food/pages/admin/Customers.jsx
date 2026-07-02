@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Search, Download, ChevronDown, Calendar, Eye, FileDown, FileSpreadsheet, FileText, X, Mail, Phone, MapPin, Package, IndianRupee, Calendar as CalendarIcon, User, CheckCircle, XCircle } from "lucide-react"
+import { Search, Download, ChevronDown, Calendar, Eye, Trash2, FileDown, FileSpreadsheet, FileText, X, Mail, Phone, MapPin, Package, IndianRupee, Calendar as CalendarIcon, User, CheckCircle, XCircle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { exportCustomersToCSV, exportCustomersToExcel, exportCustomersToPDF } from "@food/components/admin/customers/customersExportUtils"
 import { adminAPI } from "@food/api"
@@ -13,6 +13,9 @@ const debugError = (...args) => {}
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [customerToDelete, setCustomerToDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [totalCustomers, setTotalCustomers] = useState(0)
@@ -213,6 +216,25 @@ export default function Customers() {
       setShowUserDetails(false)
     } finally {
       setLoadingDetails(false)
+    }
+  }
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return
+    try {
+      setDeleting(true)
+      const targetId = customerToDelete._id || customerToDelete.id
+      await adminAPI.deleteCustomer(targetId)
+      setCustomers(prev => prev.filter(c => (c._id || c.id) !== targetId))
+      setTotalCustomers(prev => Math.max(0, prev - 1))
+      toast.success(`Customer ${customerToDelete.name} deleted successfully`)
+      setShowDeleteConfirm(false)
+      setCustomerToDelete(null)
+    } catch (err) {
+      debugError('Error deleting customer:', err)
+      toast.error('Failed to delete customer')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -519,12 +541,25 @@ export default function Customers() {
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => handleViewDetails(customer._id || customer.id || customer.sl)}
-                          className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleViewDetails(customer._id || customer.id || customer.sl)}
+                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-all hover:scale-110 active:scale-95"
+                            title="View Customer Details"
+                          >
+                            <Eye className="w-4.5 h-4.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCustomerToDelete(customer)
+                              setShowDeleteConfirm(true)
+                            }}
+                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all hover:scale-110 active:scale-95"
+                            title="Delete Customer"
+                          >
+                            <Trash2 className="w-4.5 h-4.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -570,6 +605,17 @@ export default function Customers() {
                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 flex items-center gap-1">
                           <XCircle className="w-3 h-3" />
                           Inactive
+                        </span>
+                      )}
+                      {userDetails.isCodBlocked ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
+                          <XCircle className="w-3 h-3" />
+                          COD Blocked
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          COD Allowed
                         </span>
                       )}
                     </div>
@@ -618,6 +664,40 @@ export default function Customers() {
                     <span className="text-xs font-semibold text-slate-700">Member Since</span>
                   </div>
                   <p className="text-base font-bold text-purple-600">{formatDateTime(userDetails.joiningDate)}</p>
+                </div>
+              </div>
+
+              {/* COD Control Settings */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <h4 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">Account Settings</h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Block Cash on Delivery (COD)</p>
+                    <p className="text-xs text-slate-500">Enable to block COD orders for this customer.</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const newBlocked = !userDetails.isCodBlocked;
+                        await adminAPI.toggleCustomerCodBlock(userDetails._id || userDetails.id, newBlocked);
+                        setUserDetails(prev => ({ ...prev, isCodBlocked: newBlocked }));
+                        // Also update in the main customers list
+                        setCustomers(prev => prev.map(c => 
+                          (c._id === userDetails._id || c.id === userDetails.id) 
+                            ? { ...c, isCodBlocked: newBlocked } 
+                            : c
+                        ));
+                        toast.success(`COD successfully ${newBlocked ? 'blocked' : 'unblocked'} for ${userDetails.name}`);
+                      } catch (err) {
+                        toast.error("Failed to update COD status");
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${userDetails.isCodBlocked ? "bg-red-600" : "bg-slate-300"}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${userDetails.isCodBlocked ? "translate-x-6" : "translate-x-1"}`}
+                    />
+                  </button>
                 </div>
               </div>
 
@@ -703,6 +783,43 @@ export default function Customers() {
               <div className="text-sm text-slate-500">No user details available</div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 border-none shadow-2xl">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg font-bold text-slate-900 mb-2">Delete Customer Account</DialogTitle>
+              <p className="text-sm text-slate-500 max-w-sm">
+                Are you sure you want to delete <span className="font-semibold text-slate-800">{customerToDelete?.name}</span>'s account? This action will disable the account and log the user out.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-6 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                setCustomerToDelete(null)
+              }}
+              className="flex-1 rounded-full py-2.5 text-gray-700 font-semibold border border-slate-200 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteCustomer}
+              disabled={deleting}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-full py-2.5 font-semibold shadow-lg shadow-red-200 transition-colors disabled:opacity-50"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

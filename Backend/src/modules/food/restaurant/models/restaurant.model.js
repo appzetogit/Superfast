@@ -176,7 +176,7 @@ const restaurantSchema = new mongoose.Schema(
       default: [],
     },
     coverImages: {
-      type: [String],
+      type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
     profileImage: {

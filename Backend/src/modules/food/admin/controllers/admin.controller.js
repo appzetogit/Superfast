@@ -48,6 +48,35 @@ export async function updateCustomerStatus(req, res, next) {
     }
 }
 
+export async function updateCustomerCodBlock(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid customer id' });
+        }
+        const isCodBlocked = req.body?.isCodBlocked;
+        const updated = await adminService.updateCustomerCodBlock(id, isCodBlocked);
+        if (!updated) return res.status(404).json({ success: false, message: 'Customer not found' });
+        res.status(200).json({ success: true, message: `COD payment ${isCodBlocked ? 'blocked' : 'unblocked'} successfully`, data: { user: updated, customer: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deleteCustomer(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid customer id' });
+        }
+        const deleted = await adminService.deleteCustomer(id);
+        if (!deleted) return res.status(404).json({ success: false, message: 'Customer not found' });
+        res.status(200).json({ success: true, message: 'Customer deleted successfully', data: deleted });
+    } catch (error) {
+        next(error);
+    }
+}
+
 // ----- Safety / Emergency Reports -----
 export async function getSafetyEmergencyReports(req, res, next) {
     try {

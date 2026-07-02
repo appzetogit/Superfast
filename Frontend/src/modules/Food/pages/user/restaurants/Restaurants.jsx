@@ -86,6 +86,7 @@ export default function Restaurants() {
             distance: restaurant?.distance ? (typeof restaurant.distance === 'number' ? `${restaurant.distance.toFixed(1)} km` : restaurant.distance) : "1.2 km",
             priceRange: restaurant?.priceRange || "$$",
             image: pickRestaurantImage(restaurant),
+            coverImages: restaurant?.coverImages,
           }
         })
 

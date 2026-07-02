@@ -44,6 +44,7 @@ export async function getPublicApprovedRestaurantAddons(restaurantIdOrSlug) {
                 name: p.name || '',
                 description: p.description || '',
                 price: Number(p.price) || 0,
+                isVeg: p.isVeg !== false,
                 image: p.image || '',
                 images: Array.isArray(p.images) ? p.images : []
             };

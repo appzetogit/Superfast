@@ -25,6 +25,12 @@ import DiamondIcon from "@mui/icons-material/Diamond";
 import ColorLensIcon from "@mui/icons-material/ColorLens";
 import BuildIcon from "@mui/icons-material/Build";
 import LuggageIcon from "@mui/icons-material/Luggage";
+import AppleIcon from "@mui/icons-material/Apple";
+import EggIcon from "@mui/icons-material/Egg";
+import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
+import CookieIcon from "@mui/icons-material/Cookie";
+import FastfoodIcon from "@mui/icons-material/Fastfood";
+import AcUnitIcon from "@mui/icons-material/AcUnit";
 
 import { resolveQuickImageUrl } from "../utils/image";
 
@@ -76,6 +82,36 @@ const CATEGORY_METADATA = {
     theme: { gradient: "linear-gradient(to bottom, #4361EE, #4895EF)", shadow: "shadow-indigo-500/20", accent: "text-indigo-900" },
     banner: { title: "SPORTS", subtitle: "GEAR", floatingElements: "confetti" },
   },
+  "Fruits & Vegetables": {
+    icon: AppleIcon,
+    theme: { gradient: "linear-gradient(to bottom, #4CAF50, #81C784)", shadow: "shadow-green-500/20", accent: "text-green-900" },
+    banner: { title: "FRESH", subtitle: "VEGGIES & FRUITS", floatingElements: "leaves" },
+  },
+  "Dairy, Bread & Eggs": {
+    icon: EggIcon,
+    theme: { gradient: "linear-gradient(to bottom, #FFD54F, #FFE082)", shadow: "shadow-yellow-500/20", accent: "text-yellow-900" },
+    banner: { title: "DAIRY FRESH", subtitle: "BREAD & EGGS", floatingElements: "bubbles" },
+  },
+  "Cold Drinks & Juices": {
+    icon: LocalDrinkIcon,
+    theme: { gradient: "linear-gradient(to bottom, #29B6F6, #4FC3F7)", shadow: "shadow-blue-500/20", accent: "text-blue-900" },
+    banner: { title: "CHILLED", subtitle: "DRINKS & JUICES", floatingElements: "bubbles" },
+  },
+  "Snacks & Munchies": {
+    icon: FastfoodIcon,
+    theme: { gradient: "linear-gradient(to bottom, #FF7043, #FF8A65)", shadow: "shadow-orange-500/20", accent: "text-orange-900" },
+    banner: { title: "SNACKS", subtitle: "MUNCHIES TIME", floatingElements: "sparkles" },
+  },
+  "Bakery & Biscuits": {
+    icon: CookieIcon,
+    theme: { gradient: "linear-gradient(to bottom, #8D6E63, #A1887F)", shadow: "shadow-brown-500/20", accent: "text-amber-950" },
+    banner: { title: "BAKERY", subtitle: "BISCUITS & MORE", floatingElements: "smoke" },
+  },
+  "Instant & Frozen Food": {
+    icon: AcUnitIcon,
+    theme: { gradient: "linear-gradient(to bottom, #26C6DA, #4DD0E1)", shadow: "shadow-cyan-500/20", accent: "text-cyan-900" },
+    banner: { title: "INSTANT", subtitle: "FROZEN FOODS", floatingElements: "tech" },
+  },
 };
 
 const ICON_COMPONENTS = {
@@ -99,6 +135,12 @@ const ICON_COMPONENTS = {
   luggage: LuggageIcon,
   art: ColorLensIcon,
   grocery: LocalGroceryStoreIcon,
+  "fruits-vegetables": AppleIcon,
+  "dairy-bread-eggs": EggIcon,
+  "cold-drinks-juices": LocalDrinkIcon,
+  "snacks-munchies": FastfoodIcon,
+  "bakery-biscuits": CookieIcon,
+  "instant-frozen-food": AcUnitIcon,
 };
 
 const ALL_CATEGORY = {

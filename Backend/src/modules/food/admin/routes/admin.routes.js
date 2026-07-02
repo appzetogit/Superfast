@@ -41,6 +41,8 @@ router.delete('/notifications/broadcast/:id', notificationBroadcastController.de
 router.get('/customers', adminController.getCustomers);
 router.get('/customers/:id', adminController.getCustomerById);
 router.patch('/customers/:id/status', adminController.updateCustomerStatus);
+router.patch('/customers/:id/block-cod', adminController.updateCustomerCodBlock);
+router.delete('/customers/:id', adminController.deleteCustomer);
 
 // ----- Safety / Emergency Reports -----
 router.get('/safety-emergency-reports', adminController.getSafetyEmergencyReports);

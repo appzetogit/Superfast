@@ -14,7 +14,8 @@ import {
   ChevronRight,
   X,
   ThumbsUp,
-  Pencil
+  Pencil,
+  Check
 } from "lucide-react"
 import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
@@ -808,9 +809,11 @@ export default function Inventory() {
   const [addonName, setAddonName] = useState("")
   const [addonDescription, setAddonDescription] = useState("")
   const [addonPrice, setAddonPrice] = useState("")
+  const [addonIsVeg, setAddonIsVeg] = useState(true)
   const [addonImageFile, setAddonImageFile] = useState(null)
   const [addonImagePreview, setAddonImagePreview] = useState("")
   const [savingAddon, setSavingAddon] = useState(false)
+  const [editingAddon, setEditingAddon] = useState(null) // addon object being edited
   const [recommendedMap, setRecommendedMap] = useState(() => {
     try {
       if (typeof window === "undefined") return {}
@@ -1056,6 +1059,7 @@ export default function Inventory() {
         setAddonName(parsed?.name || "")
         setAddonDescription(parsed?.description || "")
         setAddonPrice(parsed?.price || "")
+        setAddonIsVeg(parsed?.isVeg !== false)
         if (parsed?.isOpen) setIsAddAddonOpen(true)
         if (parsed?.preview) {
           setAddonImagePreview(parsed.preview)
@@ -1072,12 +1076,13 @@ export default function Inventory() {
         name: addonName,
         description: addonDescription,
         price: addonPrice,
+        isVeg: addonIsVeg,
         preview: addonImagePreview,
         isOpen: isAddAddonOpen
       }
       localStorage.setItem(INVENTORY_ADDON_FORM_KEY, JSON.stringify(payload))
     } catch { }
-  }, [addonName, addonDescription, addonPrice, addonImagePreview, isAddAddonOpen])
+  }, [addonName, addonDescription, addonPrice, addonIsVeg, addonImagePreview, isAddAddonOpen])
 
   const resetAddonForm = () => {
     if (addonImagePreview && addonImagePreview.startsWith("blob:")) {
@@ -1086,6 +1091,7 @@ export default function Inventory() {
     setAddonName("")
     setAddonDescription("")
     setAddonPrice("")
+    setAddonIsVeg(true)
     setAddonImageFile(null)
     setAddonImagePreview("")
     if (addonImageInputRef.current) {
@@ -1139,6 +1145,7 @@ export default function Inventory() {
         name: addonName.trim(),
         description: addonDescription.trim(),
         price: parsedPrice,
+        isVeg: addonIsVeg,
         image: imageUrl,
         images: imageUrl ? [imageUrl] : [],
       }
@@ -1150,6 +1157,59 @@ export default function Inventory() {
     } catch (error) {
       debugError("Error saving add-on:", error)
       toast.error(error?.response?.data?.message || "Failed to save add-on")
+    } finally {
+      setSavingAddon(false)
+    }
+  }
+
+  // Open the add/edit form pre-filled with an existing addon's data
+  const handleEditAddon = (addon) => {
+    setEditingAddon(addon)
+    setAddonName(addon.name || "")
+    setAddonDescription(addon.description || "")
+    setAddonPrice(String(addon.price ?? ""))
+    setAddonIsVeg(addon.isVeg !== false)
+    setAddonImageFile(null)
+    // Show existing image as preview
+    const existingImg = (Array.isArray(addon.images) && addon.images[0]) || addon.image || ""
+    setAddonImagePreview(existingImg)
+  }
+
+  // Save edits to an existing addon (requires admin re-approval)
+  const handleUpdateAddon = async () => {
+    if (!addonName.trim()) {
+      toast.error("Please enter add-on name")
+      return
+    }
+    const parsedPrice = parseFloat(addonPrice)
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      toast.error("Please enter a valid price")
+      return
+    }
+    setSavingAddon(true)
+    try {
+      let imageUrl = editingAddon?.image || ""
+      if (addonImageFile) {
+        const uploadRes = await uploadAPI.uploadMedia(addonImageFile, { folder: "superfast/restaurant/addons" })
+        imageUrl = uploadRes?.data?.data?.url || uploadRes?.data?.url || ""
+      }
+      const draft = {
+        name: addonName.trim(),
+        description: addonDescription.trim(),
+        price: parsedPrice,
+        isVeg: addonIsVeg,
+        image: imageUrl,
+        images: imageUrl ? [imageUrl] : [],
+      }
+      await restaurantAPI.updateAddon(editingAddon.id, { draft })
+      toast.success("Add-on updated — pending admin approval")
+      setEditingAddon(null)
+      resetAddonForm()
+      setIsAddAddonOpen(false)
+      fetchAddons(true)
+    } catch (error) {
+      debugError("Error updating add-on:", error)
+      toast.error(error?.response?.data?.message || "Failed to update add-on")
     } finally {
       setSavingAddon(false)
     }
@@ -2042,8 +2102,14 @@ export default function Inventory() {
         <div className="space-y-4 mb-6">
           {activeTab === "add-ons" && (
             <>
-              {isAddAddonOpen && (
+              {isAddAddonOpen && !editingAddon && (
                 <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+                  {/* Form header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      New Add-on
+                    </h3>
+                  </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Add-on Name *</label>
@@ -2078,6 +2144,41 @@ export default function Inventory() {
                       />
                     </div>
                     <div>
+                      <span className="block text-sm font-medium text-gray-700 mb-2">Diet Preference</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAddonIsVeg(true)}
+                          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                            addonIsVeg === true
+                              ? "border-emerald-600 text-emerald-600 bg-emerald-50/40"
+                              : "border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {addonIsVeg === true && <Check className="h-4 w-4" />}
+                          <span>Veg</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isPureVegRestaurant) {
+                              toast.error("This restaurant is pure veg. You cannot add/select non-veg items.")
+                              return
+                            }
+                            setAddonIsVeg(false)
+                          }}
+                          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                            addonIsVeg === false
+                              ? "border-rose-600 text-rose-600 bg-rose-50/40"
+                              : "border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {addonIsVeg === false && <Check className="h-4 w-4" />}
+                          <span>Non-Veg</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Image (1 only)</label>
                       {addonImagePreview && (
                         <div className="mb-2">
@@ -2103,7 +2204,7 @@ export default function Inventory() {
                       >
                         <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
                           <Upload className="h-4 w-4 text-gray-500" />
-                          {addonImageFile?.name || "Upload image"}
+                          {addonImageFile?.name || (editingAddon && addonImagePreview ? "Change image" : "Upload image")}
                         </span>
                         <span className="mt-1 block text-xs text-gray-500">
                           {addonImageFile ? "Image selected successfully" : "Tap to choose 1 image from your device"}
@@ -2152,63 +2253,227 @@ export default function Inventory() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredAddons.map((addon) => (
-                    <div
-                      key={addon.id}
-                      className="rounded-2xl border border-white/80 bg-white p-3 sm:p-4 shadow-[0_20px_48px_-34px_rgba(15,23,42,0.45)]"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="mb-2 flex items-center gap-2 flex-wrap">
-                            <h3 className="text-base font-semibold text-slate-950">{addon.name}</h3>
-                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${addon.isAvailable !== false
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-slate-100 text-slate-600"
-                              }`}>
-                              {addon.isAvailable !== false ? "Live" : "Paused"}
-                            </span>
-                            {addon.approvalStatus === 'approved' && (
-                              <span className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-800">Approved</span>
+                  {filteredAddons.map((addon) => {
+                    const isCurrentEditing = editingAddon && editingAddon.id === addon.id;
+                    return (
+                      <div
+                        key={addon.id}
+                        className="rounded-2xl border border-white/80 bg-white p-3 sm:p-4 shadow-[0_20px_48px_-34px_rgba(15,23,42,0.45)]"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="mb-2 flex items-center gap-2 flex-wrap">
+                              <div className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center ${addon.isVeg !== false ? 'border-green-600' : 'border-red-500'}`}>
+                                <div className={`h-1.5 w-1.5 rounded-full ${addon.isVeg !== false ? 'bg-green-600' : 'bg-red-500'}`} />
+                              </div>
+                              <h3 className="text-base font-semibold text-slate-950">
+                                {addon.name}
+                              </h3>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${addon.isAvailable !== false
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                                  }`}>
+                                  {addon.isAvailable !== false ? "Live" : "Paused"}
+                                </span>
+                                {addon.approvalStatus === 'approved' && (
+                                  <span className="rounded-full bg-green-50 border border-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">Approved</span>
+                                )}
+                                {addon.approvalStatus === 'pending' && (
+                                  <span className="rounded-full bg-yellow-50 border border-yellow-100 px-2 py-0.5 text-[10px] font-semibold text-yellow-800">Pending</span>
+                                )}
+                                {addon.approvalStatus === 'rejected' && (
+                                  <span className="rounded-full bg-red-50 border border-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800">Rejected</span>
+                                )}
+                              </div>
+                            </div>
+                            {addon.description && (
+                              <p className="mb-2 text-sm leading-6 text-slate-600">{addon.description}</p>
                             )}
-                            {addon.approvalStatus === 'pending' && (
-                              <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-[11px] font-semibold text-yellow-800">Pending</span>
+                            <p className="text-base font-bold text-slate-950">Rs. {addon.price}</p>
+                            {addon.approvalStatus === 'rejected' && addon.rejectionReason && (
+                              <p className="mt-2 text-xs font-medium text-red-600">Reason: {addon.rejectionReason}</p>
                             )}
-                            {addon.approvalStatus === 'rejected' && (
-                              <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-800">Rejected</span>
-                            )}
+                            
+                            {/* Left Side Action buttons */}
+                            <div className="flex items-center gap-2 mt-3">
+                              <button
+                                type="button"
+                                onClick={() => handleEditAddon(addon)}
+                                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${isCurrentEditing ? 'bg-slate-950 border-slate-950 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'}`}
+                                title="Edit add-on"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Edit
+                              </button>
+                            </div>
                           </div>
-                          {addon.description && (
-                            <p className="mb-2 text-sm leading-6 text-slate-600">{addon.description}</p>
-                          )}
-                          <p className="text-base font-bold text-slate-950">Rs. {addon.price}</p>
-                          {addon.approvalStatus === 'rejected' && addon.rejectionReason && (
-                            <p className="mt-2 text-xs font-medium text-red-600">Reason: {addon.rejectionReason}</p>
-                          )}
-                        </div>
-                        <div className="flex items-start gap-3">
-                          {addon.images && addon.images.length > 0 && addon.images[0] && (
-                            <img
-                              src={addon.images[0]}
-                              alt={addon.name}
-                              className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200"
-                              onError={(e) => {
-                                e.target.style.display = 'none'
-                              }}
-                            />
-                          )}
-                          <div className="flex items-center rounded-full bg-slate-100 px-2 py-1">
-                            <Switch
-                              checked={addon.isAvailable !== false}
-                              onCheckedChange={(checked) =>
-                                handleAddonToggle(addon.id, checked)
-                              }
-                              className="data-[state=checked]:bg-[#49AB14]"
-                            />
+                          
+                          <div className="flex flex-col items-end gap-2">
+                            {addon.images && addon.images.length > 0 && addon.images[0] && (
+                              <img
+                                src={addon.images[0]}
+                                alt={addon.name}
+                                className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200"
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                }}
+                              />
+                            )}
+                            <div className="flex items-center rounded-full bg-slate-100 px-2 py-1 mt-1">
+                              <Switch
+                                checked={addon.isAvailable !== false}
+                                onCheckedChange={(checked) =>
+                                  handleAddonToggle(addon.id, checked)
+                                }
+                                className="data-[state=checked]:bg-[#49AB14]"
+                              />
+                            </div>
                           </div>
                         </div>
+
+                        {/* Inline Expandable Edit Form */}
+                        {isCurrentEditing && (
+                          <div className="mt-4 border-t border-slate-100 pt-4">
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                  Editing: {addon.name}
+                                </h4>
+                                <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                                  Edits require admin approval
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Add-on Name *</label>
+                                  <input
+                                    type="text"
+                                    value={addonName}
+                                    onChange={(e) => setAddonName(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:ring-2 focus:ring-black focus:outline-none text-sm"
+                                    placeholder="e.g., Coke, Chips"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                  <textarea
+                                    value={addonDescription}
+                                    onChange={(e) => setAddonDescription(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:ring-2 focus:ring-black focus:outline-none resize-none text-sm"
+                                    rows={2}
+                                    placeholder="Describe the add-on..."
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹) *</label>
+                                  <input
+                                    type="number"
+                                    value={addonPrice}
+                                    onChange={(e) => setAddonPrice(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:ring-2 focus:ring-black focus:outline-none text-sm"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                                <div>
+                                  <span className="block text-sm font-medium text-gray-700 mb-2">Diet Preference</span>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => setAddonIsVeg(true)}
+                                      className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                                        addonIsVeg === true
+                                          ? "border-emerald-600 text-emerald-600 bg-emerald-50/40"
+                                          : "border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                      }`}
+                                    >
+                                      {addonIsVeg === true && <Check className="h-4 w-4" />}
+                                      <span>Veg</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (isPureVegRestaurant) {
+                                          toast.error("This restaurant is pure veg. You cannot add/select non-veg items.")
+                                          return
+                                        }
+                                        setAddonIsVeg(false)
+                                      }}
+                                      className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                                        addonIsVeg === false
+                                          ? "border-rose-600 text-rose-600 bg-rose-50/40"
+                                          : "border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                      }`}
+                                    >
+                                      {addonIsVeg === false && <Check className="h-4 w-4" />}
+                                      <span>Non-Veg</span>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Image (1 only)</label>
+                                  {addonImagePreview && (
+                                    <div className="mb-2">
+                                      <img
+                                        src={addonImagePreview}
+                                        alt="Preview"
+                                        className="w-24 h-24 object-cover rounded border bg-white"
+                                        onError={(e) => (e.target.style.display = "none")}
+                                      />
+                                    </div>
+                                  )}
+                                  <input
+                                    ref={addonImageInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleAddonImageSelect}
+                                    className="hidden"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => addonImageInputRef.current?.click()}
+                                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-3 text-left transition-colors hover:bg-gray-100"
+                                  >
+                                    <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                      <Upload className="h-4 w-4 text-gray-500" />
+                                      {addonImageFile?.name || (addonImagePreview ? "Change image" : "Upload image")}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-gray-500">
+                                      {addonImageFile ? "Image selected successfully" : "Tap to choose 1 image from your device"}
+                                    </span>
+                                  </button>
+                                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP, HEIC up to 5MB.</p>
+                                </div>
+                                <div className="flex items-center gap-3 mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingAddon(null)
+                                      resetAddonForm()
+                                    }}
+                                    className="px-4 py-2 border border-gray-300 bg-white rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleUpdateAddon}
+                                    disabled={savingAddon}
+                                    className="px-4 py-2 bg-[#49AB14] text-white rounded-md text-sm font-medium hover:bg-[#3d8f11] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                  >
+                                    {savingAddon && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    <span>{savingAddon ? "Saving..." : "Update & resubmit"}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -2763,6 +3028,14 @@ export default function Inventory() {
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {
+              // Reset to "new addon" mode before opening
+              setEditingAddon(null)
+              setAddonName("")
+              setAddonDescription("")
+              setAddonPrice("")
+              setAddonIsVeg(true)
+              setAddonImageFile(null)
+              setAddonImagePreview("")
               setIsAddAddonOpen(true)
               window.scrollTo({ top: 0, behavior: "smooth" })
             }}

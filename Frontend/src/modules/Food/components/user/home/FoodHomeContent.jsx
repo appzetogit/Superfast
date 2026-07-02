@@ -81,12 +81,6 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
                 backendOrigin={backendOrigin}
               />
 
-              <div className="absolute left-4 top-4 z-10 flex items-center transform transition-transform duration-300 group-hover:scale-105">
-                <div className="flex items-center rounded-full border border-white/20 bg-black/70 px-4 py-1.5 text-[11px] font-medium tracking-tight text-white shadow-2xl backdrop-blur-lg">
-                  {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
-                </div>
-              </div>
-
               <div className="absolute right-4 top-4 z-10 transform transition-transform duration-300 group-hover:scale-110">
                 <Button
                   variant="ghost"

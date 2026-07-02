@@ -57,6 +57,8 @@ export default function OutletInfo() {
   const [mainImage, setMainImage] = useState("")
   const [thumbnailImage, setThumbnailImage] = useState("")
   const [coverImages, setCoverImages] = useState([])
+  const [showLabelEditDialog, setShowLabelEditDialog] = useState(false)
+  const [editingLabels, setEditingLabels] = useState([])
   const [showEditNameDialog, setShowEditNameDialog] = useState(false)
   const [editNameValue, setEditNameValue] = useState("")
   const [showEditPhoneDialog, setShowEditPhoneDialog] = useState(false)
@@ -324,12 +326,15 @@ export default function OutletInfo() {
         })
 
         try {
-          await restaurantAPI.updateProfile({ menuImages: allImages })
+          await restaurantAPI.updateProfile({ 
+            menuImages: allImages,
+            coverImages: allImages
+          })
           toast.success(`Successfully uploaded ${uploadedImageData.length} image(s)`)
         } catch (updateError) {
           toast.error("Images uploaded but failed to save.")
         }
-
+ 
         setCoverImages(allImages)
         if (allImages.length > 0) setMainImage(allImages[0].url)
       }
@@ -341,7 +346,7 @@ export default function OutletInfo() {
       setUploadingCount(0)
     }
   }
-
+ 
   const handleImageClick = (type, ref, title, multiple = false) => {
     if (isFlutterBridgeAvailable()) {
       setActivePicker({ type, ref, title, multiple })
@@ -349,22 +354,26 @@ export default function OutletInfo() {
       ref.current?.click()
     }
   }
-
+ 
   // Handle cover image deletion
   const handleCoverImageDelete = async (indexToDelete) => {
     if (!window.confirm("Are you sure you want to delete this cover image?")) return
-
+ 
     try {
       setUploadingImage(true)
       setImageType('menu')
-
+ 
       const updatedImages = coverImages.filter((_, index) => index !== indexToDelete)
       const menuImagesForBackend = updatedImages.map(img => ({
         url: img.url,
+        label: img.label || '',
         publicId: img.publicId || null
       }))
-
-      await restaurantAPI.updateProfile({ menuImages: menuImagesForBackend })
+ 
+      await restaurantAPI.updateProfile({ 
+        menuImages: menuImagesForBackend,
+        coverImages: menuImagesForBackend
+      })
       setCoverImages(updatedImages)
       if (indexToDelete === 0 && updatedImages.length > 0) {
         setMainImage(updatedImages[0].url)
@@ -377,6 +386,47 @@ export default function OutletInfo() {
     } finally {
       setUploadingImage(false)
       setImageType(null)
+    }
+  }
+
+  useEffect(() => {
+    if (showLabelEditDialog) {
+      setEditingLabels(coverImages.map(img => ({
+        url: img.url,
+        label: img.label || '',
+        publicId: img.publicId || null
+      })))
+    }
+  }, [showLabelEditDialog, coverImages])
+
+  const handleLabelChange = (index, value) => {
+    setEditingLabels(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], label: value }
+      return next
+    })
+  }
+
+  const handleSaveLabels = async () => {
+    try {
+      setUploadingImage(true)
+      const menuImagesForBackend = editingLabels.map(img => ({
+        url: img.url,
+        label: img.label || '',
+        publicId: img.publicId || null
+      }))
+
+      await restaurantAPI.updateProfile({ 
+        menuImages: menuImagesForBackend,
+        coverImages: menuImagesForBackend
+      })
+      setCoverImages(editingLabels)
+      setShowLabelEditDialog(false)
+      toast.success("Cover photo labels updated successfully")
+    } catch (error) {
+      toast.error("Failed to update labels")
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -493,7 +543,15 @@ export default function OutletInfo() {
           
           {/* Cover Images Gallery */}
           {coverImages.length > 0 && (
-            <div className="absolute bottom-16 right-4 flex gap-2.5 z-40">
+            <div className="absolute bottom-16 right-4 flex items-center gap-2.5 z-40">
+              <button
+                type="button"
+                onClick={() => setShowLabelEditDialog(true)}
+                className="bg-white/95 hover:bg-white border border-gray-200 p-2 rounded-xl flex items-center justify-center shadow-md transition-all text-gray-700 hover:text-black w-14 h-14"
+                title="Edit Cover Photo Labels"
+              >
+                <Edit className="w-5 h-5" />
+              </button>
               {coverImages.slice(0, 4).map((img, index) => (
                 <div
                   key={index}
@@ -835,6 +893,62 @@ export default function OutletInfo() {
         fileNamePrefix={`outlet-${activePicker?.type}`}
         galleryInputRef={activePicker?.ref}
       />
+
+      <Dialog open={showLabelEditDialog} onOpenChange={setShowLabelEditDialog}>
+        <DialogContent className="sm:max-w-lg bg-white rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+          <DialogHeader className="p-5 border-b border-gray-100 bg-white">
+            <DialogTitle className="text-xl font-black text-gray-900">
+              Edit Photo Labels
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Set custom labels/prices for your cover images (e.g. "Pasta - ₹199"). Leave empty to hide.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-5 max-h-[60vh] overflow-y-auto space-y-4">
+            {editingLabels.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">No cover images uploaded yet.</p>
+            ) : (
+              editingLabels.map((img, idx) => (
+                <div key={idx} className="flex gap-4 items-center bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-200 flex-shrink-0">
+                    <img src={img.url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                      Label Text (Optional)
+                    </label>
+                    <Input
+                      type="text"
+                      value={img.label || ''}
+                      onChange={(e) => handleLabelChange(idx, e.target.value)}
+                      placeholder="e.g. Pasta - ₹199"
+                      className="w-full bg-white border-gray-200 focus:ring-2 focus:ring-black"
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3 border-t border-gray-100">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowLabelEditDialog(false)}
+              className="flex-1 rounded-full py-5 text-gray-700 font-semibold"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveLabels} 
+              disabled={uploadingImage}
+              className="flex-1 bg-black hover:bg-gray-800 text-white rounded-full py-5 font-semibold"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* FSSAI Expiry Alert Modal */}
       <Dialog open={showExpiryAlert} onOpenChange={setShowExpiryAlert}>

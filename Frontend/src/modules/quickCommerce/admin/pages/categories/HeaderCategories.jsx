@@ -43,6 +43,12 @@ import DiamondIcon from "@mui/icons-material/Diamond";
 import ColorLensIcon from "@mui/icons-material/ColorLens";
 import BuildIcon from "@mui/icons-material/Build";
 import LuggageIcon from "@mui/icons-material/Luggage";
+import AppleIcon from "@mui/icons-material/Apple";
+import EggIcon from "@mui/icons-material/Egg";
+import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
+import CookieIcon from "@mui/icons-material/Cookie";
+import FastfoodIcon from "@mui/icons-material/Fastfood";
+import AcUnitIcon from "@mui/icons-material/AcUnit";
 
 const HeaderCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -99,6 +105,12 @@ const HeaderCategories = () => {
     luggage: LuggageIcon,
     art: ColorLensIcon,
     grocery: LocalGroceryStoreIcon,
+    "fruits-vegetables": AppleIcon,
+    "dairy-bread-eggs": EggIcon,
+    "cold-drinks-juices": LocalDrinkIcon,
+    "snacks-munchies": FastfoodIcon,
+    "bakery-biscuits": CookieIcon,
+    "instant-frozen-food": AcUnitIcon,
   };
 
   useEffect(() => {

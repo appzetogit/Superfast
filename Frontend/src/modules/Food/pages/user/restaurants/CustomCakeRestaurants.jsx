@@ -107,6 +107,7 @@ export default function CustomCakeRestaurants() {
             distance: distanceStr,
             priceRange: bakery?.priceRange || "$$",
             image: pickRestaurantImage(bakery),
+            coverImages: bakery?.coverImages,
           }
         })
 

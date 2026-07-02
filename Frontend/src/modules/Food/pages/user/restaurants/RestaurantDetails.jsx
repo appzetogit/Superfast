@@ -38,6 +38,7 @@ import {
   Send,
   Mail,
   Cake,
+  ChefHat,
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Badge } from "@food/components/ui/badge"
@@ -2140,44 +2141,7 @@ function RestaurantDetailsContent() {
           </div>
         )}
 
-        {/* Offer Card */}
-        {highlightOffers.length > 0 && (
-        <div className="max-w-7xl mx-auto mt-4 bg-white dark:bg-[#1a1a1a] rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 p-4 relative overflow-hidden">
-           <div className="flex items-center justify-between gap-4">
-             <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                  <Percent className="h-6 w-6 text-[#cc2532]" />
-                </div>
-                <div>
-                   <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                     {highlightOffers[highlightIndex] || "Special Offer"}
-                   </h3>
-                </div>
-             </div>
 
-             {/* Redundant rating on offer card (as per screenshot) */}
-             <div className="flex flex-col items-end gap-1 opacity-60 scale-90 origin-right">
-                <div className="bg-[#008d48] text-white px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold text-xs">
-                  <Star className="h-3 w-3 fill-white" />
-                  <span>{restaurant?.rating || 0}</span>
-                </div>
-                <span className="text-[10px] font-medium text-gray-400 whitespace-nowrap">
-                  {(restaurant.reviews || 0).toLocaleString()}+ ratings
-                </span>
-             </div>
-           </div>
-
-           {/* Pagination Dots */}
-           <div className="flex items-center gap-1 mt-3 px-1">
-              {highlightOffers.slice(0, 2).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`h-1.5 w-1.5 rounded-full transition-colors ${i === highlightIndex % 2 ? 'bg-[#cc2532]' : 'bg-gray-200'}`} 
-                />
-              ))}
-           </div>
-        </div>
-        )}
 
         {isRestaurantOffline && (
           <div className="max-w-7xl mx-auto mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700">
@@ -2854,8 +2818,22 @@ function RestaurantDetailsContent() {
         </div>
       )}
 
+      {(!restaurant?.menuSections || !Array.isArray(restaurant.menuSections) || restaurant.menuSections.length === 0) && (
+        <div className="max-w-md mx-auto px-4 py-20 text-center flex flex-col items-center justify-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
+          <div className="w-20 h-20 rounded-full bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center shadow-[0_8px_30px_rgba(245,158,11,0.15)]">
+            <Utensils className="h-10 w-10 text-amber-500 animate-bounce" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-4">
+            Setting Up the Kitchen!
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+            This restaurant hasn't entered their menu yet. The chef is currently preparing the delicious list of dishes. Please check back in a few minutes!
+          </p>
+        </div>
+      )}
+
       {/* Menu Button - Sticky at page bottom right (hidden when filter or menu sheet open) */}
-      {!showFilterSheet && !showMenuSheet && !showMenuOptionsSheet && (
+      {!showFilterSheet && !showMenuSheet && !showMenuOptionsSheet && restaurant?.menuSections && Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0 && (
         <div className="sticky dark:bg-[#1a1a1a] bottom-4 flex justify-end px-4 z-50 mt-auto">
           <Button
             className="bg-[#1a1a1a] dark:bg-[#cc2532] hover:bg-black dark:hover:bg-[#a81e29] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#cc2532]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group"

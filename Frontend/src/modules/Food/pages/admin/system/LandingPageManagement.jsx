@@ -8,6 +8,7 @@ import { Label } from "@food/components/ui/label"
 import { Button } from "@food/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@food/components/ui/dialog"
 import { Checkbox } from "@food/components/ui/checkbox"
+import { optimizeCloudinaryVideoUrl } from "@shared/utils/cloudinaryUtils";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -1901,12 +1902,15 @@ export default function LandingPageManagement() {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <video
-                      src={settings.headerVideoUrl}
                       controls
                       muted
                       playsInline
                       className="w-full max-w-md rounded-lg border border-slate-200 bg-black"
-                    />
+                    >
+                      <source src={optimizeCloudinaryVideoUrl(settings.headerVideoUrl, { format: 'webm' })} type="video/webm" />
+                      <source src={optimizeCloudinaryVideoUrl(settings.headerVideoUrl, { format: 'mp4' })} type="video/mp4" />
+                      <source src={settings.headerVideoUrl} />
+                    </video>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

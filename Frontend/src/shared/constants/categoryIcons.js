@@ -101,6 +101,36 @@ export const categoryIcons = [
     id: 'grocery',
     name: 'Grocery',
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`
+  },
+  {
+    id: 'fruits-vegetables',
+    name: 'Fruits & Vegetables',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.27 21.7a1 1 0 0 0 1.41 0L15.34 10a6 6 0 0 0-8.48-8.48L2.27 16.11a1 1 0 0 0 0 1.41z"/><path d="M19 5c.5.5.4 1.3-.1 1.8L15 10.7a2.5 2.5 0 0 1-3.5 0v0a2.5 2.5 0 0 1 0-3.5l3.9-3.9c.5-.5 1.3-.6 1.8-.1z"/><path d="M12 2h2"/><path d="M19 9h2"/></svg>`
+  },
+  {
+    id: 'dairy-bread-eggs',
+    name: 'Dairy, Bread & Eggs',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8"/><path d="M9 2v4a3 3 0 0 1-3 3v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9a3 3 0 0 1-3-3V2z"/><path d="M6 14h12"/></svg>`
+  },
+  {
+    id: 'cold-drinks-juices',
+    name: 'Cold Drinks & Juices',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 1.75 12.28a2 2 0 0 0 2 1.72h4.54a2 2 0 0 0 2-1.72L18 8"/><path d="M5 8h14"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M18 2 10 8"/><path d="M11 2h2"/></svg>`
+  },
+  {
+    id: 'snacks-munchies',
+    name: 'Snacks & Munchies',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5z"/><path d="M8.5 8.5v.01"/><path d="M16 15.5v.01"/><path d="M12 12v.01"/><path d="M8.5 14.5v.01"/><path d="M15.5 10v.01"/></svg>`
+  },
+  {
+    id: 'bakery-biscuits',
+    name: 'Bakery & Biscuits',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.6 12 5.4-5.4A8.1 8.1 0 0 1 21.4 18l-5.4 5.4c-.6.6-1.5.6-2.1 0l-9.3-9.3c-.6-.6-.6-1.5 0-2.1z"/><path d="m10.5 15.5 5-5"/><path d="m7.5 12.5 5-5"/><path d="m13.5 18.5 5-5"/></svg>`
+  },
+  {
+    id: 'instant-frozen-food',
+    name: 'Instant & Frozen Food',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/></svg>`
   }
 ];
 

@@ -81,7 +81,7 @@ export async function listPendingFoodApprovals(query = {}) {
         restaurantId: toRestaurantDisplayId(a.restaurantId),
         category: 'Add-on',
         itemName: a.draft?.name || 'Unnamed Add-on',
-        foodType: 'Add-on',
+        foodType: a.draft?.isVeg !== false ? 'Veg' : 'Non-Veg',
         sectionName: 'Add-on',
         subsectionName: '',
         approvalStatus: 'pending',

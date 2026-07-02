@@ -192,7 +192,7 @@ export default function Cart() {
   const hasQuickItems = quickItems.length > 0;
   const isQuickCart = false; // This page is always a food cart view
 
-  const { getDefaultAddress, getDefaultPaymentMethod, setDefaultAddress, addresses, paymentMethods, userProfile } = useProfile()
+  const { vegMode, getDefaultAddress, getDefaultPaymentMethod, setDefaultAddress, addresses, paymentMethods, userProfile } = useProfile()
   const { createOrder } = useOrders()
   const { openLocationSelector } = useLocationSelector()
   const { location: currentLocation, loading: currentLocationLoading } = useUserLocation() // Get live location address
@@ -2030,7 +2030,7 @@ export default function Cart() {
                 <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
               </Button>
               <div className="min-w-0">
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName}</p>
+                <p className="text-xs md:text-sm font-bold text-gray-800 dark:text-gray-100">{restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
                   {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <span className="font-semibold">Location</span>
                   <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || defaultAddress?.city || "Select address") : "Select address"}</span>
@@ -2276,43 +2276,46 @@ export default function Cart() {
               )}
 
               {/* Complete your meal section - Approved Addons */}
-              {addons.length > 0 && !cart.some(item => item.isCustomCake) && (
-                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
-                  <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
-                    <div className="w-6 h-6 md:w-8 md:h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                      <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-[#cc2532]" />
+              {(() => {
+                const visibleAddons = vegMode ? addons.filter(addon => addon.isVeg !== false) : addons;
+                if (visibleAddons.length === 0 || cart.some(item => item.isCustomCake)) return null;
+                return (
+                  <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
+                    <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
+                      <div className="w-6 h-6 md:w-8 md:h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
+                        <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-[#cc2532]" />
+                      </div>
+                      <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Complete your meal with</span>
                     </div>
-                    <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Complete your meal with</span>
-                  </div>
-                  {loadingAddons ? (
-                    <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex-shrink-0 w-28 md:w-36 animate-pulse">
-                          <div className="w-full h-28 md:h-36 bg-gray-200 dark:bg-gray-700 rounded-lg md:rounded-xl" />
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mt-2" />
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mt-1 w-2/3" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
-                      {addons.map((addon) => (
-                        <div key={addon.id} className="flex-shrink-0 w-28 md:w-36">
-                          <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg md:rounded-xl overflow-hidden">
-                            <img
-                              src={addon.image || (addon.images && addon.images[0]) || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
-                              alt={addon.name}
-                              className="w-full h-28 md:h-36 object-cover rounded-lg md:rounded-xl"
-                              onError={(e) => {
-                                e.target.onerror = null
-                                e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"
-                              }}
-                            />
-                            <div className="absolute top-1 md:top-2 left-1 md:left-2">
-                              <div className="w-3.5 h-3.5 md:w-4 md:h-4 bg-white border border-green-600 flex items-center justify-center rounded">
-                                <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-600" />
+                    {loadingAddons ? (
+                      <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex-shrink-0 w-28 md:w-36 animate-pulse">
+                            <div className="w-full h-28 md:h-36 bg-gray-200 dark:bg-gray-700 rounded-lg md:rounded-xl" />
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mt-2" />
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mt-1 w-2/3" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
+                        {visibleAddons.map((addon) => (
+                          <div key={addon.id} className="flex-shrink-0 w-28 md:w-36">
+                            <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg md:rounded-xl overflow-hidden">
+                              <img
+                                src={addon.image || (addon.images && addon.images[0]) || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
+                                alt={addon.name}
+                                className="w-full h-28 md:h-36 object-cover rounded-lg md:rounded-xl"
+                                onError={(e) => {
+                                  e.target.onerror = null
+                                  e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"
+                                }}
+                              />
+                              <div className="absolute top-1 md:top-2 left-1 md:left-2">
+                                <div className={`w-3.5 h-3.5 md:w-4 md:h-4 bg-white border flex items-center justify-center rounded ${addon.isVeg !== false ? 'border-green-600' : 'border-red-600'}`}>
+                                  <div className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${addon.isVeg !== false ? 'bg-green-600' : 'bg-red-600'}`} />
+                                </div>
                               </div>
-                            </div>
                             <button
                               onClick={() => {
                                 // Use restaurant info from existing cart items to ensure format consistency
@@ -2337,7 +2340,7 @@ export default function Cart() {
                                   price: addon.price,
                                   image: addon.image || (addon.images && addon.images[0]) || "",
                                   description: addon.description || "",
-                                  isVeg: true,
+                                  isVeg: addon.isVeg !== false,
                                   restaurant: cartRestaurantName,
                                   restaurantId: cartRestaurantId
                                 });
@@ -2357,7 +2360,8 @@ export default function Cart() {
                     </div>
                   )}
                 </div>
-              )}
+              )
+            })()}
 
               {/* Coupon Section */}
               <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-slate-100 dark:border-gray-800 shadow-sm flex flex-col">

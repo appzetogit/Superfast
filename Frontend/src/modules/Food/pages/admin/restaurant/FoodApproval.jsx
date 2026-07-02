@@ -355,60 +355,62 @@ export default function FoodApproval() {
           </DialogHeader>
           {selectedRequest && (
             <div className="p-6 space-y-6">
-              {/* Restaurant Info */}
-              <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100/50 flex items-center justify-between">
+              {/* Header Info with Image, Name, and ID */}
+              <div className="flex items-center gap-4">
+                {(selectedRequest.image || (selectedRequest.images && selectedRequest.images[0])) ? (
+                  <img
+                    src={selectedRequest.image || selectedRequest.images[0]}
+                    alt={selectedRequest.itemName}
+                    className="w-16 h-16 object-cover rounded-2xl border border-slate-200 shadow-sm"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-slate-150 rounded-2xl flex items-center justify-center border border-slate-200">
+                    <span className="text-xs text-slate-400">No Image</span>
+                  </div>
+                )}
                 <div>
-                   <h3 className="font-bold text-xs text-blue-700 uppercase tracking-wider mb-1">Restaurant</h3>
-                   <p className="text-sm font-semibold text-gray-900">{selectedRequest.restaurantName || '-'}</p>
-                   <p className="text-xs text-gray-500">ID: {selectedRequest.restaurantId || '-'}</p>
-                </div>
-                <div className="px-3 py-1 bg-white rounded-full border border-blue-100 text-[10px] font-bold text-blue-600">
-                    {selectedRequest.entityType?.toUpperCase()}
+                  <h3 className="text-lg font-bold text-slate-900">{selectedRequest.itemName || '-'}</h3>
+                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                    ID #{selectedRequest.id ? String(selectedRequest.id).slice(-8).toUpperCase() : '-'}
+                  </p>
                 </div>
               </div>
 
-              {/* Item Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Item Name</label>
-                        <p className="text-sm font-semibold text-gray-900">{selectedRequest.itemName || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</label>
-                        <p className="text-sm text-gray-700">{selectedRequest.category || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Price</label>
-                        <p className="text-sm font-bold text-green-600">{selectedRequest.price !== null && selectedRequest.price !== undefined ? `₹${selectedRequest.price}` : '-'}</p>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</label>
-                        <p className="text-sm text-gray-700 capitalize font-medium">{selectedRequest.approvalStatus || 'pending'}</p>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    {selectedRequest.foodType && (
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Food Type</label>
-                            <p className="text-sm text-gray-700">{selectedRequest.foodType}</p>
-                        </div>
-                    )}
-                    {selectedRequest.requestedAt && (
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Requested On</label>
-                            <p className="text-sm text-gray-700">{new Date(selectedRequest.requestedAt).toLocaleString()}</p>
-                        </div>
-                    )}
-                </div>
-
-                {selectedRequest.description && (
-                  <div className="col-span-full">
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description</label>
-                    <p className="text-sm text-gray-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{selectedRequest.description}</p>
+              {/* Detail parameters grouped box */}
+              <div className="bg-[#f8fafc] border border-slate-150 rounded-xl p-5">
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                  <div>
+                    <span className="font-bold text-slate-700">Restaurant:</span>
+                    <span className="ml-1.5 text-slate-800">{selectedRequest.restaurantName || '-'}</span>
                   </div>
-                )}
+                  <div>
+                    <span className="font-bold text-slate-700">Price:</span>
+                    <span className="ml-1.5 text-slate-800">
+                      {selectedRequest.price !== null && selectedRequest.price !== undefined ? `₹${selectedRequest.price}` : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700">Category:</span>
+                    <span className="ml-1.5 text-slate-800">{selectedRequest.category || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700">Food Type:</span>
+                    <span className="ml-1.5 text-slate-800">{selectedRequest.foodType || '-'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-bold text-slate-700">Approval:</span>
+                    <span className="ml-1.5 text-slate-800 capitalize font-medium">{selectedRequest.approvalStatus || 'pending'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {selectedRequest.description && (
+                <div>
+                  <span className="font-bold text-slate-700 text-xs uppercase tracking-wider block mb-1">Description</span>
+                  <p className="text-sm text-slate-700 leading-relaxed bg-[#f8fafc] p-3 rounded-lg border border-slate-150">{selectedRequest.description}</p>
+                </div>
+              )}
 
                 {/* Variants */}
                 {selectedRequest.variants && selectedRequest.variants.length > 0 && (
@@ -453,7 +455,6 @@ export default function FoodApproval() {
                   ) : null;
                 })()}
               </div>
-            </div>
           )}
           <DialogFooter className="p-6 pt-4 border-t border-gray-100 bg-slate-50/50 flex gap-2">
             <button

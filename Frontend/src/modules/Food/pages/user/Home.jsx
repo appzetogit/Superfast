@@ -188,7 +188,7 @@ export default function Home() {
 
   // --- Serviceability ---
   const { isModuleEnabled, loading: serviceabilityLoading } = useServiceability(activeTab);
-  
+
   const hideExtras = !isModuleEnabled || isEffectiveOutOfService;
 
   // --- Core Data Hook ---
@@ -235,12 +235,12 @@ export default function Home() {
     if (!userPrefs || userPrefs.length === 0) {
       return rawCategories;
     }
-    
+
     const prefIds = userPrefs.map(pref => typeof pref === "string" ? pref : String(pref._id || pref));
-    const filtered = rawCategories.filter(cat => 
+    const filtered = rawCategories.filter(cat =>
       prefIds.includes(String(cat.id)) || prefIds.includes(String(cat._id)) || prefIds.includes(String(cat.slug))
     );
-    
+
     return filtered.length > 0 ? filtered : rawCategories;
   }, [categories.display, userProfile?.preferences]);
 
@@ -356,8 +356,8 @@ export default function Home() {
             exit={{ opacity: 0 }}
             className="bg-white dark:bg-[#0a0a0a]"
           >
-            <ServiceUnavailable 
-              type={!isModuleEnabled ? "module" : "zone"} 
+            <ServiceUnavailable
+              type={!isModuleEnabled ? "module" : "zone"}
               moduleName={activeTab === 'food' ? 'Food Delivery' : 'SuperfastMart'}
               onRefresh={() => window.location.reload()}
             />
@@ -371,9 +371,21 @@ export default function Home() {
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="bg-white dark:bg-[#0a0a0a]"
           >
+            <Suspense fallback={<CategoryChipRowSkeleton className="py-1" />}>
+              <div className="sticky top-[66px] z-[40] md:relative md:top-auto bg-white dark:bg-[#0a0a0a] border-b border-slate-100 dark:border-white/5 transition-all">
+                <CategoryRail
+                  displayCategories={userPreferredCategories}
+                  showCategorySkeleton={categories.loading}
+                  navigate={navigate}
+                  setShowAllCategoriesModal={setShowAllCategoriesModal}
+                  backendOrigin={BACKEND_ORIGIN}
+                />
+              </div>
+            </Suspense>
+
             {(banners.loading || (banners?.images?.length > 0)) && (
               <Suspense fallback={<HeroBannerSkeleton className="h-full w-full px-4 mt-3" />}>
-                <section className="content-auto px-4 pt-3 sm:pt-4 lg:pt-5">
+                <section className="content-auto px-4 pt-3 sm:pt-4 lg:pt-5 mb-4 sm:mb-6">
                   <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.3)] h-48 sm:h-56 md:h-64 lg:h-72">
                     <BannerSection
                       showBannerSkeleton={banners.loading}
@@ -389,16 +401,6 @@ export default function Home() {
                 </section>
               </Suspense>
             )}
-
-            <Suspense fallback={<CategoryChipRowSkeleton className="py-1" />}>
-              <CategoryRail
-                displayCategories={userPreferredCategories}
-                showCategorySkeleton={categories.loading}
-                navigate={navigate}
-                setShowAllCategoriesModal={setShowAllCategoriesModal}
-                backendOrigin={BACKEND_ORIGIN}
-              />
-            </Suspense>
 
             <Suspense fallback={null}>
               <SortFilterSection
