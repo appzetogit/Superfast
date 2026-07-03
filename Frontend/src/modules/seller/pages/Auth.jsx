@@ -9,7 +9,7 @@ import { useCompanyName } from "@food/hooks/useCompanyName";
 import { setAuthData } from "@food/utils/auth";
 import { useAuth } from "@core/context/AuthContext";
 import { sellerApi } from "../services/sellerApi";
-import SuperfastLogo from "@/assets/Logo.png"
+import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
 
 const DEFAULT_COUNTRY_CODE = "+91";

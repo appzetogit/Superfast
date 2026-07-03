@@ -230,7 +230,7 @@ const ProductManagement = () => {
 
   const handleSave = async () => {
     try {
-      if (!formData.name || !formData.price || !formData.stock || !formData.header || !formData.category || !formData.subcategory) {
+      if (!formData.name || formData.price === "" || formData.stock === "" || !formData.header || !formData.category || !formData.subcategory) {
         toast.error("Please fill all required fields, including categories");
         return;
       }
@@ -323,9 +323,9 @@ const ProductManagement = () => {
         slug: item.slug || "",
         sku: item.sku || "",
         description: item.description || "",
-        price: item.price || "",
-        salePrice: item.salePrice || "",
-        stock: item.stock || "",
+        price: item.price !== undefined && item.price !== null ? item.price : "",
+        salePrice: item.salePrice !== undefined && item.salePrice !== null ? item.salePrice : "",
+        stock: item.stock !== undefined && item.stock !== null ? item.stock : "",
         lowStockAlert: item.lowStockAlert || 5,
         header: item.headerId?._id || item.headerId || "",
         category: item.categoryId?._id || item.categoryId || "",
@@ -340,9 +340,9 @@ const ProductManagement = () => {
           {
             id: Date.now(),
             name: "Default",
-            price: item.price || "",
-            salePrice: item.salePrice || "",
-            stock: item.stock || "",
+            price: item.price !== undefined && item.price !== null ? item.price : "",
+            salePrice: item.salePrice !== undefined && item.salePrice !== null ? item.salePrice : "",
+            stock: item.stock !== undefined && item.stock !== null ? item.stock : "",
             sku: item.sku || "",
           },
         ],

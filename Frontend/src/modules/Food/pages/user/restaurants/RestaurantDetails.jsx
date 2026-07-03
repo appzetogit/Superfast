@@ -37,7 +37,6 @@ import {
   MessageCircle,
   Send,
   Mail,
-  Cake,
   ChefHat,
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
@@ -2111,35 +2110,6 @@ function RestaurantDetailsContent() {
             <span>{restaurant?.deliveryTime || "25-30 mins"}</span>
           </div>
         </div>
-
-        {/* Custom Cake Quote Request for Home Bakeries */}
-        {restaurant?.businessType === 'home_bakery' && restaurant?.customOrdersEnabled && (
-          <div className="max-w-7xl mx-auto mt-4 bg-gradient-to-r from-pink-500/10 to-amber-500/10 dark:from-pink-950/30 dark:to-amber-950/20 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-pink-200/50 dark:border-pink-800/30 p-5 relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center flex-shrink-0">
-                  <Cake className="h-6 w-6 text-pink-600 dark:text-pink-400" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                    Order a Custom Cake
-                  </h3>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Design your dream cake! Submit specs & reference images for a custom quote.
-                  </p>
-                </div>
-              </div>
-              <Link 
-                to={`/food/user/bakery/${restaurant.mongoId || restaurant._id || restaurant.restaurantId || restaurant.id}/custom-request`}
-                className="w-full sm:w-auto"
-              >
-                <Button className="w-full sm:w-auto bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold px-6 py-2.5 rounded-full transition-all duration-300 shadow-md shadow-pink-500/20">
-                  Request Quote
-                </Button>
-              </Link>
-            </div>
-          </div>
-        )}
 
 
 

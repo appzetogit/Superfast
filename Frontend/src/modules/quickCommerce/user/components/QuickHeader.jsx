@@ -10,7 +10,7 @@ import {
 } from '../utils/headerTheme';
 import { getQuickCartPath, getQuickHomePath, getQuickSearchPath, getQuickWalletPath, getQuickWishlistPath } from '../utils/routes';
 import { resolveQuickImageUrl } from '../utils/image';
-import logo from '../assets/Logo.png';
+import logo from '../assets/Logo.webp';
 import { useCart } from '../context/CartContext';
 
 // MUI Icons

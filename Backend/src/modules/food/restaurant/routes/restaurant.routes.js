@@ -201,18 +201,8 @@ router.get('/complaints', authMiddleware, requireRestaurant, getRestaurantCompla
 router.post('/support/tickets', authMiddleware, requireRestaurant, createRestaurantSupportTicketController);
 router.get('/support/tickets', authMiddleware, requireRestaurant, listRestaurantSupportTicketsController);
 
-import {
-    listBakeryCustomCakeRequests,
-    quoteCustomCakeRequest,
-    rejectCustomCakeRequest
-} from '../controllers/customCake.controller.js';
 
 router.delete('/delete-account', authMiddleware, requireRestaurant, deleteRestaurantAccountController);
-
-// Custom Cake requests (bakery panel)
-router.get('/custom-cakes/requests', authMiddleware, requireRestaurant, listBakeryCustomCakeRequests);
-router.patch('/custom-cakes/requests/:id/quote', authMiddleware, requireRestaurant, quoteCustomCakeRequest);
-router.patch('/custom-cakes/requests/:id/reject', authMiddleware, requireRestaurant, rejectCustomCakeRequest);
 
 export default router;
 

@@ -65,7 +65,7 @@ import MobileFooterMessage from "../components/layout/MobileFooterMessage";
 import { useProductDetail } from "../context/ProductDetailContext";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@food/components/ui/skeleton";
-import CardBanner from "@/assets/CardBanner.jpg";
+import CardBanner from "@/assets/CardBanner.webp";
 import SectionRenderer from "../components/experience/SectionRenderer";
 import ExperienceBannerCarousel from "../components/experience/ExperienceBannerCarousel";
 import { useLocation } from "../context/LocationContext";

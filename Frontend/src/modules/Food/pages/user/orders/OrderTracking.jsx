@@ -581,8 +581,6 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     subtotal: apiOrder?.pricing?.subtotal || apiOrder?.subtotal || 0,
     paymentMethod: apiOrder?.paymentMethod || apiOrder?.payment?.method || previousOrder?.paymentMethod || null,
     payment: apiOrder?.payment || previousOrder?.payment || null,
-    isCustomCake: apiOrder?.isCustomCake || previousOrder?.isCustomCake || false,
-    customCakeRequestId: apiOrder?.customCakeRequestId || previousOrder?.customCakeRequestId || null,
     // Preserve delivery OTP code received via socket event.
     // API responses intentionally strip the secret code for security,
     // so without preserving it the UI would lose the OTP on each poll refresh.
@@ -2071,7 +2069,6 @@ export default function OrderTracking() {
     orderStatus === "delivered" ||
     order?.status === "delivered" ||
     Boolean(order?.deliveredAt)
-  const showMapForCustomCake = !order?.isCustomCake || ['assigned', 'at_pickup', 'ready', 'on_way', 'at_drop'].includes(orderStatus)
   const visibleDeliveryPartners = Array.isArray(order?.deliveryPartners)
     ? order.deliveryPartners.filter(Boolean)
     : []
@@ -2219,7 +2216,7 @@ export default function OrderTracking() {
       </motion.div>
 
       {/* Map Section */}
-      {!isDeliveredOrder && orderStatus !== 'cancelled' && showMapForCustomCake && (
+      {!isDeliveredOrder && orderStatus !== 'cancelled' && (
         <>
           <DeliveryMap
             orderId={orderId}
@@ -2297,20 +2294,6 @@ export default function OrderTracking() {
         </>
       )}
 
-      {!isDeliveredOrder && orderStatus !== 'cancelled' && order?.isCustomCake && !showMapForCustomCake && (
-        <div className="mx-4 mt-4 rounded-3xl border border-pink-100 dark:border-pink-900/50 bg-gradient-to-br from-pink-50 via-white to-rose-50 dark:from-pink-950/20 dark:via-[#111111] dark:to-rose-950/20 p-6 shadow-sm text-center">
-          <div className="h-14 w-14 bg-pink-500/10 dark:bg-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-3 border border-pink-500/20 dark:border-pink-500/30 animate-pulse">
-            <Sparkles className="h-7 w-7 text-pink-500 dark:text-pink-400" />
-          </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Bakery is preparing your cake</h3>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto leading-relaxed">
-            Your custom cake order is being baked with special care! Live rider tracking will appear here once the bakery marks it ready and a rider is dispatched.
-          </p>
-          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-pink-100 dark:bg-pink-950/40 rounded-full text-xs font-semibold text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/40">
-            Status: {currentStatus.title}
-          </div>
-        </div>
-      )}
 
       {/* Scrollable Content */}
       <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4 md:space-y-6 pb-24 md:pb-32">

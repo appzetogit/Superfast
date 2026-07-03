@@ -30,26 +30,11 @@ import {
     listMySupportTicketsController
 } from '../controllers/supportTicket.controller.js';
 
-import {
-    createUserCustomCakeRequest,
-    listUserCustomCakeRequests,
-    getUserCustomCakeRequestDetail,
-    confirmCustomCakeQuotation,
-    userRejectCustomCakeQuotation
-} from '../../restaurant/controllers/customCake.controller.js';
-
 const router = express.Router();
 
 router.get('/profile', getCurrentUserProfileController);
 router.patch('/profile', updateCurrentUserProfileController);
 router.post('/profile/profile-image', upload.single('file'), uploadCurrentUserProfileImageController);
-
-// Custom Cake Requests
-router.post('/custom-cakes/requests', createUserCustomCakeRequest);
-router.get('/custom-cakes/requests', listUserCustomCakeRequests);
-router.get('/custom-cakes/requests/:id', getUserCustomCakeRequestDetail);
-router.patch('/custom-cakes/requests/:id/confirm', confirmCustomCakeQuotation);
-router.patch('/custom-cakes/requests/:id/reject', userRejectCustomCakeQuotation);
 
 // Wallet (Bearer USER)
 router.get('/wallet', getUserWalletController);

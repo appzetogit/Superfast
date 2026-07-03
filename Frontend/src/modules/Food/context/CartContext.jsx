@@ -207,14 +207,6 @@ export function CartProvider({ children }) {
     const safeCart = normalizeCartData(cart)
     const nextOrderType = getItemOrderType(item)
 
-    // Prevent mixing custom cakes with other items
-    const hasCustomCake = safeCart.some(i => i.isCustomCake === true)
-    if (hasCustomCake) {
-      return { ok: false, error: 'Your cart contains a custom cake. Custom cakes must be ordered alone.', code: 'CUSTOM_CAKE_RESTRICTION' }
-    }
-    if (item?.isCustomCake && safeCart.length > 0) {
-      return { ok: false, error: 'Custom cakes must be ordered alone. Please clear your cart first.', code: 'CUSTOM_CAKE_RESTRICTION' }
-    }
 
     if (safeCart.length > 0) {
       if (nextOrderType === "food") {
@@ -331,9 +323,7 @@ export function CartProvider({ children }) {
     setCart((prev) => {
       const safePrev = normalizeCartData(prev)
       const existingItem = safePrev.find((i) => i.id === resolvedItemId)
-      if (existingItem && existingItem.isCustomCake && quantity > 1) {
-        return safePrev
-      }
+
       if (existingItem && quantity < existingItem.quantity && sourcePosition && productInfo) {
         setLastRemoveEvent({
           product: {

@@ -405,7 +405,16 @@ const formatMonthShort = (year, monthIndex) =>
     new Date(year, monthIndex, 1).toLocaleString('en-IN', { month: 'short' });
 
 export async function getDashboardStats(query = {}) {
-    const periodRange = getDateRangeByPeriod(query.period);
+    let periodRange = null;
+    if (query.startDate && query.endDate) {
+        const start = new Date(query.startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(query.endDate);
+        end.setHours(23, 59, 59, 999);
+        periodRange = { start, end };
+    } else {
+        periodRange = getDateRangeByPeriod(query.period);
+    }
     const zoneId = query.zoneId && mongoose.Types.ObjectId.isValid(query.zoneId)
         ? new mongoose.Types.ObjectId(query.zoneId)
         : null;

@@ -39,7 +39,7 @@ const debugError = (...args) => {}
 const getDeliveryIconUrl = () => {
   try {
     // Try to use delivery icon from public assets
-    return '/assets/deliveryboy/deliveryIcon.png'
+    return '/assets/deliveryboy/deliveryIcon.webp'
   } catch {
     // Fallback to bikelogo if delivery icon not found
     return '/src/assets/bikelogo.png'

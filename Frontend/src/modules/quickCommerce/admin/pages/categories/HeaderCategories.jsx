@@ -519,17 +519,21 @@ const HeaderCategories = () => {
 
                     {/* Image Upload */}
                     <div className="flex flex-col items-center gap-2">
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-indigo-500 overflow-hidden transition-colors">
+                      <div className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-indigo-500 overflow-hidden transition-colors relative">
+                        <input
+                          type="file"
+                          className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+                          onChange={handleImageChange}
+                          accept="image/*"
+                        />
                         {previewUrl ? (
                           <img
                             src={previewUrl}
                             alt="Preview"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover relative z-0"
                           />
                         ) : (
-                          <div className="text-center">
+                          <div className="text-center relative z-0">
                             <Upload className="w-8 h-8 text-gray-400 mx-auto" />
                             <span className="text-xs text-gray-500 mt-1">
                               Upload
@@ -537,13 +541,6 @@ const HeaderCategories = () => {
                           </div>
                         )}
                       </div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleImageChange}
-                        accept="image/*"
-                      />
                       <span className="text-xs text-gray-500">Custom Image</span>
                     </div>
                   </div>

@@ -7,7 +7,7 @@ import { clearModuleAuth, isModuleAuthenticated } from "@food/utils/auth"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
-import SuperfastLogo from "@/assets/Logo.png"
+import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}

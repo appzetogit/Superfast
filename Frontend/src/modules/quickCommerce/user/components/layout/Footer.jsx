@@ -1,6 +1,6 @@
 import React from 'react';
 import { Facebook, Twitter, Instagram, Youtube, Mail, MapPin, Phone } from 'lucide-react';
-import Logo from '@/assets/Logo.png';
+import Logo from '@/assets/Logo.webp';
 import { useSettings } from '@core/context/SettingsContext';
 
 const Footer = () => {

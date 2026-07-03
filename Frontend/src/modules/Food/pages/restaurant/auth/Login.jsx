@@ -6,7 +6,7 @@ import { restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
-import SuperfastLogo from "@/assets/Logo.png"
+import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
 
 const DEFAULT_COUNTRY_CODE = "+91"

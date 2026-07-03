@@ -1,4 +1,4 @@
-import cardBanner from '../assets/CardBanner.jpg';
+import cardBanner from '../assets/CardBanner.webp';
 
 export default function QuickHero() {
   return (

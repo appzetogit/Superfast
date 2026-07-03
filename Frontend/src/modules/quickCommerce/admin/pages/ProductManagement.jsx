@@ -129,7 +129,7 @@ const ProductManagement = () => {
             return toast.error('Only product editing is allowed for admins');
         }
 
-        if (!formData.name || !formData.price || !formData.stock || !formData.header || !formData.categoryId || !formData.subcategoryId) {
+        if (!formData.name || formData.price === '' || formData.stock === '' || !formData.header || !formData.categoryId || !formData.subcategoryId) {
             return toast.error('Please fill all required fields, including categories');
         }
 
@@ -228,9 +228,9 @@ const ProductManagement = () => {
                 slug: item.slug || '',
                 sku: item.sku || '',
                 description: item.description || '',
-                price: item.price || '',
-                salePrice: item.salePrice || item.discountPrice || '',
-                stock: item.stock || '',
+                price: item.price !== undefined && item.price !== null ? item.price : '',
+                salePrice: item.salePrice !== undefined && item.salePrice !== null ? item.salePrice : (item.discountPrice !== undefined && item.discountPrice !== null ? item.discountPrice : ''),
+                stock: item.stock !== undefined && item.stock !== null ? item.stock : '',
                 lowStockAlert: item.lowStockAlert || 5,
                 unit: item.unit || 'packet',
                 header: item.headerId?._id || item.headerId || '',
@@ -247,9 +247,9 @@ const ProductManagement = () => {
                     {
                         id: Date.now(),
                         name: 'Default',
-                        price: item.price || '',
-                        salePrice: item.salePrice || item.discountPrice || '',
-                        stock: item.stock || '',
+                        price: item.price !== undefined && item.price !== null ? item.price : '',
+                        salePrice: item.salePrice !== undefined && item.salePrice !== null ? item.salePrice : '',
+                        stock: item.stock !== undefined && item.stock !== null ? item.stock : '',
                         sku: item.sku || ''
                     }
                 ]

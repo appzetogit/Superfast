@@ -2221,7 +2221,7 @@ export default function RestaurantOnboarding() {
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-[#008226] text-white" : "bg-gray-100 text-gray-800"
                     }`}
                 >
                   {day.charAt(0)}

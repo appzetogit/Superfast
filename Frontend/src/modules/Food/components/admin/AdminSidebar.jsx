@@ -186,10 +186,10 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     const l = label.toLowerCase()
     const p = path?.toLowerCase() || ""
 
-    if (l.includes("food approval")) return badges.foodApprovals
-    if (l === "foods") return badges.foods
-    if (l.includes("restaurant foods list")) return badges.foodApprovals
-    if (l.includes("restaurant addons list")) return badges.addons
+    if (l.includes("food approval")) return (badges.foodApprovals || 0) + (badges.addons || 0)
+    if (l === "foods") return 0
+    if (l.includes("restaurant foods list")) return 0
+    if (l.includes("restaurant addons list")) return 0
     if (l === "categories" || l === "category") return badges.categories
     if (l === "restaurants" || l.includes("new joining request")) return badges.restaurants
     if (l.includes("restaurant complaints")) return badges.restaurantComplaints

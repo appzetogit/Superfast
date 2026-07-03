@@ -156,7 +156,12 @@ export const getHomeData = async (req, res) => {
 
   const [categories, products, settings, heroConfig, experienceSections, offerSections] = await Promise.all([
     getQuickCategories(),
-    QuickProduct.find(publicProductFilter).sort({ createdAt: -1 }).limit(18).lean(),
+    QuickProduct.aggregate([
+      { $match: publicProductFilter },
+      { $addFields: { isOutOfStock: { $cond: [{ $gt: ["$stock", 0] }, 0, 1] } } },
+      { $sort: { isOutOfStock: 1, createdAt: -1 } },
+      { $limit: 18 }
+    ]),
     getQuickSettings(),
     getQuickHeroConfig({ pageType, headerId }),
     getQuickExperienceSections({ pageType, headerId }),
@@ -351,19 +356,21 @@ export const getProducts = async (req, res) => {
   const andConditions = [];
 
   if (categoryId) {
+    const validCategoryId = mongoose.Types.ObjectId.isValid(categoryId) ? new mongoose.Types.ObjectId(categoryId) : categoryId;
     andConditions.push({
       $or: [
-        { categoryId: categoryId },
-        { subcategoryId: categoryId },
-        { headerId: categoryId }
+        { categoryId: validCategoryId },
+        { subcategoryId: validCategoryId },
+        { headerId: validCategoryId }
       ]
     });
   }
   if (req.query.storeId) {
+    const validStoreId = mongoose.Types.ObjectId.isValid(req.query.storeId) ? new mongoose.Types.ObjectId(req.query.storeId) : req.query.storeId;
     andConditions.push({
       $or: [
-        { sellerId: req.query.storeId },
-        { sellerId: new mongoose.Types.ObjectId(req.query.storeId) }
+        { sellerId: validStoreId },
+        { sellerId: req.query.storeId }
       ]
     });
   }
@@ -374,7 +381,13 @@ export const getProducts = async (req, res) => {
   if (search) query.name = { $regex: String(search).trim(), $options: 'i' };
 
   const parsedLimit = Number(limit) > 0 ? Math.min(Number(limit), 100) : 50;
-  const products = await QuickProduct.find(query).sort({ createdAt: -1 }).limit(parsedLimit).lean();
+  
+  const products = await QuickProduct.aggregate([
+    { $match: query },
+    { $addFields: { isOutOfStock: { $cond: [{ $gt: ["$stock", 0] }, 0, 1] } } },
+    { $sort: { isOutOfStock: 1, createdAt: -1 } },
+    { $limit: parsedLimit }
+  ]);
   const sellerMap = await buildSellerMap(products);
 
   return res.json({

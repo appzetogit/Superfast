@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import SuperfastLogo from "@/assets/Logo.png"
+import SuperfastLogo from "@/assets/Logo.webp"
 import { getCachedSettings } from "@common/utils/businessSettings"
 import { SUPERFAST_BRAND } from "../constants/brand"
 

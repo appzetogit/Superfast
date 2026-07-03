@@ -41,6 +41,8 @@ export default function AdminHome() {
   const navigate = useNavigate()
   const [selectedZone, setSelectedZone] = useState("all")
   const [selectedPeriod, setSelectedPeriod] = useState("overall")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState(null)
   const [zones, setZones] = useState([])
@@ -61,6 +63,16 @@ export default function AdminHome() {
     fetchZones()
   }, [])
 
+  const handlePeriodChange = (val) => {
+    setSelectedPeriod(val)
+    if (val === "custom" && (!startDate || !endDate)) {
+      const today = new Date().toISOString().split('T')[0]
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      setStartDate(weekAgo)
+      setEndDate(today)
+    }
+  }
+
   // Fetch dashboard stats from backend when filters change
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -69,6 +81,15 @@ export default function AdminHome() {
         const params = {
           period: selectedPeriod,
           ...(selectedZone !== "all" ? { zoneId: selectedZone } : {}),
+        }
+        if (selectedPeriod === "custom") {
+          if (startDate && endDate) {
+            params.startDate = startDate
+            params.endDate = endDate
+          } else {
+            setIsLoading(false)
+            return
+          }
         }
         const response = await adminAPI.getDashboardStats(params)
         if (response.data?.success && response.data?.data) {
@@ -87,7 +108,7 @@ export default function AdminHome() {
     }
 
     fetchDashboardStats()
-  }, [selectedZone, selectedPeriod])
+  }, [selectedZone, selectedPeriod, startDate, endDate])
 
   // Get order stats from real data
   const getOrderStats = () => {
@@ -160,6 +181,7 @@ export default function AdminHome() {
   const deliveryProfit = dashboardData?.deliveryProfit || 0
   const periodLabel = selectedPeriod === "overall" ? "Overall" : 
                     selectedPeriod === "today" ? "Today's" : 
+                    selectedPeriod === "custom" ? "Custom Range" :
                     `This ${selectedPeriod}'s`
 
   const activityFeed = dashboardData?.liveSignals || []
@@ -174,49 +196,71 @@ export default function AdminHome() {
     <div className="px-4 pb-10 lg:px-6 pt-4">
       <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_30px_120px_-60px_rgba(0,0,0,0.28)]">
         {isLoading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-            <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2 text-sm text-neutral-700 ring-1 ring-neutral-200">
-              <span className="h-3 w-3 animate-ping rounded-full bg-neutral-800/70" />
-              Updating metrics...
-            </div>
-          </div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 animate-pulse z-20" />
         )}
 
-        <div className="flex flex-col gap-4 border-b border-neutral-200 bg-linear-to-br from-white via-neutral-50 to-neutral-100 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Admin Overview</p>
-              <h1 className="text-2xl font-semibold text-neutral-900">Operations Command</h1>
-            </div>
+        <div className="flex flex-col gap-5 border-b border-neutral-200 bg-linear-to-br from-white via-neutral-50 to-neutral-100 px-6 py-5 min-h-[96px]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Admin Overview</p>
+            <h1 className="text-2xl font-semibold text-neutral-900 flex items-center gap-2">
+              Operations Command
+              {isLoading && (
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+              )}
+            </h1>
+          </div>
 
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Select value={selectedZone} onValueChange={setSelectedZone}>
-              <SelectTrigger className="min-w-[160px] border-neutral-300 bg-white text-neutral-900">
-                <SelectValue placeholder="All zones" />
-              </SelectTrigger>
-              <SelectContent className="border-neutral-200 bg-white text-neutral-900">
-                <SelectItem value="all">All zones</SelectItem>
-                {zones.map((zone) => (
-                  <SelectItem key={zone._id} value={zone._id}>
-                    {zone.zoneName || zone.name || "Unnamed Zone"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="min-w-[140px] border-neutral-300 bg-white text-neutral-900">
-                <SelectValue placeholder="Overall" />
-              </SelectTrigger>
-              <SelectContent className="border-neutral-200 bg-white text-neutral-900">
-                <SelectItem value="overall">Overall</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This week</SelectItem>
-                <SelectItem value="month">This month</SelectItem>
-                <SelectItem value="year">This year</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="flex flex-wrap items-center gap-3 w-full">
+              <Select value={selectedZone} onValueChange={setSelectedZone}>
+                <SelectTrigger className="min-w-[160px] border-neutral-300 bg-white text-neutral-900">
+                  <SelectValue placeholder="All zones" />
+                </SelectTrigger>
+                <SelectContent className="border-neutral-200 bg-white text-neutral-900">
+                  <SelectItem value="all">All zones</SelectItem>
+                  {zones.map((zone) => (
+                    <SelectItem key={zone._id} value={zone._id}>
+                      {zone.zoneName || zone.name || "Unnamed Zone"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+                <SelectTrigger className="min-w-[140px] border-neutral-300 bg-white text-neutral-900">
+                  <SelectValue placeholder="Overall" />
+                </SelectTrigger>
+                <SelectContent className="border-neutral-200 bg-white text-neutral-900">
+                  <SelectItem value="overall">Overall</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This week</SelectItem>
+                  <SelectItem value="month">This month</SelectItem>
+                  <SelectItem value="year">This year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div 
+                className={`flex items-center gap-2 transition-all duration-300 ease-in-out overflow-hidden ${
+                  selectedPeriod === "custom" ? "max-w-[500px] opacity-100 ml-1" : "max-w-0 opacity-0 pointer-events-none"
+                }`}
+              >
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-xl border border-neutral-300 bg-white px-3 h-[40px] text-sm text-neutral-900 focus:border-neutral-400 focus:outline-hidden"
+                />
+                <span className="text-xs text-neutral-500 font-bold uppercase tracking-wider whitespace-nowrap">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-xl border border-neutral-300 bg-white px-3 h-[40px] text-sm text-neutral-900 focus:border-neutral-400 focus:outline-hidden"
+                />
+              </div>
+            </div>
         </div>
 
         <div className="space-y-6 px-6 py-6">

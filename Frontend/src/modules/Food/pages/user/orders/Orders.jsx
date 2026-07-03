@@ -5,7 +5,7 @@ import { orderAPI } from "@food/api"
 import { useCart } from "@food/context/CartContext"
 import { toast } from "sonner"
 import { getCompanyNameAsync } from "@common/utils/businessSettings"
-import CustomCakeRequests from "./CustomCakeRequests"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -688,32 +688,7 @@ Order again from this restaurant in the ${companyName} app.`
         <h1 className="ml-4 text-xl font-semibold text-gray-800 dark:text-white">Your Orders</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111111] px-4 mb-2">
-        <button
-          onClick={() => setActiveTab("food")}
-          className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition-all ${
-            activeTab === "food"
-              ? "border-[#cc2532] text-[#cc2532] dark:text-white font-bold"
-              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          }`}
-        >
-          Food Orders
-        </button>
-        <button
-          onClick={() => setActiveTab("custom_cakes")}
-          className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition-all ${
-            activeTab === "custom_cakes"
-              ? "border-[#cc2532] text-[#cc2532] dark:text-white font-bold"
-              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          }`}
-        >
-          Custom Cake Requests
-        </button>
-      </div>
 
-      {activeTab === "food" ? (
-        <>
           {/* Search Bar */}
           <div className="p-4 bg-white dark:bg-[#111111] mt-1">
             <div className="flex items-center bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 shadow-sm">
@@ -1084,12 +1059,7 @@ Order again from this restaurant in the ${companyName} app.`
           })
         )}
       </div>
-        </>
-      ) : (
-        <div className="px-4 py-4 max-w-3xl mx-auto">
-          <CustomCakeRequests />
-        </div>
-      )}
+
 
       {/* Footer Branding */}
       <div className="flex justify-center mt-8 mb-4">

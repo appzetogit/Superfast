@@ -2876,16 +2876,7 @@ export const diningAPI = {
 export const heroBannerAPI = createStubAPI();
 export const publicAPI = createStubAPI();
 
-export const customCakeAPI = {
-  createRequest: (body) => apiClient.post("/food/user/custom-cakes/requests", body, { contextModule: "user" }),
-  getRequests: () => apiClient.get("/food/user/custom-cakes/requests", { contextModule: "user" }),
-  getRequestDetail: (id) => apiClient.get(`/food/user/custom-cakes/requests/${id}`, { contextModule: "user" }),
-  confirmQuotation: (id) => apiClient.patch(`/food/user/custom-cakes/requests/${id}/confirm`, {}, { contextModule: "user" }),
-  userRejectQuotation: (id) => apiClient.patch(`/food/user/custom-cakes/requests/${id}/reject`, {}, { contextModule: "user" }),
-  getBakeryRequests: () => apiClient.get("/food/restaurant/custom-cakes/requests", { contextModule: "restaurant" }),
-  quoteRequest: (id, body) => apiClient.patch(`/food/restaurant/custom-cakes/requests/${id}/quote`, body, { contextModule: "restaurant" }),
-  rejectRequest: (id, body) => apiClient.patch(`/food/restaurant/custom-cakes/requests/${id}/reject`, body, { contextModule: "restaurant" }),
-};
+
 
 export const preferencesAPI = {
   getCategories: () => apiClient.get("/preferences/categories", { contextModule: "user" }),

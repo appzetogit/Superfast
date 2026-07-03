@@ -398,16 +398,7 @@ const orderSchema = new mongoose.Schema(
             type: geoPointSchema,
             default: undefined
         },
-        isCustomCake: {
-            type: Boolean,
-            default: false,
-            index: true
-        },
-        customCakeRequestId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'FoodCustomCakeRequest',
-            default: null
-        },
+
         reassignmentStatus: {
             type: String,
             enum: ['none', 'pending', 'accepted', 'rejected', 'timed_out'],

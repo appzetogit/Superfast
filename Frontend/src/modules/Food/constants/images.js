@@ -3,7 +3,7 @@
 
 // Placeholder food images using Unsplash
 const biryani = "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=300&fit=crop"
-const cake = "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop"
+
 const chholeBhature = "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop"
 const chickenTanduri = "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop"
 const donuts = "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop"
@@ -17,7 +17,7 @@ const starters = "https://images.unsplash.com/photo-1525755662778-989d0524087e?w
 // Array of food images to cycle through
 export const foodImages = [
   biryani,
-  cake,
+
   chholeBhature,
   chickenTanduri,
   donuts,
@@ -32,7 +32,7 @@ export const foodImages = [
 // Individual exports for direct access
 export {
   biryani,
-  cake,
+
   chholeBhature,
   chickenTanduri,
   donuts,

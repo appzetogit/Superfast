@@ -6,7 +6,7 @@ import { Button } from "@food/components/ui/button"
 import { deliveryAPI } from "@food/api"
 import { setAuthData as storeAuthData } from "@food/utils/auth"
 import { motion } from "framer-motion"
-import SuperfastLogo from "@/assets/Logo.png"
+import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore'

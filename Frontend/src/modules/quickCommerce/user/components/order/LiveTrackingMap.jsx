@@ -12,9 +12,9 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import customerPin from "@/assets/customer-pin.png";
-import deliveryIcon from "@/assets/deliveryIcon.png";
-import storePin from "@/assets/store-pin.png";
+import customerPin from "@/assets/customer-pin.webp";
+import deliveryIcon from "@/assets/deliveryIcon.webp";
+import storePin from "@/assets/store-pin.webp";
 
 const libraries = ["geometry"];
 

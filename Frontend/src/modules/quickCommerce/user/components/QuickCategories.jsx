@@ -1,4 +1,4 @@
-import quickBg from '../assets/Catagorysection_bg.png';
+import quickBg from '../assets/Catagorysection_bg.webp';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { resolveQuickImageUrl } from '../utils/image';

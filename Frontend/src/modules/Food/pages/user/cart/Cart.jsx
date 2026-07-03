@@ -107,8 +107,6 @@ const mapOrderItem = (item) => ({
   isVeg: item.isVeg !== false,
   notes: sanitizeOrderNotes(item.notes || ""),
   preparationTime: item.preparationTime,
-  isCustomCake: item.isCustomCake || undefined,
-  customCakeRequestId: item.customCakeRequestId || undefined,
 })
 
 const normalizeOrderAddress = (address, { recipientName = "", recipientPhone = "" } = {}) => {
@@ -975,17 +973,12 @@ export default function Cart() {
         const resolvedRestaurantId = restaurantData?.restaurantId || restaurantData?._id || restaurantId || undefined
         const resolvedCouponCode = appliedCoupon?.code || couponCode || undefined
 
-        const customCakeItem = cart.find(i => i.isCustomCake)
-        const isCustomCake = !!customCakeItem
-        const customCakeRequestId = customCakeItem?.customCakeRequestId
-
         const response = await orderAPI.calculateOrder({
           orderType: "food",
           items,
           restaurantId: resolvedRestaurantId,
           address: defaultAddress,
           couponCode: resolvedCouponCode,
-          ...(isCustomCake ? { isCustomCake, customCakeRequestId } : {})
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -1005,7 +998,7 @@ export default function Cart() {
             let cartUpdated = false
             const updatedMasterCart = masterCart.map(cartItem => {
               // Only sync food items
-              if (cartItem.orderType === "quick" || cartItem.type === "quick" || cartItem.isCustomCake) {
+              if (cartItem.orderType === "quick" || cartItem.type === "quick") {
                 return cartItem
               }
               const matchedBackendItem = backendItems.find(bItem => 
@@ -1758,10 +1751,6 @@ export default function Cart() {
         recipientPhone: recipientPhone || defaultAddress?.phone || "",
       })
 
-      const customCakeItem = cart.find(i => i.isCustomCake)
-      const isCustomCake = !!customCakeItem
-      const customCakeRequestId = customCakeItem?.customCakeRequestId
-
       const orderPayload = {
         items: orderItems,
         address: normalizedAddress,
@@ -1776,7 +1765,6 @@ export default function Cart() {
         // `useZone()` can return `null`. Zod expects string/undefined, not null.
         zoneId: zoneId || undefined,
         scheduledAt: isScheduled ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : undefined,
-        ...(isCustomCake ? { isCustomCake, customCakeRequestId } : {})
       };
       // Log final order details (including paymentMethod for COD debugging)
       debugLog('?? FINAL: Sending order to backend with:', {
@@ -2166,34 +2154,22 @@ export default function Cart() {
                           >
                             Remove
                           </button>
-                        ) : item.isCustomCake ? (
-                          <div className="flex items-center border border-red-500 rounded">
-                            <button
-                              className="px-2 md:px-3 py-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
-                              onClick={() => updateQuantity(item.id, 0)}
-                            >
-                              <X className="h-3 w-3 md:h-4 md:w-4" />
-                            </button>
-                            <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-red-500 min-w-[20px] md:min-w-[24px] text-center">
-                              {item.quantity}
-                            </span>
-                          </div>
                         ) : (
-                          <div className="flex items-center border border-[#cc2532] dark:border-[#cc2532]/50 rounded">
+                          <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#111111]">
                             <button
-                              className="px-2 md:px-3 py-1 text-[#cc2532] dark:text-[#cc2532] hover:bg-orange-50 dark:hover:bg-[#cc2532]/10"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              className="px-2 md:px-3 py-1 text-[#cc2532] hover:bg-red-50 dark:hover:bg-red-950/20 rounded-l"
+                              onClick={() => updateQuantity(item.id, Math.max(0, item.quantity - 1))}
                             >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              -
                             </button>
-                            <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-[#cc2532] dark:text-[#cc2532] min-w-[20px] md:min-w-[24px] text-center">
+                            <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 min-w-[20px] md:min-w-[24px] text-center">
                               {item.quantity}
                             </span>
                             <button
-                              className="px-2 md:px-3 py-1 text-[#cc2532] dark:text-[#cc2532] hover:bg-orange-50 dark:hover:bg-[#cc2532]/10"
+                              className="px-2 md:px-3 py-1 text-[#cc2532] hover:bg-red-50 dark:hover:bg-red-950/20 rounded-r"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              +
                             </button>
                           </div>
                         )}
@@ -2207,7 +2183,6 @@ export default function Cart() {
                 </div>
 
                 {/* Add more items */}
-                {!cart.some(item => item.isCustomCake) && (
                   <button
                     onClick={handleBack}
                     className="flex items-center gap-2 mt-4 md:mt-6 text-[#cc2532] dark:text-[#cc2532]"
@@ -2215,7 +2190,6 @@ export default function Cart() {
                     <Plus className="h-4 w-4 md:h-5 md:w-5" />
                     <span className="text-sm md:text-base font-medium">Add more items</span>
                   </button>
-                )}
               </div>
 
               {/* Delivery Time
@@ -2359,7 +2333,7 @@ export default function Cart() {
               {/* Complete your meal section - Approved Addons */}
               {(() => {
                 const visibleAddons = vegMode ? addons.filter(addon => addon.isVeg !== false) : addons;
-                if (visibleAddons.length === 0 || cart.some(item => item.isCustomCake)) return null;
+                if (visibleAddons.length === 0) return null;
                 return (
                   <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                     <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
@@ -2867,7 +2841,7 @@ export default function Cart() {
             <button
               onClick={handlePlaceOrder}
               disabled={isPlacingOrder || hasUnavailableItems || (selectedPaymentMethod === "wallet" && walletBalance < total)}
-              className="w-full bg-gradient-to-r from-[#cc2532] to-[#E23744] hover:from-[#a81e29] hover:to-[#CF2834] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#cc2532]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-[#008226] to-[#09962e] hover:from-[#006f20] hover:to-[#088027] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#008226]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
             >
               {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
                 <div className="text-left flex flex-col justify-center border-r-[1.5px] border-white/20 pr-4">

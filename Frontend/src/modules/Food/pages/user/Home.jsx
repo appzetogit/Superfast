@@ -38,7 +38,6 @@ import {
   Plus,
   Check,
   Share2,
-  Cake,
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll } from "framer-motion";
 import {

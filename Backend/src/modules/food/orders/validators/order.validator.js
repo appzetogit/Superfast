@@ -56,9 +56,6 @@ export function validateCalculateOrderDto(body) {
         zoneId: z.string().optional(),
         couponCode: z.string().optional(),
         deliveryFleet: z.string().optional(),
-        scheduledAt: z.string().optional(),
-        isCustomCake: z.boolean().optional().default(false),
-        customCakeRequestId: z.string().optional()
     }).superRefine((data, ctx) => {
         const hasFoodItems = data.items.some((item) => item.type === 'food');
         const hasQuickItems = data.items.some((item) => item.type === 'quick');
@@ -126,9 +123,6 @@ export function validateCreateOrderDto(body) {
         // 'razorpay_qr' means COD-style flow, but payment is collected via Razorpay QR at delivery.
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet']),
         zoneId: z.string().nullable().optional(),
-        scheduledAt: z.string().optional(),
-        isCustomCake: z.boolean().optional().default(false),
-        customCakeRequestId: z.string().optional()
     }).superRefine((data, ctx) => {
         const hasFoodItems = data.items.some((item) => item.type === 'food');
         const hasQuickItems = data.items.some((item) => item.type === 'quick');

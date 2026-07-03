@@ -300,7 +300,7 @@ export default function Checkout() {
                   </div>
 
                   <Button
-                    className="w-full bg-[#cc2532] hover:bg-[#a81e29] text-white mt-4 md:mt-6 h-11 md:h-12 text-sm md:text-base border-none"
+                    className="w-full bg-[#008226] hover:bg-[#006f20] text-white mt-4 md:mt-6 h-11 md:h-12 text-sm md:text-base border-none"
                     onClick={handlePlaceOrder}
                     disabled={isPlacingOrder || !selectedAddress || !selectedPayment}
                   >
