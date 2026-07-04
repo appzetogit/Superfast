@@ -5,9 +5,9 @@ import { adminAPI } from "@food/api"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { radiallySortCoordinates } from "@food/utils/mapDrawingUtils"
 import { Loader } from "@googlemaps/js-api-loader"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 export default function AddZone() {
@@ -22,18 +22,18 @@ export default function AddZone() {
   const pathMarkersRef = useRef([])
   const drawingPointsRef = useRef([])
   const mapClickListenerRef = useRef(null)
-  
+
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
   const [loading, setLoading] = useState(false)
-  
+
   // Form state
   const [formData, setFormData] = useState({
     country: "India",
     zoneName: "",
     unit: "kilometer",
   })
-  
+
   const [coordinates, setCoordinates] = useState([])
   const [isDrawing, setIsDrawing] = useState(false)
   const [locationSearch, setLocationSearch] = useState("")
@@ -66,19 +66,19 @@ export default function AddZone() {
         // No `geocode` type — it routes predictions through Geocoding-style endpoints.
         componentRestrictions: { country: 'in' } // Restrict to India
       })
-      
+
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace()
         if (place.geometry && place.geometry.location && mapInstanceRef.current) {
           const location = place.geometry.location
           mapInstanceRef.current.setCenter(location)
           mapInstanceRef.current.setZoom(15) // Zoom in when location is selected
-          
+
           // Set the search input value
           setLocationSearch(place.formatted_address || place.name || "")
         }
       })
-      
+
       autocompleteRef.current = autocomplete
     }
   }, [mapLoading])
@@ -107,7 +107,7 @@ export default function AddZone() {
       const response = await adminAPI.getZones({ limit: 1000 })
       if (response.data?.success && response.data.data?.zones) {
         // Filter out the current zone if in edit mode
-        const zones = isEditMode && id 
+        const zones = isEditMode && id
           ? response.data.data.zones.filter(zone => zone._id !== id)
           : response.data.data.zones
         setExistingZones(zones)
@@ -129,7 +129,7 @@ export default function AddZone() {
           zoneName: zoneData.name || zoneData.zoneName || "",
           unit: zoneData.unit || "kilometer",
         })
-        
+
         if (zoneData.coordinates && zoneData.coordinates.length > 0) {
           setCoordinates(zoneData.coordinates)
         }
@@ -147,18 +147,18 @@ export default function AddZone() {
     try {
       const apiKey = await getGoogleMapsApiKey()
       setGoogleMapsApiKey(apiKey || "loaded")
-      
+
       // Wait for Google Maps to be loaded from main.jsx if it's loading
       let retries = 0
       const maxRetries = 50 // Wait up to 5 seconds (50 * 100ms)
-      
+
       while (!window.google && retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 100))
         retries++
       }
 
-      // If Google Maps is already loaded (from main.jsx), use it directly
-      if (window.google && window.google.maps) {
+      // If Google Maps is already loaded with places and drawing libraries, use it directly
+      if (window.google && window.google.maps && window.google.maps.places && window.google.maps.drawing) {
         initializeMap(window.google)
         return
       }
@@ -367,7 +367,7 @@ export default function AddZone() {
         zIndex: 1
       });
     }
-    
+
     // Calculate radially sorted coordinates for preview
     const sortedCoords = radiallySortCoordinates(drawingPointsRef.current);
     polygonRef.current.setPath(sortedCoords);
@@ -386,12 +386,12 @@ export default function AddZone() {
     // Sort and update state
     const sortedCoords = radiallySortCoordinates(drawingPointsRef.current);
     drawingPointsRef.current = sortedCoords;
-    
+
     // Update markers positions based on sorted order
     markersRef.current.forEach((m, i) => {
       m.setPosition(sortedCoords[i]);
     });
-    
+
     setCoordinates(sortedCoords.map(c => ({ latitude: c.lat, longitude: c.lng })));
   }
 
@@ -403,17 +403,17 @@ export default function AddZone() {
       // Finish Drawing
       setIsDrawing(false);
       map.setOptions({ draggableCursor: null });
-      
+
       // Remove map click listener
       if (mapClickListenerRef.current) {
         window.google.maps.event.removeListener(mapClickListenerRef.current);
         mapClickListenerRef.current = null;
       }
-      
+
       // Clear custom drawing markers
       markersRef.current.forEach(m => m.setMap(null));
       markersRef.current = [];
-      
+
       // Finalize polygon
       if (drawingPointsRef.current.length >= 3) {
         const sortedCoords = radiallySortCoordinates(drawingPointsRef.current);
@@ -434,12 +434,12 @@ export default function AddZone() {
       clearDrawing(); // Reset existing drawing
       setIsDrawing(true);
       map.setOptions({ draggableCursor: 'crosshair' });
-      
+
       mapClickListenerRef.current = window.google.maps.event.addListener(map, 'click', (e) => {
         const latLng = { lat: e.latLng.lat(), lng: e.latLng.lng() };
         const newIndex = drawingPointsRef.current.length;
         drawingPointsRef.current.push(latLng);
-        
+
         const marker = new window.google.maps.Marker({
           position: latLng,
           map: map,
@@ -454,12 +454,12 @@ export default function AddZone() {
           },
           zIndex: 1000
         });
-        
+
         window.google.maps.event.addListener(marker, 'drag', () => handleMarkerDrag(marker, newIndex));
         window.google.maps.event.addListener(marker, 'dragend', handleMarkerDragEnd);
-        
+
         markersRef.current.push(marker);
-        
+
         if (drawingPointsRef.current.length >= 3) {
           updatePreviewPolygon();
         }
@@ -493,7 +493,7 @@ export default function AddZone() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!formData.zoneName) {
       alert("Please enter a zone name")
       return
@@ -511,7 +511,7 @@ export default function AddZone() {
 
     try {
       setLoading(true)
-      
+
       // Validate coordinates format
       if (!coordinates || coordinates.length < 3) {
         alert("Please draw at least 3 points on the map")
@@ -555,27 +555,27 @@ export default function AddZone() {
       navigate("/admin/food/zone-setup")
     } catch (error) {
       debugError("Error creating zone:", error)
-      
+
       // Handle different types of errors
       let errorMessage = "Failed to create zone. Please try again."
-      
+
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
         // Network error - backend not running or CORS issue
         errorMessage = "Cannot connect to server. Please make sure the backend server is running."
         debugError("Network error: Backend server might not be running")
       } else if (error.response) {
         // API error with response
-        errorMessage = error.response.data?.message || 
-                      error.response.data?.error || 
-                      error.message || 
-                      `Server error: ${error.response.status}`
+        errorMessage = error.response.data?.message ||
+          error.response.data?.error ||
+          error.message ||
+          `Server error: ${error.response.status}`
         debugError("API error:", error.response.data)
         debugError("Error status:", error.response.status)
       } else {
         // Other errors
         errorMessage = error.message || errorMessage
       }
-      
+
       alert(errorMessage)
     } finally {
       setLoading(false)
@@ -614,7 +614,7 @@ export default function AddZone() {
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4">Zone Details</h2>
-                
+
                 <div className="space-y-4">
                   {/* Country Selection */}
                   <div>
@@ -678,11 +678,10 @@ export default function AddZone() {
                   <button
                     type="button"
                     onClick={toggleDrawingMode}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      isDrawing
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isDrawing
                         ? "bg-red-600 text-white hover:bg-red-700"
                         : "bg-blue-600 text-white hover:bg-blue-700"
-                    }`}
+                      }`}
                   >
                     <Shapes className="w-4 h-4" />
                     <span>{isDrawing ? "Stop Drawing" : "Start Drawing"}</span>
@@ -724,7 +723,7 @@ export default function AddZone() {
 
               <div className="relative" style={{ height: "600px" }}>
                 <div ref={mapRef} className="w-full h-full rounded-lg" />
-                
+
                 {mapLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
                     <div className="text-center">

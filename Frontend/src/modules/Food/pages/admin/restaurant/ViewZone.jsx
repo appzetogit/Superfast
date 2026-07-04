@@ -234,11 +234,19 @@ const coordinatesLength = useMemo(() => zone?.coordinates?.length || 0, [zone?.c
       polygonRef.current = polygon
       debugLog("Polygon created and added to map")
 
-      // Fit map to polygon bounds
+      // Fit map to polygon bounds with padding, keeping the entire boundary visible
       const bounds = new google.maps.LatLngBounds()
       path.forEach(latLng => bounds.extend(latLng))
-      map.fitBounds(bounds)
-      debugLog("Map fitted to polygon bounds")
+      map.panTo(bounds.getCenter())
+      map.fitBounds(bounds, 50)
+      
+      // Limit maximum zoom level only to prevent zooming in too close on small zones
+      const listener = google.maps.event.addListenerOnce(map, "zoom_changed", () => {
+        if (map.getZoom() > 15) {
+          map.setZoom(15)
+        }
+      })
+      debugLog("Map fitted to polygon bounds with padding")
 
       // Add markers for each point
       coordinates.forEach((coord, index) => {

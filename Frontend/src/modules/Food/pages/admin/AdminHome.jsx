@@ -665,18 +665,17 @@ function MetricCard({ title, value, helper, icon, accent, path }) {
   const navigate = useNavigate()
   return (
     <Card
-      className="group relative overflow-hidden border-neutral-200 bg-white p-0 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
+      className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-0 cursor-pointer transition-all duration-300 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.1)] hover:-translate-y-1 active:scale-[0.98]"
       onClick={() => path && navigate(path)}
     >
-      <CardContent className="relative flex flex-col gap-2 px-4 pb-4 pt-4 h-full">
-        <div className={`absolute inset-0 opacity-40 transition-opacity duration-300 group-hover:opacity-60 ${accent}`} />
+      <CardContent className="relative flex flex-col gap-2 px-5 pb-5 pt-5 h-full">
         <div className="relative flex items-center justify-between z-10">
-          <div className="flex-1 min-w-0 mr-2">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold mb-1 truncate">{title}</p>
-            <p className="text-xl font-bold text-neutral-900 leading-tight mb-1">{value}</p>
-            <p className="text-[10px] text-neutral-500 font-medium line-clamp-1">{helper}</p>
+          <div className="flex-1 min-w-0 mr-3">
+            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-bold mb-1 truncate">{title}</p>
+            <p className="text-2xl font-bold text-slate-800 leading-tight mb-1">{value}</p>
+            <p className="text-[11px] text-gray-400 font-medium line-clamp-1">{helper}</p>
           </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/90 ring-1 ring-neutral-200 shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-md">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-sm border border-white/50 ${accent.replace('/40', '')}`}>
             {icon}
           </div>
         </div>

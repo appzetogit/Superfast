@@ -3,21 +3,21 @@ import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2 } from "lucide-rea
 
 const getStatusColor = (orderStatus) => {
   const colors = {
-    "Delivered": "bg-emerald-100 text-emerald-700",
-    "Pending": "bg-blue-100 text-blue-700",
-    "Scheduled": "bg-blue-100 text-blue-700",
-    "Accepted": "bg-green-100 text-green-700",
-    "Processing": "bg-orange-100 text-orange-700",
-    "Food On The Way": "bg-yellow-100 text-yellow-700",
-    "Canceled": "bg-rose-100 text-rose-700",
-    "Cancelled by Restaurant": "bg-red-100 text-red-700",
-    "Cancelled by User": "bg-orange-100 text-orange-700",
-    "Payment Failed": "bg-red-100 text-red-700",
-    "Refunded": "bg-sky-100 text-sky-700",
-    "Dine In": "bg-indigo-100 text-indigo-700",
-    "Offline Payments": "bg-slate-100 text-slate-700",
+    "Delivered": "bg-[#E8F8F0] text-[#00A669]",
+    "Pending": "bg-blue-50 text-blue-600",
+    "Scheduled": "bg-blue-50 text-blue-600",
+    "Accepted": "bg-[#E8F8F0] text-[#00A669]",
+    "Processing": "bg-orange-50 text-orange-600",
+    "Food On The Way": "bg-yellow-50 text-yellow-600",
+    "Canceled": "bg-red-50 text-red-600",
+    "Cancelled by Restaurant": "bg-red-50 text-red-600",
+    "Cancelled by User": "bg-orange-50 text-orange-600",
+    "Payment Failed": "bg-red-50 text-red-600",
+    "Refunded": "bg-sky-50 text-sky-600",
+    "Dine In": "bg-indigo-50 text-indigo-600",
+    "Offline Payments": "bg-gray-50 text-gray-600",
   }
-  return colors[orderStatus] || "bg-slate-100 text-slate-700"
+  return colors[orderStatus] || "bg-gray-50 text-gray-600"
 }
 
 const getPaymentStatusColor = (paymentStatus) => {
@@ -28,9 +28,9 @@ const getPaymentStatusColor = (paymentStatus) => {
 }
 
 const getOrderTypeColor = (orderType) => {
-  if (orderType === "Mixed") return "bg-amber-100 text-amber-700"
-  if (orderType === "Quick") return "bg-cyan-100 text-cyan-700"
-  return "bg-emerald-100 text-emerald-700"
+  if (orderType === "Mixed") return "bg-amber-50 text-amber-600"
+  if (orderType === "Quick") return "bg-cyan-50 text-cyan-600"
+  return "bg-[#E8F8F0] text-[#00A669]"
 }
 
 export default function OrdersTable({
@@ -82,10 +82,10 @@ export default function OrdersTable({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
+    <div className="bg-white rounded-2xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden w-full max-w-full">
       <div className="overflow-x-auto">
         <table className="w-full min-w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-white border-b border-gray-100">
             <tr>
               {visibleColumns.si && (
                 <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
@@ -190,11 +190,11 @@ export default function OrdersTable({
               )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="bg-white divide-y divide-gray-50">
             {paginatedOrders.map((order, index) => (
               <tr 
                 key={order.orderId} 
-                className="hover:bg-slate-50 transition-colors"
+                className="hover:bg-[#F4F7F6]/50 transition-colors"
               >
                 {visibleColumns.si && (
                   <td className="px-6 py-4 whitespace-nowrap">

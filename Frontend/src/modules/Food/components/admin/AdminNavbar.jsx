@@ -45,9 +45,9 @@ import { adminAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings";
 import useAdminNotifications from "@food/hooks/useAdminNotifications";
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 export default function AdminNavbar({ onMenuClick }) {
@@ -309,13 +309,19 @@ export default function AdminNavbar({ onMenuClick }) {
               <Search className="w-4 h-4 text-neutral-700" />
               <span className="text-sm flex-1 text-left text-neutral-700">Search</span>
               <span className="text-xs px-2 py-0.5 rounded bg-white text-neutral-600 border border-neutral-200">
-                Ctrl+K
+                ⌘K
               </span>
             </button>
           </div>
 
-          {/* Right: User Profile */}
+          {/* Right: User Profile & Actions */}
           <div className="flex items-center gap-3">
+            {/* Status Badge */}
+            <div className="hidden sm:flex items-center px-3 py-1.5 rounded-full bg-[#E8F8F0] border border-[#00A669]/20">
+              <span className="w-2 h-2 rounded-full bg-[#00A669] mr-2 animate-pulse"></span>
+              <span className="text-[10px] font-bold tracking-widest text-[#00A669] uppercase">Status: Active</span>
+            </div>
+
             <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
               <PopoverTrigger asChild>
                 <button

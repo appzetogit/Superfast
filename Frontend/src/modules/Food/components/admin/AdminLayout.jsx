@@ -3,9 +3,9 @@ import { Outlet } from "react-router-dom"
 import AdminSidebar from "./AdminSidebar"
 import AdminNavbar from "./AdminNavbar"
 import { API_BASE_URL } from "@food/api/config"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 export default function AdminLayout() {
@@ -45,7 +45,7 @@ export default function AdminLayout() {
         }
       });
     });
-    
+
     observer.observe(root, { attributes: true, attributeFilter: ['class'] });
 
     return () => {
@@ -64,7 +64,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="h-screen bg-neutral-200 flex overflow-hidden">
+    <div className="h-screen bg-[#F4F7F6] flex overflow-hidden">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -96,7 +96,7 @@ export default function AdminLayout() {
         )}
 
         {/* Page Content */}
-        <main className="flex-1 min-h-0 w-full max-w-full overflow-x-hidden overflow-y-auto bg-neutral-100">
+        <main className="flex-1 min-h-0 w-full max-w-full overflow-x-hidden overflow-y-auto bg-[#F4F7F6]">
           <div style={{ marginLeft: '20px', padding: '20px 20px 48px 0px' }}>
             <Outlet />
           </div>
