@@ -183,8 +183,9 @@ const buildOnboardingLikeDataFromRestaurant = (restaurant) => {
 export const isRestaurantOnboardingComplete = (restaurant) => {
   if (!restaurant) return false
 
-  // Approved restaurants should never be forced into onboarding again.
-  if (restaurant?.status === "approved") {
+  // Approved, pending, or rejected restaurants should not be forced into onboarding flow.
+  // The dashboard layout will handle displaying the pending/rejected status.
+  if (["approved", "pending", "rejected"].includes(restaurant?.status)) {
     return true
   }
 

@@ -5234,14 +5234,26 @@ export async function getSidebarBadges() {
             pendingSafetyReports,
             pendingEmergencyHelp,
             pendingRestaurantComplaints,
-            pendingCategories
+            pendingCategories,
+            // Per-status order counts for sidebar labels
+            orderCountAll,
+            orderCountScheduled,
+            orderCountPending,
+            orderCountProcessing,
+            orderCountFoodOnTheWay,
+            orderCountDelivered,
+            orderCountCancelled,
+            orderCountRestaurantCancelled,
+            orderCountPaymentFailed,
+            orderCountRefunded,
+            orderCountOfflinePayments,
         ] = await Promise.all([
             FoodRestaurant.countDocuments({ status: 'pending' }),
             FoodDeliveryPartner.countDocuments({ status: 'pending' }),
             FoodItem.countDocuments({ approvalStatus: 'pending' }),
             FoodAddon.countDocuments({ approvalStatus: 'pending' }),
             FoodOrder.countDocuments({ orderStatus: { $in: ['created', 'placed'] } }),
-            FoodOrder.countDocuments({ paymentMethod: 'offline_payment', orderStatus: { $in: ['created', 'placed'] } }),
+            FoodOrder.countDocuments({ 'payment.method': 'cash', orderStatus: { $in: ['created', 'placed'] } }),
             FoodRestaurantWithdrawal.countDocuments({ status: 'pending' }),
             FoodDeliveryWithdrawal.countDocuments({ status: 'pending' }),
             FoodSupportTicket.countDocuments({ status: 'open', userId: { $exists: true }, restaurantId: { $exists: false } }),
@@ -5250,7 +5262,19 @@ export async function getSidebarBadges() {
             FoodSafetyEmergencyReport.countDocuments({ status: 'pending' }),
             FoodDeliveryEmergencyHelp.countDocuments({ status: 'pending' }),
             FoodSupportTicket.countDocuments({ status: 'open', restaurantId: { $exists: true } }),
-            FoodCategory.countDocuments({ approvalStatus: 'pending' })
+            FoodCategory.countDocuments({ approvalStatus: 'pending' }),
+            // Per-status order counts
+            FoodOrder.countDocuments({}),
+            FoodOrder.countDocuments({ orderStatus: 'scheduled' }),
+            FoodOrder.countDocuments({ orderStatus: { $in: ['created', 'placed', 'confirmed'] } }),
+            FoodOrder.countDocuments({ orderStatus: { $in: ['preparing', 'ready_for_pickup'] } }),
+            FoodOrder.countDocuments({ orderStatus: 'picked_up' }),
+            FoodOrder.countDocuments({ orderStatus: 'delivered' }),
+            FoodOrder.countDocuments({ orderStatus: { $in: ['cancelled_by_admin', 'cancelled_by_user'] } }),
+            FoodOrder.countDocuments({ orderStatus: 'cancelled_by_restaurant' }),
+            FoodOrder.countDocuments({ 'payment.status': 'failed' }),
+            FoodOrder.countDocuments({ 'payment.status': 'refunded' }),
+            FoodOrder.countDocuments({ 'payment.method': 'cash' }),
         ]);
 
         return {
@@ -5269,7 +5293,21 @@ export async function getSidebarBadges() {
             earningAddons: pendingEarningAddons,
             safetyReports: pendingSafetyReports,
             emergencyHelp: pendingEmergencyHelp,
-            restaurantComplaints: pendingRestaurantComplaints
+            restaurantComplaints: pendingRestaurantComplaints,
+            // Per-status order counts
+            orderCounts: {
+                all: orderCountAll,
+                scheduled: orderCountScheduled,
+                pending: orderCountPending,
+                processing: orderCountProcessing,
+                foodOnTheWay: orderCountFoodOnTheWay,
+                delivered: orderCountDelivered,
+                cancelled: orderCountCancelled,
+                restaurantCancelled: orderCountRestaurantCancelled,
+                paymentFailed: orderCountPaymentFailed,
+                refunded: orderCountRefunded,
+                offlinePayments: orderCountOfflinePayments,
+            },
         };
     } catch (error) {
         console.error('Error fetching sidebar badges:', error);

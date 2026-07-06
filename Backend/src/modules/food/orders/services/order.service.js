@@ -4465,7 +4465,7 @@ export async function listOrdersAdmin(query) {
   const filter = {
     orderType: { $in: ["food", "mixed"] },
     $or: [
-      { "payment.method": { $in: ["cash", "wallet"] } },
+      { "payment.method": { $in: ["cash", "cod", "wallet"] } },
       { "payment.status": { $in: ["paid", "authorized", "captured", "settled", "refunded"] } },
     ],
   };
@@ -4485,9 +4485,6 @@ export async function listOrdersAdmin(query) {
     switch (rawStatus) {
       case "pending":
         filter.orderStatus = { $in: ["created", "confirmed"] };
-        break;
-      case "accepted":
-        filter.orderStatus = "confirmed";
         break;
       case "processing":
         filter.orderStatus = { $in: ["preparing", "ready_for_pickup"] };
@@ -4515,7 +4512,6 @@ export async function listOrdersAdmin(query) {
         break;
       case "offline-payments":
         filter["payment.method"] = "cash";
-        filter.orderStatus = { $in: ["created", "confirmed", "delivered"] };
         break;
       case "scheduled":
         filter.scheduledAt = { $ne: null };
@@ -5293,3 +5289,240 @@ export async function processReassignmentTimeout(orderMongoId, pendingDriverId) 
     logger.warn(`FCM push failed for reassignment timeout: ${err.message}`);
   }
 }
+
+/**
+ * Admin status update service that triggers appropriate workflows for user, driver, restaurant, and admin.
+ */
+export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
+  const VALID_STATUSES = [
+    'placed', 'preparing', 'ready_for_pickup', 'picked_up', 'delivered', 'cancelled_by_admin'
+  ];
+
+  if (!VALID_STATUSES.includes(orderStatus)) {
+    throw new ValidationError(`Invalid status '${orderStatus}'. Allowed: ${VALID_STATUSES.join(', ')}`);
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new ValidationError('Invalid order id');
+  }
+
+  let order = await FoodOrder.findById(orderId);
+  if (!order) {
+    order = await FoodOrder.findOne({ orderId });
+  }
+  if (!order) throw new NotFoundError('Order not found');
+
+  const from = order.orderStatus;
+  order.orderStatus = orderStatus;
+
+  pushStatusHistory(order, {
+    byRole: 'ADMIN',
+    byId: adminId,
+    from,
+    to: orderStatus,
+    note: `Admin updated status from ${from} to ${orderStatus}`
+  });
+
+  // Handle specific status changes and timestamps
+  if (orderStatus === 'delivered') {
+    order.deliveredAt = new Date();
+  }
+
+  if (orderStatus === 'cancelled_by_admin') {
+    order.cancelledAt = new Date();
+    order.cancelledBy = 'admin';
+
+    // If online paid, refund. If cash, fail/cancel.
+    const isOnlinePaid = order.payment?.method === "razorpay" && 
+      (order.payment?.status === "paid" || order.payment?.status === "refunded");
+    if (!isOnlinePaid) {
+      order.payment.status = "cancelled";
+    }
+  }
+
+  await order.save();
+
+  // 1. Transaction Sync
+  if (orderStatus === 'cancelled_by_admin') {
+    try {
+      const isOnlinePaid = order.payment?.method === "razorpay" && 
+        (order.payment?.status === "paid" || order.payment?.status === "refunded");
+      await foodTransactionService.updateTransactionStatus(order._id, 'cancelled_by_admin', {
+        status: isOnlinePaid ? 'refunded' : 'failed',
+        note: `Order cancelled by admin`,
+        recordedByRole: 'ADMIN',
+        recordedById: adminId
+      });
+    } catch (err) {
+      logger.warn(`updateOrderStatusAdmin transaction cancellation sync failed: ${err.message}`);
+    }
+  } else if (orderStatus === 'delivered') {
+    try {
+      const ledgerKind = (order.payment?.method === 'cash' || order.payment?.method === 'cod')
+        ? 'cod_collected_by_delivery_partner'
+        : 'delivered';
+      await foodTransactionService.updateTransactionStatus(order._id, ledgerKind, {
+        status: 'success',
+        note: `Order delivered by admin status update`,
+        recordedByRole: 'ADMIN',
+        recordedById: adminId
+      });
+    } catch (err) {
+      logger.warn(`updateOrderStatusAdmin transaction delivery sync failed: ${err.message}`);
+    }
+  }
+
+  // 2. Real-time WebSocket notifications
+  const io = getIO();
+  if (io) {
+    try {
+      const payload = {
+        orderMongoId: order._id.toString(),
+        orderId: order.orderId,
+        orderStatus: order.orderStatus,
+        title: `Order ${order.orderId} updated by admin`,
+        message: `Status changed to ${String(orderStatus).replace(/_/g, ' ')}`
+      };
+
+      if (order.restaurantId) {
+        io.to(rooms.restaurant(order.restaurantId)).emit('order_status_update', payload);
+      }
+      if (order.userId) {
+        io.to(rooms.user(order.userId)).emit('order_status_update', payload);
+      }
+      if (order.dispatch?.deliveryPartnerId) {
+        io.to(rooms.delivery(order.dispatch.deliveryPartnerId)).emit('order_status_update', payload);
+      }
+    } catch (err) {
+      logger.warn(`updateOrderStatusAdmin socket emit failed: ${err.message}`);
+    }
+  }
+
+  // 3. User & Restaurant Firebase Cloud Messaging (FCM) Push Notifications
+  try {
+    let title = `Order ${order.orderId} updated`;
+    let body = `Status changed to ${String(orderStatus).replace(/_/g, " ")}`;
+
+    if (orderStatus === "preparing") {
+      title = "Food is being prepared! 🍳";
+      body = "Your food is currently being prepared by the restaurant.";
+    } else if (orderStatus === "ready_for_pickup") {
+      title = "Food is ready! 🛍️";
+      body = "Your order is ready and waiting to be picked up.";
+    } else if (orderStatus === "picked_up") {
+      title = "Food on the way! 🛵";
+      body = "Your order has been picked up by the delivery partner and is on the way.";
+    } else if (orderStatus === "delivered") {
+      title = "Order Delivered! 🎉";
+      body = "Your order has been delivered successfully. Enjoy your food!";
+    } else if (orderStatus === "cancelled_by_admin") {
+      const isOnlinePaid = order.payment?.method === "razorpay" && 
+        (order.payment?.status === "paid" || order.payment?.status === "refunded");
+      const refundDetail = isOnlinePaid ? ` Your refund of ₹${order.pricing?.total || 0} is being processed.` : "";
+      title = "Order Cancelled ❌";
+      body = `Unfortunately, your order has been cancelled by the admin.${refundDetail}`;
+    }
+
+    await notifyOwnersSafely(
+      [{ ownerType: "USER", ownerId: order.userId }],
+      {
+        title,
+        body,
+        image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
+        data: {
+          type: "order_status_update",
+          orderId: order.orderId,
+          orderMongoId: order._id.toString(),
+          orderStatus,
+          link: `/food/user/orders/${order._id.toString()}`
+        }
+      }
+    );
+
+    if (order.restaurantId) {
+      await notifyOwnersSafely(
+        [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
+        {
+          title: `Admin status update`,
+          body: `Order #${order.orderId} status set to ${orderStatus}`,
+          image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
+          data: {
+            type: "order_status_update",
+            orderId: order.orderId,
+            orderMongoId: order._id.toString(),
+            orderStatus,
+            link: `/restaurant/orders/${order._id.toString()}`
+          }
+        }
+      );
+    }
+  } catch (err) {
+    logger.warn(`updateOrderStatusAdmin push notification failed: ${err.message}`);
+  }
+
+  // 4. Driver Dispatch & Notifications
+  if (orderStatus === "preparing" && from !== "preparing") {
+    // Trigger dispatch
+    if (order.dispatch?.status === "unassigned" && order.dispatch?.modeAtCreation === "auto") {
+      try {
+        await tryAutoAssign(order._id);
+        order = await FoodOrder.findById(order._id);
+      } catch (err) {
+        logger.error(`updateOrderStatusAdmin auto-assign failed: ${err.message}`);
+      }
+    }
+
+    try {
+      const restaurant = await FoodRestaurant.findById(order.restaurantId)
+        .select("restaurantName location addressLine1 area city state")
+        .lean();
+      const payload = buildDeliverySocketPayload(order, restaurant);
+
+      if (order.dispatch?.deliveryPartnerId) {
+        io?.to(rooms.delivery(order.dispatch.deliveryPartnerId)).emit("new_order", payload);
+        io?.to(rooms.delivery(order.dispatch.deliveryPartnerId)).emit("play_notification_sound", { orderId: order.orderId });
+      } else {
+        // Send to near/active drivers if auto mode did not assign yet
+        const { getAvailableDriversForOrder } = await import('./order.service.js');
+        const drivers = await getAvailableDriversForOrder(order._id);
+        for (const d of drivers) {
+          io?.to(rooms.delivery(d.partnerId)).emit("play_notification_sound", { orderId: order.orderId });
+        }
+      }
+    } catch (err) {
+      logger.warn(`updateOrderStatusAdmin dispatch alert failed: ${err.message}`);
+    }
+  }
+
+  if (orderStatus === "ready_for_pickup" && order.dispatch?.deliveryPartnerId) {
+    // Notify driver order is ready
+    try {
+      const restaurant = await FoodRestaurant.findById(order.restaurantId)
+        .select("restaurantName location addressLine1 area city state")
+        .lean();
+      const payload = buildDeliverySocketPayload(order, restaurant);
+      io?.to(rooms.delivery(order.dispatch.deliveryPartnerId)).emit('order_ready', payload);
+
+      await notifyOwnersSafely(
+        [{ ownerType: "DELIVERY_PARTNER", ownerId: order.dispatch.deliveryPartnerId }],
+        {
+          title: "Order Ready for Pickup 🛍️",
+          body: `Order #${order.orderId} is ready and waiting at the restaurant.`,
+          image: "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png",
+          data: {
+            type: "order_status_update",
+            orderId: order.orderId,
+            orderMongoId: order._id.toString(),
+            orderStatus,
+            link: `/delivery/orders/${order._id.toString()}`
+          }
+        }
+      );
+    } catch (err) {
+      logger.warn(`updateOrderStatusAdmin driver ready notification failed: ${err.message}`);
+    }
+  }
+
+  return order;
+}
+

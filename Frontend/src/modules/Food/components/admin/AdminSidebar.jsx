@@ -204,6 +204,42 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (l.includes("join request") || p.includes("join-request")) return badges.deliveryPartners
     return 0
   }
+
+  // Returns count for order-status sidebar items (shows for all order sub-items)
+  const getOrderStatusCount = (path = "") => {
+    const oc = badges.orderCounts
+    if (!oc) return null
+    const p = path.toLowerCase()
+    if (p.endsWith("/orders/all")) return oc.all ?? null
+    if (p.includes("/orders/scheduled")) return oc.scheduled ?? null
+    if (p.includes("/orders/pending")) return oc.pending ?? null
+    if (p.includes("/orders/processing")) return oc.processing ?? null
+    if (p.includes("/orders/food-on-the-way")) return oc.foodOnTheWay ?? null
+    if (p.includes("/orders/delivered")) return oc.delivered ?? null
+    if (p.includes("/orders/canceled") || p.includes("/orders/cancelled")) return oc.cancelled ?? null
+    if (p.includes("/orders/restaurant-cancelled")) return oc.restaurantCancelled ?? null
+    if (p.includes("/orders/payment-failed")) return oc.paymentFailed ?? null
+    if (p.includes("/orders/refunded")) return oc.refunded ?? null
+    if (p.includes("/orders/offline-payments")) return oc.offlinePayments ?? null
+    return null
+  }
+
+  // Returns Tailwind classes for the count badge per order status
+  const getOrderBadgeStyle = (path = "") => {
+    const p = path.toLowerCase()
+    if (p.endsWith("/orders/all"))              return "bg-slate-200 text-slate-700"
+    if (p.includes("/orders/scheduled"))         return "bg-indigo-100 text-indigo-700"
+    if (p.includes("/orders/pending"))           return "bg-blue-100 text-blue-700"
+    if (p.includes("/orders/processing"))        return "bg-orange-100 text-orange-700"
+    if (p.includes("/orders/food-on-the-way"))   return "bg-amber-100 text-amber-700"
+    if (p.includes("/orders/delivered"))         return "bg-emerald-100 text-emerald-700"
+    if (p.includes("/orders/canceled") || p.includes("/orders/cancelled")) return "bg-rose-100 text-rose-700"
+    if (p.includes("/orders/restaurant-cancelled")) return "bg-red-100 text-red-700"
+    if (p.includes("/orders/payment-failed"))    return "bg-red-100 text-red-700"
+    if (p.includes("/orders/refunded"))          return "bg-sky-100 text-sky-700"
+    if (p.includes("/orders/offline-payments"))  return "bg-slate-100 text-slate-600"
+    return "bg-slate-100 text-slate-600"
+  }
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
   const [companyName, setCompanyName] = useState(() => getCachedSettings()?.companyName || null)
 
@@ -645,11 +681,33 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
                       isActive(subItem.path, allSubPaths) ? "bg-white scale-125" : "bg-neutral-500"
                     )}></span>
                     <span className="text-left flex-1 truncate">{subItem.label}</span>
-                    {getBadgeCount(subItem.label, subItem.path) > 0 && (
-                      <span className="shrink-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 min-w-[18px] text-center">
-                        {getBadgeCount(subItem.label, subItem.path) > 99 ? "99+" : getBadgeCount(subItem.label, subItem.path)}
-                      </span>
-                    )}
+                    {/* Order-status count badge (shown for all order sub-items) */}
+                    {(() => {
+                      const orderCount = getOrderStatusCount(subItem.path)
+                      if (orderCount !== null) {
+                        const isActive_ = isActive(subItem.path, allSubPaths)
+                        return (
+                          <span className={cn(
+                            "shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto min-w-[20px] text-center transition-all",
+                            isActive_
+                              ? "bg-white/25 text-white"
+                              : getOrderBadgeStyle(subItem.path)
+                          )}>
+                            {orderCount > 999 ? "999+" : orderCount}
+                          </span>
+                        )
+                      }
+                      // Non-order generic badge (red, only when > 0)
+                      const count = getBadgeCount(subItem.label, subItem.path)
+                      if (count > 0) {
+                        return (
+                          <span className="shrink-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 min-w-[18px] text-center">
+                            {count > 99 ? "99+" : count}
+                          </span>
+                        )
+                      }
+                      return null
+                    })()}
                   </Link>
                 )
               })}

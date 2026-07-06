@@ -28,7 +28,6 @@ const statusConfig = {
   "all": { title: "All Orders", color: "emerald", icon: FileText },
   "scheduled": { title: "Scheduled Orders", color: "blue", icon: Calendar },
   "pending": { title: "Pending Orders", color: "amber", icon: Package },
-  "accepted": { title: "Accepted Orders", color: "green", icon: Package },
   "processing": { title: "Processing Orders", color: "orange", icon: Package },
   "food-on-the-way": { title: "Food On The Way Orders", color: "amber", icon: Package },
   "delivered": { title: "Delivered Orders", color: "emerald", icon: Package },
@@ -525,6 +524,8 @@ export default function OrdersPage({ statusKey = "all" }) {
         paymentType,
         paymentStatus,
         orderStatus: displayStatus,
+        rawOrderStatus: backendStatus || order.orderStatus,
+
         deliveryPartnerName,
         deliveryPartnerPhone,
         deliveryType: order.deliveryType || "Home Delivery",
@@ -974,7 +975,9 @@ export default function OrdersPage({ statusKey = "all" }) {
         isOpen={isViewOrderOpen}
         onOpenChange={setIsViewOrderOpen}
         order={selectedOrder}
+        onStatusUpdated={() => fetchOrders({ silent: true, withRingCheck: false })}
       />
+
       <RefundModal
         isOpen={refundModalOpen}
         onOpenChange={setRefundModalOpen}

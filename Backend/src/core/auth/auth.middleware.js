@@ -42,7 +42,7 @@ export const authMiddleware = (req, res, next) => {
             return;
         } else if (decoded.role === 'RESTAURANT') {
             FoodRestaurant.findById(decoded.userId).select('status').lean().then((doc) => {
-                if (!doc || doc.status === 'rejected') return sendError(res, 401, 'Restaurant account is rejected');
+                if (!doc) return sendError(res, 401, 'Restaurant account not found');
                 next();
             }).catch(() => sendError(res, 401, 'Authentication failed'));
             return;

@@ -621,6 +621,10 @@ export const adminAPI = {
     apiClient.post(`/food/admin/orders/${String(orderId)}/refund`, body ?? {}, {
       contextModule: "admin",
     }),
+  updateOrderStatus: (orderId, orderStatus) =>
+    apiClient.patch(`/food/admin/orders/${String(orderId)}/status`, { orderStatus }, {
+      contextModule: "admin",
+    }),
   deleteOrder: (orderId) =>
     apiClient.delete(`/food/admin/orders/${String(orderId)}`, {
       contextModule: "admin",

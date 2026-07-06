@@ -9,6 +9,20 @@ import {
 } from "@food/components/ui/dropdown-menu"
 import { FileSpreadsheet, FileText } from "lucide-react"
 
+const TITLE_STATUS_MAP = {
+  "All Orders":                   { badge: "bg-slate-100 text-slate-700",   dot: "bg-slate-400" },
+  "Scheduled Orders":             { badge: "bg-indigo-50 text-indigo-700",   dot: "bg-indigo-500" },
+  "Pending Orders":               { badge: "bg-blue-50 text-blue-700",       dot: "bg-blue-500" },
+  "Processing Orders":            { badge: "bg-orange-50 text-orange-700",   dot: "bg-orange-500" },
+  "Food On The Way Orders":       { badge: "bg-amber-50 text-amber-700",     dot: "bg-amber-500" },
+  "Delivered Orders":             { badge: "bg-[#E8F8F0] text-emerald-700",  dot: "bg-emerald-500" },
+  "Canceled Orders":              { badge: "bg-rose-50 text-rose-700",       dot: "bg-rose-500" },
+  "Restaurant Cancelled Orders":  { badge: "bg-red-50 text-red-700",         dot: "bg-red-500" },
+  "Payment Failed Orders":        { badge: "bg-red-50 text-red-700",         dot: "bg-red-500" },
+  "Refunded Orders":              { badge: "bg-sky-50 text-sky-700",         dot: "bg-sky-500" },
+  "Offline Payments":             { badge: "bg-slate-100 text-slate-600",    dot: "bg-slate-400" },
+}
+
 export default function OrdersTopbar({
   title,
   count,
@@ -19,15 +33,13 @@ export default function OrdersTopbar({
   onExport,
   onSettingsClick,
 }) {
+  const titleCfg = TITLE_STATUS_MAP[title] || { badge: "bg-slate-100 text-slate-700", dot: "bg-slate-400" }
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             {title}
-            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-              {count}
-            </span>
           </h1>
         </div>
         <div className="flex items-center gap-3">

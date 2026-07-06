@@ -205,6 +205,7 @@ router.post('/orders/:orderId/assign', orderController.assignDeliveryPartnerCont
 router.post('/orders/:orderId/reassign', orderController.reassignDeliveryPartnerController);
 router.get('/orders/:orderId/available-drivers', orderController.getAvailableDriversForOrderController);
 router.get('/orders/:orderId/reassignment-history', orderController.getReassignmentHistoryController);
+router.patch('/orders/:orderId/status', orderController.updateOrderStatusAdminController);
 
 // ----- CMS Pages (About + legal) -----
 router.get('/pages-social-media/:key', getAdminPageController);

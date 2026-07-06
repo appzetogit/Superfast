@@ -80,7 +80,6 @@ export const adminSidebarMenu = [
           { label: "All", path: "/admin/food/orders/all" },
           { label: "Scheduled", path: "/admin/food/orders/scheduled" },
           { label: "Pending", path: "/admin/food/orders/pending" },
-          { label: "Accepted", path: "/admin/food/orders/accepted" },
           { label: "Processing", path: "/admin/food/orders/processing" },
           { label: "Food On The Way", path: "/admin/food/orders/food-on-the-way" },
           { label: "Delivered", path: "/admin/food/orders/delivered" },

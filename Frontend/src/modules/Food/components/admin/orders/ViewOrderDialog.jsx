@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2 } from "lucide-react"
+import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -7,9 +8,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@food/components/ui/dialog"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 const getStatusColor = (orderStatus) => {
@@ -38,7 +39,18 @@ const getPaymentStatusColor = (paymentStatus) => {
   return "text-slate-600"
 }
 
-export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
+// Status options: { label shown in UI -> raw DB enum value }
+const ADMIN_STATUS_OPTIONS = [
+  { label: 'Pending', value: 'placed' },
+  { label: 'Processing', value: 'preparing' },
+  { label: 'Handover', value: 'ready_for_pickup' },
+  { label: 'Out For Delivery', value: 'picked_up' },
+  { label: 'Delivered', value: 'delivered' },
+  { label: 'Cancelled', value: 'cancelled_by_admin' },
+];
+
+
+export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusUpdated }) {
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [availableDrivers, setAvailableDrivers] = useState([]);
   const [selectedDriverId, setSelectedDriverId] = useState("");
@@ -47,6 +59,8 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
   const [isSubmittingReassign, setIsSubmittingReassign] = useState(false);
   const [reassignMessage, setReassignMessage] = useState(null);
   const [countdown, setCountdown] = useState(0);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [localRawStatus, setLocalRawStatus] = useState(null);
 
   useEffect(() => {
     let timer;
@@ -72,6 +86,34 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
     }
     return () => clearInterval(timer);
   }, [order?.reassignmentStatus, order?.reassignmentHistory]);
+
+  // Sync local status whenever a new order is shown
+  useEffect(() => {
+    if (order?.rawOrderStatus) {
+      setLocalRawStatus(order.rawOrderStatus);
+    }
+  }, [order?.rawOrderStatus, order?.id]);
+
+  const handleStatusChange = async (newRawStatus) => {
+    const orderId = order?.id || order?._id;
+    if (!orderId || !newRawStatus || newRawStatus === localRawStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      const { adminAPI } = await import('@/services/api');
+      const response = await adminAPI.updateOrderStatus(orderId, newRawStatus);
+      if (response?.data?.success !== false) {
+        setLocalRawStatus(newRawStatus);
+        toast.success('Order status updated');
+        if (typeof onStatusUpdated === 'function') onStatusUpdated(orderId, newRawStatus);
+      } else {
+        toast.error(response?.data?.message || 'Failed to update status');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update status');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const fetchAvailableDrivers = async () => {
     if (!order) return;
@@ -209,9 +251,9 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                     Delivered At
                   </p>
                   <p className="text-sm font-medium text-slate-900">
-                    {new Date(order.deliveredAt).toLocaleString('en-GB', { 
-                      day: '2-digit', 
-                      month: 'short', 
+                    {new Date(order.deliveredAt).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
@@ -224,24 +266,62 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
             <div className="space-y-4">
               {order.orderStatus && (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Status</p>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
-                    {order.orderStatus}
-                  </span>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    Order Status
+                    {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin text-orange-500" />}
+                  </p>
+                  <div className="relative">
+                    {(() => {
+                      const currentStatus = localRawStatus || order.rawOrderStatus || '';
+                      const isDisabled = isUpdatingStatus || ['delivered', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(currentStatus);
+                      
+                      // Find index of current status to disable moving backwards
+                      let currentIndex = ADMIN_STATUS_OPTIONS.findIndex(opt => opt.value === currentStatus);
+                      // If current status is something like 'confirmed' or 'created', we can treat it as 'placed' for the purpose of the dropdown hierarchy
+                      if (currentIndex === -1 && ['created', 'confirmed'].includes(currentStatus)) {
+                         currentIndex = 0; // Treat as Pending
+                      }
+
+                      return (
+                        <select
+                          id="admin-order-status-select"
+                          value={currentStatus}
+                          onChange={(e) => handleStatusChange(e.target.value)}
+                          disabled={isDisabled}
+                          className="w-full text-sm font-medium rounded-lg border border-slate-200 bg-white px-3 py-2 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer appearance-none"
+                          style={{ minWidth: 160 }}
+                        >
+                          {ADMIN_STATUS_OPTIONS.map((opt, idx) => {
+                            // Disable previous statuses in the workflow (can't go backwards)
+                            // "Cancelled" (the last option) is always available unless the whole select is disabled.
+                            const isOptionDisabled = currentIndex !== -1 && idx < currentIndex && opt.value !== 'cancelled_by_admin';
+                            return (
+                              <option key={opt.value} value={opt.value} disabled={isOptionDisabled}>
+                                {opt.label}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      );
+                    })()}
+                    <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
                   {order.cancellationReason && (
                     <p className="text-xs text-red-600 mt-1">
                       <span className="font-medium">
-                        {order.cancelledBy === 'user' ? 'Cancelled by User - ' : 
-                         order.cancelledBy === 'restaurant' ? 'Cancelled by Restaurant - ' : 
-                         'Cancellation '}Reason:
+                        {order.cancelledBy === 'user' ? 'Cancelled by User - ' :
+                          order.cancelledBy === 'restaurant' ? 'Cancelled by Restaurant - ' :
+                            'Cancellation '}Reason:
                       </span> {order.cancellationReason}
                     </p>
                   )}
                   {order.cancelledAt && (
                     <p className="text-xs text-slate-500 mt-1">
-                      Cancelled: {new Date(order.cancelledAt).toLocaleString('en-GB', { 
-                        day: '2-digit', 
-                        month: 'short', 
+                      Cancelled: {new Date(order.cancelledAt).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
@@ -510,8 +590,8 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Platform Fee</span>
                 <span className="font-medium text-slate-900">
-                  {order.platformFee !== undefined && order.platformFee > 0 
-                    ? `₹${order.platformFee.toFixed(2)}` 
+                  {order.platformFee !== undefined && order.platformFee > 0
+                    ? `₹${order.platformFee.toFixed(2)}`
                     : <span className="text-slate-400">₹0.00</span>}
                 </span>
               </div>
@@ -542,7 +622,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                   <Truck className="w-5 h-5 text-orange-600" />
                   Reassign Delivery Partner
                 </h3>
-                <button 
+                <button
                   type="button"
                   onClick={() => { setShowReassignModal(false); setReassignMessage(null); }}
                   className="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600"
@@ -550,12 +630,11 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
+
               <div className="p-6 space-y-4">
                 {reassignMessage && (
-                  <div className={`p-3 rounded-lg text-xs font-semibold ${
-                    reassignMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                  }`}>
+                  <div className={`p-3 rounded-lg text-xs font-semibold ${reassignMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                    }`}>
                     {reassignMessage.text}
                   </div>
                 )}
