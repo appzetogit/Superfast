@@ -2,6 +2,7 @@
 import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
+import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
 // import { paymentSnapshotFromOrder } from './foodOrderPayment.service.js';
 import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
@@ -233,6 +234,30 @@ async function syncItemsWithDatabase(items = []) {
   }).lean();
 
   const dbItemsMap = new Map(dbItems.map(item => [String(item._id), item]));
+
+  const missingIds = foodItemIds.filter(id => !dbItemsMap.has(String(id)));
+  
+  if (missingIds.length > 0) {
+    const dbAddons = await FoodAddon.find({
+      _id: { $in: missingIds },
+      approvalStatus: 'approved',
+      isDeleted: { $ne: true }
+    }).lean();
+    
+    for (const addon of dbAddons) {
+      if (addon.published) {
+        dbItemsMap.set(String(addon._id), {
+          _id: addon._id,
+          name: addon.published.name,
+          image: addon.published.image,
+          foodType: addon.published.isVeg !== false ? 'Veg' : 'Non-Veg',
+          isAvailable: addon.isAvailable,
+          price: addon.published.price,
+          variants: []
+        });
+      }
+    }
+  }
 
   for (const item of items) {
     if (item.type !== "food") continue;

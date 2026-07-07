@@ -2372,7 +2372,9 @@ export default function Cart() {
                                 </div>
                               </div>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 // Use restaurant info from existing cart items to ensure format consistency
                                 const cartRestaurantId = cart[0]?.restaurantId || restaurantId;
                                 const cartRestaurantName = cart[0]?.restaurant || restaurantName;
@@ -2390,7 +2392,7 @@ export default function Cart() {
                                 }
 
                                 addToCart({
-                                  id: addon.id,
+                                  id: addon.id || addon._id,
                                   name: addon.name,
                                   price: addon.price,
                                   image: addon.image || (addon.images && addon.images[0]) || "",
@@ -3049,14 +3051,14 @@ export default function Cart() {
                   className="mt-12 text-center"
                   style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
                 >
-                  <h3 className="text-3xl font-bold text-[#cc2532] dark:text-orange-400 mb-2">Order Placed!</h3>
+                  <h3 className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">Order Placed!</h3>
                   <p className="text-gray-600 dark:text-gray-300">Your delicious food is on its way</p>
                 </div>
 
                 {/* Action Button */}
                 <button
                   onClick={handleGoToOrders}
-                  className="mt-10 bg-[#cc2532] hover:bg-[#a81e29] text-white font-semibold py-4 px-12 rounded-xl shadow-lg shadow-orange-200/70 dark:shadow-orange-950/40 transition-all hover:shadow-xl hover:scale-105"
+                  className="mt-10 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-12 rounded-xl shadow-lg shadow-green-200/70 dark:shadow-green-950/40 transition-all hover:shadow-xl hover:scale-105"
                   style={{ animation: 'slideUp 0.5s ease-out 1s both' }}
                 >
                   Track Your Order

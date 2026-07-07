@@ -1139,7 +1139,7 @@ export default function Under250() {
                                     <Button
                                       variant={"outline"}
                                       size="sm"
-                                      className="bg-[#FFF5F5] text-[#cc2532] border-[#cc2532] hover:bg-[#cc2532] hover:text-white h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base"
+                                      className="bg-[#FFF4EC] text-[#F26522] border-[#F26522] hover:bg-[#F26522] hover:text-white h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base"
                                     >
                                       View cart
                                     </Button>
@@ -1151,7 +1151,7 @@ export default function Under250() {
                                     disabled={shouldShowGrayscale || isRestaurantOffline}
                                     className={`h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base ${shouldShowGrayscale || isRestaurantOffline
                                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-50'
-                                      : 'bg-[#FFF5F5] text-[#cc2532] border-[#cc2532] hover:bg-[#cc2532] hover:text-white'
+                                      : 'bg-[#FFF4EC] text-[#F26522] border-[#F26522] hover:bg-[#F26522] hover:text-white'
                                       }`}
                                     onClick={(e) => {
                                       e.stopPropagation()

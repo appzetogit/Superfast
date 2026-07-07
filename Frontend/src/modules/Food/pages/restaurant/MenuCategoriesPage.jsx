@@ -43,6 +43,26 @@ const scopePillClass = (scope) => {
   return "bg-slate-100 text-slate-700 border-slate-200"
 }
 
+const getLevenshteinDistance = (s1, s2) => {
+  const m = s1.length
+  const n = s2.length
+  if (m === 0) return n
+  if (n === 0) return m
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0))
+  for (let i = 0; i <= m; i++) dp[i][0] = i
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1]
+      } else {
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + 1)
+      }
+    }
+  }
+  return dp[m][n]
+}
+
 export default function MenuCategoriesPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -97,6 +117,11 @@ export default function MenuCategoriesPage() {
 
   const ownCategories = useMemo(
     () => categories.filter((category) => category.ownedByRestaurant),
+    [categories],
+  )
+
+  const globalCategories = useMemo(
+    () => categories.filter((category) => !category.ownedByRestaurant),
     [categories],
   )
 
@@ -174,9 +199,29 @@ export default function MenuCategoriesPage() {
   }
 
   const handleSaveCategory = async () => {
-    if (!String(formData.name || "").trim()) {
+    const inputName = String(formData.name || "").trim()
+    if (!inputName) {
       toast.error("Category name is required")
       return
+    }
+
+    if (!editingCategory) {
+      const normalizedInput = inputName.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "")
+      const similarGlobalCategory = globalCategories.find((cat) => {
+        const normalizedGlobal = String(cat.name || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "")
+        if (normalizedGlobal === normalizedInput) return true
+        
+        // Fuzzy match for typos
+        const distance = getLevenshteinDistance(normalizedGlobal, normalizedInput)
+        const allowedDistance = normalizedGlobal.length <= 4 ? 0 : Math.floor(normalizedGlobal.length / 4)
+        
+        return distance <= allowedDistance
+      })
+
+      if (similarGlobalCategory) {
+        toast.error(`A global category with a similar name ("${similarGlobalCategory.name}") already exists. You can directly select it when creating food items.`)
+        return
+      }
     }
 
     try {
@@ -190,7 +235,7 @@ export default function MenuCategoriesPage() {
       }
 
       const payload = {
-        name: String(formData.name || "").trim(),
+        name: inputName,
         type: String(formData.type || "").trim(),
         image: imageUrl,
         isActive: formData.isActive !== false,
@@ -414,11 +459,17 @@ export default function MenuCategoriesPage() {
                   <label className="mb-2 block text-sm font-medium text-slate-700">Category Name</label>
                   <input
                     type="text"
+                    list="global-categories-list"
                     value={formData.name}
                     onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                     placeholder="Enter category name"
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                   />
+                  <datalist id="global-categories-list">
+                    {globalCategories.map((cat) => (
+                      <option key={cat.id || cat._id} value={cat.name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>

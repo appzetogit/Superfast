@@ -67,7 +67,7 @@ export const verifyUserOtpAndLogin = async (
   }
 
   let userDoc = await FoodUser.findOne({ phone });
-  
+
   // Ensure user exists and mark as verified on successful OTP.
   // Check if user is new or hasn't provided a name yet
   const needsNamePrompt = !userDoc || !userDoc.name || String(userDoc.name).trim() === "" || String(userDoc.name).toLowerCase() === "null";
@@ -382,12 +382,6 @@ const getPhoneCandidates = (phone) => {
   ].filter(Boolean)));
 };
 
-
-
-
-
-
-
 const normalizePhoneForDelivery = (phone) => {
   const digits = String(phone || "").replace(/\D/g, "");
   return digits.slice(-10) || null;
@@ -451,9 +445,9 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
       rejectionReason: isRejected ? deliveryPartner.rejectionReason : null,
       message:
         isRejected
-          ? (deliveryPartner.rejectionReason 
-              ? `Your account was rejected: ${deliveryPartner.rejectionReason}`
-              : "Your delivery account was not approved. Please contact support.")
+          ? (deliveryPartner.rejectionReason
+            ? `Your account was rejected: ${deliveryPartner.rejectionReason}`
+            : "Your delivery account was not approved. Please contact support.")
           : "Your account is pending admin verification. You will be notified once approved.",
     };
   }
@@ -489,12 +483,12 @@ export const logout = async (refreshToken, fcmToken, platform) => {
   // 1. Remove specific FCM token from ALL collections if provided
   if (fcmToken) {
     console.log(`[FCM-Logout] Starting logout-driven token removal: platform=${platform}, tokenPreview=${fcmToken?.slice(0, 10)}...`);
-    
+
     // We try to remove the token from all 4 possible models regardless of the user ID, 
     // ensuring no stale connections are left across any role or app the user was logged into.
     const field = platform === "mobile" ? "fcmTokenMobile" : "fcmTokens";
     const models = [FoodUser, FoodRestaurant, FoodDeliveryPartner, FoodAdmin, Seller];
-    
+
     try {
       await Promise.all(
         models.map((model) =>
@@ -592,28 +586,28 @@ export const getProfile = async (userId, role) => {
 
         const location =
           doc.addressLine1 ||
-          doc.addressLine2 ||
-          doc.area ||
-          doc.city ||
-          doc.state ||
-          doc.pincode ||
-          doc.landmark
+            doc.addressLine2 ||
+            doc.area ||
+            doc.city ||
+            doc.state ||
+            doc.pincode ||
+            doc.landmark
             ? {
-                addressLine1: doc.addressLine1 || "",
-                addressLine2: doc.addressLine2 || "",
-                area: doc.area || "",
-                city: doc.city || "",
-                state: doc.state || "",
-                pincode: doc.pincode || "",
-                landmark: doc.landmark || "",
-              }
+              addressLine1: doc.addressLine1 || "",
+              addressLine2: doc.addressLine2 || "",
+              area: doc.area || "",
+              city: doc.city || "",
+              state: doc.state || "",
+              pincode: doc.pincode || "",
+              landmark: doc.landmark || "",
+            }
             : null;
 
         const menuImages = Array.isArray(doc.menuImages)
           ? doc.menuImages
-              .map((m) => (m && (typeof m === "string" ? m : m.url)) || null)
-              .filter(Boolean)
-              .map((url) => ({ url, publicId: null }))
+            .map((m) => (m && (typeof m === "string" ? m : m.url)) || null)
+            .filter(Boolean)
+            .map((url) => ({ url, publicId: null }))
           : [];
 
         profile = {
@@ -662,56 +656,56 @@ export const getProfile = async (userId, role) => {
           aadhar:
             partner.aadharPhoto || partner.aadharNumber
               ? {
-                  number: partner.aadharNumber || null,
-                  document: partner.aadharPhoto || null,
-                }
+                number: partner.aadharNumber || null,
+                document: partner.aadharPhoto || null,
+              }
               : null,
           pan:
             partner.panPhoto || partner.panNumber
               ? {
-                  number: partner.panNumber || null,
-                  document: partner.panPhoto || null,
-                }
+                number: partner.panNumber || null,
+                document: partner.panPhoto || null,
+              }
               : null,
           drivingLicense: partner.drivingLicensePhoto || partner.drivingLicenseNumber
             ? {
-                number: partner.drivingLicenseNumber || null,
-                document: partner.drivingLicensePhoto || null,
-              }
+              number: partner.drivingLicenseNumber || null,
+              document: partner.drivingLicensePhoto || null,
+            }
             : null,
           bankDetails:
             partner.bankAccountHolderName ||
-            partner.bankAccountNumber ||
-            partner.bankIfscCode ||
-            partner.bankName ||
-            partner.upiId ||
-            partner.upiQrCode
+              partner.bankAccountNumber ||
+              partner.bankIfscCode ||
+              partner.bankName ||
+              partner.upiId ||
+              partner.upiQrCode
               ? {
-                  accountHolderName: partner.bankAccountHolderName || null,
-                  accountNumber: partner.bankAccountNumber || null,
-                  ifscCode: partner.bankIfscCode || null,
-                  bankName: partner.bankName || null,
-                  upiId: partner.upiId || null,
-                  upiQrCode: partner.upiQrCode || null,
-                }
+                accountHolderName: partner.bankAccountHolderName || null,
+                accountNumber: partner.bankAccountNumber || null,
+                ifscCode: partner.bankIfscCode || null,
+                bankName: partner.bankName || null,
+                upiId: partner.upiId || null,
+                upiQrCode: partner.upiQrCode || null,
+              }
               : null,
         },
         location:
           partner.address || partner.city || partner.state
             ? {
-                addressLine1: partner.address,
-                city: partner.city,
-                state: partner.state,
-              }
+              addressLine1: partner.address,
+              city: partner.city,
+              state: partner.state,
+            }
             : null,
         vehicle:
           partner.vehicleType || partner.vehicleName || partner.vehicleNumber
             ? {
-                type: partner.vehicleType,
-                brand: partner.vehicleName,
-                model: partner.vehicleName,
-                number: partner.vehicleNumber,
-              }
+              type: partner.vehicleType,
+              brand: partner.vehicleName,
+              model: partner.vehicleName,
+              number: partner.vehicleNumber,
+            }
             : null,
       };
       break;

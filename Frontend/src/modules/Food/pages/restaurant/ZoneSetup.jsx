@@ -499,6 +499,12 @@ export default function ZoneSetup() {
         const polygon = new window.google.maps.Polygon({ paths: path })
         return window.google.maps.geometry.poly.containsLocation(new window.google.maps.LatLng(lat, lng), polygon)
       })
+
+      if (!currentZone) {
+        alert("This location is outside the zone created by admin. Please select a valid location within the service zone.")
+        setSaving(false)
+        return
+      }
       
       // Update restaurant location and trigger re-verification
       const payload = {

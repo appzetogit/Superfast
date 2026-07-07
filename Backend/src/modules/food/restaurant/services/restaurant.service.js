@@ -565,7 +565,7 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
     const value = Boolean(isAcceptingOrders);
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
-        { $set: { isAcceptingOrders: value } },
+        { $set: { isAcceptingOrders: value, manualOffline: !value } },
         {
             new: true,
             runValidators: true,

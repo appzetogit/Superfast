@@ -263,7 +263,8 @@ export function CartProvider({ children }) {
 
     setCart((prev) => {
       const safePrev = normalizeCartData(prev)
-      const existing = safePrev.find((i) => i.id === item.id)
+      const resolvedItemId = resolveCartEntryId(safePrev, item.id || item._id || item.itemId || item.productId, item.variantId)
+      const existing = safePrev.find((i) => i.id === resolvedItemId)
       
       if (existing) {
         if (sourcePosition) {

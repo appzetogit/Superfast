@@ -2521,6 +2521,7 @@ export async function updateRestaurantById(id, body = {}) {
 
     if (body.isAcceptingOrders !== undefined) {
         doc.isAcceptingOrders = parseBooleanLike(body.isAcceptingOrders, 'isAcceptingOrders');
+        doc.manualOffline = !doc.isAcceptingOrders;
     }
 
     if (body.cuisines !== undefined) {
@@ -3558,7 +3559,8 @@ export async function rejectRestaurant(id, reason) {
                 rejectedAt: new Date(),
                 rejectionReason: typeof reason === 'string' ? reason.trim() : undefined,
                 approvedAt: null
-            }
+            },
+            $unset: { reVerification: "" }
         },
         { new: true, runValidators: false }
     ).lean();

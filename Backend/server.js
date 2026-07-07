@@ -8,6 +8,8 @@ import { initSocket } from './src/config/socket.js';
 import { initializeQueues, closeBullMQConnection } from './src/queues/index.js';
 import { expireExpiredOffers } from './src/modules/food/admin/services/admin.service.js';
 import { syncExpiredFssaiNotifications } from './src/modules/food/restaurant/services/fssaiExpiry.service.js';
+import cron from 'node-cron';
+import { syncAllRestaurantTimings } from './src/modules/food/restaurant/services/timingsSync.service.js';
 
 import { logger } from './src/utils/logger.js';
 import { initializeFirebaseRealtime } from './src/config/firebase.js';
@@ -61,6 +63,13 @@ const startServer = async () => {
         if (config.redisEnabled) {
             await connectRedis();
         }
+
+        // Initialize Timing Sync Job (Runs every minute)
+        cron.schedule('* * * * *', () => {
+            syncAllRestaurantTimings().catch(err => {
+                logger.error(`Timings Sync cron error: ${err.message}`);
+            });
+        });
         
         // 5a. Watchdog: Recover stuck orders from previous run
         try {

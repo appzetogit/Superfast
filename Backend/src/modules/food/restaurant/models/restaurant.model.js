@@ -126,6 +126,10 @@ const restaurantSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    manualOffline: {
+      type: Boolean,
+      default: false,
+    },
     panNumber: {
       type: String,
     },
