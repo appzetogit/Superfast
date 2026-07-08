@@ -221,6 +221,8 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (p.includes("/orders/payment-failed")) return oc.paymentFailed ?? null
     if (p.includes("/orders/refunded")) return oc.refunded ?? null
     if (p.includes("/orders/offline-payments")) return oc.offlinePayments ?? null
+    if (p.includes("/orders/out-for-delivery")) return oc.foodOnTheWay ?? null
+    if (p.includes("/orders/returned")) return oc.returned ?? null
     return null
   }
 
@@ -238,6 +240,8 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (p.includes("/orders/payment-failed"))    return "bg-red-100 text-red-700"
     if (p.includes("/orders/refunded"))          return "bg-sky-100 text-sky-700"
     if (p.includes("/orders/offline-payments"))  return "bg-slate-100 text-slate-600"
+    if (p.includes("/orders/out-for-delivery"))  return "bg-amber-100 text-amber-700"
+    if (p.includes("/orders/returned"))          return "bg-purple-100 text-purple-700"
     return "bg-slate-100 text-slate-600"
   }
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)

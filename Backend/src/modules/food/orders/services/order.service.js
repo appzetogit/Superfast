@@ -5486,11 +5486,16 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
   }
 
   // 4. Driver Dispatch & Notifications
-  if (orderStatus === "preparing" && from !== "preparing") {
-    // Trigger dispatch
+  const isInitialDispatchTrigger = ((String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && (String(from) !== "preparing" && String(from) !== "confirmed"));
+  if (isInitialDispatchTrigger) {
+    console.log(`[DEBUG] Order ${order.orderId} status changed to '${orderStatus}' by admin. Triggering delivery dispatch.`);
+    
+    // If auto dispatch, try assign now.
     if (order.dispatch?.status === "unassigned" && order.dispatch?.modeAtCreation === "auto") {
       try {
+        console.log(`[DEBUG] Auto-assigning order ${order.orderId}`);
         await tryAutoAssign(order._id);
+        // Refresh order state from DB after auto-assignment
         order = await FoodOrder.findById(order._id);
       } catch (err) {
         logger.error(`updateOrderStatusAdmin auto-assign failed: ${err.message}`);
@@ -5503,15 +5508,70 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
         .lean();
       const payload = buildDeliverySocketPayload(order, restaurant);
 
-      if (order.dispatch?.deliveryPartnerId) {
-        io?.to(rooms.delivery(order.dispatch.deliveryPartnerId)).emit("new_order", payload);
-        io?.to(rooms.delivery(order.dispatch.deliveryPartnerId)).emit("play_notification_sound", { orderId: order.orderId });
+      // If assigned or accepted, notify assigned partner only.
+      const assignedId =
+        order.dispatch?.deliveryPartnerId?.toString?.() ||
+        order.dispatch?.deliveryPartnerId;
+      if (order.dispatch?.status === "accepted") {
+        console.log(`[DEBUG] Order ${order.orderId} is already accepted. Skipping dispatch notifications.`);
+      } else if (assignedId && order.dispatch?.status === "assigned") {
+        console.log(`[DEBUG] Order ${order.orderId} status is 'assigned'. Notifying ${assignedId} only.`);
+        io?.to(rooms.delivery(assignedId)).emit("new_order", payload);
+        io?.to(rooms.delivery(assignedId)).emit("play_notification_sound", {
+          orderId: payload.orderId,
+          orderMongoId: payload.orderMongoId,
+        });
+        await notifyOwnersSafely(
+          [{ ownerType: "DELIVERY_PARTNER", ownerId: assignedId }],
+          {
+            title: "New delivery task",
+            body: `Order ${payload.orderId} is assigned to you.`,
+            data: {
+              type: "new_order",
+              orderId: payload.orderId,
+              orderMongoId: payload.orderMongoId,
+              link: "/delivery",
+            },
+          }
+        );
       } else {
-        // Send to near/active drivers if auto mode did not assign yet
-        const { getAvailableDriversForOrder } = await import('./order.service.js');
-        const drivers = await getAvailableDriversForOrder(order._id);
-        for (const d of drivers) {
-          io?.to(rooms.delivery(d.partnerId)).emit("play_notification_sound", { orderId: order.orderId });
+        if (isSplitDispatchOrder(order)) {
+          await notifySplitDispatchOffers(order, { restaurantDoc: restaurant });
+        } else {
+          // Broadcast to nearby online partners so someone can accept/claim.
+          console.log(`[DEBUG] Searching for nearby partners for order ${order.orderId}`);
+          const { partners } = await listNearbyOnlineDeliveryPartners(
+            order.restaurantId,
+            { maxKm: 15, limit: 25 },
+          );
+          console.log(`[DEBUG] Found ${partners.length} partners.`);
+          for (const p of partners) {
+            const targetRoom = rooms.delivery(p.partnerId);
+            io?.to(targetRoom).emit("new_order", {
+              ...payload,
+              pickupDistanceKm: p.distanceKm,
+            });
+            io?.to(targetRoom).emit("new_order_available", {
+              ...payload,
+              pickupDistanceKm: p.distanceKm,
+            });
+          }
+          await notifyOwnersSafely(
+            partners.slice(0, 5).map((p) => ({
+              ownerType: "DELIVERY_PARTNER",
+              ownerId: p.partnerId,
+            })),
+            {
+              title: "New delivery order available",
+              body: `Order ${payload.orderId} is available near ${restaurant?.restaurantName || "your area"}.`,
+              data: {
+                type: "new_order_available",
+                orderId: payload.orderId,
+                orderMongoId: payload.orderMongoId,
+                link: "/delivery",
+              },
+            }
+          );
         }
       }
     } catch (err) {

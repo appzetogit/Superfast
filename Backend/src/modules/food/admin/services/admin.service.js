@@ -18,6 +18,7 @@ import { FeedbackExperience } from '../models/feedbackExperience.model.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRefreshToken } from '../../../../core/refreshTokens/refreshToken.model.js';
 import { FoodDeliveryCashLimit } from '../models/deliveryCashLimit.model.js';
+import { QuickReturnRequest } from '../../../quick-commerce/models/ReturnRequest.model.js';
 import { FoodDeliveryEmergencyHelp } from '../models/deliveryEmergencyHelp.model.js';
 import { FoodReferralSettings } from '../models/referralSettings.model.js';
 import { FoodReferralLog } from '../models/referralLog.model.js';
@@ -5249,6 +5250,7 @@ export async function getSidebarBadges() {
             orderCountPaymentFailed,
             orderCountRefunded,
             orderCountOfflinePayments,
+            orderCountReturned,
         ] = await Promise.all([
             FoodRestaurant.countDocuments({ status: 'pending' }),
             FoodDeliveryPartner.countDocuments({ status: 'pending' }),
@@ -5277,6 +5279,22 @@ export async function getSidebarBadges() {
             FoodOrder.countDocuments({ 'payment.status': 'failed' }),
             FoodOrder.countDocuments({ 'payment.status': 'refunded' }),
             FoodOrder.countDocuments({ 'payment.method': 'cash' }),
+            (async () => {
+                try {
+                    const returnedOrderIds = await QuickReturnRequest.distinct('orderId');
+                    const orConditions = [
+                        { orderStatus: 'returned' },
+                        { workflowStatus: 'RETURNED' },
+                        { returnStatus: { $exists: true, $ne: '' } }
+                    ];
+                    if (returnedOrderIds.length > 0) {
+                        orConditions.push({ _id: { $in: returnedOrderIds } });
+                    }
+                    return await FoodOrder.countDocuments({ $or: orConditions });
+                } catch (e) {
+                    return await FoodOrder.countDocuments({ $or: [ { orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } } ] });
+                }
+            })(),
         ]);
 
         return {
@@ -5309,6 +5327,7 @@ export async function getSidebarBadges() {
                 paymentFailed: orderCountPaymentFailed,
                 refunded: orderCountRefunded,
                 offlinePayments: orderCountOfflinePayments,
+                returned: orderCountReturned,
             },
         };
     } catch (error) {

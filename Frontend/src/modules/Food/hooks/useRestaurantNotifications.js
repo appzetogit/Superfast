@@ -619,7 +619,26 @@ export const useRestaurantNotifications = () => {
     // Listen for order status updates
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
-      // You can handle status updates here if needed
+      
+      const updatedIds = [
+        String(data?.orderId || '').trim(),
+        String(data?.orderMongoId || '').trim(),
+      ].filter(Boolean);
+
+      const activeIds = [
+        String(activeOrderRef.current?.orderId || '').trim(),
+        String(activeOrderRef.current?.orderMongoId || '').trim(),
+      ].filter(Boolean);
+
+      const matchesActiveOrder = updatedIds.some((id) => activeIds.includes(id));
+      if (matchesActiveOrder) {
+        const newStatus = String(data?.orderStatus || '').toLowerCase();
+        if (['confirmed', 'preparing', 'ready_for_pickup', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(newStatus)) {
+          stopAlertLoop();
+          activeOrderRef.current = null;
+          setNewOrder(null);
+        }
+      }
     });
 
     socketRef.current.on('order_deleted', (data) => {

@@ -19,9 +19,10 @@ export default function QuickCommerceOrders({ statusKey = "all" }) {
 
   useEffect(() => {
     const loadOrders = async () => {
+      setLoading(true)
       try {
-        const res = await apiClient.get("/quick-commerce/admin/orders", { contextModule: "admin" })
-        setOrders(res?.data?.result || [])
+        const res = await apiClient.get(`/quick-commerce/admin/orders?status=${statusKey}`, { contextModule: "admin" })
+        setOrders(res?.data?.result?.items || res?.data?.result || [])
       } catch {
         setOrders([])
       } finally {
@@ -30,13 +31,10 @@ export default function QuickCommerceOrders({ statusKey = "all" }) {
     }
 
     loadOrders()
-  }, [])
+  }, [statusKey])
 
   const normalizedStatus = String(statusKey || "all").toLowerCase()
-  const filteredOrders =
-    normalizedStatus === "all"
-      ? orders
-      : orders.filter((order) => String(order.status || "").toLowerCase() === normalizedStatus)
+  const filteredOrders = orders
   const heading = statusLabelMap[normalizedStatus] || "All"
 
   return (

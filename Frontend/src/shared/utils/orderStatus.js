@@ -13,6 +13,7 @@ export const WORKFLOW_STATUS = {
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
   DELIVERED: "DELIVERED",
   CANCELLED: "CANCELLED",
+  RETURNED: "RETURNED",
 };
 
 const LEGACY_ENUM = new Set([
@@ -22,6 +23,7 @@ const LEGACY_ENUM = new Set([
   "out_for_delivery",
   "delivered",
   "cancelled",
+  "returned",
 ]);
 
 function legacyFromWorkflow(workflowStatus) {
@@ -41,6 +43,8 @@ function legacyFromWorkflow(workflowStatus) {
       return "delivered";
     case WORKFLOW_STATUS.CANCELLED:
       return "cancelled";
+    case WORKFLOW_STATUS.RETURNED:
+      return "returned";
     default:
       return "pending";
   }
@@ -52,6 +56,10 @@ function legacyFromWorkflow(workflowStatus) {
  */
 export function getLegacyStatusFromOrder(order) {
   if (!order) return "pending";
+
+  if (order.returnStatus && order.returnStatus !== "none") {
+    return "returned";
+  }
 
   // Explicitly check for delivered status first using multiple indicators
   if (
@@ -130,7 +138,8 @@ export function adminRouteMatchesOrder(routeStatus, order) {
   if (routeStatus === "cancelled") return legacy === "cancelled";
   if (routeStatus === "returned") {
     const rs = order?.returnStatus;
-    return rs && rs !== "none";
+    if (rs && rs !== "none") return true;
+    return legacy === "returned" || order?.orderStatus === "returned" || order?.workflowStatus === "RETURNED";
   }
   return legacy === routeStatus;
 }

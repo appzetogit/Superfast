@@ -110,7 +110,7 @@ const transformOrderForList = (order) => ({
   photoUrl: getOrderPreviewItem(order.items)?.image || null,
   photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
   paymentMethod: order.paymentMethod || order.payment?.method || null,
-  deliveryPartnerId: order.deliveryPartnerId || null,
+  deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
   dispatchStatus: order.dispatch?.status || null,
   preparingTimestamp: order.tracking?.preparing?.timestamp
     ? new Date(order.tracking.preparing.timestamp)
@@ -1991,7 +1991,7 @@ function PreparingOrders({
               itemsSummary: buildOrderItemsSummary(order.items),
               photoUrl: getOrderPreviewItem(order.items)?.image || null,
               photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
-              deliveryPartnerId: order.deliveryPartnerId || null,
+              deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
               dispatchStatus: order.dispatch?.status || null,
               paymentMethod:
                 order.paymentMethod || order.payment?.method || null,
@@ -2301,7 +2301,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             paymentMethod: order.paymentMethod || order.payment?.method || null,
-            deliveryPartnerId: order.deliveryPartnerId || null,
+            deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
           }));
 
@@ -2421,7 +2421,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 , searchTerm = "
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             paymentMethod: order.paymentMethod || order.payment?.method || null,
-            deliveryPartnerId: order.deliveryPartnerId || null,
+            deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
           }));
 

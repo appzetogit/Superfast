@@ -9,6 +9,7 @@ import { Seller } from '../seller/models/seller.model.js';
 import { SellerOrder } from '../seller/models/sellerOrder.model.js';
 import { QuickZone } from '../models/quick_zone.model.js';
 import { FoodZone } from '../../food/admin/models/zone.model.js';
+import { QuickReturnRequest } from '../models/ReturnRequest.model.js';
 import { getSellerCommissionSnapshot } from '../admin/services/commission.service.js';
 import {
   calculateQuickPricing,
@@ -56,7 +57,7 @@ const getOrderPayableAmount = (order) => {
   return Number.isFinite(pricingTotal) ? Math.max(0, pricingTotal) : 0;
 };
 
-const normalizeOrderSummary = (order) => {
+const normalizeOrderSummary = (order, returnedOrderIdsSet = new Set()) => {
   const amount = getOrderPayableAmount(order);
   const paymentMethod = order?.payment?.method || order?.paymentMethod || 'cash';
   const paymentStatus = order?.payment?.status || order?.paymentStatus || '';
@@ -73,6 +74,7 @@ const normalizeOrderSummary = (order) => {
     status: order.orderStatus,
     orderStatus: order.orderStatus,
     workflowStatus: order.workflowStatus || '',
+    returnStatus: order.returnStatus || (returnedOrderIdsSet.has(String(order._id)) ? 'RETURN_REQUESTED' : ''),
     paymentMethod,
     paymentStatus,
     payment: order.payment || {},
@@ -317,8 +319,8 @@ export const placeOrder = async (req, res) => {
     const shouldFanOutSellerOrders = true;
     const deliveryAddress = normalizeDeliveryAddress(req.body?.address);
 
-    const sellerIds = [...new Set(products.map((p) => String(p.sellerId)).filter(Boolean))];
-    const sellers = await Seller.find({ _id: { $in: sellerIds } }).lean();
+    const sellerIds = [...new Set(products.map((p) => String(p.sellerId)).filter(id => id && id !== 'undefined' && mongoose.Types.ObjectId.isValid(id)))];
+    const sellers = sellerIds.length > 0 ? await Seller.find({ _id: { $in: sellerIds } }).lean() : [];
 
     // Validate zone constraint
     const customerCoords = deliveryAddress?.location?.coordinates;
@@ -634,8 +636,12 @@ export const getMyOrders = async (req, res) => {
     return acc;
   }, {});
 
+  const orderObjIds = orders.map(o => o._id);
+  const returnedRequests = await QuickReturnRequest.find({ orderId: { $in: orderObjIds } }).select('orderId').lean();
+  const returnedOrderIdsSet = new Set(returnedRequests.map(r => String(r.orderId)));
+
   const mappedOrders = orders.map((order) => {
-    const normalized = normalizeOrderSummary(order);
+    const normalized = normalizeOrderSummary(order, returnedOrderIdsSet);
     const sellerId = String(
       order?.items?.find((item) => item?.type === 'quick')?.sourceId || order?.items?.[0]?.sourceId || '',
     ).trim();
@@ -708,10 +714,14 @@ export const getOrderById = async (req, res) => {
     const dropOtp = order.deliveryVerification?.dropOtp || {};
     const handoverOtp = String(order.deliveryOtp || '').trim();
 
+    const returnedRequest = await QuickReturnRequest.findOne({ orderId: order._id }).select('_id').lean();
+    const returnStatus = returnedRequest ? 'RETURN_REQUESTED' : order.returnStatus;
+
     return res.json({
       success: true,
       result: {
         ...order,
+        returnStatus,
         id: order._id,
         _id: order._id,
         orderNumber: order.orderId,
@@ -904,7 +914,7 @@ export const verifyPayment = async (req, res) => {
     if (!order.payment) order.payment = {};
     if (!order.payment.razorpay) order.payment.razorpay = {};
     
-    order.payment.status = isAuthorized ? 'completed' : 'failed';
+    order.payment.status = isAuthorized ? 'paid' : 'failed';
     order.payment.razorpay.paymentId = razorpayPaymentId;
     order.payment.razorpay.signature = razorpaySignature;
     order.payment.razorpay.status = isAuthorized ? 'captured' : 'failed';
@@ -916,7 +926,7 @@ export const verifyPayment = async (req, res) => {
             { orderId: order.orderId },
             { 
               $set: { 
-                'payment.status': 'completed',
+                'payment.status': 'paid',
                 'status': 'pending',
                 'workflowStatus': 'SELLER_PENDING'
               } 

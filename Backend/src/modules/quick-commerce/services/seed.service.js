@@ -396,6 +396,7 @@ export const ensureQuickCommerceSeedData = async () => {
               badge: prodSeed.badge,
               rating: 4.2,
               isActive: true,
+              stock: 100,
             });
           }
         }

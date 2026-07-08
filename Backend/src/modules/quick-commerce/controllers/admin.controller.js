@@ -6,6 +6,7 @@ import { QuickOrder } from '../models/order.model.js';
 import { Seller } from '../seller/models/seller.model.js';
 import { SellerOrder } from '../seller/models/sellerOrder.model.js';
 import { QuickZone } from '../models/quick_zone.model.js';
+import { QuickReturnRequest } from '../models/ReturnRequest.model.js';
 import { ensureQuickCommerceSeedData } from '../services/seed.service.js';
 import { uploadImageBuffer } from '../../../services/cloudinary.service.js';
 import { getIO, rooms } from '../../../config/socket.js';
@@ -173,19 +174,21 @@ const legacyQuickStatusFromOrder = (order = {}) => {
   const workflowStatus = String(order?.workflowStatus || '').toUpperCase();
   const rawStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
 
-  if (workflowStatus === 'OUT_FOR_DELIVERY') return 'out_for_delivery';
+  if (order?.returnStatus) return 'returned';
+  if (workflowStatus === 'OUT_FOR_DELIVERY') return 'out-for-delivery';
   if (workflowStatus === 'DELIVERED') return 'delivered';
   if (workflowStatus === 'CANCELLED' || QUICK_CANCELLED_STATUSES.includes(rawStatus)) return 'cancelled';
   if (workflowStatus === 'SELLER_ACCEPTED' || workflowStatus === 'DELIVERY_SEARCH' || workflowStatus === 'DELIVERY_ASSIGNED' || workflowStatus === 'PICKUP_READY') {
     return 'confirmed';
   }
-  if (rawStatus === 'out_for_delivery') return 'out_for_delivery';
+  if (rawStatus === 'out_for_delivery' || rawStatus === 'out-for-delivery') return 'out-for-delivery';
   if (rawStatus === 'delivered') return 'delivered';
+  if (rawStatus === 'returned') return 'returned';
   if (rawStatus === 'confirmed' || rawStatus === 'packed') return rawStatus;
   return 'pending';
 };
 
-const buildQuickAdminOrderResponse = (order, sellerMap = {}, sellerOrderMap = {}) => {
+const buildQuickAdminOrderResponse = (order, sellerMap = {}, sellerOrderMap = {}, returnedOrderIdsSet = new Set()) => {
   const paymentAmountDue = Number(order?.payment?.amountDue || 0);
   const payableAmount = Number(order?.payableAmount || 0);
   const totalAmount = Number(order?.totalAmount || 0);
@@ -223,7 +226,7 @@ const buildQuickAdminOrderResponse = (order, sellerMap = {}, sellerOrderMap = {}
     orderStatus: order.orderStatus || '',
     workflowStatus: order.workflowStatus || '',
     workflowVersion: order.workflowVersion || 1,
-    returnStatus: order.returnStatus || '',
+    returnStatus: order.returnStatus || (returnedOrderIdsSet?.has(String(order._id)) ? 'RETURN_REQUESTED' : ''),
     itemCount,
     items: Array.isArray(order.items) ? order.items : [],
     pricing: order.pricing || {},
@@ -784,10 +787,27 @@ export const getAdminOrders = async (req, res) => {
         break;
       case 'out-for-delivery':
         query.$or = [
-          { orderStatus: 'out_for_delivery' },
+          { orderStatus: { $in: ['out_for_delivery', 'out-for-delivery'] } },
           { workflowStatus: 'OUT_FOR_DELIVERY' },
         ];
         break;
+      case 'returned': {
+        let returnedOrderIds = [];
+        try {
+          returnedOrderIds = await QuickReturnRequest.distinct('orderId');
+        } catch (e) {
+          // ignore
+        }
+        query.$or = [
+          { orderStatus: 'returned' },
+          { workflowStatus: 'RETURNED' },
+          { returnStatus: { $exists: true, $ne: '' } }
+        ];
+        if (returnedOrderIds.length > 0) {
+          query.$or.push({ _id: { $in: returnedOrderIds } });
+        }
+        break;
+      }
       case 'delivered':
         query.$or = [
           { orderStatus: 'delivered' },
@@ -836,10 +856,14 @@ export const getAdminOrders = async (req, res) => {
     return acc;
   }, {});
 
+  const orderObjIds = orders.map(o => o._id);
+  const returnedRequests = await QuickReturnRequest.find({ orderId: { $in: orderObjIds } }).select('orderId').lean();
+  const returnedOrderIdsSet = new Set(returnedRequests.map(r => String(r.orderId)));
+
   return res.json({
     success: true,
     result: {
-      items: orders.map((order) => buildQuickAdminOrderResponse(order, sellerMap, sellerOrderMap)),
+      items: orders.map((order) => buildQuickAdminOrderResponse(order, sellerMap, sellerOrderMap, returnedOrderIdsSet)),
       page: currentPage,
       limit: perPage,
       total,
@@ -883,9 +907,15 @@ export const getAdminOrderById = async (req, res) => {
     return acc;
   }, {});
 
+  const returnedRequest = await QuickReturnRequest.findOne({ orderId: order._id }).select('_id').lean();
+  const returnedOrderIdsSet = new Set();
+  if (returnedRequest) {
+    returnedOrderIdsSet.add(String(order._id));
+  }
+
   return res.json({
     success: true,
-    result: buildQuickAdminOrderResponse(order, sellerMap, sellerOrderMap),
+    result: buildQuickAdminOrderResponse(order, sellerMap, sellerOrderMap, returnedOrderIdsSet),
   });
 };
 

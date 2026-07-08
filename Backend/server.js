@@ -180,5 +180,5 @@ const startServer = async () => {
     }
 };
 
-startServer(); // Trigger watch reload - restarted with resilient DNS fallback
+startServer(); // Trigger watch reload - restarted with resilient DNS fallback - restarted again
 

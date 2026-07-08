@@ -83,7 +83,6 @@ export const quickAdminSidebarMenu = [
         subItems: [
           { label: "All Orders", path: "/admin/quick-commerce/orders/all" },
           { label: "New Orders", path: "/admin/quick-commerce/orders/pending" },
-          { label: "Being Prepared", path: "/admin/quick-commerce/orders/processed" },
           { label: "On the Way", path: "/admin/quick-commerce/orders/out-for-delivery" },
           { label: "Delivered", path: "/admin/quick-commerce/orders/delivered" },
           { label: "Cancelled", path: "/admin/quick-commerce/orders/cancelled" },
