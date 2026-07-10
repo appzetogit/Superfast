@@ -141,6 +141,12 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
         )}`
       : null;
 
+  const restaurantPhone = isQuickOrder
+    ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || ''
+    : order?.restaurantPhone || order?.restaurant_phone || order?.restaurantId?.phone || '';
+
+  const customerPhone = order?.customerPhone || order?.customer_phone || order?.deliveryAddress?.phone || order?.user?.phone || '';
+
   const pickupStops = isReturnPickup
     ? [
         {
@@ -148,16 +154,18 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
           pickupType: 'return',
           sourceName: order.customerName || 'Customer',
           address: order.customerAddress || 'Customer Address',
+          phone: customerPhone
         }
       ]
     : (pickupPoints.length
-      ? pickupPoints
+      ? pickupPoints.map(p => ({ ...p, phone: p.phone || restaurantPhone }))
       : [
           {
             id: order?.dispatchLeg?.legId || 'food:primary',
             pickupType: order?.dispatchLeg?.pickupType === 'quick' || isQuickOrder ? 'quick' : 'food',
             sourceName: order?.dispatchLeg?.sourceName || restaurantName,
             address: order?.dispatchLeg?.address || restaurantAddress,
+            phone: order?.dispatchLeg?.phone || restaurantPhone
           },
         ]);
 
@@ -219,8 +227,20 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                         <ChefHat className="w-3.5 h-3.5" />
                         <span>{pickupStops.length > 1 ? `${pickupLabel} ${index + 1}` : pickupLabel}</span>
                       </div>
-                      <p className="text-gray-950 font-bold text-lg leading-tight">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
-                      <p className="text-gray-500 text-xs font-medium leading-relaxed line-clamp-1">{pickupAddress}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-gray-950 font-bold text-lg leading-tight">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
+                        <a 
+                          href={pickup.phone ? `tel:${pickup.phone}` : '#'} 
+                          className="ml-2 w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100 flex-shrink-0" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!pickup.phone) e.preventDefault();
+                          }}
+                        >
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      </div>
+                      <p className="text-gray-500 text-xs font-medium leading-relaxed line-clamp-1 mt-0.5">{pickupAddress}</p>
                     </div>
                   );
                 })}
@@ -230,10 +250,22 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                   <MapPin className="w-3.5 h-3.5" />
                   <span>{isReturnPickup ? 'Seller Drop' : 'Customer Drop'}</span>
                 </div>
-                <p className="text-gray-950 font-bold text-lg leading-tight">
-                  {isReturnPickup ? (order.sellerName || 'Seller Store') : 'Customer Location'}
-                </p>
-                <p className="text-gray-500 text-xs font-medium line-clamp-1 font-medium leading-relaxed">{isReturnPickup ? (order.sellerAddress || 'Seller Address') : customerAddress}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-gray-950 font-bold text-lg leading-tight">
+                    {isReturnPickup ? (order.sellerName || 'Seller Store') : 'Customer Location'}
+                  </p>
+                  <a 
+                    href={customerPhone ? `tel:${customerPhone}` : '#'} 
+                    className="ml-2 w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 flex-shrink-0" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!customerPhone) e.preventDefault();
+                    }}
+                  >
+                    <Phone className="w-4 h-4" />
+                  </a>
+                </div>
+                <p className="text-gray-500 text-xs font-medium line-clamp-1 mt-0.5 leading-relaxed">{isReturnPickup ? (order.sellerAddress || 'Seller Address') : customerAddress}</p>
                 {!isReturnPickup && mapsLink && (
                   <a
                     href={mapsLink}

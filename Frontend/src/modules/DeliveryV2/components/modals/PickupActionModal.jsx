@@ -198,7 +198,22 @@ export const PickupActionModal = ({
                   <MapPin className="w-3.5 h-3.5" />
                   <span>{pickupStops.length > 1 ? `${label} ${index + 1}` : label}</span>
                 </div>
-                <p className="mt-3 text-base font-bold text-gray-950">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-base font-bold text-gray-950">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
+                  <a 
+                    href={pickup.phone ? `tel:${pickup.phone}` : '#'} 
+                    className={`ml-2 w-8 h-8 rounded-full ${isQuickStore ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-green-50 text-green-600 border-green-100'} flex items-center justify-center border flex-shrink-0`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!pickup.phone) {
+                        e.preventDefault();
+                        toast.error('Phone number not available');
+                      }
+                    }}
+                  >
+                    <Phone className="w-4 h-4" />
+                  </a>
+                </div>
                 <p className="mt-1 text-sm font-medium leading-relaxed text-gray-500">{pickup.address || 'Address not available'}</p>
               </div>
             );

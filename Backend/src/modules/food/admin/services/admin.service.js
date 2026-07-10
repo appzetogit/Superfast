@@ -38,6 +38,7 @@ import {
     getTransactionsByEntity
 } from '../../../../core/payments/transaction.service.js';
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
+import { sendNotificationToOwner } from '../../../../core/notifications/firebase.service.js';
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
@@ -814,6 +815,7 @@ export async function getTransactionReport(query = {}) {
         .populate('orderId')
         .populate('userId', 'name')
         .populate('restaurantId', 'restaurantName')
+        .populate('deliveryPartnerId', 'name')
         .sort({ createdAt: -1 })
         .lean();
 
@@ -838,6 +840,11 @@ export async function getTransactionReport(query = {}) {
             pricing.platformFee !== undefined && pricing.platformFee !== null
                 ? Number(pricing.platformFee || 0) || 0
                 : platformFeeDerived;
+
+        const adminEarning = tx.amounts?.platformNetProfit || 0;
+        const restaurantEarning = tx.amounts?.restaurantShare || 0;
+        const deliverymanEarning = tx.amounts?.riderShare || 0;
+
         return {
             id: tx._id,
             orderId: tx.orderReadableId || order.orderId || 'N/A',
@@ -852,6 +859,10 @@ export async function getTransactionReport(query = {}) {
             deliveryCharge: pricing.deliveryFee || 0,
             platformFee,
             orderAmount: tx.amounts?.totalCustomerPaid || pricing.total || 0,
+            adminEarning,
+            restaurantEarning,
+            deliverymanEarning,
+            deliverymanName: tx.deliveryPartnerId?.name || 'N/A',
             status: tx.status
         };
     });
@@ -862,17 +873,16 @@ export async function getTransactionReport(query = {}) {
     let restaurantEarning = 0;
     let deliverymanEarning = 0;
 
-    for (const tx of transactionRows) {
-        // Calculate Summary
-        if (tx.status === 'captured' || tx.status === 'settled' || (tx.orderId && tx.orderId.orderStatus === 'delivered')) {
-            completedTransaction += tx.amounts?.totalCustomerPaid || 0;
-            adminEarning += tx.amounts?.platformNetProfit || 0;
-            restaurantEarning += tx.amounts?.restaurantShare || 0;
-            deliverymanEarning += tx.amounts?.riderShare || 0;
+    for (const tx of transactions) {
+        // Calculate Summary using the mapped tx which has our robust fallbacks
+        if (tx.status === 'captured' || tx.status === 'settled' || tx.status === 'delivered') {
+            completedTransaction += tx.orderAmount || 0;
+            adminEarning += tx.adminEarning || 0;
+            restaurantEarning += tx.restaurantEarning || 0;
+            deliverymanEarning += tx.deliverymanEarning || 0;
         }
-        if (tx.status === 'refunded' || (tx.orderId && tx.orderId.orderStatus === 'cancelled_by_admin')) {
-            // Count number of refunded transactions according to old logic or sum them
-            refundedTransaction += tx.amounts?.totalCustomerPaid || 0;
+        if (tx.status === 'refunded' || tx.status === 'cancelled_by_admin') {
+            refundedTransaction += tx.orderAmount || 0;
         }
     }
 
@@ -4828,6 +4838,18 @@ export async function updateDeliveryPartnerStatus(id, availabilityStatus) {
     if (availabilityStatus && ['online', 'offline'].includes(availabilityStatus)) {
         partner.availabilityStatus = availabilityStatus;
         await partner.save();
+        
+        try {
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io && rooms && rooms.delivery) {
+                io.to(rooms.delivery(id)).emit('admin_status_update', {
+                    status: availabilityStatus
+                });
+            }
+        } catch (e) {
+            console.error('Failed to emit delivery partner status update:', e);
+        }
     }
     return partner.toObject();
 }
@@ -4977,6 +4999,26 @@ export async function updateWithdrawalStatus(id, { status, adminNote, rejectionR
     ).populate('restaurantId', 'restaurantName').lean();
 
     if (!updated) throw new ValidationError('Withdrawal request not found');
+
+    if (update.status === 'approved') {
+        try {
+            await sendNotificationToOwner({
+                ownerType: 'RESTAURANT',
+                ownerId: String(updated.restaurantId?._id || updated.restaurantId),
+                payload: {
+                    title: 'Withdrawal Approved',
+                    body: `Your withdrawal request for ₹${updated.amount} has been successfully approved.`,
+                    data: {
+                        type: 'WITHDRAWAL_APPROVED',
+                        withdrawalId: String(updated._id)
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Failed to send FCM notification for withdrawal approval:', err);
+        }
+    }
+
     return updated;
 }
 

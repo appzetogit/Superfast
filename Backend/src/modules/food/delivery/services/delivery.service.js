@@ -384,6 +384,23 @@ export const updateDeliveryAvailability = async (userId, payload) => {
         partner.lastLocationAt = new Date();
     }
     await partner.save();
+
+    // Broadcast the status update to admins and the delivery partner
+    try {
+        const { getIO, rooms } = await import('../../../../config/socket.js');
+        const io = getIO();
+        if (io && rooms) {
+            const updatePayload = {
+                partnerId: userId,
+                status: partner.availabilityStatus
+            };
+            // Tell admins
+            io.emit('driver_status_updated', updatePayload);
+        }
+    } catch (e) {
+        console.error('Failed to emit delivery partner availability update:', e);
+    }
+
     return { availabilityStatus: partner.availabilityStatus };
 };
 

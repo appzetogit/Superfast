@@ -112,7 +112,10 @@ export const useFoodHomeData = ({
           }));
         })(),
         publicGetOnce("/food/explore-icons/public"),
-        publicGetOnce("/food/landing/settings/public"),
+        publicGetOnce(zoneId
+          ? `/food/landing/settings/public?zoneId=${encodeURIComponent(String(zoneId))}`
+          : "/food/landing/settings/public"
+        ),
       ]);
 
       if (cancelled) return;

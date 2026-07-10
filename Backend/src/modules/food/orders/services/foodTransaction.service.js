@@ -152,8 +152,16 @@ export async function createInitialTransaction(order) {
         Number.isFinite(restaurantCommissionFromOrder) && restaurantCommissionFromOrder > 0
             ? restaurantCommissionFromOrder
             : (commissionAmount || 0);
-    const restaurantNet = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission;
-    const platformNetProfit = (order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare;
+    let restaurantNet = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission;
+    let platformNetProfit = (order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare;
+
+    const discount = order.pricing?.discount || 0;
+    const discountBearer = order.pricing?.discountBearer || 'admin';
+    if (discountBearer === 'restaurant') {
+        restaurantNet -= discount;
+    } else {
+        platformNetProfit -= discount;
+    }
 
     const transaction = new FoodTransaction({
         orderId: order._id,
@@ -273,4 +281,35 @@ export async function settleRestaurant(orderId, adminId) {
         recordedByRole: 'ADMIN',
         recordedById: adminId
     });
+}
+
+/**
+ * Handles late cancellations by the admin where the platform absorbs the cost
+ * because the restaurant/rider have already performed their duties.
+ */
+export async function applyAdminCancellationLoss(orderId, adminId) {
+    const query = { orderId };
+    const transaction = await FoodTransaction.findOne(query);
+    if (!transaction) return null;
+
+    // We force status to captured so that the transaction is still counted 
+    // for restaurant and rider earnings in reports.
+    transaction.status = 'captured';
+
+    // The customer doesn't pay (refunded or not collected)
+    transaction.amounts.totalCustomerPaid = 0;
+    
+    // The platform absorbs the entire cost of the restaurant and rider shares
+    transaction.amounts.platformNetProfit = -(transaction.amounts.restaurantShare + transaction.amounts.riderShare);
+
+    transaction.history.push({
+        kind: 'cancelled_by_admin',
+        amount: 0,
+        at: new Date(),
+        note: `Order cancelled late by admin. Platform absorbs cost.`,
+        recordedBy: { role: 'ADMIN', id: adminId }
+    });
+
+    await transaction.save();
+    return transaction;
 }

@@ -180,6 +180,46 @@ export default function AddressSelectorPage() {
     })
   }, [])
 
+  const searchNominatimWithFallback = async (queryText, refLat, refLng) => {
+    const runQuery = async (term) => {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=10&q=${encodeURIComponent(term)}`
+      const res = await fetch(url, { headers: { Accept: "application/json" } })
+      const json = await res.json()
+      return Array.isArray(json) ? json : []
+    }
+
+    let list = await runQuery(queryText)
+    if (list.length === 0) {
+      let cleaned = queryText.replace(/^[A-Z0-9]{2,8}\+[A-Z0-9]{2,3}[,\s]*/i, "").trim()
+      if (cleaned && cleaned !== queryText) {
+        list = await runQuery(cleaned)
+      }
+      if (list.length === 0 && queryText.includes(",")) {
+        const parts = queryText.split(",").map((s) => s.trim()).filter(Boolean)
+        if (parts.length > 1) {
+          list = await runQuery(parts[parts.length - 1])
+        }
+      }
+    }
+
+    const mapped = list.map((r) => ({
+      id: r.place_id || r.osm_id || `${r.lat},${r.lon}`,
+      display: r.display_name || "",
+      lat: Number(r.lat),
+      lng: Number(r.lon),
+      address: r.address || {},
+    }))
+
+    return mapped
+      .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lng))
+      .map((x) => ({
+        ...x,
+        distanceMeters: calculateDistance(refLat, refLng, x.lat, x.lng),
+      }))
+      .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
+      .slice(0, 8)
+  }
+
   // Nominatim search
   useEffect(() => {
     if (!showAddressForm) return
@@ -195,22 +235,8 @@ export default function AddressSelectorPage() {
         setIsKeywordSearching(true)
         const refLat = location?.latitude ?? 22.7196
         const refLng = location?.longitude ?? 75.8577
-        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=10&q=${encodeURIComponent(q)}`
-        const res = await fetch(url, { headers: { Accept: "application/json" } })
-        const json = await res.json()
-        const mapped = (Array.isArray(json) ? json : []).map(r => ({
-          id: r.place_id || r.osm_id,
-          display: r.display_name || "",
-          lat: Number(r.lat),
-          lng: Number(r.lon),
-          address: r.address || {},
-        }))
-        const withDistance = mapped
-          .filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng))
-          .map(x => ({ ...x, distanceMeters: calculateDistance(refLat, refLng, x.lat, x.lng) }))
-          .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
-          .slice(0, 4)
-        setKeywordAddressSuggestions(withDistance)
+        const results = await searchNominatimWithFallback(q, refLat, refLng)
+        setKeywordAddressSuggestions(results)
       } catch (e) {
         setKeywordAddressSuggestions([])
       } finally {
@@ -622,6 +648,57 @@ export default function AddressSelectorPage() {
     }
   }, [showAddressForm])
 
+  const selectKeywordSuggestion = (s, keepSimilar = true) => {
+    if (!s || !Number.isFinite(s.lat) || !Number.isFinite(s.lng)) return
+    ignoreReverseGeocodeRef.current = true
+    const { lat, lng, display, address: a = {} } = s
+    setMapPosition([lat, lng])
+    if (googleMapRef.current) {
+      googleMapRef.current.panTo({ lat, lng })
+      googleMapRef.current.setZoom(17)
+    }
+    setAddressAutocompleteValue(display || "")
+    const city = a.city || a.town || a.village || a.county || ""
+    const state = a.state || ""
+    const zipCode = a.postcode || ""
+    setAddressFormData((prev) => ({
+      ...prev,
+      street: display || prev.street,
+      city: city || prev.city,
+      state: state || prev.state,
+      zipCode: zipCode || prev.zipCode,
+    }))
+    if (!keepSimilar) {
+      setKeywordAddressSuggestions([])
+    }
+  }
+
+  const handleKeywordInputKeyDown = async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      const q = String(addressAutocompleteValue || "").trim()
+      if (!q) return
+
+      if (keywordAddressSuggestions.length > 0) {
+        selectKeywordSuggestion(keywordAddressSuggestions[0], true)
+      } else {
+        try {
+          setIsKeywordSearching(true)
+          const refLat = location?.latitude ?? 22.7196
+          const refLng = location?.longitude ?? 75.8577
+          const results = await searchNominatimWithFallback(q, refLat, refLng)
+          if (results.length > 0) {
+            setKeywordAddressSuggestions(results)
+            selectKeywordSuggestion(results[0], true)
+          }
+        } catch (err) {
+        } finally {
+          setIsKeywordSearching(false)
+        }
+      }
+    }
+  }
+
   if (showAddressForm) {
     const mapHeight = baseMapHeight 
     return (
@@ -660,6 +737,7 @@ export default function AddressSelectorPage() {
                 <Input
                   value={addressAutocompleteValue}
                   onChange={(e) => setAddressAutocompleteValue(e.target.value)}
+                  onKeyDown={handleKeywordInputKeyDown}
                   placeholder="Search area, street, landmark..."
                   className="pl-10 h-12 bg-white/95 dark:bg-[#1a1a1a]/95 backdrop-blur-md border-none rounded-xl shadow-lg focus:ring-2 focus:ring-[#cc2532] transition-all"
                 />
@@ -671,31 +749,11 @@ export default function AddressSelectorPage() {
 
                 {keywordAddressSuggestions.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden z-30 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 dark:bg-gray-800/50">Suggestions</p>
+                    <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 dark:bg-gray-800/50">Suggestions & Similar Locations (Click to jump & zoom map)</p>
                     {keywordAddressSuggestions.map((s) => (
                       <button
                         key={s.id}
-                        onClick={() => {
-                          ignoreReverseGeocodeRef.current = true
-                          const { lat, lng, display, address: a } = s
-                          setMapPosition([lat, lng])
-                          if (googleMapRef.current) {
-                            googleMapRef.current.panTo({ lat, lng })
-                            googleMapRef.current.setZoom(17)
-                          }
-                          setAddressAutocompleteValue(display)
-                          const city = a.city || a.town || a.village || a.county || ""
-                          const state = a.state || ""
-                          const zipCode = a.postcode || ""
-                          setAddressFormData((prev) => ({
-                            ...prev,
-                            street: display || prev.street,
-                            city: city || prev.city,
-                            state: state || prev.state,
-                            zipCode: zipCode || prev.zipCode,
-                          }))
-                          setKeywordAddressSuggestions([])
-                        }}
+                        onClick={() => selectKeywordSuggestion(s, true)}
                         className="w-full px-4 py-3 flex items-start gap-3 hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-left border-b border-gray-50 dark:border-gray-800 last:border-none"
                       >
                         <MapPin className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />

@@ -339,6 +339,17 @@ export default function StatusMonitor() {
       fetchOrdersForActivePartner();
     });
 
+    socket.on("driver_status_updated", (data) => {
+      if (data && data.partnerId && data.status) {
+         setPartners(prev => prev.map(p => {
+           if (p._id === data.partnerId) {
+             return { ...p, availabilityStatus: data.status };
+           }
+           return p;
+         }));
+      }
+    });
+
     return () => {
       socket.disconnect();
     };

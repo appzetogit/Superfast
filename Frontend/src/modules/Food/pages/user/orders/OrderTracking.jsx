@@ -2588,17 +2588,7 @@ export default function OrderTracking() {
                     : 'Pickup details for your order'}
                 </p>
               </div>
-              {pickupSources.length === 1 && (
-                <motion.button
-                  className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center"
-                  onClick={handleCallRestaurant}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Phone className="w-5 h-5 text-[#cc2532] dark:text-red-400" />
-                </motion.button>
-              )}
             </div>
-
             <div className="mt-4 space-y-3">
               {pickupSources.map((source, index) => {
                 const isQuick = source.pickupType === 'quick'
@@ -2625,15 +2615,20 @@ export default function OrderTracking() {
                         <p className="mt-2 font-semibold text-gray-900 dark:text-white">{source.name}</p>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{source.address || 'Address not available'}</p>
                       </div>
-                      {source.phone ? (
-                        <motion.button
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${isQuick ? 'bg-sky-50 dark:bg-sky-900/30' : 'bg-red-50 dark:bg-red-900/30'}`}
-                          onClick={(e) => handleCallPickupSource(source.phone, e)}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <Phone className={`w-5 h-5 ${isQuick ? 'text-sky-600 dark:text-sky-400' : 'text-[#cc2532] dark:text-red-400'}`} />
-                        </motion.button>
-                      ) : null}
+                      <motion.button
+                        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isQuick ? 'bg-sky-50 dark:bg-sky-900/30' : 'bg-red-50 dark:bg-red-900/30'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (source.phone) {
+                            handleCallPickupSource(source.phone, e);
+                          } else {
+                            toast.error('Phone number not available');
+                          }
+                        }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Phone className={`w-5 h-5 ${isQuick ? 'text-sky-600 dark:text-sky-400' : 'text-[#cc2532] dark:text-red-400'}`} />
+                      </motion.button>
                     </div>
                   </div>
                 )

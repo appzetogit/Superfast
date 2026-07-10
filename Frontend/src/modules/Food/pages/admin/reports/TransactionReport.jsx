@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { BarChart3, ChevronDown, Info, Settings, FileText, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
@@ -16,16 +17,20 @@ import deliverymanEarningIcon from "@food/assets/Transaction-report-icons/delive
 // Import search and export icons from Dashboard-icons
 import searchIcon from "@food/assets/Dashboard-icons/image8.png"
 import exportIcon from "@food/assets/Dashboard-icons/image9.png"
+import Pagination from '@shared/components/ui/Pagination'
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 
 export default function TransactionReport() {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
   const [summary, setSummary] = useState({
     completedTransaction: 0,
     refundedTransaction: 0,
@@ -154,9 +159,18 @@ export default function TransactionReport() {
       restaurant: "All restaurants",
       time: "All Time",
     })
+    setCurrentPage(1)
   }
 
   const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+
+  // Compute paginated transactions
+  const paginatedTransactions = useMemo(() => {
+    return filteredTransactions.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredTransactions, currentPage]);
 
   const formatCurrency = (amount) => {
     return `\u20B9 ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -313,7 +327,11 @@ export default function TransactionReport() {
           {/* Right Column - Small Cards */}
           <div className="space-y-3">
             {/* Admin Earning */}
-            <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
+            <div 
+              className="rounded-lg shadow-sm border border-slate-200 p-3 cursor-pointer hover:shadow-md transition-all group" 
+              style={{ backgroundColor: '#f1f5f9' }}
+              onClick={() => navigate('/admin/food/earning-breakdown?type=admin')}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
@@ -331,7 +349,11 @@ export default function TransactionReport() {
             </div>
 
             {/* Restaurant Earning */}
-            <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
+            <div 
+              className="rounded-lg shadow-sm border border-slate-200 p-3 cursor-pointer hover:shadow-md transition-all group" 
+              style={{ backgroundColor: '#f1f5f9' }}
+              onClick={() => navigate('/admin/food/earning-breakdown?type=restaurant')}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -349,7 +371,11 @@ export default function TransactionReport() {
             </div>
 
             {/* Deliveryman Earning */}
-            <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
+            <div 
+              className="rounded-lg shadow-sm border border-slate-200 p-3 cursor-pointer hover:shadow-md transition-all group" 
+              style={{ backgroundColor: '#f1f5f9' }}
+              onClick={() => navigate('/admin/food/earning-breakdown?type=deliveryman')}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
@@ -455,13 +481,13 @@ export default function TransactionReport() {
                     </td>
                   </tr>
                 ) : (
-                  filteredTransactions.map((transaction, index) => (
+                  paginatedTransactions.map((transaction, index) => (
                     <tr
                       key={transaction.id}
                       className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] font-medium text-slate-700">{index + 1}</span>
+                        <span className="text-[10px] font-medium text-slate-700">{(currentPage - 1) * itemsPerPage + index + 1}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{transaction.orderId}</span>
@@ -507,6 +533,77 @@ export default function TransactionReport() {
               </tbody>
             </table>
           </div>
+          {filteredTransactions.length > 0 && (
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-slate-600 flex items-center gap-4">
+                <div>
+                  Showing <span className="font-semibold">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-semibold">{Math.min(currentPage * itemsPerPage, filteredTransactions.length)}</span> of{" "}
+                  <span className="font-semibold">{filteredTransactions.length}</span> entries
+                </div>
+                
+                <div className="flex items-center gap-2 border-l pl-4 border-slate-300">
+                  <span className="text-slate-500 hidden sm:inline">Rows per page:</span>
+                  <select 
+                    value={itemsPerPage} 
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-300 text-slate-700 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 block p-1"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1 hidden sm:flex">
+                  {Array.from({ length: Math.min(5, Math.ceil(filteredTransactions.length / itemsPerPage)) }, (_, i) => {
+                    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage)
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                          currentPage === pageNum
+                            ? "bg-emerald-500 text-white shadow-md"
+                            : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredTransactions.length / itemsPerPage), prev + 1))}
+                  disabled={currentPage === Math.ceil(filteredTransactions.length / itemsPerPage)}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

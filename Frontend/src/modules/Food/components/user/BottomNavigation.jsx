@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Tag, User, Truck } from "lucide-react"
+import { Tag, User, Truck, ShoppingBag } from "lucide-react"
 import { useAuth } from "@core/context/AuthContext"
 import DraggableModuleSwitcher from "../../../common/components/DraggableModuleSwitcher"
 
@@ -37,10 +37,12 @@ export default function BottomNavigation() {
   const isSharedFoodProfile =
     (pathname === "/profile" || pathname.startsWith("/profile/")) &&
     profileSource !== "quick"
+  const isOrders = pathname.includes("/orders")
   const isProfile =
-    pathname.startsWith("/food/profile") ||
+    !isOrders &&
+    (pathname.startsWith("/food/profile") ||
     pathname.startsWith("/food/user/profile") ||
-    isSharedFoodProfile
+    isSharedFoodProfile)
   const isDelivery =
     !isBakery &&
     !isUnder250 &&
@@ -119,6 +121,27 @@ export default function BottomNavigation() {
             Under 250
           </span>
           {isUnder250 && (
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-500 rounded-b-full" />
+          )}
+        </Link>
+
+        {/* Divider */}
+        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+
+        {/* Orders Tab */}
+        <Link
+          to={isAuthenticated ? "/user/orders" : "/user/auth/login"}
+          state={!isAuthenticated ? { redirectTo: "/user/orders" } : undefined}
+          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isOrders
+              ? "text-red-600 dark:text-red-500"
+              : "text-gray-600 dark:text-gray-400"
+            }`}
+        >
+          <ShoppingBag className={`h-5 w-5 ${isOrders ? "text-red-600 dark:text-red-500 fill-red-600 dark:fill-red-500" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
+          <span className={`text-xs sm:text-sm font-medium ${isOrders ? "text-red-600 dark:text-red-500 font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
+            Order
+          </span>
+          {isOrders && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-500 rounded-b-full" />
           )}
         </Link>

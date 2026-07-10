@@ -665,6 +665,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         lat: parseFloat(loc.lat || loc.latitude), 
         lng: parseFloat(loc.lng || loc.longitude) 
       });
+      mapRef.current.setZoom(16);
+    } else {
+      toast.error('Location not available yet');
     }
   };
 
@@ -845,7 +848,25 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   </div>
                 </button>
                 <button 
-                   onClick={() => mapRef.current?.setOptions({ gestureHandling: 'greedy' })} 
+                   onClick={() => {
+                      if (!activeOrder) {
+                         toast.error('No active order to navigate to');
+                         return;
+                      }
+                      let target = null;
+                      if (tripStatus === 'PICKING_UP' || tripStatus === 'REACHED_PICKUP') {
+                        target = activeOrder.restaurantLocation;
+                      } else if (tripStatus === 'PICKED_UP' || tripStatus === 'REACHED_DROP') {
+                        target = activeOrder.customerLocation || activeOrder.deliveryAddress?.location;
+                      }
+                      if (target && (target.lat || target.latitude)) {
+                        const lat = target.lat || target.latitude;
+                        const lng = target.lng || target.longitude;
+                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+                      } else {
+                        toast.error('Target location not available');
+                      }
+                   }} 
                    className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-blue-600 border border-gray-100 active:scale-90 transition-all"
                 >
                   <div className="w-8 h-8 rounded-full border-2 border-blue-600 flex items-center justify-center"><Navigation2 className="w-4 h-4" /></div>
@@ -912,27 +933,25 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                              <ChevronDown className="w-6 h-6 text-gray-400 stroke-[3]" />
                           </button>
                         </div>
-                        <div className="flex justify-between w-full items-center mb-10 px-2 text-left">
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                               <img 
-                                 src={activeOrder?.user?.logo || activeOrder?.user?.profileImage || 'https://cdn-icons-png.flaticon.com/512/1275/1275302.png'} 
-                                 className="w-full h-full object-cover" 
-                                 alt="User"
-                               />
-                            </div>
-                            <div>
-                               <h3 className="text-gray-950 text-2xl font-bold uppercase">Handover Drop</h3>
-                               <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1.5 ${isWithinRange ? 'text-green-600' : 'text-orange-500'}`}>
-                                 {isWithinRange ? 'Ready - Swipe to Arrive √' : `${(distanceToTarget / 1000).toFixed(1)} km • ${eta || '--'} min Arrival`}
-                               </p>
-                            </div>
+                        <div className="flex flex-col justify-center w-full items-center mb-8 px-2 text-center">
+                          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-sm shrink-0 mb-3">
+                             <img 
+                               src={activeOrder?.user?.logo || activeOrder?.user?.profileImage || 'https://cdn-icons-png.flaticon.com/512/1275/1275302.png'} 
+                               className="w-full h-full object-cover" 
+                               alt="User"
+                             />
+                          </div>
+                          <div className="flex-1 min-w-0 w-full flex flex-col items-center">
+                             <h3 className="text-gray-950 text-2xl font-bold uppercase truncate max-w-[280px]">Handover Drop</h3>
+                             <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1.5 ${isWithinRange ? 'text-green-600' : 'text-orange-500'}`}>
+                               {isWithinRange ? 'Ready - Swipe to Arrive √' : `${(distanceToTarget / 1000).toFixed(1)} km • ${eta || '--'} min Arrival`}
+                             </p>
                           </div>
                         </div>
 
                         {/* Customer Instructions Panel */}
                         {activeOrder?.note && (
-                          <div className="w-full bg-orange-50 border border-orange-100 rounded-3xl p-5 mb-8 flex gap-4 items-start shadow-sm mx-2">
+                          <div className="w-full bg-orange-50 border border-orange-100 rounded-3xl p-5 mb-8 flex gap-4 items-start shadow-sm mx-2 text-left">
                              <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-orange-500 shadow-sm shrink-0 border border-orange-50">
                                 <Package className="w-5 h-5" />
                              </div>
@@ -942,6 +961,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                              </div>
                           </div>
                         )}
+                        
+                        <div className="w-full mb-8 px-2 text-left flex flex-col">
+                           {(() => {
+                             const deliveryAddress = activeOrder?.deliveryAddress || {};
+                             const addrParts = [deliveryAddress.street, deliveryAddress.additionalDetails, deliveryAddress.city, deliveryAddress.state, deliveryAddress.zipCode].map(v => String(v || '').trim()).filter(Boolean);
+                             const cAddr = activeOrder?.customerAddress || activeOrder?.customer_address || (addrParts.length ? addrParts.join(', ') : 'Address not available');
+                             const cName = activeOrder?.userName || activeOrder?.user?.name || activeOrder?.customerName || 'Customer';
+                             return (
+                               <div className="flex flex-col bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-sm">
+                                 <span className="text-gray-900 font-bold text-lg truncate">{cName}</span>
+                                 <span className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2" title={cAddr}>{cAddr}</span>
+                               </div>
+                             );
+                           })()}
+                        </div>
+
                         <ActionSlider label="Slide to Arrive" successLabel="Arrived ✓" disabled={!isWithinRange} onConfirm={reachDrop} color="bg-blue-600" />
                       </div>
                     ) : (

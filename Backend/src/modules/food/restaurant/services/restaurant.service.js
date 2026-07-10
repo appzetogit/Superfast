@@ -241,13 +241,16 @@ const zoneToPolygon = (zoneDoc) => {
     return { type: 'Polygon', coordinates: [ring] };
 };
 
-const buildZoneRestaurantFilter = async (zoneIdRaw) => {
+export const buildZoneRestaurantFilter = async (zoneIdRaw) => {
     const trimmedZoneId = String(zoneIdRaw || '').trim();
     if (!trimmedZoneId || !mongoose.Types.ObjectId.isValid(trimmedZoneId)) {
         return null;
     }
 
-    const zoneClauses = [{ zoneId: new mongoose.Types.ObjectId(trimmedZoneId) }];
+    const zoneClauses = [
+        { zoneId: new mongoose.Types.ObjectId(trimmedZoneId) },
+        { zoneId: trimmedZoneId }
+    ];
     const zoneDoc = await FoodZone.findOne({ _id: trimmedZoneId, isActive: true }).lean();
     const polygon = zoneToPolygon(zoneDoc);
     if (polygon) {
@@ -1397,6 +1400,16 @@ export const listApprovedRestaurants = async (query = {}) => {
     const skip = (page - 1) * limit;
 
     const filter = { status: 'approved' };
+
+    // STRICT ZONE FILTER: Apply requested zoneId / zone_id strictly before any other criteria
+    const activeZoneId = query.zoneId || query.zone_id;
+    if (activeZoneId) {
+        const zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
+        if (zoneFilter) {
+            filter.$and = [...(filter.$and || []), zoneFilter];
+        }
+    }
+
     if (query.businessType === 'home_bakery') {
         filter.businessType = 'home_bakery';
     } else {
@@ -1405,6 +1418,15 @@ export const listApprovedRestaurants = async (query = {}) => {
 
     if (String(query.customOrdersEnabled) === 'true') {
         filter.customOrdersEnabled = true;
+    }
+
+    if (query.featured === 'true' || query.isFeatured === 'true') {
+        filter.$or = [
+            { isFeatured: true },
+            { featuredDish: { $exists: true, $ne: '', $ne: null } },
+            { priority: { $gt: 0 } },
+            { rating: { $gte: 4.0 } }
+        ];
     }
 
     if (query.city && String(query.city).trim()) {
@@ -1456,12 +1478,6 @@ export const listApprovedRestaurants = async (query = {}) => {
                 { cuisines: { $in: [new RegExp(term, 'i')] } }
             ];
         }
-    }
-
-    // Optional zone polygon filter (when restaurant.zoneId is not set yet).
-    const zoneFilter = await buildZoneRestaurantFilter(query.zoneId);
-    if (zoneFilter) {
-        filter.$and = [...(filter.$and || []), zoneFilter];
     }
 
     const lat = toFiniteNumber(query.lat);

@@ -410,7 +410,7 @@ export default function Home() {
             </Suspense>
 
             <Suspense fallback={null}>
-              <RecommendationsSection fallbackRestaurants={meta.recommended} />
+              <RecommendationsSection fallbackRestaurants={meta.recommended} zoneId={effectiveZoneId} />
             </Suspense>
 
             <Suspense fallback={null}>

@@ -157,7 +157,8 @@ export async function calculateOrderPricing(userId, dto) {
             Math.min(subtotal, Math.floor(Number(offer.discountValue) || 0)),
           );
         }
-        appliedCoupon = { code: codeRaw, discount };
+        const discountBearer = offer.restaurantId ? 'restaurant' : 'admin';
+        appliedCoupon = { code: codeRaw, discount, discountBearer };
       }
     }
   }
@@ -175,6 +176,7 @@ export async function calculateOrderPricing(userId, dto) {
       deliveryFee,
       platformFee,
       discount,
+      discountBearer: appliedCoupon?.discountBearer || 'admin',
       total,
       currency: "INR",
       couponCode: appliedCoupon?.code || codeRaw || null,

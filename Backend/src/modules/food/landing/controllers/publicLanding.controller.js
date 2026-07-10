@@ -5,6 +5,7 @@ import { FoodUnder250Banner } from '../models/under250Banner.model.js';
 import { FoodDiningBanner } from '../models/diningBanner.model.js';
 import { FoodExploreIcon } from '../models/exploreIcon.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { buildZoneRestaurantFilter } from '../../restaurant/services/restaurant.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 
 /** Public hero banners for user home: active only, sorted, with linkedRestaurants populated for click-through */
@@ -88,28 +89,59 @@ export const getPublicGourmetController = async (req, res, next) => {
     }
 };
 
-let landingSettingsCache = { data: null, lastFetched: 0 };
+const landingSettingsCacheMap = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const invalidateLandingSettingsCache = () => {
-    landingSettingsCache = { data: null, lastFetched: 0 };
+    landingSettingsCacheMap.clear();
 };
 
 export const getPublicLandingSettingsController = async (req, res, next) => {
     try {
+        const activeZoneId = req.query.zoneId || req.query.zone_id || '';
+        const cacheKey = activeZoneId ? String(activeZoneId) : 'global';
         const now = Date.now();
-        if (landingSettingsCache.data && now - landingSettingsCache.lastFetched < CACHE_TTL) {
-            return sendResponse(res, 200, 'Landing settings fetched', landingSettingsCache.data);
+        const cached = landingSettingsCacheMap.get(cacheKey);
+        if (cached && now - cached.lastFetched < CACHE_TTL) {
+            return sendResponse(res, 200, 'Landing settings fetched', cached.data);
         }
 
         const settings = await getLandingSettings();
         const ids = settings?.recommendedRestaurantIds || [];
         let recommendedRestaurants = [];
+
+        // Build strict zone filter if zoneId was passed
+        let zoneFilter = null;
+        if (activeZoneId) {
+            zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
+        }
+
         if (Array.isArray(ids) && ids.length > 0) {
-            recommendedRestaurants = await FoodRestaurant.find({ _id: { $in: ids }, status: 'approved' })
+            const queryFilter = {
+                _id: { $in: ids },
+                status: 'approved'
+            };
+            if (zoneFilter) {
+                queryFilter.$and = [zoneFilter];
+            }
+            recommendedRestaurants = await FoodRestaurant.find(queryFilter)
                 .select('restaurantName area city profileImage coverImages menuImages slug rating cuisines pureVegRestaurant')
                 .lean();
         }
+
+        // STRICT ZONE FALLBACK: If no configured recommendations exist in the requested active zone,
+        // strictly show recommended/top restaurants belonging ONLY to the active zone.
+        if (recommendedRestaurants.length === 0 && zoneFilter) {
+            recommendedRestaurants = await FoodRestaurant.find({
+                status: 'approved',
+                $and: [zoneFilter]
+            })
+                .select('restaurantName area city profileImage coverImages menuImages slug rating cuisines pureVegRestaurant')
+                .sort({ rating: -1, totalRatings: -1 })
+                .limit(12)
+                .lean();
+        }
+
         const payload = {
             ...settings,
             headerVideoPublicId: undefined,
@@ -117,10 +149,10 @@ export const getPublicLandingSettingsController = async (req, res, next) => {
             recommendedRestaurants
         };
 
-        landingSettingsCache = {
+        landingSettingsCacheMap.set(cacheKey, {
             data: payload,
             lastFetched: now
-        };
+        });
 
         return sendResponse(res, 200, 'Landing settings fetched', payload);
     } catch (error) {

@@ -443,13 +443,13 @@ export async function updateOrderStatusAdminController(req, res, next) {
     try {
         const adminId = req.user?.userId;
         const orderId = req.params.orderId;
-        const { orderStatus } = req.body;
+        const { orderStatus, cancellationReason } = req.body;
 
         if (!orderStatus) {
             return sendResponse(res, 400, 'orderStatus is required');
         }
 
-        const order = await orderService.updateOrderStatusAdmin(orderId, adminId, orderStatus);
+        const order = await orderService.updateOrderStatusAdmin(orderId, adminId, orderStatus, cancellationReason);
         return sendResponse(res, 200, 'Order status updated successfully', { order });
     } catch (err) {
         next(err);

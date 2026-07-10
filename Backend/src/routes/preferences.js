@@ -5,6 +5,7 @@ import { FoodCategory } from '../modules/food/admin/models/category.model.js';
 import { FoodUser } from '../core/users/user.model.js';
 import { FoodRestaurant } from '../modules/food/restaurant/models/restaurant.model.js';
 import { FoodItem } from '../modules/food/admin/models/food.model.js';
+import { buildZoneRestaurantFilter } from '../modules/food/restaurant/services/restaurant.service.js';
 import { sendResponse, sendError } from '../utils/response.js';
 
 const router = express.Router();
@@ -115,6 +116,12 @@ router.get('/recommendations', authMiddleware, async (req, res, next) => {
 
         let recommendedRestaurants = [];
 
+        const activeZoneId = req.query.zoneId || req.query.zone_id || '';
+        let zoneFilter = null;
+        if (activeZoneId) {
+            zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
+        }
+
         if (hasSet) {
             const categoryNames = preferences.map(p => p.name);
 
@@ -153,15 +160,31 @@ router.get('/recommendations', authMiddleware, async (req, res, next) => {
             const restaurantIdsFromFoods = foodItems.map(item => item.restaurantId);
 
             // 2. Find approved restaurants that sell those cuisines or matching products
-            recommendedRestaurants = await FoodRestaurant.find({
+            const queryFilter = {
                 status: 'approved',
                 $or: [
                     { _id: { $in: restaurantIdsFromFoods } },
                     { cuisines: { $in: matchedCategoryNames.map(n => new RegExp('^' + escapeRegex(n) + '$', 'i')) } }
                 ]
-            })
+            };
+            if (zoneFilter) {
+                queryFilter.$and = [zoneFilter];
+            }
+            recommendedRestaurants = await FoodRestaurant.find(queryFilter)
             .sort({ rating: -1, totalRatings: -1 })
             .limit(20)
+            .lean();
+        }
+
+        // STRICT ZONE FALLBACK: If user has no recommendations matching in their active zone,
+        // strictly return the top recommended restaurants belonging to the active zone.
+        if (recommendedRestaurants.length === 0 && zoneFilter) {
+            recommendedRestaurants = await FoodRestaurant.find({
+                status: 'approved',
+                $and: [zoneFilter]
+            })
+            .sort({ rating: -1, totalRatings: -1 })
+            .limit(12)
             .lean();
         }
 

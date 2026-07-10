@@ -26,7 +26,7 @@ const CATEGORY_EMOJIS = {
   kebabs: "🍢",
 };
 
-const RecommendationsSection = memo(({ fallbackRestaurants }) => {
+const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
   const [data, setData] = useState({ favouriteCategories: [], recommendedRestaurants: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState("all");
@@ -34,7 +34,7 @@ const RecommendationsSection = memo(({ fallbackRestaurants }) => {
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
-        const res = await preferencesAPI.getRecommendations();
+        const res = await preferencesAPI.getRecommendations(zoneId ? { zoneId } : {});
         setData(res?.data?.data || res?.data || { favouriteCategories: [], recommendedRestaurants: [] });
       } catch (err) {
         console.error("Failed to load recommendations:", err);
@@ -43,7 +43,7 @@ const RecommendationsSection = memo(({ fallbackRestaurants }) => {
       }
     };
     fetchRecommendations();
-  }, []);
+  }, [zoneId]);
 
   if (isLoading) {
     return (

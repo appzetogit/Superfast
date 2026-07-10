@@ -1108,6 +1108,25 @@ export const useDeliveryNotifications = () => {
       dispatchNotificationInboxRefresh();
     });
 
+    socketRef.current.on('admin_status_update', async (data) => {
+      debugLog('?? Admin changed delivery partner status via socket:', data);
+      if (data && data.status) {
+         try {
+             const { useDeliveryStore } = await import('@/modules/DeliveryV2/store/useDeliveryStore');
+             const isOnline = data.status === 'online';
+             useDeliveryStore.getState().setOnline(isOnline);
+             
+             if (isOnline) {
+                 localStorage.setItem("app:isOnline", "true");
+             } else {
+                 localStorage.removeItem("app:isOnline");
+             }
+         } catch (err) {
+             console.warn('Could not update online status in store directly:', err);
+         }
+      }
+    });
+
     // Auth change/refresh listeners
     const handleAuthChange = () => {
       const newToken = localStorage.getItem('delivery_accessToken') || localStorage.getItem('accessToken');

@@ -236,14 +236,14 @@ async function syncItemsWithDatabase(items = []) {
   const dbItemsMap = new Map(dbItems.map(item => [String(item._id), item]));
 
   const missingIds = foodItemIds.filter(id => !dbItemsMap.has(String(id)));
-  
+
   if (missingIds.length > 0) {
     const dbAddons = await FoodAddon.find({
       _id: { $in: missingIds },
       approvalStatus: 'approved',
       isDeleted: { $ne: true }
     }).lean();
-    
+
     for (const addon of dbAddons) {
       if (addon.published) {
         dbItemsMap.set(String(addon._id), {
@@ -5318,7 +5318,7 @@ export async function processReassignmentTimeout(orderMongoId, pendingDriverId) 
 /**
  * Admin status update service that triggers appropriate workflows for user, driver, restaurant, and admin.
  */
-export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
+export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, cancellationReason = null) {
   const VALID_STATUSES = [
     'placed', 'preparing', 'ready_for_pickup', 'picked_up', 'delivered', 'cancelled_by_admin'
   ];
@@ -5356,9 +5356,12 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
   if (orderStatus === 'cancelled_by_admin') {
     order.cancelledAt = new Date();
     order.cancelledBy = 'admin';
+    if (cancellationReason) {
+      order.cancellationReason = cancellationReason;
+    }
 
     // If online paid, refund. If cash, fail/cancel.
-    const isOnlinePaid = order.payment?.method === "razorpay" && 
+    const isOnlinePaid = order.payment?.method === "razorpay" &&
       (order.payment?.status === "paid" || order.payment?.status === "refunded");
     if (!isOnlinePaid) {
       order.payment.status = "cancelled";
@@ -5370,14 +5373,20 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
   // 1. Transaction Sync
   if (orderStatus === 'cancelled_by_admin') {
     try {
-      const isOnlinePaid = order.payment?.method === "razorpay" && 
+      const isOnlinePaid = order.payment?.method === "razorpay" &&
         (order.payment?.status === "paid" || order.payment?.status === "refunded");
-      await foodTransactionService.updateTransactionStatus(order._id, 'cancelled_by_admin', {
-        status: isOnlinePaid ? 'refunded' : 'failed',
-        note: `Order cancelled by admin`,
-        recordedByRole: 'ADMIN',
-        recordedById: adminId
-      });
+      if (from === 'ready_for_pickup' || from === 'picked_up') {
+        // Late cancellation: Platform absorbs the loss, restaurant/rider still get paid
+        await foodTransactionService.applyAdminCancellationLoss(order._id, adminId);
+      } else {
+        // Early cancellation: standard fail/refund
+        await foodTransactionService.updateTransactionStatus(order._id, 'cancelled_by_admin', {
+          status: isOnlinePaid ? 'refunded' : 'failed',
+          note: `Order cancelled by admin`,
+          recordedByRole: 'ADMIN',
+          recordedById: adminId
+        });
+      }
     } catch (err) {
       logger.warn(`updateOrderStatusAdmin transaction cancellation sync failed: ${err.message}`);
     }
@@ -5441,7 +5450,7 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
       title = "Order Delivered! 🎉";
       body = "Your order has been delivered successfully. Enjoy your food!";
     } else if (orderStatus === "cancelled_by_admin") {
-      const isOnlinePaid = order.payment?.method === "razorpay" && 
+      const isOnlinePaid = order.payment?.method === "razorpay" &&
         (order.payment?.status === "paid" || order.payment?.status === "refunded");
       const refundDetail = isOnlinePaid ? ` Your refund of ₹${order.pricing?.total || 0} is being processed.` : "";
       title = "Order Cancelled ❌";
@@ -5489,7 +5498,7 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus) {
   const isInitialDispatchTrigger = ((String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && (String(from) !== "preparing" && String(from) !== "confirmed"));
   if (isInitialDispatchTrigger) {
     console.log(`[DEBUG] Order ${order.orderId} status changed to '${orderStatus}' by admin. Triggering delivery dispatch.`);
-    
+
     // If auto dispatch, try assign now.
     if (order.dispatch?.status === "unassigned" && order.dispatch?.modeAtCreation === "auto") {
       try {

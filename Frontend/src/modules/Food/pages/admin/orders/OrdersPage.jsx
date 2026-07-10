@@ -12,6 +12,7 @@ import ViewOrderDialog from "@food/components/admin/orders/ViewOrderDialog"
 import SettingsDialog from "@food/components/admin/orders/SettingsDialog"
 import RefundModal from "@food/components/admin/orders/RefundModal"
 import { useOrdersManagement } from "@food/components/admin/orders/useOrdersManagement"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 import { OrdersDashboardSkeleton } from "@food/components/ui/loading-skeletons"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
@@ -47,6 +48,9 @@ export default function OrdersPage({ statusKey = "all" }) {
   const [deletingOrderId, setDeletingOrderId] = useState(null)
   const [refundModalOpen, setRefundModalOpen] = useState(false)
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [selectedOrderForReject, setSelectedOrderForReject] = useState(null)
+  const [rejectReason, setRejectReason] = useState("")
   const showLoadingSkeleton = useDelayedLoading(isLoading, { delay: 120, minDuration: 360 })
   const seenOrderIdsRef = useRef(new Set())
   const isFirstLoadRef = useRef(true)
@@ -729,25 +733,31 @@ export default function OrdersPage({ statusKey = "all" }) {
     }
   }
 
-  const handleRejectOrder = async (order) => {
-    const orderIdToUse = order.id || order._id || order.orderId
+  const handleRejectOrder = (order) => {
+    setSelectedOrderForReject(order)
+    setRejectReason("")
+    setShowRejectModal(true)
+  }
+
+  const processRejectOrder = async () => {
+    if (!selectedOrderForReject) return
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection")
+      return
+    }
+
+    const orderIdToUse = selectedOrderForReject.id || selectedOrderForReject._id || selectedOrderForReject.orderId
     if (!orderIdToUse) {
       toast.error("Order ID not found")
       return
     }
 
-    const reason = prompt(
-      `Enter rejection reason for order ${order.orderId}:`,
-      "Order rejected by admin",
-    )
-
-    if (reason === null) return
-
     try {
-      setProcessingActionOrderId(order.id || order.orderId)
-      const response = await adminAPI.rejectOrder(orderIdToUse, reason)
-      if (response.data?.success) {
-        toast.success(response.data?.message || `Order ${order.orderId} rejected`)
+      setProcessingActionOrderId(selectedOrderForReject.id || selectedOrderForReject.orderId)
+      const response = await adminAPI.rejectOrder(orderIdToUse, rejectReason)
+      if (response.data?.success || response.status === 200) {
+        toast.success(`Order ${selectedOrderForReject.orderId || orderIdToUse} rejected`)
+        setShowRejectModal(false)
         await fetchOrders({ silent: true, withRingCheck: false })
       } else {
         toast.error(response.data?.message || "Failed to reject order")
@@ -985,6 +995,43 @@ export default function OrdersPage({ statusKey = "all" }) {
         onConfirm={handleRefundConfirm}
         isProcessing={processingRefund !== null}
       />
+
+      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Order {selectedOrderForReject?.orderId}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Reason for rejection
+            </label>
+            <textarea
+              className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none"
+              rows={4}
+              placeholder="E.g., Items out of stock, Restaurant closed..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="flex justify-end gap-2 sm:justify-end">
+            <button
+              onClick={() => setShowRejectModal(false)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={processRejectOrder}
+              disabled={!rejectReason.trim() || processingActionOrderId}
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              {processingActionOrderId && <Loader2 className="w-4 h-4 animate-spin" />}
+              Confirm Reject
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <OrdersTable 
         orders={filteredOrders} 
         visibleColumns={visibleColumns}

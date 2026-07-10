@@ -621,10 +621,12 @@ export const adminAPI = {
     apiClient.post(`/food/admin/orders/${String(orderId)}/refund`, body ?? {}, {
       contextModule: "admin",
     }),
-  updateOrderStatus: (orderId, orderStatus) =>
-    apiClient.patch(`/food/admin/orders/${String(orderId)}/status`, { orderStatus }, {
+  updateOrderStatus: (orderId, orderStatus, reason = undefined) =>
+    apiClient.patch(`/food/admin/orders/${String(orderId)}/status`, { orderStatus, cancellationReason: reason }, {
       contextModule: "admin",
     }),
+  acceptOrder: (orderId) => adminAPI.updateOrderStatus(orderId, "preparing"),
+  rejectOrder: (orderId, reason) => adminAPI.updateOrderStatus(orderId, "cancelled_by_admin", reason),
   deleteOrder: (orderId) =>
     apiClient.delete(`/food/admin/orders/${String(orderId)}`, {
       contextModule: "admin",
@@ -2885,5 +2887,5 @@ export const publicAPI = createStubAPI();
 export const preferencesAPI = {
   getCategories: () => apiClient.get("/preferences/categories", { contextModule: "user" }),
   savePreferences: (categoryIds) => apiClient.post("/preferences/save", { categoryIds }, { contextModule: "user" }),
-  getRecommendations: () => apiClient.get("/preferences/recommendations", { contextModule: "user" }),
+  getRecommendations: (params = {}) => apiClient.get("/preferences/recommendations", { params, contextModule: "user" }),
 };
