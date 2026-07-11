@@ -127,12 +127,12 @@ export default function DisbursementReportRestaurants() {
           {/* Completed Disbursements */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative">
             <div className="absolute top-4 right-4">
-              <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-[var(--primary-theme)] flex items-center justify-center">
                 <Info className="w-3 h-3 text-white" />
               </div>
             </div>
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-[var(--primary-theme)] flex items-center justify-center mb-4">
                 <img src={completedIcon} alt="Completed" className="w-10 h-10" />
               </div>
               <p className="text-2xl font-bold text-slate-900 mb-1">{emptyDisbursementStats.completed}</p>
@@ -189,7 +189,7 @@ export default function DisbursementReportRestaurants() {
                   className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="All restaurants">All restaurants</option>
-                  <option value="Café Monarch">Café Monarch</option>
+                  <option value="Cafï¿½ Monarch">Cafï¿½ Monarch</option>
                   <option value="Hungry Puppets">Hungry Puppets</option>
                   <option value="Redcliff Cafe">Redcliff Cafe</option>
                 </select>

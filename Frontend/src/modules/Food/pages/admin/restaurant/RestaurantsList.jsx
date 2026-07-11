@@ -713,7 +713,7 @@ export default function RestaurantsList() {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 8,
-          fillColor: "#f97316",
+          fillColor: "var(--primary-theme, #f97316)",
           fillOpacity: 1,
           strokeColor: "#ffffff",
           strokeWeight: 3,

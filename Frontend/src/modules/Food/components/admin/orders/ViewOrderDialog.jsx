@@ -201,7 +201,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
       <DialogContent className="max-w-4xl max-h-[90vh] bg-white p-0 overflow-y-auto">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 sticky top-0 bg-white z-10">
           <DialogTitle className="flex items-center gap-2">
-            <Eye className="w-5 h-5 text-orange-600" />
+            <Eye className="w-5 h-5 text-[var(--primary-theme)]" />
             Order Details
           </DialogTitle>
           <DialogDescription>
@@ -228,7 +228,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
               </div>
               {order.orderOtp && (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider flex items-center gap-2 font-bold">
+                  <p className="text-xs font-semibold text-[var(--primary-theme)] uppercase tracking-wider flex items-center gap-2 font-bold">
                     <CheckCircle2 className="w-4 h-4" />
                     Handover Code (OTP)
                   </p>
@@ -268,7 +268,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                 <div className="space-y-1">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                     Order Status
-                    {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin text-orange-500" />}
+                    {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin text-[var(--primary-theme)]" />}
                   </p>
                   <div className="relative">
                     {(() => {
@@ -441,7 +441,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
           {(order.billImageUrl || order.billImage || order.deliveryState?.billImageUrl) && (
             <div className="border-t border-slate-200 pt-4">
               <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-orange-600" />
+                <Receipt className="w-4 h-4 text-[var(--primary-theme)]" />
                 Bill Image (Captured by Delivery Boy)
               </h3>
               <div className="space-y-3">
@@ -525,7 +525,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     type="button"
                     disabled={order.reassignmentStatus === 'pending' || countdown > 0}
                     onClick={() => setShowReassignModal(true)}
-                    className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+                    className="px-3 py-1.5 bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
                   >
                     Reassign Driver
                   </button>
@@ -619,7 +619,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200 text-slate-800">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-950 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-orange-600" />
+                  <Truck className="w-5 h-5 text-[var(--primary-theme)]" />
                   Reassign Delivery Partner
                 </h3>
                 <button
@@ -649,7 +649,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     <select
                       value={selectedDriverId}
                       onChange={(e) => setSelectedDriverId(e.target.value)}
-                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] bg-white"
                     >
                       <option value="">Select a driver...</option>
                       {availableDrivers.map((driver) => (
@@ -669,7 +669,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     onChange={(e) => setReassignReason(e.target.value)}
                     placeholder="Optional reason..."
                     rows={3}
-                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white"
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] resize-none bg-white"
                   />
                 </div>
               </div>
@@ -708,7 +708,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                       setIsSubmittingReassign(false);
                     }
                   }}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 rounded-lg shadow-sm"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-300 rounded-lg shadow-sm"
                 >
                   {isSubmittingReassign ? 'Reassigning...' : 'Confirm Reassign'}
                 </button>

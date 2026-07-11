@@ -135,7 +135,7 @@ export default function About() {
                 className="flex justify-center mb-6"
               >
                 <div className="relative">
-                  <div className="absolute inset-0 bg-[#cc2532] rounded-full blur-2xl opacity-30 animate-pulse" />
+                  <div className="absolute inset-0 bg-[var(--primary-theme)] rounded-full blur-2xl opacity-30 animate-pulse" />
                   <div className="relative bg-white dark:bg-gray-800 rounded-full p-4 md:p-6 shadow-xl flex items-center justify-center min-w-[80px] min-h-[80px]">
                     {logoUrl ? (
                       <img
@@ -147,7 +147,7 @@ export default function About() {
                         }}
                       />
                     ) : (
-                      <span className="text-2xl font-bold text-[#cc2532]">
+                      <span className="text-2xl font-bold text-[var(--primary-theme)]">
                         {(companyName || aboutData.appName).charAt(0)}
                       </span>
                     )}
@@ -250,7 +250,7 @@ export default function About() {
                     <FileText className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#cc2532] dark:group-hover:text-[#F97316] transition-colors">
+                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[var(--primary-theme)] dark:group-hover:text-[var(--primary-theme)] transition-colors">
                       Terms and Conditions
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-500">
@@ -268,7 +268,7 @@ export default function About() {
                     <Lock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#cc2532] dark:group-hover:text-[#F97316] transition-colors">
+                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[var(--primary-theme)] dark:group-hover:text-[var(--primary-theme)] transition-colors">
                       Privacy Policy
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-500">
@@ -286,7 +286,7 @@ export default function About() {
                     <Receipt className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#cc2532] dark:group-hover:text-[#F97316] transition-colors">
+                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[var(--primary-theme)] dark:group-hover:text-[var(--primary-theme)] transition-colors">
                       Refund Policy
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-500">
@@ -304,7 +304,7 @@ export default function About() {
                     <Truck className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#cc2532] dark:group-hover:text-[#F97316] transition-colors">
+                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[var(--primary-theme)] dark:group-hover:text-[var(--primary-theme)] transition-colors">
                       Shipping Policy
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-500">
@@ -322,7 +322,7 @@ export default function About() {
                     <XCircle className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#cc2532] dark:group-hover:text-[#F97316] transition-colors">
+                    <div className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[var(--primary-theme)] dark:group-hover:text-[var(--primary-theme)] transition-colors">
                       Cancellation Policy
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-500">

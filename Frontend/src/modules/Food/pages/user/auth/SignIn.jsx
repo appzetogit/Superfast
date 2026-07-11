@@ -151,7 +151,7 @@ export default function SignIn() {
                     placeholder="Phone number"
                     value={formData.phone}
                     onChange={handleChange}
-                    className={`flex-1 h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl rounded-l-none focus-visible:ring-1 focus-visible:ring-[#F97316] focus-visible:border-[#F97316] ${error ? "border-red-500" : ""} transition-all`}
+                    className={`flex-1 h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl rounded-l-none focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${error ? "border-red-500" : ""} transition-all`}
                     aria-invalid={error ? "true" : "false"}
                     onFocus={(e) => {
                       setTimeout(() => {

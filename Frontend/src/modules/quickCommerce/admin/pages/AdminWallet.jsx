@@ -161,7 +161,7 @@ const AdminWallet = () => {
             icon: Clock,
             color: 'amber',
             bg: 'bg-orange-50',
-            iconColor: 'text-orange-500'
+            iconColor: 'text-[var(--primary-theme)]'
         },
         {
             label: 'Seller Pending Payouts',

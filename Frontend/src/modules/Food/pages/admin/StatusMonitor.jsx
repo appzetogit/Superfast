@@ -420,7 +420,7 @@ export default function StatusMonitor() {
             onClick={() => { setActiveToggle("restaurants"); setSearchQuery(""); }}
             className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
               activeToggle === "restaurants"
-                ? "bg-[#cc2532] text-white shadow-sm"
+                ? "bg-[var(--primary-theme)] text-white shadow-sm"
                 : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900"
             }`}
           >
@@ -431,7 +431,7 @@ export default function StatusMonitor() {
             onClick={() => { setActiveToggle("partners"); setSearchQuery(""); }}
             className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
               activeToggle === "partners"
-                ? "bg-[#cc2532] text-white shadow-sm"
+                ? "bg-[var(--primary-theme)] text-white shadow-sm"
                 : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900"
             }`}
           >
@@ -478,7 +478,7 @@ export default function StatusMonitor() {
                   }}
                   className={`p-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors flex items-center justify-center shrink-0 ${
                     statusFilter !== "all" || selectedZone !== "all" || sortBy !== "online_first"
-                      ? "border-[#cc2532] text-[#cc2532] bg-red-50/10"
+                      ? "border-[var(--primary-theme)] text-[var(--primary-theme)] bg-red-50/10"
                       : ""
                   }`}
                   title="Filters and Sorting"
@@ -501,7 +501,7 @@ export default function StatusMonitor() {
                         onClick={() => setSelectedPartnerId(partner._id)}
                         className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "border-[#cc2532] bg-red-50/20 dark:bg-red-950/10 shadow-sm"
+                            ? "border-[var(--primary-theme)] bg-red-50/20 dark:bg-red-950/10 shadow-sm"
                             : "border-neutral-100 dark:border-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-neutral-900"
                         }`}
                       >
@@ -530,7 +530,7 @@ export default function StatusMonitor() {
                         onClick={() => setSelectedRestaurantId(restaurant._id)}
                         className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "border-[#cc2532] bg-red-50/20 dark:bg-red-950/10 shadow-sm"
+                            ? "border-[var(--primary-theme)] bg-red-50/20 dark:bg-red-950/10 shadow-sm"
                             : "border-neutral-100 dark:border-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-neutral-900"
                         }`}
                       >
@@ -673,7 +673,7 @@ export default function StatusMonitor() {
                                       type="button"
                                       disabled={o.reassignmentStatus === 'pending'}
                                       onClick={() => handleReassignClick(o)}
-                                      className="px-1.5 py-0.5 bg-orange-600 hover:bg-orange-700 disabled:bg-neutral-300 disabled:text-neutral-500 text-white rounded font-bold text-[9px] uppercase transition-colors"
+                                      className="px-1.5 py-0.5 bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-neutral-300 disabled:text-neutral-500 text-white rounded font-bold text-[9px] uppercase transition-colors"
                                     >
                                       {o.reassignmentStatus === 'pending' ? 'Pending' : 'Reassign'}
                                     </button>
@@ -817,7 +817,7 @@ export default function StatusMonitor() {
                         onClick={() => setTempStatus(status)}
                         className={`px-3 py-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                           isSelected
-                            ? "border-[#cc2532] bg-red-50/20 text-[#cc2532]"
+                            ? "border-[var(--primary-theme)] bg-red-50/20 text-[var(--primary-theme)]"
                             : "border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-350 hover:bg-neutral-50 dark:hover:bg-neutral-900"
                         }`}
                       >
@@ -870,7 +870,7 @@ export default function StatusMonitor() {
                   setSortBy(tempSort);
                   setIsFilterOpen(false);
                 }}
-                className="bg-[#cc2532] hover:bg-[#b21f2b] text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-all active:scale-95"
+                className="bg-[var(--primary-theme)] hover:bg-[#b21f2b] text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-all active:scale-95"
               >
                 Apply
               </button>
@@ -884,7 +884,7 @@ export default function StatusMonitor() {
           <div className="bg-white dark:bg-[#111115] rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-neutral-800 animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-neutral-200">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
-                <Truck className="w-5 h-5 text-orange-600" />
+                <Truck className="w-5 h-5 text-[var(--primary-theme)]" />
                 Reassign Delivery Partner
               </h3>
               <button 
@@ -915,7 +915,7 @@ export default function StatusMonitor() {
                   <select
                     value={selectedDriverId}
                     onChange={(e) => setSelectedDriverId(e.target.value)}
-                    className="w-full text-sm border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
+                    className="w-full text-sm border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
                   >
                     <option value="">Select a driver...</option>
                     {availableDrivers.map((driver) => (
@@ -935,7 +935,7 @@ export default function StatusMonitor() {
                   onChange={(e) => setReassignReason(e.target.value)}
                   placeholder="Optional reason..."
                   rows={3}
-                  className="w-full text-sm border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
+                  className="w-full text-sm border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] resize-none bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
                 />
               </div>
             </div>
@@ -973,7 +973,7 @@ export default function StatusMonitor() {
                     setIsSubmittingReassign(false);
                   }
                 }}
-                className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 rounded-lg shadow-sm"
+                className="px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-300 rounded-lg shadow-sm"
               >
                 {isSubmittingReassign ? 'Reassigning...' : 'Confirm Reassign'}
               </button>

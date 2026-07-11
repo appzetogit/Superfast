@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { ShieldCheck, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home } from "lucide-react"
 import { Button } from "@food/components/ui/button"
@@ -53,7 +53,7 @@ export default function DeliverySignIn() {
   }, [])
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
+  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.delivery?.logo?.url || getCachedSettings()?.logo?.url || null)
   const [keyboardInset, setKeyboardInset] = useState(0)
 
   useEffect(() => {
@@ -66,7 +66,11 @@ export default function DeliverySignIn() {
     const fetchSettings = async () => {
       try {
         const settings = await loadBusinessSettings()
-        if (settings?.logo?.url) setLogoUrl(settings.logo.url)
+        if (settings?.portals?.delivery?.logo?.url) {
+          setLogoUrl(settings.portals.delivery.logo.url)
+        } else if (settings?.logo?.url) {
+          setLogoUrl(settings.logo.url)
+        }
       } catch (e) {}
     }
     fetchSettings()

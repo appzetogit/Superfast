@@ -1,0 +1,1 @@
+import mongoose from 'mongoose'; async function run() { await mongoose.connect('mongodb://127.0.0.1:27017/superfast'); const db = mongoose.connection.db; const cats = await db.collection('food_categories').find({ $or: [{ restaurantId: { $exists: false } }, { restaurantId: null }] }).toArray(); console.log(cats); process.exit(0); } run();

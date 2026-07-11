@@ -89,9 +89,24 @@ export async function updateGlobalSettings(req, res, next) {
         if (modules !== undefined) {
             settings.modules = {
                 food: modules.food !== undefined ? modules.food : settings.modules?.food,
-                homeBakery: modules.homeBakery !== undefined ? modules.homeBakery : settings.modules?.homeBakery,
                 quickCommerce: modules.quickCommerce !== undefined ? modules.quickCommerce : settings.modules?.quickCommerce,
             };
+        }
+        if (data.moduleThemes !== undefined) {
+            if (!settings.moduleThemes) settings.moduleThemes = {};
+            if (data.moduleThemes.food?.themeColor) {
+                if (!settings.moduleThemes.food) settings.moduleThemes.food = {};
+                settings.moduleThemes.food.themeColor = data.moduleThemes.food.themeColor;
+            }
+            if (data.moduleThemes.quickCommerce) {
+                if (!settings.moduleThemes.quickCommerce) settings.moduleThemes.quickCommerce = {};
+                if (data.moduleThemes.quickCommerce.themeColor) {
+                    settings.moduleThemes.quickCommerce.themeColor = data.moduleThemes.quickCommerce.themeColor;
+                }
+                if (data.moduleThemes.quickCommerce.secondaryThemeColor) {
+                    settings.moduleThemes.quickCommerce.secondaryThemeColor = data.moduleThemes.quickCommerce.secondaryThemeColor;
+                }
+            }
         }
         if (codEnabled !== undefined) {
             settings.codEnabled = codEnabled;
@@ -106,25 +121,85 @@ export async function updateGlobalSettings(req, res, next) {
             settings.bannedNumbers = bannedNumbers;
         }
 
-        // Handle file uploads
+        // Handle file uploads explicitly via $set
+        const updateQuery = { $set: {} };
+        
         if (req.files) {
             if (req.files.logo) {
                 const logoResult = await uploadImageBufferDetailed(req.files.logo[0].buffer, 'business/logos');
-                settings.logo = {
-                    url: logoResult.secure_url,
-                    publicId: logoResult.public_id
-                };
+                updateQuery.$set['logo.url'] = logoResult.secure_url;
+                updateQuery.$set['logo.publicId'] = logoResult.public_id;
             }
             if (req.files.favicon) {
                 const faviconResult = await uploadImageBufferDetailed(req.files.favicon[0].buffer, 'business/favicons');
-                settings.favicon = {
-                    url: faviconResult.secure_url,
-                    publicId: faviconResult.public_id
-                };
+                updateQuery.$set['favicon.url'] = faviconResult.secure_url;
+                updateQuery.$set['favicon.publicId'] = faviconResult.public_id;
+            }
+            if (req.files.foodLogo) {
+                const foodLogoResult = await uploadImageBufferDetailed(req.files.foodLogo[0].buffer, 'business/logos');
+                updateQuery.$set['moduleThemes.food.logo.url'] = foodLogoResult.secure_url;
+                updateQuery.$set['moduleThemes.food.logo.publicId'] = foodLogoResult.public_id;
+            }
+            if (req.files.qcLogo) {
+                const qcLogoResult = await uploadImageBufferDetailed(req.files.qcLogo[0].buffer, 'business/logos');
+                updateQuery.$set['moduleThemes.quickCommerce.logo.url'] = qcLogoResult.secure_url;
+                updateQuery.$set['moduleThemes.quickCommerce.logo.publicId'] = qcLogoResult.public_id;
+            }
+            if (req.files.deliveryLogo) {
+                const result = await uploadImageBufferDetailed(req.files.deliveryLogo[0].buffer, 'business/logos');
+                updateQuery.$set['portals.delivery.logo.url'] = result.secure_url;
+                updateQuery.$set['portals.delivery.logo.publicId'] = result.public_id;
+            }
+            if (req.files.restaurantLogo) {
+                const result = await uploadImageBufferDetailed(req.files.restaurantLogo[0].buffer, 'business/logos');
+                updateQuery.$set['portals.restaurant.logo.url'] = result.secure_url;
+                updateQuery.$set['portals.restaurant.logo.publicId'] = result.public_id;
+            }
+            if (req.files.userLogo) {
+                const result = await uploadImageBufferDetailed(req.files.userLogo[0].buffer, 'business/logos');
+                updateQuery.$set['portals.user.logo.url'] = result.secure_url;
+                updateQuery.$set['portals.user.logo.publicId'] = result.public_id;
+            }
+            if (req.files.sellerLogo) {
+                const result = await uploadImageBufferDetailed(req.files.sellerLogo[0].buffer, 'business/logos');
+                updateQuery.$set['portals.seller.logo.url'] = result.secure_url;
+                updateQuery.$set['portals.seller.logo.publicId'] = result.public_id;
             }
         }
-        settings.updatedBy = req.user ? req.user.userId : null;
-        await settings.save();
+        
+        // Update regular fields in $set
+        if (companyName !== undefined) updateQuery.$set.companyName = companyName;
+        if (email !== undefined) updateQuery.$set.email = email;
+        if (phoneNumber !== undefined) updateQuery.$set['phone.number'] = phoneNumber;
+        if (phoneCountryCode !== undefined) updateQuery.$set['phone.countryCode'] = phoneCountryCode;
+        if (address !== undefined) updateQuery.$set.address = address;
+        if (state !== undefined) updateQuery.$set.state = state;
+        if (pincode !== undefined) updateQuery.$set.pincode = pincode;
+        if (region !== undefined) updateQuery.$set.region = region;
+        if (themeColor !== undefined) updateQuery.$set.themeColor = themeColor;
+        if (codEnabled !== undefined) updateQuery.$set.codEnabled = codEnabled;
+        if (onlinePaymentEnabled !== undefined) updateQuery.$set.onlinePaymentEnabled = onlinePaymentEnabled;
+        if (showLocationPopup !== undefined) updateQuery.$set.showLocationPopup = showLocationPopup;
+        if (bannedNumbers !== undefined && Array.isArray(bannedNumbers)) updateQuery.$set.bannedNumbers = bannedNumbers;
+        updateQuery.$set.updatedBy = req.user ? req.user.userId : null;
+
+        if (data.moduleThemes !== undefined) {
+            if (data.moduleThemes.food?.themeColor !== undefined) {
+                updateQuery.$set['moduleThemes.food.themeColor'] = data.moduleThemes.food.themeColor;
+            }
+            if (data.moduleThemes.quickCommerce?.themeColor !== undefined) {
+                updateQuery.$set['moduleThemes.quickCommerce.themeColor'] = data.moduleThemes.quickCommerce.themeColor;
+            }
+            if (data.moduleThemes.quickCommerce?.secondaryThemeColor !== undefined) {
+                updateQuery.$set['moduleThemes.quickCommerce.secondaryThemeColor'] = data.moduleThemes.quickCommerce.secondaryThemeColor;
+            }
+        }
+
+        // Execute reliable update
+        await GlobalSettings.updateOne({ _id: settings._id }, updateQuery);
+        
+        // Refetch latest settings to return to frontend
+        settings = await GlobalSettings.findById(settings._id).lean();
 
         // Auto-logout for newly banned numbers
         if (bannedNumbers && Array.isArray(bannedNumbers) && bannedNumbers.length > 0) {

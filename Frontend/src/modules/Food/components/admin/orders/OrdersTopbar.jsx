@@ -13,7 +13,7 @@ const TITLE_STATUS_MAP = {
   "All Orders":                   { badge: "bg-slate-100 text-slate-700",   dot: "bg-slate-400" },
   "Scheduled Orders":             { badge: "bg-indigo-50 text-indigo-700",   dot: "bg-indigo-500" },
   "Pending Orders":               { badge: "bg-blue-50 text-blue-700",       dot: "bg-blue-500" },
-  "Processing Orders":            { badge: "bg-orange-50 text-orange-700",   dot: "bg-orange-500" },
+  "Processing Orders":            { badge: "bg-orange-50 text-orange-700",   dot: "bg-[var(--primary-theme)]" },
   "Food On The Way Orders":       { badge: "bg-amber-50 text-amber-700",     dot: "bg-amber-500" },
   "Delivered Orders":             { badge: "bg-[#E8F8F0] text-emerald-700",  dot: "bg-emerald-500" },
   "Canceled Orders":              { badge: "bg-rose-50 text-rose-700",       dot: "bg-rose-500" },

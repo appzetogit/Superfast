@@ -108,47 +108,48 @@ export default function PageNavbar({
 
   // Load business settings logo
   useEffect(() => {
+    const applySettings = (settings) => {
+        const isQuick = window.location.pathname === "/quick" || window.location.pathname.startsWith("/quick/");
+        if (isQuick && settings?.moduleThemes?.quickCommerce?.logo?.url) {
+            setLogoUrl(settings.moduleThemes.quickCommerce.logo.url);
+        } else if (!isQuick && settings?.moduleThemes?.food?.logo?.url) {
+            setLogoUrl(settings.moduleThemes.food.logo.url);
+        } else if (settings?.portals?.user?.logo?.url) {
+            setLogoUrl(settings.portals.user.logo.url);
+        } else if (isQuick) {
+            setLogoUrl("/superfast_mart_delivery_bag.png");
+        } else if (!isQuick) {
+            setLogoUrl("/Rydon24.png");
+        } else if (settings?.logo?.url) {
+            setLogoUrl(settings.logo.url);
+        }
+        if (settings?.companyName) {
+            setCompanyName(settings.companyName);
+        }
+    };
+
     const loadLogo = async () => {
       try {
-        // First check cache
-        let cached = getCachedSettings()
+        const cached = getCachedSettings()
         if (cached) {
-          if (cached.logo?.url) {
-            setLogoUrl(cached.logo.url)
-          }
-          if (cached.companyName) {
-            setCompanyName(cached.companyName)
-          }
-        }
-
-        // Always try to load fresh data to ensure we have the latest
-        const settings = await loadBusinessSettings()
-        if (settings) {
-          if (settings.logo?.url) {
-            setLogoUrl(settings.logo.url)
-          }
-          if (settings.companyName) {
-            setCompanyName(settings.companyName)
+          applySettings(cached)
+        } else {
+          const settings = await loadBusinessSettings()
+          if (settings) {
+            applySettings(settings)
           }
         }
       } catch (error) {
         debugError('Error loading logo:', error)
       }
     }
-
-    // Load immediately
     loadLogo()
 
     // Listen for business settings updates
     const handleSettingsUpdate = () => {
       const cached = getCachedSettings()
       if (cached) {
-        if (cached.logo?.url) {
-          setLogoUrl(cached.logo.url)
-        }
-        if (cached.companyName) {
-          setCompanyName(cached.companyName)
-        }
+        applySettings(cached)
       }
     }
     window.addEventListener('businessSettingsUpdated', handleSettingsUpdate)

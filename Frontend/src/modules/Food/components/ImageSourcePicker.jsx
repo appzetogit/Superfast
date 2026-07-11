@@ -79,7 +79,7 @@ export const ImageSourcePicker = ({
           >
             <span className="font-medium text-sm text-gray-900">Use Camera</span>
             <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
-              <Camera className="h-5 w-5 text-orange-600" />
+              <Camera className="h-5 w-5 text-[var(--primary-theme)]" />
             </div>
           </button>
           <button

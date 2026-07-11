@@ -992,7 +992,7 @@ export default function GlobalNewOrderPopup() {
                       }`}>
                     <svg
                       className={`h-5 w-5 ${(popupOrder || newOrder)?.sendCutlery === false
-                          ? "text-orange-600"
+                          ? "text-[var(--primary-theme)]"
                           : "text-gray-600"
                         }`}
                       fill="none"

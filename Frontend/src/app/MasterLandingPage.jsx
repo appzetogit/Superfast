@@ -18,10 +18,10 @@ const MODULES = [
     title: "Food Delivery",
     description: "Delicious meals from your favorite restaurants delivered hot and fast to your doorstep.",
     icon: UtensilsCrossed,
-    color: "from-orange-500 to-rose-500",
-    shadow: "shadow-orange-500/20",
+    color: "from-[var(--primary-theme)] to-rose-500",
+    shadow: "shadow-[var(--primary-theme)]/20",
     bg: "bg-orange-50",
-    iconColor: "text-orange-600",
+    iconColor: "text-[var(--primary-theme)]",
     path: "/food/user",
     stats: "500+ Restaurants"
   },
@@ -44,7 +44,7 @@ export default function MasterLandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-orange-500/30 overflow-hidden relative">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-[var(--primary-theme)]/30 overflow-hidden relative">
       {/* Decorative Background Elements */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-white to-transparent pointer-events-none z-0" />
       <div className="absolute top-[-100px] right-[-100px] w-96 h-96 bg-orange-200/40 blur-[100px] rounded-full pointer-events-none z-0" />
@@ -54,7 +54,7 @@ export default function MasterLandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-rose-500 rounded-xl flex items-center justify-center font-black text-2xl text-white shadow-lg shadow-orange-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-11 h-11 bg-gradient-to-br from-[var(--primary-theme)] to-rose-500 rounded-xl flex items-center justify-center font-black text-2xl text-white shadow-lg shadow-[var(--primary-theme)]/20 group-hover:scale-105 transition-transform">
               A
             </div>
             <span className="text-2xl font-black tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">SUPERFAST</span>
@@ -64,7 +64,7 @@ export default function MasterLandingPage() {
             onClick={() => navigate("/portal")}
             className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-5 py-2.5 rounded-full transition-all group shadow-sm hover:shadow-md"
           >
-            <User className="w-5 h-5 text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <User className="w-5 h-5 text-gray-500 group-hover:text-[var(--primary-theme)] transition-colors" />
             <span className="font-bold text-gray-700 group-hover:text-gray-900">Profile</span>
           </button>
         </div>
@@ -79,7 +79,7 @@ export default function MasterLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2 bg-white shadow-sm px-5 py-2 rounded-full text-sm font-bold border border-gray-200 text-gray-700"
             >
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-600 mr-1">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-[var(--primary-theme)] mr-1">
                 <TrendingUp className="w-3.5 h-3.5" />
               </div>
               Everything you need, in one app
@@ -91,7 +91,7 @@ export default function MasterLandingPage() {
               transition={{ delay: 0.1 }}
               className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-gray-900 leading-[1.1]"
             >
-              The Master <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-rose-500 to-orange-500 bg-[length:200%_auto] animate-gradient">Ecosystem</span>
+              The Master <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--primary-theme)] via-rose-500 to-[var(--primary-theme)] bg-[length:200%_auto] animate-gradient">Ecosystem</span>
             </motion.h1>
             
             <motion.p 
@@ -150,7 +150,7 @@ export default function MasterLandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
               <div className="flex flex-col items-center text-center gap-4 group">
                 <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <MapPin className="w-7 h-7 text-orange-500" />
+                  <MapPin className="w-7 h-7 text-[var(--primary-theme)]" />
                 </div>
                 <div>
                   <h4 className="font-bold text-lg mb-2 text-gray-900">Live Tracking</h4>

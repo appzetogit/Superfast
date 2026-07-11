@@ -349,8 +349,8 @@ function FoodHomeContent({
                       <p className="truncate text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
                         {restaurant.name}
                       </p>
-                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-orange-600">
-                        <Flame className="h-3.5 w-3.5 fill-orange-600" />
+                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--primary-theme)]">
+                        <Flame className="h-3.5 w-3.5 fill-[var(--primary-theme)]" />
                         Near & Fast
                       </p>
                     </div>
@@ -390,11 +390,11 @@ function FoodHomeContent({
               >
                 <Link to={item.href} className="flex-shrink-0">
                   <div className="group flex w-24 flex-col items-center gap-3 sm:w-28">
-                    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-gray-100 bg-white p-3 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-500 group-hover:border-orange-500/30 group-hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12)] dark:border-gray-800 dark:bg-[#1a1a1a] sm:h-24 sm:w-24">
+                    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-gray-100 bg-white p-3 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-500 group-hover:border-[var(--primary-theme)]/30 group-hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12)] dark:border-gray-800 dark:bg-[#1a1a1a] sm:h-24 sm:w-24">
                       <div
                         className={`absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-10 bg-gradient-to-br ${
                           index % 3 === 0
-                            ? "from-orange-500 to-red-500"
+                            ? "from-[var(--primary-theme)] to-red-500"
                             : index % 3 === 1
                               ? "from-blue-500 to-purple-500"
                               : "from-green-500 to-teal-500"

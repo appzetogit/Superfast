@@ -177,7 +177,7 @@ export default function NewRefundRequests() {
       {isLoading ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-20">
           <div className="flex flex-col items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
+            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-theme)] mb-4" />
             <p className="text-sm text-slate-600">Loading refund requests...</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function NewRefundRequests() {
                         <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => handleViewOrder(order)}
-                            className="p-1.5 rounded text-orange-600 hover:bg-orange-50 transition-colors"
+                            className="p-1.5 rounded text-[var(--primary-theme)] hover:bg-orange-50 transition-colors"
                             title="View Details"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

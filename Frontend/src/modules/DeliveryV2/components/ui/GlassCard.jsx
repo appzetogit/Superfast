@@ -8,7 +8,7 @@ import { cn } from '@food/utils/utils';
 export const GlassCard = ({ children, className, priority = 'normal', ...props }) => {
   const priorities = {
     normal: 'bg-neutral-900/60 backdrop-blur-xl border-white/5',
-    high: 'bg-orange-500/10 backdrop-blur-2xl border-orange-500/30',
+    high: 'bg-[var(--primary-theme)]/10 backdrop-blur-2xl border-[var(--primary-theme)]/30',
     urgent: 'bg-red-500/10 backdrop-blur-2xl border-red-500/30',
   };
 

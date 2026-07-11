@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ShieldCheck, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home } from "lucide-react"
 import { Button } from "@food/components/ui/button"
@@ -28,13 +28,17 @@ export default function RestaurantLogin() {
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
-  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
+  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.restaurant?.logo?.url || getCachedSettings()?.logo?.url || null)
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const settings = await loadBusinessSettings()
-        if (settings?.logo?.url) setLogoUrl(settings.logo.url)
+        if (settings?.portals?.restaurant?.logo?.url) {
+          setLogoUrl(settings.portals.restaurant.logo.url)
+        } else if (settings?.logo?.url) {
+          setLogoUrl(settings.logo.url)
+        }
       } catch (e) {}
     }
     fetchSettings()

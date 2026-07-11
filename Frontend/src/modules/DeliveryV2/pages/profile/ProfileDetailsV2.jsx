@@ -418,9 +418,9 @@ export const ProfileDetailsV2 = () => {
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center font-poppins">
          <div className="flex flex-col items-center gap-4">
             <div className="relative">
-               <div className="w-16 h-16 border-4 border-orange-100 border-t-orange-500 rounded-full animate-spin" />
+               <div className="w-16 h-16 border-4 border-orange-100 border-t-[var(--primary-theme)] rounded-full animate-spin" />
                <div className="absolute inset-0 flex items-center justify-center">
-                  <User className="w-6 h-6 text-orange-500" />
+                  <User className="w-6 h-6 text-[var(--primary-theme)]" />
                </div>
             </div>
             <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Initializing Profile...</p>
@@ -444,7 +444,7 @@ export const ProfileDetailsV2 = () => {
         </div>
       </div>
       {onEdit && (
-        <button onClick={onEdit} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-orange-500 transition-all active:scale-90">
+        <button onClick={onEdit} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-[var(--primary-theme)] transition-all active:scale-90">
           <Edit2 className="w-4 h-4" />
         </button>
       )}
@@ -461,7 +461,7 @@ export const ProfileDetailsV2 = () => {
           </button>
           <h1 className="text-lg font-black text-black uppercase tracking-tight leading-none">Profile</h1>
         </div>
-        <div className="bg-orange-500 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20">
+        <div className="bg-[var(--primary-theme)] text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[var(--primary-theme)]/20">
           ID: {profile?.deliveryId || "..."}
         </div>
       </div>
@@ -493,7 +493,7 @@ export const ProfileDetailsV2 = () => {
               
               <button 
                 onClick={() => handlePickFromGallery('profilePhoto', fileInputRef)}
-                className="bg-orange-500 text-white p-3 rounded-2xl shadow-xl hover:bg-orange-600 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
+                className="bg-[var(--primary-theme)] text-white p-3 rounded-2xl shadow-xl hover:bg-[var(--primary-theme)] transition-all active:scale-95 border-4 border-white flex items-center justify-center"
                 title="Gallery"
               >
                 <ImageIcon className="w-5 h-5" />
@@ -519,7 +519,7 @@ export const ProfileDetailsV2 = () => {
               <div className="bg-[#10B981]/10 text-[#10B981] px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-[#10B981]/20 flex items-center gap-2">
                  <CheckCircle className="w-4 h-4" /> {profile?.status}
               </div>
-              <div className="bg-orange-500/10 text-orange-500 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-orange-500/20 flex items-center gap-2">
+              <div className="bg-[var(--primary-theme)]/10 text-[var(--primary-theme)] px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-[var(--primary-theme)]/20 flex items-center gap-2">
                  <Smartphone className="w-4 h-4" /> {profile?.phone}
               </div>
            </div>
@@ -591,7 +591,7 @@ export const ProfileDetailsV2 = () => {
                   setUpiQrPreview(null)
                   setShowBankDetailsPopup(true)
                 }} 
-                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:underline"
+                className="text-[10px] font-black text-[var(--primary-theme)] uppercase tracking-widest hover:underline"
               >
                 Edit Details
               </button>
@@ -606,7 +606,7 @@ export const ProfileDetailsV2 = () => {
                           <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Bank Account</p>
                           <h4 className="text-lg font-bold tracking-tight">{bankDetails.bankName || "Link Account"}</h4>
                        </div>
-                       <Banknote className="w-8 h-8 text-orange-500/50" />
+                       <Banknote className="w-8 h-8 text-[var(--primary-theme)]/50" />
                     </div>
                     <div className="flex justify-between items-end">
                        <div>
@@ -746,9 +746,9 @@ export const ProfileDetailsV2 = () => {
                     <div className="w-8 h-8 flex items-center justify-center">
                         {(() => {
                            const t = String(vehicleInput.type || "").toLowerCase();
-                           if (t.includes("car")) return <Car className="w-5 h-5 text-orange-500" />;
-                           if (t.includes("bicycle")) return <Bike className="w-5 h-5 text-orange-500" />;
-                           return <Truck className="w-5 h-5 text-orange-500" />;
+                           if (t.includes("car")) return <Car className="w-5 h-5 text-[var(--primary-theme)]" />;
+                           if (t.includes("bicycle")) return <Bike className="w-5 h-5 text-[var(--primary-theme)]" />;
+                           return <Truck className="w-5 h-5 text-[var(--primary-theme)]" />;
                         })()}
                     </div>
                     <div className="flex-1">
@@ -756,7 +756,7 @@ export const ProfileDetailsV2 = () => {
                         <select 
                             value={vehicleInput.type} 
                             onChange={(e) => setVehicleInput({...vehicleInput, type: e.target.value})} 
-                            className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-orange-500 cursor-pointer"
+                            className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-[var(--primary-theme)] cursor-pointer"
                         >
                             <option value="bike">Bike</option>
                             <option value="scooter">Scooter</option>
@@ -770,7 +770,7 @@ export const ProfileDetailsV2 = () => {
 
                 {/* Name/Brand Input */}
                 <div className="flex items-center gap-4 w-full">
-                    <div className="w-8 h-8 flex items-center justify-center"><Plus className="w-4 h-4 text-orange-500/50" /></div>
+                    <div className="w-8 h-8 flex items-center justify-center"><Plus className="w-4 h-4 text-[var(--primary-theme)]/50" /></div>
                     <div className="flex-1">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vehicle Name/Brand</p>
                         <input 
@@ -778,7 +778,7 @@ export const ProfileDetailsV2 = () => {
                             value={vehicleInput.brand} 
                             onChange={(e) => setVehicleInput({...vehicleInput, brand: e.target.value})} 
                             placeholder="E.g. Honda Splendor"
-                            className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-orange-500 placeholder:text-gray-200"
+                            className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-[var(--primary-theme)] placeholder:text-gray-200"
                         />
                     </div>
                 </div>
@@ -789,7 +789,7 @@ export const ProfileDetailsV2 = () => {
 
                     {/* Number Input */}
                     <div className="flex items-center gap-4 w-full">
-                        <div className="w-8 h-8 flex items-center justify-center"><QrCode className="w-4 h-4 text-orange-500/50" /></div>
+                        <div className="w-8 h-8 flex items-center justify-center"><QrCode className="w-4 h-4 text-[var(--primary-theme)]/50" /></div>
                         <div className="flex-1">
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vehicle Number</p>
                             <input 
@@ -797,7 +797,7 @@ export const ProfileDetailsV2 = () => {
                                 value={vehicleInput.number} 
                                 onChange={(e) => setVehicleInput({...vehicleInput, number: e.target.value.toUpperCase()})} 
                                 placeholder="E.g. UP 80 AB 1234"
-                                className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-orange-500 placeholder:text-gray-200"
+                                className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-[var(--primary-theme)] placeholder:text-gray-200"
                             />
                         </div>
                     </div>
@@ -865,7 +865,7 @@ export const ProfileDetailsV2 = () => {
                { label: "PAN Number", key: "panNumber", icon: FileText, format: (v) => v.toUpperCase(), maxLength: 10 },
                { label: "UPI ID", key: "upiId", icon: Smartphone, maxLength: 60 }
              ].map((field) => (
-               <div key={field.key} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group focus-within:border-orange-500/50 transition-all">
+               <div key={field.key} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group focus-within:border-[var(--primary-theme)]/50 transition-all">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
                      <field.icon className="w-3.5 h-3.5" /> {field.label}
                   </label>

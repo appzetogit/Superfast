@@ -83,7 +83,7 @@ export default function QuickHomeView({
   const [showInlineFullHeader] = useState(true);
 
   const stats = [
-    { label: "Blink Delivery", value: "9 Mins", icon: <Zap size={14} />, color: "from-amber-400 to-orange-500" },
+    { label: "Blink Delivery", value: "9 Mins", icon: <Zap size={14} />, color: "from-amber-400 to-[var(--primary-theme)]" },
     { label: "Quality Assured", value: "Verified", icon: <ShieldCheck size={14} />, color: "from-emerald-400 to-green-600" },
     { label: "Pro Priority", value: "Active", icon: <TrendingUp size={14} />, color: "from-blue-400 to-indigo-600" },
   ];

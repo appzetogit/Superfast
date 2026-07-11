@@ -41,19 +41,21 @@ const InputField = ({ label, name, value, onChange, placeholder, info }) => {
           value={value || ''}
           onChange={(e) => onChange(name, e.target.value)}
           placeholder={placeholder}
-          className={cn(inputClass, name === 'themeColor' && "pl-10")}
+          className={cn(inputClass, name.toLowerCase().includes('themecolor') && "pl-10")}
         />
-        {name === 'themeColor' && (
-          <div 
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-gray-200 shadow-sm"
-            style={{ backgroundColor: value || '#0a0a0a' }}
+        {name.toLowerCase().includes('themecolor') && (
+          <input 
+            type="color"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 p-0 border-0 bg-transparent cursor-pointer"
+            value={value || '#0a0a0a'}
+            onChange={(e) => onChange(name, e.target.value)}
           />
         )}
       </div>
       {info && (
         <div className="mt-2 bg-[#FFF8F0] border border-orange-100 rounded-lg px-4 py-2 flex items-center gap-2">
            <span className="text-[11px] text-gray-500 italic">Example: {info.prefix}</span>
-           <span className="text-[11px] bg-[#00BFA5] text-white px-2 py-0.5 rounded font-bold">{value || info.default}</span>
+           <span className="text-[11px] bg-[var(--primary-theme)] text-white px-2 py-0.5 rounded font-bold">{value || info.default}</span>
         </div>
       )}
     </div>
@@ -78,7 +80,7 @@ const ImageUploadBox = ({ title, size, preview, onUpload, onClear }) => {
           )}
           
           <div className="absolute top-4 right-4 flex items-center gap-2">
-             <button onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }} className="w-8 h-8 rounded-lg bg-[#E6F8F6] text-[#00BFA5] shadow-sm border border-[#C2EFE9] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+             <button onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }} className="w-8 h-8 rounded-lg bg-[#E6F8F6] text-[var(--primary-theme)] shadow-sm border border-[#C2EFE9] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Upload size={14} />
              </button>
              {preview && (
@@ -100,6 +102,18 @@ const GlobalApplicationSettings = () => {
   const [faviconPreview, setFaviconPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
   const [faviconFile, setFaviconFile] = useState(null);
+  const [foodLogoPreview, setFoodLogoPreview] = useState(null);
+  const [foodLogoFile, setFoodLogoFile] = useState(null);
+  const [qcLogoPreview, setQcLogoPreview] = useState(null);
+  const [qcLogoFile, setQcLogoFile] = useState(null);
+  const [deliveryLogoPreview, setDeliveryLogoPreview] = useState(null);
+  const [deliveryLogoFile, setDeliveryLogoFile] = useState(null);
+  const [restaurantLogoPreview, setRestaurantLogoPreview] = useState(null);
+  const [restaurantLogoFile, setRestaurantLogoFile] = useState(null);
+  const [userLogoPreview, setUserLogoPreview] = useState(null);
+  const [userLogoFile, setUserLogoFile] = useState(null);
+  const [sellerLogoPreview, setSellerLogoPreview] = useState(null);
+  const [sellerLogoFile, setSellerLogoFile] = useState(null);
 
   const [formData, setFormData] = useState({
     companyName: "",
@@ -109,6 +123,10 @@ const GlobalApplicationSettings = () => {
     address: "",
     bannedNumbers: [],
     showLocationPopup: true,
+    moduleThemes: {
+      food: { themeColor: "var(--primary-theme, #cc2532)" },
+      quickCommerce: { themeColor: "var(--primary-theme, #00BFA5)" }
+    }
   });
   const [newBannedNumber, setNewBannedNumber] = useState("");
 
@@ -127,10 +145,20 @@ const GlobalApplicationSettings = () => {
           address: settings.address || "",
           bannedNumbers: settings.bannedNumbers || [],
           showLocationPopup: settings.showLocationPopup ?? true,
+          moduleThemes: {
+            food: { themeColor: settings.moduleThemes?.food?.themeColor || "var(--primary-theme, #cc2532)" },
+            quickCommerce: { themeColor: settings.moduleThemes?.quickCommerce?.themeColor || "var(--primary-theme, #00BFA5)" }
+          }
         });
 
         if (settings.logo?.url) setLogoPreview(settings.logo.url);
         if (settings.favicon?.url) setFaviconPreview(settings.favicon.url);
+        if (settings.moduleThemes?.food?.logo?.url) setFoodLogoPreview(settings.moduleThemes.food.logo.url);
+        if (settings.moduleThemes?.quickCommerce?.logo?.url) setQcLogoPreview(settings.moduleThemes.quickCommerce.logo.url);
+        if (settings.portals?.delivery?.logo?.url) setDeliveryLogoPreview(settings.portals.delivery.logo.url);
+        if (settings.portals?.restaurant?.logo?.url) setRestaurantLogoPreview(settings.portals.restaurant.logo.url);
+        if (settings.portals?.user?.logo?.url) setUserLogoPreview(settings.portals.user.logo.url);
+        if (settings.portals?.seller?.logo?.url) setSellerLogoPreview(settings.portals.seller.logo.url);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -193,11 +221,18 @@ const GlobalApplicationSettings = () => {
         address: formData.address,
         bannedNumbers: formData.bannedNumbers,
         showLocationPopup: formData.showLocationPopup,
+        moduleThemes: formData.moduleThemes
       };
 
       const files = {};
       if (logoFile) files.logo = logoFile;
       if (faviconFile) files.favicon = faviconFile;
+      if (foodLogoFile) files.foodLogo = foodLogoFile;
+      if (qcLogoFile) files.qcLogo = qcLogoFile;
+      if (deliveryLogoFile) files.deliveryLogo = deliveryLogoFile;
+      if (restaurantLogoFile) files.restaurantLogo = restaurantLogoFile;
+      if (userLogoFile) files.userLogo = userLogoFile;
+      if (sellerLogoFile) files.sellerLogo = sellerLogoFile;
 
       const response = await adminAPI.updateBusinessSettings(dataToSend, files);
       const updatedSettings = response?.data?.data || response?.data;
@@ -226,6 +261,54 @@ const GlobalApplicationSettings = () => {
     const reader = new FileReader();
     reader.onload = () => setFaviconPreview(String(reader.result || ''));
     reader.readAsDataURL(file);
+  };
+
+  const handleFoodLogoUpload = async (file) => {
+    const compressed = await compressImage(file);
+    setFoodLogoFile(compressed);
+    const reader = new FileReader();
+    reader.onload = () => setFoodLogoPreview(String(reader.result || ''));
+    reader.readAsDataURL(compressed);
+  };
+
+  const handleQcLogoUpload = async (file) => {
+    const compressed = await compressImage(file);
+    setQcLogoFile(compressed);
+    const reader = new FileReader();
+    reader.onload = () => setQcLogoPreview(String(reader.result || ''));
+    reader.readAsDataURL(compressed);
+  };
+
+  const handleDeliveryLogoUpload = async (file) => {
+    const compressed = await compressImage(file);
+    setDeliveryLogoFile(compressed);
+    const reader = new FileReader();
+    reader.onload = () => setDeliveryLogoPreview(String(reader.result || ''));
+    reader.readAsDataURL(compressed);
+  };
+
+  const handleRestaurantLogoUpload = async (file) => {
+    const compressed = await compressImage(file);
+    setRestaurantLogoFile(compressed);
+    const reader = new FileReader();
+    reader.onload = () => setRestaurantLogoPreview(String(reader.result || ''));
+    reader.readAsDataURL(compressed);
+  };
+
+  const handleUserLogoUpload = async (file) => {
+    const compressed = await compressImage(file);
+    setUserLogoFile(compressed);
+    const reader = new FileReader();
+    reader.onload = () => setUserLogoPreview(String(reader.result || ''));
+    reader.readAsDataURL(compressed);
+  };
+
+  const handleSellerLogoUpload = async (file) => {
+    const compressed = await compressImage(file);
+    setSellerLogoFile(compressed);
+    const reader = new FileReader();
+    reader.onload = () => setSellerLogoPreview(String(reader.result || ''));
+    reader.readAsDataURL(compressed);
   };
 
   if (loading) {
@@ -263,10 +346,60 @@ const GlobalApplicationSettings = () => {
         </SectionCard>
 
         {/* Media Assets */}
-        <SectionCard title="Image Section">
+        <SectionCard title="Image Section (Global)">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <ImageUploadBox title="Brand Logo" size="750px x 100px" preview={logoPreview} onUpload={handleLogoUpload} onClear={() => { setLogoPreview(null); setLogoFile(null); }} />
+              <ImageUploadBox title="Brand Logo" size="512px x 512px" preview={logoPreview} onUpload={handleLogoUpload} onClear={() => { setLogoPreview(null); setLogoFile(null); }} />
               <ImageUploadBox title="Favicon" size="80px x 80px" preview={faviconPreview} onUpload={handleFaviconUpload} onClear={() => { setFaviconPreview(null); setFaviconFile(null); }} />
+           </div>
+        </SectionCard>
+
+        {/* Module Themes */}
+        <SectionCard title="App / Module Themes">
+           <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-gray-100 pb-8">
+                 <div>
+                    <h4 className="text-sm font-bold text-gray-700 mb-4">Food Module</h4>
+                    <InputField 
+                      label="Theme Color" 
+                      name="foodThemeColor" 
+                      value={formData.moduleThemes.food.themeColor} 
+                      onChange={(_, val) => setFormData(prev => ({...prev, moduleThemes: {...prev.moduleThemes, food: {...prev.moduleThemes.food, themeColor: val}}}))} 
+                      placeholder="var(--primary-theme, #cc2532)" 
+                    />
+                 </div>
+                 <ImageUploadBox title="Food Module Logo" size="512px x 512px" preview={foodLogoPreview} onUpload={handleFoodLogoUpload} onClear={() => { setFoodLogoPreview(null); setFoodLogoFile(null); }} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-4">
+                 <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-gray-700">Quick Commerce Module</h4>
+                    <InputField 
+                      label="Quick Commerce Primary Color" 
+                      name="qcThemeColor" 
+                      value={formData.moduleThemes?.quickCommerce?.themeColor} 
+                      onChange={(_, val) => setFormData(prev => ({...prev, moduleThemes: {...prev.moduleThemes, quickCommerce: {...prev.moduleThemes.quickCommerce, themeColor: val}}}))} 
+                      placeholder="var(--primary-theme, #00BFA5)" 
+                    />
+                    <InputField 
+                      label="Quick Commerce Secondary Color" 
+                      name="qcSecondaryThemeColor" 
+                      value={formData.moduleThemes?.quickCommerce?.secondaryThemeColor} 
+                      onChange={(_, val) => setFormData(prev => ({...prev, moduleThemes: {...prev.moduleThemes, quickCommerce: {...prev.moduleThemes.quickCommerce, secondaryThemeColor: val}}}))} 
+                      placeholder="var(--primary-theme, #008b74)" 
+                    />
+                 </div>
+                 <ImageUploadBox title="QC Module Logo" size="512px x 512px" preview={qcLogoPreview} onUpload={handleQcLogoUpload} onClear={() => { setQcLogoPreview(null); setQcLogoFile(null); }} />
+              </div>
+           </div>
+        </SectionCard>
+
+        {/* Portal Logos */}
+        <SectionCard title="Portal Logos">
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+              <ImageUploadBox title="Delivery Partner Logo" size="512px x 512px" preview={deliveryLogoPreview} onUpload={handleDeliveryLogoUpload} onClear={() => { setDeliveryLogoPreview(null); setDeliveryLogoFile(null); }} />
+              <ImageUploadBox title="Restaurant Portal Logo" size="512px x 512px" preview={restaurantLogoPreview} onUpload={handleRestaurantLogoUpload} onClear={() => { setRestaurantLogoPreview(null); setRestaurantLogoFile(null); }} />
+              <ImageUploadBox title="User App Logo" size="512px x 512px" preview={userLogoPreview} onUpload={handleUserLogoUpload} onClear={() => { setUserLogoPreview(null); setUserLogoFile(null); }} />
+              <ImageUploadBox title="Vendor / Seller Logo" size="512px x 512px" preview={sellerLogoPreview} onUpload={handleSellerLogoUpload} onClear={() => { setSellerLogoPreview(null); setSellerLogoFile(null); }} />
            </div>
         </SectionCard>
 
@@ -318,7 +451,7 @@ const GlobalApplicationSettings = () => {
 
       {/* Persistence Controls */}
       <div className="fixed bottom-10 right-10">
-         <button onClick={handleUpdate} disabled={saving} className="bg-[#00BFA5] text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_15px_40px_rgba(0,191,165,0.4)] hover:bg-[#00AC95] active:scale-90 transition-all disabled:opacity-50">
+         <button onClick={handleUpdate} disabled={saving} className="bg-[var(--primary-theme)] text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_15px_40px_rgba(0,191,165,0.4)] hover:bg-[#00AC95] active:scale-90 transition-all disabled:opacity-50">
             {saving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
          </button>
       </div>

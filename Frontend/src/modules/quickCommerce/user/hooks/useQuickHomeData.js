@@ -49,7 +49,7 @@ const CATEGORY_METADATA = {
   },
   Grocery: {
     icon: LocalGroceryStoreIcon,
-    theme: { gradient: "linear-gradient(to bottom, #FF9F1C, #FFBF69)", shadow: "shadow-orange-500/20", accent: "text-orange-900" },
+    theme: { gradient: "linear-gradient(to bottom, #FF9F1C, #FFBF69)", shadow: "shadow-[var(--primary-theme)]/20", accent: "text-orange-900" },
     banner: { title: "SUPERSAVER", subtitle: "FRESH & FAST", floatingElements: "leaves" },
   },
   Wedding: {
@@ -99,7 +99,7 @@ const CATEGORY_METADATA = {
   },
   "Snacks & Munchies": {
     icon: FastfoodIcon,
-    theme: { gradient: "linear-gradient(to bottom, #FF7043, #FF8A65)", shadow: "shadow-orange-500/20", accent: "text-orange-900" },
+    theme: { gradient: "linear-gradient(to bottom, #FF7043, #FF8A65)", shadow: "shadow-[var(--primary-theme)]/20", accent: "text-orange-900" },
     banner: { title: "SNACKS", subtitle: "MUNCHIES TIME", floatingElements: "sparkles" },
   },
   "Bakery & Biscuits": {

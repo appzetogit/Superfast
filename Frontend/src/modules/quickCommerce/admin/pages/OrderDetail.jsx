@@ -382,7 +382,7 @@ export default function OrderDetail() {
                             Shop Node Information
                         </h4>
                         <div className="flex items-center gap-4">
-                            <div className="h-16 w-16 bg-orange-50 rounded-2xl flex items-center justify-center font-black text-orange-600 uppercase">
+                            <div className="h-16 w-16 bg-orange-50 rounded-2xl flex items-center justify-center font-black text-[var(--primary-theme)] uppercase">
                                 {order.seller?.shopName?.[0] || 'S'}
                             </div>
                             <div className="text-left">

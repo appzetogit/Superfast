@@ -35,7 +35,7 @@ export default function OrderDetectDeliveryTable({ orders, visibleColumns, onVie
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
             <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-5xl text-orange-500 font-bold">!</span>
+              <span className="text-5xl text-[var(--primary-theme)] font-bold">!</span>
             </div>
           </div>
           <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
@@ -173,7 +173,7 @@ export default function OrderDetectDeliveryTable({ orders, visibleColumns, onVie
                     <div className="flex items-center justify-center gap-2">
                       <button 
                         onClick={() => onViewOrder(order)}
-                        className="p-1.5 rounded text-orange-600 hover:bg-orange-50 transition-colors"
+                        className="p-1.5 rounded text-[var(--primary-theme)] hover:bg-orange-50 transition-colors"
                         title="View Details"
                       >
                         <Eye className="w-4 h-4" />

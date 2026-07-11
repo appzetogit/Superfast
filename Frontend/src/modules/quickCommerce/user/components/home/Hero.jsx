@@ -10,7 +10,7 @@ const banners = [
         image: "https://images.unsplash.com/photo-1573246123716-6b1782bfc499?q=80&w=1965&auto=format&fit=crop", // Changed Image
         badge: "Best Seller",
         badgeIcon: Sparkles,
-        badgeColor: "bg-orange-500 text-white",
+        badgeColor: "bg-[var(--primary-theme)] text-white",
         title: "Fresh",
         highlight: "Vegetables",
         highlightColor: "text-green-300",

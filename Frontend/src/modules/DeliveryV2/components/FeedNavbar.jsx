@@ -452,7 +452,7 @@ export default function FeedNavbar({ className = "" }) {
           className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center hover:bg-red-600 transition-colors relative"
             title="Emergency"
         >
-          <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+          <svg className="w-5 h-5 text-[var(--primary-theme)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </button>
@@ -559,7 +559,7 @@ export default function FeedNavbar({ className = "" }) {
                   <Ambulance className="w-6 h-6 text-red-600" />
                 )}
                 {option.icon === "accident" && (
-                  <AlertTriangle className="w-6 h-6 text-orange-600" />
+                  <AlertTriangle className="w-6 h-6 text-[var(--primary-theme)]" />
                 )}
                 {option.icon === "police" && (
                   <Shield className="w-6 h-6 text-blue-600" />

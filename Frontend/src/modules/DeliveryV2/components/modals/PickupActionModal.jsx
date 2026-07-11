@@ -147,7 +147,7 @@ export const PickupActionModal = ({
             <div>
               <h3 className="text-gray-950 text-xl font-bold">{primaryName}</h3>
               {mixedOrder && (
-                <div className="mt-2 inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-orange-600">
+                <div className="mt-2 inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--primary-theme)]">
                   Mixed Order
                 </div>
               )}
@@ -155,7 +155,7 @@ export const PickupActionModal = ({
                 {isAtPickup ? (
                   <span className="text-green-600">Reached Location √</span>
                 ) : (
-                  <span className="text-orange-500">
+                  <span className="text-[var(--primary-theme)]">
                     {(distanceToTarget / 1000).toFixed(1)} km • {eta || '--'} min to {primaryDestinationLabel}
                   </span>
                 )}
@@ -186,7 +186,7 @@ export const PickupActionModal = ({
             const isQuickStore = pickup.pickupType === 'quick';
             const label = isQuickStore ? 'Store Pickup' : 'Restaurant Pickup';
             const accentClasses = isQuickStore
-              ? 'text-orange-600 bg-orange-50 border-orange-100'
+              ? 'text-[var(--primary-theme)] bg-orange-50 border-orange-100'
               : 'text-green-600 bg-green-50 border-green-100';
 
             return (
@@ -202,7 +202,7 @@ export const PickupActionModal = ({
                   <p className="text-base font-bold text-gray-950">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
                   <a 
                     href={pickup.phone ? `tel:${pickup.phone}` : '#'} 
-                    className={`ml-2 w-8 h-8 rounded-full ${isQuickStore ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-green-50 text-green-600 border-green-100'} flex items-center justify-center border flex-shrink-0`}
+                    className={`ml-2 w-8 h-8 rounded-full ${isQuickStore ? 'bg-orange-50 text-[var(--primary-theme)] border-orange-100' : 'bg-green-50 text-green-600 border-green-100'} flex items-center justify-center border flex-shrink-0`}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!pickup.phone) {
@@ -225,7 +225,7 @@ export const PickupActionModal = ({
           {!isAtPickup ? (
             <div>
               <p className={`text-center text-[10px] font-bold uppercase tracking-widest mb-3 transition-colors ${
-                isWithinRange ? 'text-green-600' : 'text-orange-500 animate-pulse'
+                isWithinRange ? 'text-green-600' : 'text-[var(--primary-theme)] animate-pulse'
               }`}>
                 {isWithinRange ? 'Ready - Swipe to confirm arrival' : 'Get closer to pickup point'}
               </p>
@@ -252,7 +252,7 @@ export const PickupActionModal = ({
                       </button>
                       <button
                         onClick={handlePickFromGallery}
-                        className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-orange-50 text-orange-600 border border-orange-100 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-orange-50 text-[var(--primary-theme)] border border-orange-100 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
                       >
                         <ImageIcon className="w-5 h-5" />
                         <span>Gallery</span>
@@ -293,7 +293,7 @@ export const PickupActionModal = ({
                   successLabel="Picked Up!"
                   disabled={!billImageUploaded}
                   onConfirm={() => onPickedUp(billImageUrl)}
-                  color="bg-orange-500"
+                  color="bg-[var(--primary-theme)]"
                 />
               </div>
             </div>
@@ -302,9 +302,9 @@ export const PickupActionModal = ({
           {/* Delivery Instructions (User Note) */}
           {order?.note && (
             <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex gap-3 items-start">
-              <ChefHat className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />
+              <ChefHat className="w-5 h-5 text-[var(--primary-theme)] mt-0.5 shrink-0" />
               <div>
-                <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1.5">User Instructions</p>
+                <p className="text-[10px] font-bold text-[var(--primary-theme)] uppercase tracking-widest mb-1.5">User Instructions</p>
                 <p className="text-sm font-bold text-gray-800 leading-snug">"{order.note}"</p>
               </div>
             </div>

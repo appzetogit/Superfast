@@ -31,7 +31,7 @@ const DeliveryInstructionsPanel = ({ note }) => {
 
   return (
     <div className="w-full rounded-3xl mb-6 overflow-hidden border border-orange-100 shadow-sm">
-      <div className="bg-linear-to-r from-orange-500 to-amber-500 px-5 py-3 flex items-center justify-between">
+      <div className="bg-linear-to-r from-[var(--primary-theme)] to-amber-500 px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 bg-white/20 rounded-2xl flex items-center justify-center text-white">
             <Package className="w-5 h-5" />

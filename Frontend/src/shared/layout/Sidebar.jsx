@@ -21,7 +21,7 @@ const colorMap = {
     "text-violet-600 bg-violet-50 border-violet-100 group-hover:bg-violet-100/50",
   cyan: "text-cyan-600 bg-cyan-50 border-cyan-100 group-hover:bg-cyan-100/50",
   orange:
-    "text-orange-600 bg-orange-50 border-orange-100 group-hover:bg-orange-100/50",
+    "text-[var(--primary-theme)] bg-orange-50 border-orange-100 group-hover:bg-orange-100/50",
   green:
     "text-green-600 bg-green-50 border-green-100 group-hover:bg-green-100/50",
   sky: "text-sky-600 bg-sky-50 border-sky-100 group-hover:bg-sky-100/50",

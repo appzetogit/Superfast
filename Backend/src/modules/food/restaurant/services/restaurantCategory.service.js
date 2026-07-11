@@ -104,7 +104,7 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
     applyZoneVisibilityFilter(filter.$and, zoneIdRaw);
 
     if (compact && context.pureVegRestaurant) {
-        filter.$and.push({ foodTypeScope: 'Veg' });
+        filter.$and.push({ foodTypeScope: { $in: ['Veg', 'Both', null, ''] } });
     }
 
     const queryBuilder = FoodCategory.find(filter)

@@ -168,7 +168,7 @@ export default function Preferences() {
         <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl py-0 shadow-sm mb-4 border-0 dark:border-gray-800">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-orange-50 dark:bg-orange-900/20 rounded-full p-2 flex-shrink-0">
-              <ClipboardList className="h-5 w-5 text-orange-500" />
+              <ClipboardList className="h-5 w-5 text-[var(--primary-theme)]" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -196,12 +196,12 @@ export default function Preferences() {
           <CardContent className="p-4">
             {/* Section label */}
             <div className="flex items-center gap-2 mb-4 px-1">
-              <div className="w-1 h-4 bg-orange-500 rounded" />
+              <div className="w-1 h-4 bg-[var(--primary-theme)] rounded" />
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                 Food Categories
               </h3>
               {selectedIds.length > 0 && (
-                <span className="ml-auto text-xs font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-xs font-bold text-[var(--primary-theme)] bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full">
                   {selectedIds.length} selected
                 </span>
               )}
@@ -242,7 +242,7 @@ export default function Preferences() {
                       }}
                       className={`relative cursor-pointer aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-300 flex flex-col justify-between ${
                         isSelected
-                          ? "border-orange-500 shadow-md shadow-orange-500/15"
+                          ? "border-[var(--primary-theme)] shadow-md shadow-[var(--primary-theme)]/15"
                           : "border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                       }`}
                     >
@@ -263,14 +263,14 @@ export default function Preferences() {
                         {/* Selected check badge */}
                         {isSelected && (
                           <div className="absolute top-1.5 right-1.5">
-                            <div className="bg-orange-500 rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                            <div className="bg-[var(--primary-theme)] rounded-full w-5 h-5 flex items-center justify-center shadow-md">
                               <Check className="w-3 h-3 text-white" strokeWidth={3} />
                             </div>
                           </div>
                         )}
                         {/* Selected tint overlay */}
                         {isSelected && (
-                          <div className="absolute inset-0 bg-orange-500/10" />
+                          <div className="absolute inset-0 bg-[var(--primary-theme)]/10" />
                         )}
                       </div>
 
@@ -285,7 +285,7 @@ export default function Preferences() {
                         <span
                           className={`text-[11px] sm:text-xs font-bold leading-tight ${
                             isSelected
-                              ? "text-orange-600 dark:text-orange-400"
+                              ? "text-[var(--primary-theme)] dark:text-orange-400"
                               : "text-gray-700 dark:text-gray-300"
                           }`}
                         >
@@ -309,7 +309,7 @@ export default function Preferences() {
           transition={{ duration: 0.15 }}
           className={`w-full py-4 px-6 rounded-2xl text-sm font-bold text-white shadow-sm transition-all duration-300 flex items-center justify-center gap-2 ${
             selectedIds.length >= 1 && !isSaving
-              ? "bg-orange-500 hover:bg-orange-600 shadow-orange-500/25"
+              ? "bg-[var(--primary-theme)] hover:bg-[var(--primary-theme)] shadow-[var(--primary-theme)]/25"
               : "bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none text-gray-400 dark:text-gray-500"
           }`}
         >

@@ -1,10 +1,11 @@
 import { motion } from "framer-motion"
 import SuperfastLogo from "@/assets/Logo.webp"
-import { getCachedSettings } from "@common/utils/businessSettings"
+import { getCachedSettings, getDynamicLogoUrl } from "@common/utils/businessSettings"
 import { SUPERFAST_BRAND } from "../constants/brand"
 
 export default function AuthBrandHeader({ compact = false, subtitle }) {
-  const logoUrl = getCachedSettings()?.logo?.url || null
+  const settings = getCachedSettings()
+  const logoUrl = getDynamicLogoUrl(settings) || null
 
   return (
     <div className="w-full flex flex-col shrink-0 z-10 drop-shadow-md">
@@ -80,7 +81,7 @@ export default function AuthBrandHeader({ compact = false, subtitle }) {
             <linearGradient id="superfastAuthWave" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#FFC266" />
               <stop offset="55%" stopColor="#FF9A1A" />
-              <stop offset="100%" stopColor="#F97316" />
+              <stop offset="100%" stopColor="var(--primary-theme, #f97316)" />
             </linearGradient>
           </defs>
           <path

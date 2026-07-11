@@ -328,7 +328,7 @@ export default function UnifiedOTPFastLogin() {
           <form onSubmit={showNameInput ? handleSubmitName : step === 1 ? handleSendOTP : handleVerifyOTP} className="space-y-5">
             {step === 1 ? (
               <div className="space-y-4">
-                <div className="flex items-center border border-gray-200 rounded-xl p-1.5 bg-white focus-within:border-[#F97316] focus-within:ring-1 focus-within:ring-[#F97316] transition-all">
+                <div className="flex items-center border border-gray-200 rounded-xl p-1.5 bg-white focus-within:border-[var(--primary-theme)] focus-within:ring-1 focus-within:ring-[var(--primary-theme)] transition-all">
                   <div className="p-2 rounded-lg flex items-center justify-center shrink-0" style={{ background: SUPERFAST_BRAND.tint }}>
                     <Phone className="w-4 h-4" style={{ color: SUPERFAST_BRAND.primary }} />
                   </div>
@@ -362,7 +362,7 @@ export default function UnifiedOTPFastLogin() {
               </div>
             ) : showNameInput ? (
               <div className="space-y-4">
-                <div className="flex items-center border border-gray-200 rounded-xl p-1.5 bg-white focus-within:border-[#F97316] focus-within:ring-1 focus-within:ring-[#F97316] transition-all">
+                <div className="flex items-center border border-gray-200 rounded-xl p-1.5 bg-white focus-within:border-[var(--primary-theme)] focus-within:ring-1 focus-within:ring-[var(--primary-theme)] transition-all">
                   <div className="p-2 rounded-lg flex items-center justify-center shrink-0" style={{ background: SUPERFAST_BRAND.tint }}>
                     <UserRound className="w-4 h-4" style={{ color: SUPERFAST_BRAND.primary }} />
                   </div>
@@ -430,7 +430,7 @@ export default function UnifiedOTPFastLogin() {
                           document.getElementById(`otp-${Math.min(pasteData.length, 3)}`)?.focus();
                         }
                       }}
-                      className="w-12 h-12 text-center text-xl font-bold bg-white border border-gray-200 focus:border-[#F97316] focus:ring-1 focus:ring-[#F97316] rounded-xl outline-none transition-all text-gray-900"
+                      className="w-12 h-12 text-center text-xl font-bold bg-white border border-gray-200 focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] rounded-xl outline-none transition-all text-gray-900"
                     />
                   ))}
                 </div>

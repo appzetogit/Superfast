@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, ShieldCheck, Timer, RefreshCw, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home } from "lucide-react"
 import { Button } from "@food/components/ui/button"
@@ -31,13 +31,17 @@ export default function RestaurantOTP() {
   const inputRefs = useRef([])
   const hasSubmittedRef = useRef(false)
   const otpSectionRef = useRef(null)
-  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
+  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.restaurant?.logo?.url || getCachedSettings()?.logo?.url || null)
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const settings = await loadBusinessSettings()
-        if (settings?.logo?.url) setLogoUrl(settings.logo.url)
+        if (settings?.portals?.restaurant?.logo?.url) {
+          setLogoUrl(settings.portals.restaurant.logo.url)
+        } else if (settings?.logo?.url) {
+          setLogoUrl(settings.logo.url)
+        }
       } catch (e) {}
     }
     fetchSettings()

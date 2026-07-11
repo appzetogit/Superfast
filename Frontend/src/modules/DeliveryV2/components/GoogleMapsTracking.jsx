@@ -588,7 +588,7 @@ export default function GoogleMapsTracking({
               <span className="font-bold">Location Unavailable</span>
             </div>
             <span>Customer hasn't pinned their location.</span>
-            <span className="text-orange-600/80 text-[10px]">Please rely on the written address.</span>
+            <span className="text-[var(--primary-theme)]/80 text-[10px]">Please rely on the written address.</span>
           </div>
         </div>
       )}

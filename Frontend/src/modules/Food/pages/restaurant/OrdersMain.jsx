@@ -506,13 +506,13 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 , searchTerm = "" }) 
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
                             order.cancelledBy === "user"
-                              ? "border-orange-500 text-orange-600"
+                              ? "border-[var(--primary-theme)] text-[var(--primary-theme)]"
                               : "border-red-500 text-red-600"
                           }`}>
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${
                               order.cancelledBy === "user"
-                                ? "bg-orange-500"
+                                ? "bg-[var(--primary-theme)]"
                                 : "bg-red-500"
                             }`}
                           />
@@ -1892,7 +1892,7 @@ function OrderCard({
                     }`}>
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
-                        deliveryPartnerId ? "bg-[#49AB14]" : "bg-orange-500"
+                        deliveryPartnerId ? "bg-[#49AB14]" : "bg-[var(--primary-theme)]"
                       }`}
                     />
                     {deliveryPartnerId ? "Assigned" : "Not Assigned"}

@@ -13,7 +13,13 @@ router.get('/public', settingsController.getGlobalSettings);
 router.get('/', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), settingsController.getGlobalSettings);
 router.patch('/', authMiddleware, requireRoles('ADMIN'), upload.fields([
     { name: 'logo', maxCount: 1 },
-    { name: 'favicon', maxCount: 1 }
+    { name: 'favicon', maxCount: 1 },
+    { name: 'foodLogo', maxCount: 1 },
+    { name: 'qcLogo', maxCount: 1 },
+    { name: 'deliveryLogo', maxCount: 1 },
+    { name: 'restaurantLogo', maxCount: 1 },
+    { name: 'userLogo', maxCount: 1 },
+    { name: 'sellerLogo', maxCount: 1 }
 ]), settingsController.updateGlobalSettings);
 
 export default router;

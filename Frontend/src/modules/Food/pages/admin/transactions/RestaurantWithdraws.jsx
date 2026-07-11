@@ -380,7 +380,7 @@ export default function RestaurantWithdraws() {
                               className="p-2 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
                               title="View Details"
                             >
-                              <Eye className="w-4 h-4 text-orange-600" />
+                              <Eye className="w-4 h-4 text-[var(--primary-theme)]" />
                             </button>
                             {withdraw.status === 'Pending' && (
                               <>

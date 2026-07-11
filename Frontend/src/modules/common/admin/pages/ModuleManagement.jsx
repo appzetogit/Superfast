@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const ModuleCard = ({ title, description, icon: Icon, enabled, onToggle, color }) => {
   const colorMap = {
-    orange: { border: 'border-orange-100', bgLight: 'bg-orange-50/30', bgMain: 'bg-orange-500' },
+    orange: { border: 'border-orange-100', bgLight: 'bg-orange-50/30', bgMain: 'bg-[var(--primary-theme)]' },
     green: { border: 'border-green-100', bgLight: 'bg-green-50/30', bgMain: 'bg-green-500' },
     pink: { border: 'border-pink-100', bgLight: 'bg-pink-50/30', bgMain: 'bg-pink-500' }
   };

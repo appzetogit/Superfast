@@ -388,7 +388,7 @@ export default function TransactionReport() {
                     </div>
                   </div>
                 </div>
-                <p className="text-base font-bold text-orange-600">{formatCurrency(summary.deliverymanEarning)}</p>
+                <p className="text-base font-bold text-[var(--primary-theme)]">{formatCurrency(summary.deliverymanEarning)}</p>
               </div>
             </div>
           </div>

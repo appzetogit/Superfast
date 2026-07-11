@@ -98,7 +98,7 @@
   --color-brand-950: #021e07;
   
   --color-page-bg: #ffffff;
-  --color-primary-orange: #cc2532;
+  --color-primary-orange: var(--primary-theme, #cc2532);
   --font-poppins: var(--font-poppins);
   --font-outfit: var(--font-outfit);
 }
@@ -301,3 +301,14 @@
 }
 
 }
+
+@keyframes pulse-highlight {
+  0% { background-color: transparent; }
+  10% { background-color: rgba(239, 68, 68, 0.15); box-shadow: 0 0 0 2px #ef4444 inset; }
+  70% { background-color: rgba(239, 68, 68, 0.15); box-shadow: 0 0 0 2px #ef4444 inset; }
+  100% { background-color: transparent; box-shadow: none; }
+}
+.animate-pulse-highlight {
+  animation: pulse-highlight 2.5s ease-out forwards;
+}
+

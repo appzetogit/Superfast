@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useLocation as useAppLocation } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { MapPin, ShoppingCart, Trophy } from "lucide-react"
 import { Button } from "@food/components/ui/button"
@@ -20,33 +20,45 @@ const debugError = (...args) => {}
 
 export default function Navbar() {
   const { location, loading } = useLocation()
+  const appLocation = useAppLocation()
   const { getCartCount } = useCart()
   const { openLocationSelector } = useLocationSelector()
   const cartCount = getCartCount()
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
   const [companyName, setCompanyName] = useState(() => getCachedSettings()?.companyName || null)
 
+  const isQuick = appLocation.pathname === "/quick" || appLocation.pathname.startsWith("/quick/")
+
   // Load business settings logo
   useEffect(() => {
+    const applySettings = (settings) => {
+        if (isQuick && settings?.moduleThemes?.quickCommerce?.logo?.url) {
+            setLogoUrl(settings.moduleThemes.quickCommerce.logo.url);
+        } else if (!isQuick && settings?.moduleThemes?.food?.logo?.url) {
+            setLogoUrl(settings.moduleThemes.food.logo.url);
+        } else if (settings?.portals?.user?.logo?.url) {
+            setLogoUrl(settings.portals.user.logo.url);
+        } else if (isQuick) {
+            setLogoUrl("/superfast_mart_delivery_bag.png");
+        } else if (!isQuick) {
+            setLogoUrl("/Rydon24.png");
+        } else if (settings?.logo?.url) {
+            setLogoUrl(settings.logo.url);
+        }
+        if (settings?.companyName) {
+            setCompanyName(settings.companyName);
+        }
+    };
+
     const loadLogo = async () => {
       try {
         const cached = getCachedSettings()
         if (cached) {
-          if (cached.logo?.url) {
-            setLogoUrl(cached.logo.url)
-          }
-          if (cached.companyName) {
-            setCompanyName(cached.companyName)
-          }
+          applySettings(cached)
         } else {
           const settings = await loadBusinessSettings()
           if (settings) {
-            if (settings.logo?.url) {
-              setLogoUrl(settings.logo.url)
-            }
-            if (settings.companyName) {
-              setCompanyName(settings.companyName)
-            }
+            applySettings(settings)
           }
         }
       } catch (error) {
@@ -56,23 +68,18 @@ export default function Navbar() {
     loadLogo()
 
     // Listen for business settings updates
-        const handleSettingsUpdate = () => {
-            const cached = getCachedSettings()
-            if (cached) {
-                if (cached.logo?.url) {
-                    setLogoUrl(cached.logo.url)
-                }
-                if (cached.companyName) {
-                    setCompanyName(cached.companyName)
-                }
-            }
-        }
+    const handleSettingsUpdate = () => {
+      const cached = getCachedSettings()
+      if (cached) {
+        applySettings(cached)
+      }
+    }
     window.addEventListener('businessSettingsUpdated', handleSettingsUpdate)
 
     return () => {
       window.removeEventListener('businessSettingsUpdated', handleSettingsUpdate)
     }
-  }, [])
+  }, [isQuick])
 
   // Show area if available, otherwise show city
   const areaName = location?.area && location?.area !== location?.city ? location.area : null

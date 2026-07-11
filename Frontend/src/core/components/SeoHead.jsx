@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useSettings } from '@core/context/SettingsContext';
+import { getDynamicFaviconUrl } from '@/modules/common/utils/businessSettings';
 
 /**
  * Updates document title, favicon, and meta description/keywords from global settings.
@@ -12,7 +13,7 @@ export default function SeoHead() {
     useEffect(() => {
         if (!settings) return;
 
-        const title = settings.metaTitle || settings.appName || 'App';
+        const title = settings.metaTitle || settings.appName || settings.companyName || 'App';
         document.title = title;
 
         const desc = settings.metaDescription || '';
@@ -47,15 +48,15 @@ export default function SeoHead() {
         metaKw.setAttribute('content', keywordsContent);
 
         // Update or create dynamic favicon
-        const faviconUrl = settings.faviconUrl || '';
+        const faviconUrl = getDynamicFaviconUrl(settings) || settings.faviconUrl || '';
         let linkFavicon = metaRefs.current.favicon;
         if (!linkFavicon) {
-            linkFavicon = document.getElementById('dynamic-favicon');
+            linkFavicon = document.getElementById('dynamic-favicon') || document.querySelector("link[rel*='icon']");
             if (!linkFavicon && faviconUrl) {
                 linkFavicon = document.createElement('link');
                 linkFavicon.id = 'dynamic-favicon';
                 linkFavicon.rel = 'icon';
-                linkFavicon.type = 'image/x-icon';
+                linkFavicon.type = 'image/png';
                 document.head.appendChild(linkFavicon);
                 metaRefs.current.favicon = linkFavicon;
             } else if (linkFavicon) {

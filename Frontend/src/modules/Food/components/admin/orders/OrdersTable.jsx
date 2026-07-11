@@ -6,11 +6,11 @@ const getStatusColor = (orderStatus) => {
     "Delivered": "bg-[#E8F8F0] text-[#00A669]",
     "Pending": "bg-blue-50 text-blue-600",
     "Scheduled": "bg-blue-50 text-blue-600",
-    "Processing": "bg-orange-50 text-orange-600",
+    "Processing": "bg-orange-50 text-[var(--primary-theme)]",
     "Food On The Way": "bg-yellow-50 text-yellow-600",
     "Canceled": "bg-red-50 text-red-600",
     "Cancelled by Restaurant": "bg-red-50 text-red-600",
-    "Cancelled by User": "bg-orange-50 text-orange-600",
+    "Cancelled by User": "bg-orange-50 text-[var(--primary-theme)]",
     "Payment Failed": "bg-red-50 text-red-600",
     "Refunded": "bg-sky-50 text-sky-600",
     "Dine In": "bg-indigo-50 text-indigo-600",
@@ -70,7 +70,7 @@ export default function OrdersTable({
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
             <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-5xl text-orange-500 font-bold">!</span>
+              <span className="text-5xl text-[var(--primary-theme)] font-bold">!</span>
             </div>
           </div>
           <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
@@ -394,7 +394,7 @@ export default function OrdersTable({
                       )}
                       <button 
                         onClick={() => onViewOrder(order)}
-                        className="p-1.5 rounded text-orange-600 hover:bg-orange-50 transition-colors"
+                        className="p-1.5 rounded text-[var(--primary-theme)] hover:bg-orange-50 transition-colors"
                         title="View Details"
                       >
                         <Eye className="w-4 h-4" />

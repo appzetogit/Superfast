@@ -209,7 +209,8 @@ const toRestaurantProfile = (doc) => {
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
         businessType: doc.businessType || 'restaurant',
         customOrdersEnabled: Boolean(doc.customOrdersEnabled),
-        customOrdersRequestStatus: doc.customOrdersRequestStatus || 'none'
+        customOrdersRequestStatus: doc.customOrdersRequestStatus || 'none',
+        recommendedItems: Array.isArray(doc.recommendedItems) ? doc.recommendedItems : []
     };
 };
 
@@ -1390,7 +1391,8 @@ const toRestaurantSummary = (doc) => {
         pureVegRestaurant: Boolean(doc.pureVegRestaurant),
         slug: doc.slug || doc.restaurantNameNormalized || '',
         priority: doc.priority ?? 0,
-        famousDishes
+        famousDishes,
+        recommendedItems: Array.isArray(doc.recommendedItems) ? doc.recommendedItems : []
     };
 };
 
@@ -1505,7 +1507,29 @@ export const listApprovedRestaurants = async (query = {}) => {
         openDays: 1,
         slug: 1,
         restaurantNameNormalized: 1,
-        priority: 1
+        priority: 1,
+        recommendedItems: 1
+    };
+
+    const recommendedItemsLookup = {
+        $lookup: {
+            from: 'food_items',
+            let: { restaurant_id: '$_id' },
+            pipeline: [
+                { 
+                    $match: { 
+                        $expr: { $eq: ['$restaurantId', '$$restaurant_id'] }, 
+                        approvalStatus: 'approved', 
+                        isAvailable: true,
+                        isRecommended: true,
+                        image: { $exists: true, $ne: '' } 
+                    } 
+                },
+                { $sort: { price: 1 } },
+                { $limit: 6 }
+            ],
+            as: 'recommendedItems'
+        }
     };
 
     // Calculate adjusted priorities if zoneId is provided
@@ -1593,6 +1617,7 @@ export const listApprovedRestaurants = async (query = {}) => {
                 ...basePipeline,
                 { $skip: skip },
                 { $limit: limit },
+                recommendedItemsLookup,
                 { $project: { ...projection, distanceInKm: 1 } }
             ]),
             FoodRestaurant.aggregate([...basePipeline, { $count: 'total' }])
@@ -1651,6 +1676,7 @@ export const listApprovedRestaurants = async (query = {}) => {
             ...basePipeline,
             { $skip: skip },
             { $limit: limit },
+            recommendedItemsLookup,
             { $project: projection }
         ]),
         FoodRestaurant.aggregate([...basePipeline, { $count: 'total' }])

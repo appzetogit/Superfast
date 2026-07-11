@@ -309,7 +309,7 @@ export default function AdminHome() {
               title="GST"
               value={formatCurrency(gstTotal)}
               helper={`Total tax collected: ${periodLabel}`}
-              icon={<Receipt className="h-5 w-5 text-orange-600" />}
+              icon={<Receipt className="h-5 w-5 text-[var(--primary-theme)]" />}
               accent="bg-orange-200/40"
               path="/admin/food/tax-report"
             />
@@ -333,7 +333,7 @@ export default function AdminHome() {
               title="Restaurant request pending"
               value={pendingRestaurantRequests.toLocaleString("en-IN")}
               helper="Awaiting approval"
-              icon={<UserCheck className="h-5 w-5 text-orange-600" />}
+              icon={<UserCheck className="h-5 w-5 text-[var(--primary-theme)]" />}
               accent="bg-orange-200/40"
               path="/admin/food/restaurants/joining-request"
             />

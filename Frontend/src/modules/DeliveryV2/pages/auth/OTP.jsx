@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { ArrowLeft, ShieldCheck, Timer, RefreshCw, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home } from "lucide-react"
 import { Input } from "@food/components/ui/input"
@@ -34,14 +34,18 @@ export default function DeliveryOTP() {
   const [deviceToken, setDeviceToken] = useState(null)
   const [activePlatform, setActivePlatform] = useState("web")
   const inputRefs = useRef([])
-  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
+  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.delivery?.logo?.url || getCachedSettings()?.logo?.url || null)
   const [keyboardInset, setKeyboardInset] = useState(0)
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const settings = await loadBusinessSettings()
-        if (settings?.logo?.url) setLogoUrl(settings.logo.url)
+        if (settings?.portals?.delivery?.logo?.url) {
+          setLogoUrl(settings.portals.delivery.logo.url)
+        } else if (settings?.logo?.url) {
+          setLogoUrl(settings.logo.url)
+        }
       } catch (e) {}
     }
     fetchSettings()

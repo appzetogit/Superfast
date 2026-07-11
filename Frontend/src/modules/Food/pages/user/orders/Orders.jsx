@@ -672,7 +672,7 @@ Order again from this restaurant in the ${companyName} app.`
           <h1 className="ml-4 text-xl font-semibold text-gray-800 dark:text-white">Your Orders</h1>
         </div>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-[#cc2532] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[var(--primary-theme)] animate-spin" />
         </div>
       </div>
     )
@@ -692,7 +692,7 @@ Order again from this restaurant in the ${companyName} app.`
           {/* Search Bar */}
           <div className="p-4 bg-white dark:bg-[#111111] mt-1">
             <div className="flex items-center bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 shadow-sm">
-              <Search className="w-5 h-5 text-[#cc2532]" />
+              <Search className="w-5 h-5 text-[var(--primary-theme)]" />
               <input
                 type="text"
                 placeholder="Search by restaurant or dish"
@@ -709,7 +709,7 @@ Order again from this restaurant in the ${companyName} app.`
               <div className="bg-white dark:bg-[#111111] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-8 text-center mt-4">
                 <p className="text-gray-600 dark:text-gray-300">You haven't placed any orders yet</p>
                 <Link to="/food/user">
-                  <button className="mt-4 text-[#cc2532] font-medium">Start Ordering</button>
+                  <button className="mt-4 text-[var(--primary-theme)] font-medium">Start Ordering</button>
                 </Link>
               </div>
             ) : filteredOrders.length === 0 ? (
@@ -774,7 +774,7 @@ Order again from this restaurant in the ${companyName} app.`
                       )}
                       {order.restaurantId && (
                         <Link to={`/user/restaurants/${order.restaurantId}`}>
-                          <button className="text-xs text-[#cc2532] font-medium flex items-center mt-1 hover:text-[#a81e29]">
+                          <button className="text-xs text-[var(--primary-theme)] font-medium flex items-center mt-1 hover:text-[#a81e29]">
                             View menu <span className="ml-0.5">&gt;</span>
                           </button>
                         </Link>
@@ -974,7 +974,7 @@ Order again from this restaurant in the ${companyName} app.`
                   </div>
                   <div className="flex items-center ml-4">
                     <Link to={`/user/orders/${order.id}`}>
-                      <button className="text-xs text-[#cc2532] font-medium hover:text-[#a81e29] flex items-center gap-1">
+                      <button className="text-xs text-[var(--primary-theme)] font-medium hover:text-[#a81e29] flex items-center gap-1">
                         View Details
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -1025,7 +1025,7 @@ Order again from this restaurant in the ${companyName} app.`
                       <button
                         type="button"
                         onClick={() => handleOpenRating(order)}
-                        className="text-xs text-[#cc2532] font-medium mt-0.5 flex items-center"
+                        className="text-xs text-[var(--primary-theme)] font-medium mt-0.5 flex items-center"
                       >
                         Rate restaurant & delivery <span className="ml-0.5">&gt;</span>
                       </button>
@@ -1035,7 +1035,7 @@ Order again from this restaurant in the ${companyName} app.`
                       <p className="text-xs text-gray-500 dark:text-gray-400">{order.status === 'preparing' ? 'Preparing' : order.status === 'outForDelivery' ? 'Out for delivery' : order.status === 'confirmed' ? 'Order confirmed' : order.status === 'scheduled' ? 'Scheduled' : ''}</p>
                       {/* Countdown Timer */}
                       {countdowns[order.id] && countdowns[order.id] > 0 && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-[#cc2532] font-medium">
+                        <div className="flex items-center gap-1 mt-1 text-xs text-[var(--primary-theme)] font-medium">
                           <Clock size={12} />
                           <span>{countdowns[order.id]} min{countdowns[order.id] !== 1 ? 's' : ''} remaining</span>
                         </div>
@@ -1047,7 +1047,7 @@ Order again from this restaurant in the ${companyName} app.`
                   {isDelivered && !paymentFailed && (
                     <button
                       onClick={() => handleReorder(order)}
-                      className="bg-[#cc2532] hover:bg-[#a81e29] text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 shadow-sm transition-colors"
+                      className="bg-[var(--primary-theme)] hover:bg-[#a81e29] text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 shadow-sm transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       Reorder
@@ -1071,7 +1071,7 @@ Order again from this restaurant in the ${companyName} app.`
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-[#cc2532] to-[#a81e29] px-6 py-5">
+            <div className="bg-gradient-to-r from-[var(--primary-theme)] to-[#a81e29] px-6 py-5">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Star className="w-5 h-5 fill-white" />
@@ -1117,7 +1117,7 @@ Order again from this restaurant in the ${companyName} app.`
                   rows={2}
                   value={restaurantFeedbackText}
                   onChange={(e) => setRestaurantFeedbackText(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#cc2532] focus:border-[#cc2532] resize-none transition-all"
+                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] focus:border-[var(--primary-theme)] resize-none transition-all"
                   placeholder="Restaurant feedback (optional)"
                 />
               </div>
@@ -1151,7 +1151,7 @@ Order again from this restaurant in the ${companyName} app.`
                     rows={2}
                     value={deliveryFeedbackText}
                     onChange={(e) => setDeliveryFeedbackText(e.target.value)}
-                    className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#cc2532] focus:border-[#cc2532] resize-none transition-all"
+                    className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] focus:border-[var(--primary-theme)] resize-none transition-all"
                     placeholder="Delivery partner feedback (optional)"
                   />
                 </div>
@@ -1162,7 +1162,7 @@ Order again from this restaurant in the ${companyName} app.`
                 type="button"
                 disabled={ratingSubmitDisabled}
                 onClick={handleSubmitRating}
-                className="w-full rounded-xl bg-gradient-to-r from-[#cc2532] to-[#a81e29] text-white text-base font-bold py-3.5 hover:from-[#a81e29] hover:to-[#a81e29] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg ring-red-500/30 flex items-center justify-center gap-2"
+                className="w-full rounded-xl bg-gradient-to-r from-[var(--primary-theme)] to-[#a81e29] text-white text-base font-bold py-3.5 hover:from-[#a81e29] hover:to-[#a81e29] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg ring-red-500/30 flex items-center justify-center gap-2"
               >
                 {submittingRating ? (
                   <>
@@ -1208,7 +1208,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={handleSystemShareFromModal}
-                  className="w-full rounded-2xl bg-[#cc2532] px-4 py-3 text-sm font-semibold text-white flex items-center justify-center gap-2 hover:bg-[#a81e29] transition-colors"
+                  className="w-full rounded-2xl bg-[var(--primary-theme)] px-4 py-3 text-sm font-semibold text-white flex items-center justify-center gap-2 hover:bg-[#a81e29] transition-colors"
                 >
                   <Share2 className="w-4 h-4" />
                   Share via apps

@@ -162,7 +162,7 @@ export default function Gallery() {
           {/* Top Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div className="flex items-center gap-4">
-              <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium flex items-center gap-2">
+              <button className="px-4 py-2 bg-[var(--primary-theme)] text-white rounded-lg hover:bg-[var(--primary-theme)] transition-colors text-sm font-medium flex items-center gap-2">
                 <HardDrive className="w-4 h-4" />
                 Local storage
               </button>
@@ -199,7 +199,7 @@ export default function Gallery() {
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-[var(--primary-theme)] text-white rounded-lg hover:bg-[var(--primary-theme)] transition-colors text-sm font-medium flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add New
@@ -335,7 +335,7 @@ export default function Gallery() {
               </button>
               <button
                 onClick={handleUpload}
-                className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                className="px-4 py-2 text-sm bg-[var(--primary-theme)] text-white rounded-lg hover:bg-[var(--primary-theme)]"
               >
                 Upload
               </button>
@@ -375,7 +375,7 @@ export default function Gallery() {
               </button>
               <button
                 onClick={handleCreateFolder}
-                className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                className="px-4 py-2 text-sm bg-[var(--primary-theme)] text-white rounded-lg hover:bg-[var(--primary-theme)]"
               >
                 Create
               </button>

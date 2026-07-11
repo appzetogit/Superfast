@@ -127,12 +127,12 @@ export default function DisbursementReportDeliverymen() {
           {/* Completed Disbursements */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative">
             <div className="absolute top-4 right-4">
-              <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-[var(--primary-theme)] flex items-center justify-center">
                 <Info className="w-3 h-3 text-white" />
               </div>
             </div>
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-[var(--primary-theme)] flex items-center justify-center mb-4">
                 <img src={completedIcon} alt="Completed" className="w-10 h-10" />
               </div>
               <p className="text-2xl font-bold text-slate-900 mb-1">{emptyDisbursementStats.completed}</p>

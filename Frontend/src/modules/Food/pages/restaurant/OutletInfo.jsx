@@ -797,7 +797,7 @@ export default function OutletInfo() {
                       className="data-[state=checked]:bg-[#ff8100]"
                     />
                     {restaurantData?.customOrdersRequestStatus === 'pending' && (
-                       <span className="text-[10px] font-medium text-orange-600 mt-1 uppercase">Pending</span>
+                       <span className="text-[10px] font-medium text-[var(--primary-theme)] mt-1 uppercase">Pending</span>
                     )}
                     {restaurantData?.customOrdersRequestStatus === 'approved' && (
                        <span className="text-[10px] font-medium text-green-600 mt-1 uppercase">Approved</span>

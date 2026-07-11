@@ -2228,7 +2228,7 @@ const CheckoutPage = () => {
             <motion.div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-neutral-800 transition-colors">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Tag size={20} className="text-orange-500" />
+                  <Tag size={20} className="text-[var(--primary-theme)]" />
                   <h3 className="font-black text-slate-800 dark:text-white">
                     Available Coupons
                   </h3>

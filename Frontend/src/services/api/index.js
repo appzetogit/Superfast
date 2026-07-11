@@ -974,6 +974,12 @@ export const adminAPI = {
     // Add files with the same names expected by the backend
     if (files.logo) formData.append("logo", files.logo);
     if (files.favicon) formData.append("favicon", files.favicon);
+    if (files.foodLogo) formData.append("foodLogo", files.foodLogo);
+    if (files.qcLogo) formData.append("qcLogo", files.qcLogo);
+    if (files.deliveryLogo) formData.append("deliveryLogo", files.deliveryLogo);
+    if (files.restaurantLogo) formData.append("restaurantLogo", files.restaurantLogo);
+    if (files.userLogo) formData.append("userLogo", files.userLogo);
+    if (files.sellerLogo) formData.append("sellerLogo", files.sellerLogo);
 
     return apiClient.patch(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS, formData, {
       contextModule: "admin",

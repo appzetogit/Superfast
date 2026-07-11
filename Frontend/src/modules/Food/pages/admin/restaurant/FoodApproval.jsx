@@ -194,7 +194,7 @@ export default function FoodApproval() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-gray-900">Pending Food & Add-on Approvals</h2>
-              <span className="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-600">
+              <span className="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-[var(--primary-theme)]">
                 {totalRequests}
               </span>
             </div>

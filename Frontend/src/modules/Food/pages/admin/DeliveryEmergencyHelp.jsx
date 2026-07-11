@@ -162,7 +162,7 @@ export default function DeliveryEmergencyHelp() {
       label: "Accident Helpline",
       placeholder: "112 or 1073",
       icon: Ambulance,
-      iconColor: "text-orange-500",
+      iconColor: "text-[var(--primary-theme)]",
       description: "Road accident helpline — 3 or 4 digits"
     },
     {

@@ -137,7 +137,7 @@ export default function DeliverySupportTickets() {
   const getStatusIcon = (status) => {
     switch (status) {
       case "open":
-        return <Clock className="w-5 h-5 text-orange-500" />
+        return <Clock className="w-5 h-5 text-[var(--primary-theme)]" />
       case "in_progress":
         return <Clock className="w-5 h-5 text-blue-500" />
       case "resolved":
@@ -206,7 +206,7 @@ export default function DeliverySupportTickets() {
               </div>
               <div className="bg-orange-50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-orange-700">{stats.open}</p>
-                <p className="text-xs text-orange-600 mt-1">Open</p>
+                <p className="text-xs text-[var(--primary-theme)] mt-1">Open</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-blue-700">{stats.inProgress}</p>
@@ -418,7 +418,7 @@ export default function DeliverySupportTickets() {
               {/* Delivery Partner Section */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-1 h-6 bg-orange-500 rounded"></div>
+                  <div className="w-1 h-6 bg-[var(--primary-theme)] rounded"></div>
                   <h3 className="text-base font-semibold text-gray-900">Delivery Partner</h3>
                 </div>
                 <div className="pl-4 space-y-3">

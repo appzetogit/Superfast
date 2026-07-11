@@ -19,7 +19,7 @@ import { adminApi } from '../services/adminApi';
 const STYLE_OPTIONS = [
     { id: 'blue', label: 'Blue', className: 'bg-blue-600' },
     { id: 'green', label: 'Green', className: 'bg-[#0c831f]' },
-    { id: 'orange', label: 'Orange', className: 'bg-orange-500' },
+    { id: 'orange', label: 'Orange', className: 'bg-[var(--primary-theme)]' },
 ];
 
 const ICON_OPTIONS = [

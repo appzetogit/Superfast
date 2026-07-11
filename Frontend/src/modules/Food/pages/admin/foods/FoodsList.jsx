@@ -465,7 +465,7 @@ export default function FoodsList() {
       {/* Header Section */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-[var(--primary-theme)] flex items-center justify-center">
             <div className="grid grid-cols-2 gap-0.5">
               <div className="w-2 h-2 bg-white rounded-sm"></div>
               <div className="w-2 h-2 bg-white rounded-sm"></div>

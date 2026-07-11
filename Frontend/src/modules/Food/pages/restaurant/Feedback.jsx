@@ -466,7 +466,7 @@ export default function Feedback() {
                     <div key={complaint._id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
                       <div className="flex justify-between items-center">
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${
-                          complaint.status === 'open' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
+                          complaint.status === 'open' ? 'bg-orange-100 text-[var(--primary-theme)]' : 'bg-green-100 text-green-600'
                         }`}>{complaint.status || 'open'}</span>
                         <span className="text-[10px] text-gray-400 font-bold">{new Date(complaint.createdAt).toLocaleDateString()}</span>
                       </div>

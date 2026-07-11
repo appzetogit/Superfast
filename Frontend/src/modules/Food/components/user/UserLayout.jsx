@@ -118,16 +118,34 @@ export default function UserLayout({ children }) {
 
   useUserNotifications()
 
+  // Determine active tab based on route for serviceability check and theme
+  let activeTab = 'food';
+  if (location.pathname === '/quick' || location.pathname.startsWith('/quick/')) {
+    activeTab = 'quickCommerce';
+  } else if (location.pathname.startsWith('/bakery')) {
+    activeTab = 'homeBakery';
+  }
+
+  useEffect(() => {
+    import('@/modules/common/utils/businessSettings').then(({ getCachedSettings, updateThemeColor }) => {
+      const settings = getCachedSettings();
+      if (settings && settings.moduleThemes) {
+        if (activeTab === 'food' && settings.moduleThemes.food?.themeColor) {
+          updateThemeColor(settings.moduleThemes.food.themeColor);
+        } else if (activeTab === 'quickCommerce' && settings.moduleThemes.quickCommerce?.themeColor) {
+          updateThemeColor(settings.moduleThemes.quickCommerce.themeColor);
+        } else if (settings.themeColor) {
+          updateThemeColor(settings.themeColor);
+        }
+      }
+    });
+  }, [activeTab]);
+
   // Note: Authentication checks and redirects are handled by ProtectedRoute components
   // UserLayout should not interfere with authentication redirects
 
-  // Determine active tab based on route for serviceability check
-  let activeTab = 'food';
-  if (location.pathname === '/quick' || location.pathname.startsWith('/quick/')) {
-    activeTab = 'quick';
-  }
-
-  const { isModuleEnabled } = useServiceability(activeTab);
+  // Serviceability check using the activeTab defined above
+  const { isModuleEnabled } = useServiceability(activeTab === 'quickCommerce' ? 'quick' : activeTab);
   const { location: appLocation } = useAppLocation();
   const { isOutOfService } = useZone(appLocation);
   

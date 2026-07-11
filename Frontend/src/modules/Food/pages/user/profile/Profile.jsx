@@ -666,7 +666,7 @@ export default function Profile() {
                       e.stopPropagation();
                       handleShareReferral();
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs text-[#cc2532] font-semibold bg-[#cc2532]/5 hover:bg-[#cc2532]/10 transition-colors px-3 py-1.5 rounded-full flex-shrink-0"
+                    className="inline-flex items-center gap-1.5 text-xs text-[var(--primary-theme)] font-semibold bg-[var(--primary-theme)]/5 hover:bg-[var(--primary-theme)]/10 transition-colors px-3 py-1.5 rounded-full flex-shrink-0"
                     disabled={!referralLink}>
                     <Share2 className="h-3.5 w-3.5" />
                     Refer
@@ -788,7 +788,7 @@ export default function Profile() {
         {/* Food Section */}
         <div className="mb-3">
           <div className="flex items-center gap-2 mb-2 px-1">
-            <div className="w-1 h-4 bg-[#cc2532] rounded"></div>
+            <div className="w-1 h-4 bg-[var(--primary-theme)] rounded"></div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
               Food
             </h3>
@@ -885,7 +885,7 @@ export default function Profile() {
         {/* Dining Section */}
         <div className="mb-3">
           <div className="flex items-center gap-2 mb-2 px-1">
-            <div className="w-1 h-4 bg-[#cc2532] rounded"></div>
+            <div className="w-1 h-4 bg-[var(--primary-theme)] rounded"></div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
               Dining
             </h3>
@@ -1036,7 +1036,7 @@ export default function Profile() {
         {/* More Section */}
         <div className="mb-8 pb-8">
           <div className="flex items-center gap-2 mb-2 px-1">
-            <div className="w-1 h-4 bg-[#cc2532] rounded"></div>
+            <div className="w-1 h-4 bg-[var(--primary-theme)] rounded"></div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
               More
             </h3>
@@ -1349,12 +1349,12 @@ export default function Profile() {
                 setAppearanceOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${theme === "light"
-                  ? "border-[#cc2532] bg-[#cc2532]/5"
+                  ? "border-[var(--primary-theme)] bg-[var(--primary-theme)]/5"
                   : "border-slate-200 hover:border-slate-300"
                 }`}>
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${theme === "light"
-                    ? "border-[#cc2532]"
+                    ? "border-[var(--primary-theme)]"
                     : "border-slate-300"
                   }`}>
                 {theme === "light" && (
@@ -1377,12 +1377,12 @@ export default function Profile() {
                 setAppearanceOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${theme === "dark"
-                  ? "border-[#cc2532] bg-[#cc2532]/5"
+                  ? "border-[var(--primary-theme)] bg-[var(--primary-theme)]/5"
                   : "border-slate-700 hover:border-slate-600"
                 }`}>
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${theme === "dark"
-                    ? "border-[#cc2532]"
+                    ? "border-[var(--primary-theme)]"
                     : "border-slate-600"
                   }`}>
                 {theme === "dark" && (

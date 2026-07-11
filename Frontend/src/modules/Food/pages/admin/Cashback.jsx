@@ -28,7 +28,7 @@ export default function Cashback() {
     { key: "en", label: "English(EN)" },
     { key: "bn", label: "Bengali - বাংলা (BN)" },
     { key: "ar", label: "Arabic - العربية (AR)" },
-    { key: "es", label: "Spanish - espa�ol(ES)" },
+    { key: "es", label: "Spanish - espa�ol(ES)" },
   ]
 
   const filteredCashbacks = useMemo(() => {
@@ -94,7 +94,7 @@ export default function Cashback() {
         {/* Create Cashback Offer Section */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-[var(--primary-theme)] flex items-center justify-center">
               <RefreshCw className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Create Cashback Offer</h1>

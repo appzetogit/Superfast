@@ -55,7 +55,7 @@ export const CreateSupportTicketV2 = () => {
                  placeholder="Main subject of your concern"
                  value={form.subject}
                  onChange={(e) => setForm({...form, subject: e.target.value})}
-                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-950 focus:ring-4 focus:ring-orange-500/10 transition-all outline-none"
+                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-950 focus:ring-4 focus:ring-[var(--primary-theme)]/10 transition-all outline-none"
                />
             </div>
 
@@ -67,7 +67,7 @@ export const CreateSupportTicketV2 = () => {
                  placeholder="Explain your issue here..."
                  value={form.description}
                  onChange={(e) => setForm({...form, description: e.target.value})}
-                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-950 focus:ring-4 focus:ring-orange-500/10 transition-all outline-none resize-none"
+                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-950 focus:ring-4 focus:ring-[var(--primary-theme)]/10 transition-all outline-none resize-none"
                />
             </div>
 

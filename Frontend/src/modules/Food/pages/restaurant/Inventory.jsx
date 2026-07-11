@@ -893,7 +893,7 @@ export default function Inventory() {
                   rejectionReason: item.rejectionReason || "",
                   // Backend menu is generated from food_items and currently doesn't persist "recommended".
                   // Keep as a local UI preference keyed by food item id.
-                  isRecommended: Boolean(recommendedMap?.[String(item.id)]),
+                  isRecommended: Boolean(item.isRecommended),
                   stockQuantity: item.stock || "Unlimited",
                   unit: item.itemSizeUnit || "piece",
                   expiryDate: null,
@@ -923,7 +923,7 @@ export default function Inventory() {
                       foodType: item.foodType || "Non-Veg",
                       approvalStatus: String(item.approvalStatus || "approved").toLowerCase(),
                       rejectionReason: item.rejectionReason || "",
-                      isRecommended: Boolean(recommendedMap?.[String(item.id)]),
+                      isRecommended: Boolean(item.isRecommended),
                       stockQuantity: item.stock || "Unlimited",
                       unit: item.itemSizeUnit || "piece",
                       expiryDate: null,
@@ -1817,16 +1817,26 @@ export default function Inventory() {
       })
     )
 
-    // Persist local recommended preference (backend doesn't support it yet).
+    // Update backend
     try {
-      setRecommendedMap((prev) => {
-        const next = { ...(prev || {}) }
-        next[String(itemId)] = Boolean(newRecommendationStatus)
-        localStorage.setItem(INVENTORY_RECOMMENDED_KEY, JSON.stringify(next))
-        return next
-      })
+      await restaurantAPI.updateFood(itemId, { isRecommended: newRecommendationStatus })
+      toast.success(newRecommendationStatus ? "Item marked as recommended" : "Recommendation removed")
     } catch (error) {
       debugWarn("Failed to persist recommended state:", error)
+      toast.error("Failed to update recommendation status")
+      
+      // Revert local state on error
+      setCategories(prev =>
+        prev.map(category => {
+          if (category.id !== categoryId) return category
+          return {
+            ...category,
+            items: category.items.map(item =>
+              item.id === itemId ? { ...item, isRecommended: !newRecommendationStatus } : item
+            ),
+          }
+        })
+      )
     }
   }
 

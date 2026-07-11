@@ -147,7 +147,7 @@ export default function AuthCallback() {
                 <CheckCircle2 className="h-16 w-16 md:h-20 md:w-20 lg:h-24 lg:w-24 text-[#EB590E] animate-in fade-in zoom-in duration-500" />
               </div>
               <div className="text-center space-y-2 md:space-y-3">
-                <h3 className="text-xl md:text-2xl lg:text-3xl font-semibold text-[#EB590E] dark:text-[#F97316]">
+                <h3 className="text-xl md:text-2xl lg:text-3xl font-semibold text-[#EB590E] dark:text-[var(--primary-theme)]">
                   Welcome!
                 </h3>
                 <p className="text-sm md:text-base text-muted-foreground">

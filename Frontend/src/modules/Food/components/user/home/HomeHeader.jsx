@@ -50,18 +50,23 @@ const normalizeHex = (hex, fallback = "#8e24aa") => {
   return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
 };
 
-const withAlpha = (hex, alpha) => {
-  const value = normalizeHex(hex).slice(1);
+const withAlpha = (color, alpha) => {
+  if (!color) return `rgba(0, 0, 0, ${alpha})`;
+  if (color.startsWith('var(')) {
+    return `color-mix(in srgb, ${color} ${alpha * 100}%, transparent)`;
+  }
+  const value = normalizeHex(color).slice(1);
   const r = parseInt(value.slice(0, 2), 16);
   const g = parseInt(value.slice(2, 4), 16);
   const b = parseInt(value.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const quickTheme = (baseColor) => {
+const quickTheme = (baseColor, secondaryColor) => {
   const base = normalizeHex(baseColor, "#2f7a46");
+  const secondary = secondaryColor ? normalizeHex(secondaryColor) : `color-mix(in srgb, ${base} 70%, black)`;
   return {
-    topBg: `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%), ${base}`,
+    topBg: `linear-gradient(180deg, ${secondary} 0%, ${base} 100%)`,
     accent: base,
     text: "#ffffff",
     activeBg: base,
@@ -72,11 +77,11 @@ const quickTheme = (baseColor) => {
 };
 
 const foodTheme = (vegMode) => {
-  const base = vegMode ? "#2f7a46" : "#F97316";
+  const base = vegMode ? "#2f7a46" : "var(--primary-theme, #f97316)";
   return {
     topBg: vegMode
       ? `linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 100%), ${base}`
-      : `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 100%), linear-gradient(135deg, #FFC266 0%, #FF9A1A 45%, #F97316 100%)`,
+      : `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 100%), ${base}`,
     accent: base,
     text: "#ffffff",
     activeBg: base,
@@ -147,6 +152,7 @@ export default function HomeHeader({
   onVegModeChange,
   headerVideoUrl,
   quickThemeColor,
+  quickSecondaryThemeColor,
   onQuickTabIntent,
   bannerComponent,
   hideExtras = false,
@@ -186,9 +192,9 @@ export default function HomeHeader({
   }, []);
 
   const theme = useMemo(() => {
-    if (activeTab === "quick") return quickTheme(quickThemeColor);
+    if (activeTab === "quick") return quickTheme(quickThemeColor, quickSecondaryThemeColor);
     return foodTheme(vegMode);
-  }, [activeTab, quickThemeColor, vegMode]);
+  }, [activeTab, quickThemeColor, quickSecondaryThemeColor, vegMode]);
   const isFood = activeTab === "food";
   const walletPath = isFood ? "/food/user/wallet" : "/quick/wallet";
   const { title: locationTitle, subtitle: locationSubtitle } = useMemo(
@@ -534,8 +540,8 @@ export default function HomeHeader({
               className="flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-white shadow-[0_6px_18px_rgba(15,23,42,0.10)] border-0 text-left"
               onClick={handleSearchFocus}
             >
-              <div className="absolute left-0 top-0 bottom-0 w-[2.5px] rounded-l-[12px] bg-gradient-to-b from-[#cc2532] to-[#a81e29]" />
-              <Search className="h-[16px] w-[16px] ml-1.5 mr-2 flex-shrink-0 text-[#cc2532]" strokeWidth={2.3} />
+              <div className="absolute left-0 top-0 bottom-0 w-[2.5px] rounded-l-[12px] bg-gradient-to-b from-[var(--primary-theme)] to-[#a81e29]" />
+              <Search className="h-[16px] w-[16px] ml-1.5 mr-2 flex-shrink-0 text-[var(--primary-theme)]" strokeWidth={2.3} />
               <div className="flex-1 overflow-hidden relative h-[20px]">
                 <AnimatePresence mode="wait">
                   <motion.span
@@ -560,7 +566,7 @@ export default function HomeHeader({
                     isListening ? "bg-red-500 scale-110 animate-pulse" : "bg-red-50 hover:bg-red-100"
                   )}
                 >
-                  <Mic className={cn("h-[14px] w-[14px]", isListening ? "text-white" : "text-[#cc2532]")} strokeWidth={2.3} />
+                  <Mic className={cn("h-[14px] w-[14px]", isListening ? "text-white" : "text-[var(--primary-theme)]")} strokeWidth={2.3} />
                 </button>
               </div>
             </div>

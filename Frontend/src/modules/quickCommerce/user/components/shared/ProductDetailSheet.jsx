@@ -374,11 +374,11 @@ const ProductDetailSheet = () => {
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.2 }}
-                                                className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 rounded-lg text-[10px] font-[700] border border-orange-100/50 dark:border-orange-900/30"
+                                                className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-[var(--primary-theme)] dark:text-orange-400 rounded-lg text-[10px] font-[700] border border-orange-100/50 dark:border-orange-900/30"
                                             >
                                                 <Star size={10} fill="currentColor" />
                                                 {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
-                                                <span className="text-orange-400 dark:text-orange-500 font-medium">({reviews.length > 0 ? reviews.length : '120+'})</span>
+                                                <span className="text-orange-400 dark:text-[var(--primary-theme)] font-medium">({reviews.length > 0 ? reviews.length : '120+'})</span>
                                             </motion.div>
                                         </div>
 
@@ -617,10 +617,10 @@ const ProductDetailSheet = () => {
                                                     <span className="w-0.5 h-4 bg-orange-400 rounded-full" />
                                                     Customer Reviews
                                                 </span>
-                                                <div className="flex items-center gap-1 px-2.5 py-1 bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 rounded-lg text-[10px] font-[700] border border-orange-100/50 dark:border-orange-900/30">
+                                                <div className="flex items-center gap-1 px-2.5 py-1 bg-orange-50 dark:bg-orange-950/30 text-[var(--primary-theme)] dark:text-orange-400 rounded-lg text-[10px] font-[700] border border-orange-100/50 dark:border-orange-900/30">
                                                     <Star size={10} fill="currentColor" />
                                                     {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
-                                                    <span className="text-orange-400 dark:text-orange-500 font-[500] text-[9px]">({reviews.length > 0 ? reviews.length : '120+'} reviews)</span>
+                                                    <span className="text-orange-400 dark:text-[var(--primary-theme)] font-[500] text-[9px]">({reviews.length > 0 ? reviews.length : '120+'} reviews)</span>
                                                 </div>
                                             </h3>
 
@@ -641,7 +641,7 @@ const ProductDetailSheet = () => {
                                                                 onClick={() => setNewReview({ ...newReview, rating: s })}
                                                                 className={cn(
                                                                     'h-8 w-8 rounded-lg flex items-center justify-center transition-all',
-                                                                    newReview.rating >= s ? 'bg-orange-100 dark:bg-orange-950/50 text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none' : 'bg-white dark:bg-slate-800 text-gray-300 dark:text-slate-600 border border-gray-100 dark:border-white/5 hover:border-orange-200'
+                                                                    newReview.rating >= s ? 'bg-orange-100 dark:bg-orange-950/50 text-[var(--primary-theme)] shadow-sm shadow-orange-100 dark:shadow-none' : 'bg-white dark:bg-slate-800 text-gray-300 dark:text-slate-600 border border-gray-100 dark:border-white/5 hover:border-orange-200'
                                                                 )}
                                                             >
                                                                 <Star size={14} className={cn(newReview.rating >= s && 'fill-current')} />
@@ -892,7 +892,7 @@ const ProductDetailSheet = () => {
                                 <div className="space-y-6">
                                     <h3 className="text-xl font-black text-gray-900 flex items-center justify-between">
                                         Customer Reviews
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-[var(--primary-theme)] rounded-lg text-xs font-bold">
                                             <Star size={14} fill="currentColor" />
                                             {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
                                         </div>
@@ -912,7 +912,7 @@ const ProductDetailSheet = () => {
                                                         onClick={() => setNewReview({ ...newReview, rating: s })}
                                                         className={cn(
                                                             "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
-                                                            newReview.rating >= s ? "bg-orange-100 text-orange-500" : "bg-white text-gray-300 border border-gray-100"
+                                                            newReview.rating >= s ? "bg-orange-100 text-[var(--primary-theme)]" : "bg-white text-gray-300 border border-gray-100"
                                                         )}
                                                     >
                                                         <Star size={18} className={cn(newReview.rating >= s && "fill-current")} />

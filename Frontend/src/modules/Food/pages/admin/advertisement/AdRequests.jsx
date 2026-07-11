@@ -301,7 +301,7 @@ export default function AdRequests() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                            <Building2 className="w-5 h-5 text-orange-600" />
+                            <Building2 className="w-5 h-5 text-[var(--primary-theme)]" />
                           </div>
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-slate-900">{request.restaurantName}</span>

@@ -23,7 +23,7 @@ export const PremiumButton = ({
   ...props
 }) => {
   const variants = {
-    primary: 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20',
+    primary: 'bg-gradient-to-r from-[var(--primary-theme)] to-[var(--primary-theme)] text-white shadow-lg shadow-[var(--primary-theme)]/20',
     secondary: 'bg-neutral-800 text-white hover:bg-neutral-700',
     glass: 'bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20',
     danger: 'bg-red-500/10 border border-red-500/50 text-red-500 hover:bg-red-500/20',

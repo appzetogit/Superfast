@@ -125,7 +125,7 @@ export const PocketBalanceV2 = () => {
 
        {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-             <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+             <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-theme)]" />
              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Loading Balance...</p>
           </div>
        ) : (

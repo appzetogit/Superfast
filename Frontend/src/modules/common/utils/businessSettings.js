@@ -28,10 +28,64 @@ export const updateThemeColor = (color) => {
   document.documentElement.style.setProperty('--sidebar-theme', color);
 };
 
+export const getDynamicFaviconUrl = (settings) => {
+  if (typeof window === 'undefined' || !settings) return settings?.favicon?.url;
+  
+  const path = window.location.pathname.toLowerCase();
+  
+  if (path.includes('/delivery')) {
+    return settings.portals?.delivery?.logo?.url || settings.favicon?.url || settings.logo?.url;
+  }
+  if (path.includes('/restaurant')) {
+    return settings.portals?.restaurant?.logo?.url || settings.favicon?.url || settings.logo?.url;
+  }
+  if (path.includes('/admin')) {
+    return settings.favicon?.url || settings.logo?.url;
+  }
+  if (path.includes('/seller')) {
+    return settings.portals?.seller?.logo?.url || settings.favicon?.url || settings.logo?.url;
+  }
+  if (path.includes('/food')) {
+    return settings.moduleThemes?.food?.logo?.url || settings.favicon?.url || settings.logo?.url;
+  }
+  if (path.includes('/qc') || path.includes('/quick-commerce')) {
+    return settings.moduleThemes?.quickCommerce?.logo?.url || settings.favicon?.url || settings.logo?.url;
+  }
+  
+  return settings.portals?.user?.logo?.url || settings.favicon?.url || settings.logo?.url;
+};
+
+export const getDynamicLogoUrl = (settings) => {
+  if (typeof window === 'undefined' || !settings) return settings?.logo?.url;
+  
+  const path = window.location.pathname.toLowerCase();
+  
+  if (path.includes('/delivery')) {
+    return settings.portals?.delivery?.logo?.url || settings.logo?.url;
+  }
+  if (path.includes('/restaurant')) {
+    return settings.portals?.restaurant?.logo?.url || settings.logo?.url;
+  }
+  if (path.includes('/admin')) {
+    return settings.logo?.url;
+  }
+  if (path.includes('/seller')) {
+    return settings.portals?.seller?.logo?.url || settings.logo?.url;
+  }
+  if (path.includes('/food')) {
+    return settings.moduleThemes?.food?.logo?.url || settings.logo?.url;
+  }
+  if (path.includes('/qc') || path.includes('/quick-commerce')) {
+    return settings.moduleThemes?.quickCommerce?.logo?.url || settings.logo?.url;
+  }
+  
+  return settings.portals?.user?.logo?.url || settings.logo?.url;
+};
+
 // Apply cached settings immediately on module load if they exist
 if (cachedSettings) {
   setTimeout(() => {
-    updateFavicon(cachedSettings.favicon?.url);
+    updateFavicon(getDynamicFaviconUrl(cachedSettings));
     updateTitle(cachedSettings.companyName);
     updateThemeColor(cachedSettings.themeColor);
   }, 0);
@@ -69,7 +123,7 @@ export const loadBusinessSettings = async (force = false) => {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
         } catch (e) {}
         
-        updateFavicon(settings.favicon?.url);
+        updateFavicon(getDynamicFaviconUrl(settings));
         updateTitle(settings.companyName);
         updateThemeColor(settings.themeColor);
       }
@@ -121,7 +175,7 @@ export const setCachedSettings = (settings) => {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (e) {}
     
-    updateFavicon(settings.favicon?.url);
+    updateFavicon(getDynamicFaviconUrl(settings));
     updateTitle(settings.companyName);
     updateThemeColor(settings.themeColor);
     

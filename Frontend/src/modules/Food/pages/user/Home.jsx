@@ -172,7 +172,14 @@ export default function Home() {
     }
     return "food";
   });
-  const [quickThemeColor, setQuickThemeColor] = useState("#2f7a46");
+  const [quickThemeColor, setQuickThemeColor] = useState(() => {
+    const settings = getCachedSettings();
+    return settings?.moduleThemes?.quickCommerce?.themeColor || "#2f7a46";
+  });
+  const [quickSecondaryThemeColor, setQuickSecondaryThemeColor] = useState(() => {
+    const settings = getCachedSettings();
+    return settings?.moduleThemes?.quickCommerce?.secondaryThemeColor || "#1e5b32";
+  });
   const [showToast, setShowToast] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
@@ -180,6 +187,21 @@ export default function Home() {
   const restaurantLoadMoreRef = useRef(null);
   const isHandlingSwitchOff = useRef(false);
   const routerLocation = useRouterLocation();
+
+  // Listen for business settings updates to dynamically change theme color without refreshing
+  useEffect(() => {
+    const handleSettingsUpdate = (e) => {
+      const settings = e.detail;
+      if (settings?.moduleThemes?.quickCommerce?.themeColor) {
+        setQuickThemeColor(settings.moduleThemes.quickCommerce.themeColor);
+      }
+      if (settings?.moduleThemes?.quickCommerce?.secondaryThemeColor) {
+        setQuickSecondaryThemeColor(settings.moduleThemes.quickCommerce.secondaryThemeColor);
+      }
+    };
+    window.addEventListener('businessSettingsUpdated', handleSettingsUpdate);
+    return () => window.removeEventListener('businessSettingsUpdated', handleSettingsUpdate);
+  }, []);
 
   // --- Location Logic ---
   const { location, deliveryAddressMode } = useLocation();
@@ -338,6 +360,7 @@ export default function Home() {
             onVegModeChange={handleVegModeChange}
             headerVideoUrl={landing.videoUrl}
             quickThemeColor={quickThemeColor}
+            quickSecondaryThemeColor={quickSecondaryThemeColor}
             hideExtras={hideExtras}
             bannerComponent={
               <div className="h-[130px] sm:h-36 md:h-44 mt-3 relative z-10 w-full bg-transparent" />

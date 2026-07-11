@@ -76,7 +76,7 @@ const ProfilePage = () => {
                                 label="Order Transactions"
                                 sub="View all payments & refunds"
                                 path="/quick/transactions"
-                                color="#f97316"
+                                color="var(--primary-theme, #f97316)"
                                 bg="rgba(249,115,22,0.10)"
                             />
                             <MenuItem

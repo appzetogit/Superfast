@@ -104,7 +104,7 @@ const AdminDashboard = () => {
             label: 'Total Orders',
             value: overview.totalOrders?.toLocaleString() || '0',
             icon: Truck,
-            color: 'text-orange-600',
+            color: 'text-[var(--primary-theme)]',
             bg: 'bg-orange-50',
             trend: ordersGrowth,
             description: 'Last 30 days'

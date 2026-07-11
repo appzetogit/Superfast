@@ -168,7 +168,7 @@ export const PocketStatementV2 = () => {
           {/* Orders List */}
           {loading ? (
              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-theme)]" />
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Loading Statement...</p>
              </div>
           ) : orders.length === 0 ? (
@@ -202,7 +202,7 @@ export const PocketStatementV2 = () => {
                             <div className="flex items-start gap-4">
                                <div className={`w-2 h-2 rounded mt-1.5 ${
                                   index % 3 === 0 ? 'bg-green-500' : 
-                                  index % 3 === 1 ? 'bg-orange-500' : 'bg-blue-500'
+                                  index % 3 === 1 ? 'bg-[var(--primary-theme)]' : 'bg-blue-500'
                                }`}></div>
                                <div>
                                   <p className="text-gray-900 text-sm font-bold mb-0.5">

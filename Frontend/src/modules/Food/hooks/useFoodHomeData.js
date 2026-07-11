@@ -252,6 +252,7 @@ export const useFoodHomeData = ({
             isActive: restaurant.isActive,
             isAcceptingOrders: restaurant.isAcceptingOrders,
             coverImages: restaurant.coverImages,
+            recommendedItems: restaurant.recommendedItems || [],
           };
         });
 

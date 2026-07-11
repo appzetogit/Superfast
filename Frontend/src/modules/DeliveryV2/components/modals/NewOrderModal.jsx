@@ -219,7 +219,7 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                   const isReturn = pickup.pickupType === 'return';
                   const isQuickStore = pickup.pickupType === 'quick';
                   const pickupLabel = isReturn ? 'Customer Pickup' : (isQuickStore ? 'Store Pickup' : 'Restaurant Pickup');
-                  const pickupAccent = isReturn ? 'text-blue-600' : (isQuickStore ? 'text-orange-600' : 'text-green-600');
+                  const pickupAccent = isReturn ? 'text-blue-600' : (isQuickStore ? 'text-[var(--primary-theme)]' : 'text-green-600');
                   const pickupAddress = pickup.address || 'Address not available';
                   return (
                     <div key={pickup.id || `${pickup.pickupType}-${index}`}>
@@ -282,7 +282,7 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
 
           <div className="grid grid-cols-2 gap-3">
              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-               <Clock className="w-4 h-4 text-orange-500" />
+               <Clock className="w-4 h-4 text-[var(--primary-theme)]" />
                <div className="flex flex-col">
                   <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Time</span>
                   <span className="text-xs font-bold text-gray-900">{etaMins} MINS</span>

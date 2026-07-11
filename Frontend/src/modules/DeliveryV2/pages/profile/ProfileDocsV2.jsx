@@ -62,7 +62,7 @@ export const ProfileDocsV2 = () => {
     return doc.verified ? "Verified" : "Pending Verification";
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-[var(--primary-theme)]" /></div>;
 
   const docs = [
     { label: "Aadhar Card", field: "aadharPhoto", data: profile?.documents?.aadhar },
@@ -79,7 +79,7 @@ export const ProfileDocsV2 = () => {
 
        <div className="pt-24 px-4 space-y-8">
           {/* 1. Vehicle Card */}
-          <div className="bg-[#ff8100] rounded-2xl p-6 text-white shadow-xl shadow-orange-500/20 flex flex-col gap-2 relative overflow-hidden">
+          <div className="bg-[#ff8100] rounded-2xl p-6 text-white shadow-xl shadow-[var(--primary-theme)]/20 flex flex-col gap-2 relative overflow-hidden">
              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full translate-x-20 -translate-y-20" />
              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 z-10">Vehicle Registered</p>
              <h3 className="text-2xl font-black z-10">{profile?.vehicle?.number || "NO # REGISTERED"}</h3>
@@ -107,7 +107,7 @@ export const ProfileDocsV2 = () => {
                          </button>
                          <button 
                             onClick={() => handlePickFromGallery(doc.field)}
-                            className="p-3 bg-orange-50 rounded-xl text-orange-600 hover:bg-orange-100 active:scale-95 transition-all cursor-pointer relative"
+                            className="p-3 bg-orange-50 rounded-xl text-[var(--primary-theme)] hover:bg-orange-100 active:scale-95 transition-all cursor-pointer relative"
                          >
                             <ImageIcon className="w-5 h-5" />
                          </button>

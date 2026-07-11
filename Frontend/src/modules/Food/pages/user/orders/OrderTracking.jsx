@@ -49,7 +49,7 @@ import { RESTAURANT_PIN_SVG, CUSTOMER_PIN_SVG, RIDER_BIKE_SVG } from "@food/cons
 // Fallback definitions in case imports fail at runtime or are shadowed
 const DEFAULT_CUSTOMER_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#10B981"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
 const SAFE_CUSTOMER_PIN = typeof CUSTOMER_PIN_SVG !== 'undefined' ? CUSTOMER_PIN_SVG : DEFAULT_CUSTOMER_PIN;
-const DEFAULT_RESTAURANT_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#cc2532"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
+const DEFAULT_RESTAURANT_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="var(--primary-theme, #cc2532)"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
 const SAFE_RESTAURANT_PIN = typeof RESTAURANT_PIN_SVG !== 'undefined' ? RESTAURANT_PIN_SVG : DEFAULT_RESTAURANT_PIN;
 
 const debugLog = (...args) => console.log('[OrderTracking]', ...args)
@@ -2142,7 +2142,7 @@ export default function OrderTracking() {
                 transition={{ delay: 1.5 }}
                 className="mt-8"
               >
-                <div className="w-8 h-8 border-2 border-[#cc2532] border-t-transparent rounded-full animate-spin mx-auto" />
+                <div className="w-8 h-8 border-2 border-[var(--primary-theme)] border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-sm text-gray-500 mt-3">Loading order details...</p>
               </motion.div>
             </motion.div>
@@ -2255,7 +2255,7 @@ export default function OrderTracking() {
               <div className="mt-5 rounded-2xl border border-white/70 dark:border-neutral-700/50 bg-white/90 dark:bg-neutral-800/90 p-4">
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col items-center pt-1">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-[#cc2532] dark:text-red-400">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-[var(--primary-theme)] dark:text-red-400">
                       <MapPin className="h-5 w-5" />
                     </div>
                     <div className="my-2 h-10 w-px border-l-2 border-dashed border-emerald-200 dark:border-emerald-800" />
@@ -2627,7 +2627,7 @@ export default function OrderTracking() {
                         }}
                         whileTap={{ scale: 0.9 }}
                       >
-                        <Phone className={`w-5 h-5 ${isQuick ? 'text-sky-600 dark:text-sky-400' : 'text-[#cc2532] dark:text-red-400'}`} />
+                        <Phone className={`w-5 h-5 ${isQuick ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--primary-theme)] dark:text-red-400'}`} />
                       </motion.button>
                     </div>
                   </div>
@@ -2725,7 +2725,7 @@ export default function OrderTracking() {
                     disabled={isCancelling}
                     className={`rounded-xl border px-4 py-3 text-left transition ${
                       refundDestination === "gateway"
-                        ? "border-orange-500 bg-red-50 dark:bg-red-900/20 text-orange-900 dark:text-orange-400"
+                        ? "border-[var(--primary-theme)] bg-red-50 dark:bg-red-900/20 text-orange-900 dark:text-orange-400"
                         : "border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-neutral-600"
                     } ${isCancelling ? "cursor-not-allowed opacity-60" : ""}`}
                   >
@@ -2738,7 +2738,7 @@ export default function OrderTracking() {
                     disabled={isCancelling}
                     className={`rounded-xl border px-4 py-3 text-left transition ${
                       refundDestination === "wallet"
-                        ? "border-orange-500 bg-red-50 dark:bg-red-900/20 text-orange-900 dark:text-orange-400"
+                        ? "border-[var(--primary-theme)] bg-red-50 dark:bg-red-900/20 text-orange-900 dark:text-orange-400"
                         : "border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-neutral-600"
                     } ${isCancelling ? "cursor-not-allowed opacity-60" : ""}`}
                   >
@@ -2819,9 +2819,9 @@ export default function OrderTracking() {
             {/* Delivery Instructions Section */}
             {order?.note && (
               <div className="bg-red-50/50 dark:bg-red-900/20 rounded-xl p-4 border border-orange-100 dark:border-orange-900/50 flex gap-3">
-                <MessageSquare className="w-5 h-5 text-orange-500 dark:text-orange-400 shrink-0 mt-0.5" />
+                <MessageSquare className="w-5 h-5 text-[var(--primary-theme)] dark:text-orange-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 font-bold uppercase tracking-wider mb-1">Delivery Instructions</p>
+                  <p className="text-xs text-[var(--primary-theme)] dark:text-orange-400 font-bold uppercase tracking-wider mb-1">Delivery Instructions</p>
                   <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-medium capitalize">
                     {order.note}
                   </p>
@@ -2935,7 +2935,7 @@ export default function OrderTracking() {
       <Dialog open={isInstructionsModalOpen} onOpenChange={setIsInstructionsModalOpen}>
         <DialogContent className="sm:max-w-md w-[95vw] rounded-3xl p-6 border-0 shadow-2xl bg-white dark:bg-neutral-900 max-h-[90vh] overflow-y-auto z-[200]">
           <DialogHeader className="mb-2">
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-400 dark:from-orange-500 dark:to-orange-300 bg-clip-text text-transparent">
+            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-[var(--primary-theme)] to-orange-400 dark:from-[var(--primary-theme)] dark:to-orange-300 bg-clip-text text-transparent">
               Delivery Instructions
             </DialogTitle>
           </DialogHeader>
@@ -2947,12 +2947,12 @@ export default function OrderTracking() {
               value={deliveryInstructions}
               onChange={(e) => setDeliveryInstructions(e.target.value)}
               placeholder="E.g. Ring the doorbell, leave at the front desk..."
-              className="min-h-[120px] resize-none border-gray-200 dark:border-neutral-700 focus:ring-orange-500 rounded-xl bg-gray-50 dark:bg-neutral-800 text-base dark:text-white"
+              className="min-h-[120px] resize-none border-gray-200 dark:border-neutral-700 focus:ring-[var(--primary-theme)] rounded-xl bg-gray-50 dark:bg-neutral-800 text-base dark:text-white"
             />
             <Button 
               onClick={handleUpdateInstructions} 
               disabled={isUpdatingInstructions}
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold h-12 rounded-xl border-none"
+              className="w-full bg-gradient-to-r from-[var(--primary-theme)] to-amber-500 hover:from-[var(--primary-theme)] hover:to-amber-600 text-white font-bold h-12 rounded-xl border-none"
             >
               {isUpdatingInstructions ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Instructions"}
             </Button>

@@ -481,7 +481,7 @@ export default function OTP() {
                         e.target.scrollIntoView({ behavior: "smooth", block: "center" })
                       }, 300)
                     }}
-                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[#F97316] focus:ring-1 focus:ring-[#F97316] bg-white text-gray-900 transition-all outline-none"
+                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"
                   />
                 ))}
               </div>
@@ -533,7 +533,7 @@ export default function OTP() {
                       e.target.scrollIntoView({ behavior: "smooth", block: "center" })
                     }, 300)
                   }}
-                  className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[#F97316] focus-visible:border-[#F97316] ${nameError ? "border-red-500" : ""} transition-all`}
+                  className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${nameError ? "border-red-500" : ""} transition-all`}
                 />
                 {nameError && (
                   <p className="text-xs text-red-500 pl-1">

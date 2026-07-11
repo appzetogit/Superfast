@@ -172,7 +172,7 @@ export default function DeliverymanReviews() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
-              <Star className="w-5 h-5 text-orange-500" />
+              <Star className="w-5 h-5 text-[var(--primary-theme)]" />
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-slate-900">Deliveryman Reviews</h1>
                 <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
@@ -496,7 +496,7 @@ export default function DeliverymanReviews() {
               </div>
 
               <div className="bg-orange-50 rounded-lg p-4">
-                <p className="text-xs text-orange-600 mb-2 font-semibold">Rating</p>
+                <p className="text-xs text-[var(--primary-theme)] mb-2 font-semibold">Rating</p>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     {renderStars(selectedReview.rating)}
