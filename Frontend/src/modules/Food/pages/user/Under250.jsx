@@ -1141,7 +1141,7 @@ export default function Under250() {
                                     <Button
                                       variant={"outline"}
                                       size="sm"
-                                      className="bg-[#FFF4EC] text-[var(--primary-theme)] border-[var(--primary-theme)] hover:bg-[var(--primary-theme)] hover:text-white h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base"
+                                      className="bg-[#FFF4EC] text-[#ed840c] border-[#ed840c] hover:bg-[#ed840c] hover:text-white h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base"
                                     >
                                       View cart
                                     </Button>
@@ -1153,7 +1153,7 @@ export default function Under250() {
                                     disabled={shouldShowGrayscale || isRestaurantOffline}
                                     className={`h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base ${shouldShowGrayscale || isRestaurantOffline
                                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-50'
-                                      : 'bg-[#FFF4EC] text-[var(--primary-theme)] border-[var(--primary-theme)] hover:bg-[var(--primary-theme)] hover:text-white'
+                                      : 'bg-[#FFF4EC] text-[#ed840c] border-[#ed840c] hover:bg-[#ed840c] hover:text-white'
                                       }`}
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -1404,8 +1404,8 @@ export default function Under250() {
                 {/* Highly Reordered Progress Bar */}
                 {selectedItem.customisable && (
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="flex-1 h-0.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-[var(--primary-theme)] rounded-full" style={{ width: '50%' }} />
+                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="rounded-full" style={{ width: '50%', height: '100%', backgroundColor: 'var(--primary-theme, #ed840c)' }} />
                     </div>
                     <span className="text-xs text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                       highly reordered
@@ -1471,7 +1471,7 @@ export default function Under250() {
                   <Button
                     className={`flex-1 h-[44px] md:h-[50px] lg:h-[56px] rounded-lg md:rounded-xl font-semibold flex items-center justify-center gap-2 text-sm md:text-base lg:text-lg ${shouldShowGrayscale
                       ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-600 cursor-not-allowed opacity-50'
-                      : 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white'
+                      : 'bg-[#ed840c] hover:bg-[#d6760b] text-white'
                       }`}
                     onClick={(e) => {
                       if (!shouldShowGrayscale) {

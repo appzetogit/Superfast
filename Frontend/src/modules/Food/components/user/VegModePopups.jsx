@@ -94,11 +94,11 @@ const VegModePopups = ({
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 className="relative bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl overflow-hidden border border-orange-100 dark:border-orange-900/30"
               >
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-[var(--primary-theme)]/10 rounded-full blur-3xl" />
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#ed840c]/10 rounded-full blur-3xl" />
 
                 <div className="relative text-center">
-                  <div className="w-20 h-20 bg-orange-50 dark:bg-[var(--primary-theme)]/20 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-orange-50/50 dark:ring-[var(--primary-theme)]/5">
-                    <AlertCircle className="w-10 h-10 text-[var(--primary-theme)] dark:text-orange-400" />
+                  <div className="w-20 h-20 bg-orange-50 dark:bg-[#ed840c]/20 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-orange-50/50 dark:ring-[#ed840c]/5">
+                    <AlertCircle className="w-10 h-10 text-[#ed840c] dark:text-orange-400" />
                   </div>
                   <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3">Switching Off?</h3>
                   <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-8">
@@ -107,7 +107,7 @@ const VegModePopups = ({
                   <div className="flex flex-col gap-3">
                     <button
                       onClick={onConfirmSwitchOff}
-                      className="w-full py-4 bg-[var(--primary-theme)] hover:bg-orange-700 text-white font-bold rounded-2xl shadow-lg shadow-[var(--primary-theme)]/25 transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full py-4 bg-[#ed840c] hover:bg-[#d6760b] text-white font-bold rounded-2xl shadow-lg shadow-[#ed840c]/25 transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2"
                     >
                       <RefreshCw className="w-4 h-4" />
                       Yes, Switch Off

@@ -57,25 +57,35 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
     const custLat = parseFloat(customerLoc?.lat);
     const custLng = parseFloat(customerLoc?.lng);
 
-    // Calculate Restaurant to Customer distance
+    // Calculate Restaurant to Customer distance (plus Rider to Restaurant if available)
     if (!isNaN(resLat) && !isNaN(resLng) && !isNaN(custLat) && !isNaN(custLng)) {
-      const distM = getHaversineDistance(
+      const restToCustM = getHaversineDistance(
         resLat, resLng,
         custLat, custLng
       );
-      const km = distM / 1000;
+      
+      let riderToRestM = 0;
+      if (riderLocation?.lat && riderLocation?.lng) {
+        riderToRestM = getHaversineDistance(
+          parseFloat(riderLocation.lat), parseFloat(riderLocation.lng),
+          resLat, resLng
+        );
+      }
+      
+      const totalDistM = restToCustM + riderToRestM;
+      const km = totalDistM / 1000;
       // Assume 25km/h avg for estimate (roughly 416m/min)
-      const mins = Math.ceil(distM / 416) + (order.prepTime || 5);
+      const mins = Math.ceil(totalDistM / 416) + (order.prepTime || 5);
       
       return { 
-        distanceKm: km.toFixed(1), 
+        distanceKm: km.toFixed(2), 
         etaMins: mins 
       };
     }
 
     // Fallback to order provided total distance if locations are missing
-    const rawDist = order.deliveryDistanceKm || order.distanceKm;
-    const rawEta = order.estimatedTime || order.duration || order.eta;
+    const rawDist = order.deliveryDistanceKm || order.distanceKm || order.distance || order.deliveryDistance || order.totalDistance;
+    const rawEta = order.estimatedTime || order.duration || order.eta || order.deliveryTime;
     
     if (rawDist != null) {
       return { 
@@ -89,9 +99,15 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
 
   if (!order) return null;
 
+  // Calculate earnings based on distance (base 20 + 8 per km) if no backend value
+  // Remove Math.round to show the exact calculated amount as requested
+  const calculatedEarning = distanceKm !== '??' ? (20 + Number(distanceKm) * 8) : 0;
+
+  const backendEarning = order.deliveryEarning || order.earningAmount || order.amount || order.earnings || order.riderEarning || order.deliveryFee || order.fee || 0;
+
   const earnings = isReturnPickup
-    ? (order.expectedEarning || 0)
-    : (order.earnings || order.riderEarning || (order.orderAmount ? order.orderAmount * 0.1 : 0));
+    ? (order.expectedEarning || backendEarning || calculatedEarning)
+    : (backendEarning || (order.orderAmount ? order.orderAmount * 0.1 : calculatedEarning));
   const isQuickOrder = String(order?.orderType || order?.serviceType || order?.type || '').trim().toLowerCase() === 'quick';
   const restaurantName =
     order?.dispatchLeg?.sourceName ||
