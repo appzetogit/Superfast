@@ -24,14 +24,18 @@ export default function SellerAuth() {
   const [phone, setPhone] = useState(() => sessionStorage.getItem("sellerAuthPhone") || "");
   const [otp, setOtp] = useState("");
   const [otpPhone, setOtpPhone] = useState("");
-  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
+  const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.seller?.logo?.url || getCachedSettings()?.logo?.url || null)
   const [keyboardInset, setKeyboardInset] = useState(0)
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const settings = await loadBusinessSettings()
-        if (settings?.logo?.url) setLogoUrl(settings.logo.url)
+        if (settings?.portals?.seller?.logo?.url) {
+          setLogoUrl(settings.portals.seller.logo.url)
+        } else if (settings?.logo?.url) {
+          setLogoUrl(settings.logo.url)
+        }
       } catch (e) {}
     }
     fetchSettings()
