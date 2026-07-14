@@ -674,7 +674,7 @@ const ProductManagement = () => {
                       <div className="flex items-center gap-4">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200">
                           <img
-                            src={p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2"}
+                            src={p.mainImage || p.image}
                             alt={p.name}
                             className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />

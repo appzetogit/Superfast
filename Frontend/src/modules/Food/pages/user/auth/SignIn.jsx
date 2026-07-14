@@ -115,7 +115,7 @@ export default function SignIn() {
   return (
     <AnimatedPage
       className="min-h-screen flex flex-col"
-      style={{ backgroundColor: SUPERFAST_BRAND.cream }}
+      style={{ backgroundColor: SUPERFAST_BRAND.cream, '--primary-theme': '#f97316' }}
     >
       <div className="w-full max-w-[420px] mx-auto flex flex-col min-h-screen">
         <AuthBrandHeader compact subtitle="Superfast Food Delivery" />

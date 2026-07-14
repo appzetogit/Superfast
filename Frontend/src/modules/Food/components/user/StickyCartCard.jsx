@@ -41,7 +41,7 @@ export default function StickyCartCard() {
 
   // Get restaurant info from first cart item or use default
   const restaurantName = cart[0]?.restaurant || "Restaurant"
-  const restaurantImage = cart[0]?.image || "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=200&h=200&fit=crop"
+  const restaurantImage = cart[0]?.image
 
   // Create restaurant slug from restaurant name
   const restaurantSlug = restaurantName.toLowerCase().replace(/\s+/g, "-")

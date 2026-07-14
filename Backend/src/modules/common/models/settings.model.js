@@ -24,6 +24,7 @@ const globalSettingsSchema = new mongoose.Schema(
         moduleThemes: {
             food: {
                 themeColor: { type: String, default: '#cc2532' },
+                secondaryThemeColor: { type: String, default: '#b3202c' },
                 logo: {
                     url: { type: String, default: '' },
                     publicId: { type: String, default: '' }
@@ -72,7 +73,8 @@ const globalSettingsSchema = new mongoose.Schema(
         codEnabled: { type: Boolean, default: true },
         onlinePaymentEnabled: { type: Boolean, default: true },
         showLocationPopup: { type: Boolean, default: true },
-        bannedNumbers: { type: [String], default: [] }
+        bannedNumbers: { type: [String], default: [] },
+        dynamicModuleThemes: { type: Boolean, default: true }
     },
     { timestamps: true }
 );

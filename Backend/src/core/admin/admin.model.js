@@ -40,6 +40,28 @@ const adminSchema = new mongoose.Schema(
             type: [String],
             enum: ['food', 'quickCommerce'],
             default: ['food']
+        },
+        adminLevel: {
+            type: String,
+            enum: ['PLATFORM_SUPERADMIN', 'FOOD_SUPERADMIN', 'QUICK_COMMERCE_SUPERADMIN', 'SUB_ADMIN'],
+            default: 'SUB_ADMIN'
+        },
+        permissions: {
+            type: [String],
+            default: []
+        },
+        food_zone_ids: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodZone'
+        }],
+        quick_commerce_zone_ids: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'QuickCommerceZone'
+        }],
+        parentAdminId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodAdmin',
+            default: null
         }
     },
     {
@@ -49,6 +71,12 @@ const adminSchema = new mongoose.Schema(
 );
 
 adminSchema.index({ servicesAccess: 1 });
+adminSchema.index({ parentAdminId: 1 });
+// Enforce max ONE Food Superadmin and ONE QC Superadmin at the DB level
+adminSchema.index(
+    { adminLevel: 1 },
+    { unique: true, partialFilterExpression: { adminLevel: { $in: ['FOOD_SUPERADMIN', 'QUICK_COMMERCE_SUPERADMIN'] } } }
+);
 
 adminSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {

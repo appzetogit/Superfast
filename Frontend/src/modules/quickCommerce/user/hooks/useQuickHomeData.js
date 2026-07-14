@@ -294,7 +294,7 @@ export const useQuickHomeData = ({ currentLocation }) => {
           const rawResult = prodRes.data.result;
           const dbProds = Array.isArray(prodRes.data.results) ? prodRes.data.results : (Array.isArray(rawResult?.items) ? rawResult.items : (Array.isArray(rawResult) ? rawResult : []));
           const formattedProds = dbProds.map((p) => ({
-            ...p, id: p._id, image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2",
+            ...p, id: p._id, image: p.mainImage || p.image,
             price: Number(p.salePrice || 0) > 0 ? Number(p.salePrice) : Number(p.price || 0),
             originalPrice: Number(p.originalPrice || p.mrp || p.price || p.salePrice || 0),
             weight: p.weight || "1 unit", deliveryTime: "8-15 mins"
@@ -398,7 +398,7 @@ export const useQuickHomeData = ({ currentLocation }) => {
           const formatted = dbProds.map((p) => ({
             ...p,
             id: p._id,
-            image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2",
+            image: p.mainImage || p.image,
             price: Number(p.salePrice || 0) > 0 ? Number(p.salePrice) : Number(p.price || 0),
             originalPrice: Number(p.originalPrice || p.mrp || p.price || p.salePrice || 0),
             weight: p.weight || "1 unit",

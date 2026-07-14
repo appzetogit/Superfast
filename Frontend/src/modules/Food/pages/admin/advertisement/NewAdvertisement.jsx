@@ -6,8 +6,8 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 // Using placeholders for advertisement images
-const profilePlaceholder = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=400&fit=crop"
-const coverPlaceholder = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=1200&h=400&fit=crop"
+const profilePlaceholder = ""
+const coverPlaceholder = ""
 
 export default function NewAdvertisement() {
   const [activeLanguage, setActiveLanguage] = useState("default")
@@ -36,7 +36,7 @@ export default function NewAdvertisement() {
     { key: "en", label: "English(EN)" },
     { key: "bn", label: "Bengali - বাংলা(BN)" },
     { key: "ar", label: "Arabic - العربية (AR)" },
-    { key: "es", label: "Spanish - espa�ol(ES)" },
+    { key: "es", label: "Spanish - espa�ol(ES)" },
   ]
 
   const handleInputChange = (field, value) => {
@@ -263,7 +263,7 @@ export default function NewAdvertisement() {
                         }`}
                       >
                         <option value="">Select Restaurant</option>
-                        <option value="cafe-monarch">Caf� Monarch</option>
+                        <option value="cafe-monarch">Caf� Monarch</option>
                         <option value="hungry-puppets">Hungry Puppets</option>
                       </select>
                       {formErrors.restaurant && (

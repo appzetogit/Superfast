@@ -501,8 +501,7 @@ export default function UserOrderDetails() {
                           (Array.isArray(items) && items[0]?.image) ||
                           restaurantObj.profileImage?.url ||
                           restaurantObj.profileImage ||
-                          order.restaurantImage ||
-                          "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80"
+                          order.restaurantImage
                         }
                         alt={source.name}
                         className="w-10 h-10 rounded-lg object-cover"

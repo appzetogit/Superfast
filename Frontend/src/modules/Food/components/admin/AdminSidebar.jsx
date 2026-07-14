@@ -394,8 +394,41 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (isQuickAdmin && !enabledModules.quickCommerce) return []
     if (!isQuickAdmin && !isCommonAdmin && !enabledModules.food) return []
 
+    // Enforce hierarchy/permission filtering
+    const level = adminInfo?.adminLevel || (adminInfo?.role === 'ADMIN' ? 'PLATFORM_SUPERADMIN' : 'SUB_ADMIN');
+    if (level !== 'PLATFORM_SUPERADMIN') {
+      const perms = adminInfo?.permissions || [];
+      const filterMenuByPermissions = (menuList) => {
+        return menuList.map(item => {
+          if (item.type === "link") {
+            if (!item.permissionKey) return item;
+            const hasPerm = perms.includes(`${item.permissionKey}.read`) || perms.includes(`${item.permissionKey}.write`) || perms.includes(item.permissionKey);
+            return hasPerm ? item : null;
+          }
+          if (item.type === "section") {
+            const filteredItems = item.items.map(sub => {
+              if (sub.type === "link") {
+                if (!sub.permissionKey) return sub;
+                const hasPerm = perms.includes(`${sub.permissionKey}.read`) || perms.includes(`${sub.permissionKey}.write`) || perms.includes(sub.permissionKey);
+                return hasPerm ? sub : null;
+              }
+              if (sub.type === "expandable") {
+                if (!sub.permissionKey) return sub;
+                const hasPerm = perms.includes(`${sub.permissionKey}.read`) || perms.includes(`${sub.permissionKey}.write`) || perms.includes(sub.permissionKey);
+                return hasPerm ? sub : null;
+              }
+              return sub;
+            }).filter(Boolean);
+            return filteredItems.length > 0 ? { ...item, items: filteredItems } : null;
+          }
+          return item;
+        }).filter(Boolean);
+      };
+      return filterMenuByPermissions(menu);
+    }
+
     return menu
-  }, [isQuickAdmin, isCommonAdmin, enabledModules])
+  }, [isQuickAdmin, isCommonAdmin, enabledModules, adminInfo])
 
   // Ensure expandable keys exist for whichever admin module is active (food/quick)
   useEffect(() => {
@@ -881,53 +914,72 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
               </h2>
               <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-100/80 p-1">
                 <div className="grid grid-cols-2 gap-1">
-                  {enabledModules.food && (!adminInfo?.servicesAccess || adminInfo.role === 'ADMIN' || adminInfo.servicesAccess.includes('food')) && (
-                    <button
-                      key="food-module-btn"
-                      type="button"
-                      onClick={() => switchAdminModule("food")}
-                      className={cn(
-                        "rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all",
-                        !isQuickAdmin && !isCommonAdmin
-                          ? "bg-white text-neutral-900 shadow"
-                          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
-                      )}
-                    >
-                      SuperfastFood
-                    </button>
-                  )}
-                  {enabledModules.quickCommerce && (!adminInfo?.servicesAccess || adminInfo.role === 'ADMIN' || adminInfo.servicesAccess.includes('quickCommerce')) && (
-                    <button
-                      key="quick-module-btn"
-                      type="button"
-                      onClick={() => switchAdminModule("quick")}
-                      className={cn(
-                        "rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all",
-                        isQuickAdmin
-                          ? "bg-emerald-500 text-white shadow-[0_6px_20px_rgba(16,185,129,0.35)]"
-                          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
-                      )}
-                    >
-                      SuperfastMart
-                    </button>
-                  )}
+                  {(() => {
+                    const level = adminInfo?.adminLevel || (adminInfo?.role === 'ADMIN' ? 'PLATFORM_SUPERADMIN' : 'SUB_ADMIN');
+                    const showFood = enabledModules.food && (
+                      level === 'PLATFORM_SUPERADMIN' ||
+                      level === 'FOOD_SUPERADMIN' ||
+                      (level === 'SUB_ADMIN' && adminInfo?.servicesAccess?.includes('food'))
+                    );
+                    const showQuick = enabledModules.quickCommerce && (
+                      level === 'PLATFORM_SUPERADMIN' ||
+                      level === 'QUICK_COMMERCE_SUPERADMIN' ||
+                      (level === 'SUB_ADMIN' && adminInfo?.servicesAccess?.includes('quickCommerce'))
+                    );
+                    const showGlobal = level === 'PLATFORM_SUPERADMIN';
 
-
-                  {(!adminInfo || adminInfo.role === 'ADMIN') && (
-                    <button
-                      key="global-settings-btn"
-                      type="button"
-                      onClick={() => switchAdminModule("common")}
-                      className={cn(
-                        "rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all col-span-2",
-                        isCommonAdmin
-                          ? "bg-violet-600 text-white shadow-[0_6px_20px_rgba(124,58,237,0.35)]"
-                          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
-                      )}
-                    >
-                      Global Settings
-                    </button>
-                  )}
+                    return (
+                      <>
+                        {showFood && (
+                          <button
+                            key="food-module-btn"
+                            type="button"
+                            onClick={() => switchAdminModule("food")}
+                            className={cn(
+                              "rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all",
+                              !showQuick ? "col-span-2" : "",
+                              !isQuickAdmin && !isCommonAdmin
+                                ? "bg-white text-neutral-900 shadow"
+                                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
+                            )}
+                          >
+                            SuperfastFood
+                          </button>
+                        )}
+                        {showQuick && (
+                          <button
+                            key="quick-module-btn"
+                            type="button"
+                            onClick={() => switchAdminModule("quick")}
+                            className={cn(
+                              "rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all",
+                              !showFood ? "col-span-2" : "",
+                              isQuickAdmin
+                                ? "bg-emerald-500 text-white shadow-[0_6px_20px_rgba(16,185,129,0.35)]"
+                                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
+                            )}
+                          >
+                            SuperfastMart
+                          </button>
+                        )}
+                        {showGlobal && (
+                          <button
+                            key="global-settings-btn"
+                            type="button"
+                            onClick={() => switchAdminModule("common")}
+                            className={cn(
+                              "rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all col-span-2",
+                              isCommonAdmin
+                                ? "bg-violet-600 text-white shadow-[0_6px_20px_rgba(124,58,237,0.35)]"
+                                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
+                            )}
+                          >
+                            Global Settings
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

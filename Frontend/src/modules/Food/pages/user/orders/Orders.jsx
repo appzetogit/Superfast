@@ -740,7 +740,6 @@ Order again from this restaurant in the ${companyName} app.`
             const firstItemImage = order.items?.[0]?.image
             const restaurantImage = firstItemImage
               || order.restaurantImage
-              || "https://images.unsplash.com/photo-1604908176997-125188eb3c52?auto=format&fit=crop&w=200&q=80"
             const location = order.restaurantLocation || `${order.address?.city || ''}, ${order.address?.state || ''}`.trim() || 'Location not available'
 
             return (
@@ -755,7 +754,7 @@ Order again from this restaurant in the ${companyName} app.`
                         alt={order.restaurant}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.target.src = "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=100&q=80"
+                          e.target.style.display = 'none'
                         }}
                       />
                     </div>

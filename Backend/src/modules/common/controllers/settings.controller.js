@@ -37,7 +37,7 @@ export async function updateGlobalSettings(req, res, next) {
             data = req.body;
         }
         
-        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, logoUrl, faviconUrl, themeColor, modules, codEnabled, onlinePaymentEnabled, showLocationPopup, bannedNumbers } = data;
+        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, logoUrl, faviconUrl, themeColor, modules, codEnabled, onlinePaymentEnabled, showLocationPopup, bannedNumbers, dynamicModuleThemes } = data;
         
         console.log("Updating global settings with data:", data);
 
@@ -94,9 +94,14 @@ export async function updateGlobalSettings(req, res, next) {
         }
         if (data.moduleThemes !== undefined) {
             if (!settings.moduleThemes) settings.moduleThemes = {};
-            if (data.moduleThemes.food?.themeColor) {
+            if (data.moduleThemes.food) {
                 if (!settings.moduleThemes.food) settings.moduleThemes.food = {};
-                settings.moduleThemes.food.themeColor = data.moduleThemes.food.themeColor;
+                if (data.moduleThemes.food.themeColor) {
+                    settings.moduleThemes.food.themeColor = data.moduleThemes.food.themeColor;
+                }
+                if (data.moduleThemes.food.secondaryThemeColor) {
+                    settings.moduleThemes.food.secondaryThemeColor = data.moduleThemes.food.secondaryThemeColor;
+                }
             }
             if (data.moduleThemes.quickCommerce) {
                 if (!settings.moduleThemes.quickCommerce) settings.moduleThemes.quickCommerce = {};
@@ -181,11 +186,15 @@ export async function updateGlobalSettings(req, res, next) {
         if (onlinePaymentEnabled !== undefined) updateQuery.$set.onlinePaymentEnabled = onlinePaymentEnabled;
         if (showLocationPopup !== undefined) updateQuery.$set.showLocationPopup = showLocationPopup;
         if (bannedNumbers !== undefined && Array.isArray(bannedNumbers)) updateQuery.$set.bannedNumbers = bannedNumbers;
+        if (dynamicModuleThemes !== undefined) updateQuery.$set.dynamicModuleThemes = dynamicModuleThemes;
         updateQuery.$set.updatedBy = req.user ? req.user.userId : null;
 
         if (data.moduleThemes !== undefined) {
             if (data.moduleThemes.food?.themeColor !== undefined) {
                 updateQuery.$set['moduleThemes.food.themeColor'] = data.moduleThemes.food.themeColor;
+            }
+            if (data.moduleThemes.food?.secondaryThemeColor !== undefined) {
+                updateQuery.$set['moduleThemes.food.secondaryThemeColor'] = data.moduleThemes.food.secondaryThemeColor;
             }
             if (data.moduleThemes.quickCommerce?.themeColor !== undefined) {
                 updateQuery.$set['moduleThemes.quickCommerce.themeColor'] = data.moduleThemes.quickCommerce.themeColor;
@@ -195,11 +204,12 @@ export async function updateGlobalSettings(req, res, next) {
             }
         }
 
-        // Execute reliable update
-        await GlobalSettings.updateOne({ _id: settings._id }, updateQuery);
-        
-        // Refetch latest settings to return to frontend
-        settings = await GlobalSettings.findById(settings._id).lean();
+        // Execute reliable update with upsert to ensure document creation
+        settings = await GlobalSettings.findOneAndUpdate(
+            { _id: settings._id },
+            updateQuery,
+            { new: true, upsert: true, lean: true }
+        );
 
         // Auto-logout for newly banned numbers
         if (bannedNumbers && Array.isArray(bannedNumbers) && bannedNumbers.length > 0) {

@@ -378,7 +378,7 @@ export default function OutletInfo() {
       if (indexToDelete === 0 && updatedImages.length > 0) {
         setMainImage(updatedImages[0].url)
       } else if (updatedImages.length === 0) {
-        setMainImage("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=400&fit=crop")
+        setMainImage("")
       }
       toast.success("Image deleted successfully")
     } catch (error) {

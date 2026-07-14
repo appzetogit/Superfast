@@ -15,22 +15,22 @@ export default function RestaurantCategoriesPage() {
 
   // Food Categories with images
   const categories = [
-    { id: 1, name: "American", image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop&crop=center" },
-    { id: 2, name: "Bengali", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop&crop=center" },
-    { id: 3, name: "Caribbean", image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop&crop=center" },
-    { id: 4, name: "Chinese", image: "https://images.unsplash.com/photo-1563379091339-03246963d96a?w=400&h=400&fit=crop&crop=center" },
-    { id: 5, name: "Italian", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop&crop=center" },
-    { id: 6, name: "Mexican", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop&crop=center" },
-    { id: 7, name: "Indian", image: "https://images.unsplash.com/photo-1563379091339-03246963d96a?w=400&h=400&fit=crop&crop=center" },
-    { id: 8, name: "Thai", image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop&crop=center" },
-    { id: 9, name: "Japanese", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop&crop=center" },
-    { id: 10, name: "French", image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop&crop=center" },
-    { id: 11, name: "Mediterranean", image: "https://images.unsplash.com/photo-1563379091339-03246963d96a?w=400&h=400&fit=crop&crop=center" },
-    { id: 12, name: "Korean", image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop&crop=center" },
-    { id: 13, name: "Vietnamese", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop&crop=center" },
-    { id: 14, name: "Turkish", image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop&crop=center" },
-    { id: 15, name: "Greek", image: "https://images.unsplash.com/photo-1563379091339-03246963d96a?w=400&h=400&fit=crop&crop=center" },
-    { id: 16, name: "Spanish", image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop&crop=center" },
+    { id: 1, name: "American", image: "" },
+    { id: 2, name: "Bengali", image: "" },
+    { id: 3, name: "Caribbean", image: "" },
+    { id: 4, name: "Chinese", image: "" },
+    { id: 5, name: "Italian", image: "" },
+    { id: 6, name: "Mexican", image: "" },
+    { id: 7, name: "Indian", image: "" },
+    { id: 8, name: "Thai", image: "" },
+    { id: 9, name: "Japanese", image: "" },
+    { id: 10, name: "French", image: "" },
+    { id: 11, name: "Mediterranean", image: "" },
+    { id: 12, name: "Korean", image: "" },
+    { id: 13, name: "Vietnamese", image: "" },
+    { id: 14, name: "Turkish", image: "" },
+    { id: 15, name: "Greek", image: "" },
+    { id: 16, name: "Spanish", image: "" },
   ]
 
   // Lenis smooth scrolling

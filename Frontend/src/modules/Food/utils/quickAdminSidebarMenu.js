@@ -4,21 +4,25 @@ export const quickAdminSidebarMenu = [
     label: "Dashboard",
     path: "/admin/quick-commerce",
     icon: "LayoutDashboard",
+    permissionKey: "dashboard",
   },
   {
     type: "section",
     label: "CORE MANAGEMENT",
+    permissionKey: "restaurants",
     items: [
       {
         type: "link",
         label: "Seller Requests",
         path: "/admin/quick-commerce/seller-requests",
         icon: "ClipboardCheck",
+        permissionKey: "restaurants",
       },
       {
         type: "expandable",
         label: "Categories",
         icon: "FolderTree",
+        permissionKey: "categories",
         subItems: [
           { label: "All Categories", path: "/admin/quick-commerce/categories/hierarchy" },
           { label: "Header Categories", path: "/admin/quick-commerce/categories/header" },
@@ -26,12 +30,13 @@ export const quickAdminSidebarMenu = [
           { label: "Sub-Categories", path: "/admin/quick-commerce/categories/sub" },
         ],
       },
-      { type: "link", label: "Products", path: "/admin/quick-commerce/products", icon: "Package" },
-      { type: "link", label: "Zone Setup", path: "/admin/quick-commerce/zone-setup", icon: "MapPin" },
+      { type: "link", label: "Products", path: "/admin/quick-commerce/products", icon: "Package", permissionKey: "foods" },
+      { type: "link", label: "Zone Setup", path: "/admin/quick-commerce/zone-setup", icon: "MapPin", permissionKey: "zones" },
       {
         type: "expandable",
         label: "Marketing Tools",
         icon: "Megaphone",
+        permissionKey: "promotions",
         subItems: [
           { label: "Content Manager", path: "/admin/quick-commerce/experience-studio" },
           { label: "Hero & Categories Per Page", path: "/admin/quick-commerce/hero-categories" },
@@ -45,6 +50,7 @@ export const quickAdminSidebarMenu = [
         type: "expandable",
         label: "Customer Support",
         icon: "MessageSquare",
+        permissionKey: "support",
         subItems: [
           { label: "Help Tickets", path: "/admin/quick-commerce/support-tickets" },
           { label: "Review Content", path: "/admin/quick-commerce/moderation" },
@@ -54,6 +60,7 @@ export const quickAdminSidebarMenu = [
         type: "expandable",
         label: "Sellers",
         icon: "Building2",
+        permissionKey: "restaurants",
         subItems: [
           { label: "Active Sellers", path: "/admin/quick-commerce/sellers/active" },
           { label: "Waiting for Review", path: "/admin/quick-commerce/sellers/pending" },
@@ -61,16 +68,15 @@ export const quickAdminSidebarMenu = [
           { label: "Seller Commission", path: "/admin/quick-commerce/sellers/commission" },
         ],
       },
-
-      // { type: "link", label: "Wallet", path: "/admin/quick-commerce/wallet", icon: "Wallet" },
-      { type: "link", label: "Transaction Report", path: "/admin/quick-commerce/transactions", icon: "FileText" },
-      { type: "link", label: "Money Requests", path: "/admin/quick-commerce/withdrawals", icon: "CreditCard" },
-      { type: "link", label: "Seller Payments", path: "/admin/quick-commerce/seller-transactions", icon: "Receipt" },
-      { type: "link", label: "Collect Cash", path: "/admin/quick-commerce/cash-collection", icon: "IndianRupee" },
+      { type: "link", label: "Transaction Report", path: "/admin/quick-commerce/transactions", icon: "FileText", permissionKey: "reports" },
+      { type: "link", label: "Money Requests", path: "/admin/quick-commerce/withdrawals", icon: "CreditCard", permissionKey: "wallet" },
+      { type: "link", label: "Seller Payments", path: "/admin/quick-commerce/seller-transactions", icon: "Receipt", permissionKey: "wallet" },
+      { type: "link", label: "Collect Cash", path: "/admin/quick-commerce/cash-collection", icon: "IndianRupee", permissionKey: "wallet" },
       {
         type: "expandable",
         label: "Returns",
         icon: "Package",
+        permissionKey: "orders",
         subItems: [
           { label: "Return Requests", path: "/admin/quick-commerce/returns" },
           { label: "Return Settings", path: "/admin/quick-commerce/returns/settings" },
@@ -80,6 +86,7 @@ export const quickAdminSidebarMenu = [
         type: "expandable",
         label: "Orders",
         icon: "FileText",
+        permissionKey: "orders",
         subItems: [
           { label: "All Orders", path: "/admin/quick-commerce/orders/all" },
           { label: "New Orders", path: "/admin/quick-commerce/orders/pending" },
@@ -89,8 +96,8 @@ export const quickAdminSidebarMenu = [
           { label: "Returned", path: "/admin/quick-commerce/orders/returned" },
         ],
       },
-      { type: "link", label: "Fees & Charges", path: "/admin/quick-commerce/billing", icon: "DollarSign" },
-      { type: "link", label: "My Profile", path: "/admin/quick-commerce/profile", icon: "User" },
+      { type: "link", label: "Fees & Charges", path: "/admin/quick-commerce/billing", icon: "DollarSign", permissionKey: "fee_settings" },
+      { type: "link", label: "My Profile", path: "/admin/quick-commerce/profile", icon: "User", permissionKey: "settings" },
     ],
   },
-]
+];

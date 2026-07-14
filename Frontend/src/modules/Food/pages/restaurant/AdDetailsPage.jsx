@@ -209,7 +209,7 @@ export default function AdDetailsPage() {
                     alt="Cover"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = `https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=400&fit=crop`
+                      e.target.src = ""
                     }}
                   />
                 </div>

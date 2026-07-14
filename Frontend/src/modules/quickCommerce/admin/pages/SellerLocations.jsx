@@ -295,7 +295,7 @@ const SellerLocations = () => {
                 {/* Right Area: Interactive Map */}
                 <Card className="flex-1 border-none shadow-2xl ring-1 ring-slate-200 rounded-2xl overflow-hidden bg-slate-100 relative group">
                     {/* Map Placeholder with Rich Styling */}
-                    <div className="absolute inset-0 grayscale-[0.3] contrast-[1.1] opacity-40 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=2000')]" />
+                    <div className="absolute inset-0 grayscale-[0.3] contrast-[1.1] opacity-40 bg-[url('')]" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-slate-200/50 via-transparent to-primary/5" />
 
                     {/* Real Iframe Content (Placeholder logic) */}

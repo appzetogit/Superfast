@@ -7,7 +7,7 @@ import LazyImage from '@/shared/components/LazyImage';
 const banners = [
     {
         id: 1,
-        image: "https://images.unsplash.com/photo-1573246123716-6b1782bfc499?q=80&w=1965&auto=format&fit=crop", // Changed Image
+        image: "", // Changed Image
         badge: "Best Seller",
         badgeIcon: Sparkles,
         badgeColor: "bg-[var(--primary-theme)] text-white",
@@ -19,7 +19,7 @@ const banners = [
     },
     {
         id: 2,
-        image: "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?q=80&w=1974&auto=format&fit=crop", // Changed Image
+        image: "", // Changed Image
         badge: "Hot Deal",
         badgeIcon: Tag,
         badgeColor: "bg-red-600 text-white",
@@ -31,7 +31,7 @@ const banners = [
     },
     {
         id: 3,
-        image: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=2070&auto=format&fit=crop", // Changed Image
+        image: "", // Changed Image
         badge: "New Stock",
         badgeIcon: Star,
         badgeColor: "bg-blue-600 text-white",

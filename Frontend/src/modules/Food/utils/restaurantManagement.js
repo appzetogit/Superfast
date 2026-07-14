@@ -18,7 +18,7 @@ const DEFAULT_RESTAURANT_DATA = {
   phoneNumber: "+101747410000",
   address: "House: 00, Road: 00, Test City",
   logo: null,
-  cover: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=400&fit=crop",
+  cover: "",
   metaTitle: "Hungry Puppets Restaurant: Where Fla",
   metaDescription: "Satisfy your cravings and indulge in a culinary adventure at Hungry Puppets Restaurant. Our menu is a symphony of taste, offering a delightful fusion of flavors that excite both palate and",
   metaImage: null,

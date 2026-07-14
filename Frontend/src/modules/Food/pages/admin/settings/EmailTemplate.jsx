@@ -237,7 +237,7 @@ export default function EmailTemplate() {
     const content = formData.mailBody
     // Replace placeholders with sample data
     return content
-      .replace(/{userName}/g, "John Doe")
+      .replace(/{userName}/g, "User")
       .replace(/{restaurantName}/g, "Caf� Monarch")
       .replace(/{ownerName}/g, "Jane Smith")
       .replace(/{email}/g, "owner@example.com")
@@ -250,7 +250,7 @@ export default function EmailTemplate() {
       .replace(/{accountDetails}/g, "Account: ****1234")
       .replace(/{campaignName}/g, "Summer Special")
       .replace(/{orderId}/g, "ORD-100156")
-      .replace(/{customerName}/g, "John Doe")
+      .replace(/{customerName}/g, "User")
       .replace(/{reason}/g, "Order not delivered")
       .replace(/{adTitle}/g, "Summer Promotion")
       .replace(/{advertiserName}/g, "Food Company")

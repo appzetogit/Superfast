@@ -38,7 +38,7 @@ function CategoryTileImage({ name, image }) {
     <img
       src={src}
       alt={name}
-      className="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal transition-transform duration-500 group-hover:scale-110 drop-shadow-md"
+      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
       onError={() => setBroken(true)}
     />
   );
@@ -82,22 +82,25 @@ export default function QuickCategories({ categories = [] }) {
                     `${getQuickProductsPath()}?categoryId=${cat.id || cat._id}`,
                   )
                 }
-                className="group flex flex-col items-center gap-4 focus:outline-none"
+                className="group flex flex-col items-center focus:outline-none w-full"
               >
                 <div 
-                  className="relative flex aspect-square w-full items-center justify-center rounded-[40px] p-3 shadow-[0_8px_20px_-10px_rgba(0,0,0,0.08)] transition-all duration-500 group-hover:shadow-[0_20_40px_-15px_rgba(0,0,0,0.15)] group-hover:rotate-2 border-2 border-white dark:border-white/10 overflow-hidden dark:brightness-90 dark:contrast-110"
+                  className="relative flex flex-col items-center justify-between aspect-[3/4] w-full rounded-t-full rounded-b-[24px] p-1.5 md:p-2 shadow-sm transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-md border border-white dark:border-white/10 overflow-hidden"
                   style={{ 
                     background: `linear-gradient(135deg, ${palette.from}, ${palette.to})`,
                   }}
                 >
-                    {/* Inner Glass Flare */}
-                    <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
-                    
+                  {/* Arch-shaped inner image frame with even space outside */}
+                  <div className="relative w-full h-[65%] rounded-t-full rounded-b-[14px] md:rounded-b-[18px] overflow-hidden shrink-0 flex items-center justify-center bg-white/60 dark:bg-white/10 shadow-inner">
                     <CategoryTileImage name={cat.name} image={cat.image} />
+                  </div>
+                  {/* Dedicated bottom title area without overlap */}
+                  <div className="relative w-full px-0.5 pb-0.5 text-center flex items-center justify-center min-h-[24px]">
+                    <span className="block text-[11px] md:text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight line-clamp-2 uppercase tracking-wide group-hover:text-[#0c831f] transition-colors">
+                      {cat.name}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-center text-[10px] font-black leading-tight text-slate-800 dark:text-slate-200 line-clamp-2 md:text-[12px] uppercase tracking-[0.14em] font-outfit px-1 group-hover:text-[#0c831f] transition-colors">
-                  {cat.name}
-                </span>
               </motion.button>
             );
           })}

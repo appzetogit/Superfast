@@ -199,7 +199,9 @@ export const useFoodHomeData = ({
     
     const requestSeq = ++restaurantsRequestSeqRef.current;
     try {
-      setLoadingRestaurants(true);
+      if (restaurantsData.length === 0) {
+        setLoadingRestaurants(true);
+      }
       const params = {};
       const lat = Number(location?.latitude);
       const lng = Number(location?.longitude);

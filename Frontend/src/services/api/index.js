@@ -1393,7 +1393,7 @@ export const restaurantAPI = {
     restaurantCurrentInFlight = null;
     restaurantCurrentCached = null;
     restaurantCurrentCacheTime = 0;
-    
+
     let fcmToken = null;
     let platform = "web";
     if (typeof window !== "undefined") {
@@ -1412,7 +1412,7 @@ export const restaurantAPI = {
         }
       } catch (err) { console.warn("FCM fetch error on logout", err); }
     }
-    
+
     const token = refreshToken || (typeof localStorage !== "undefined" ? localStorage.getItem("restaurant_refreshToken") : null);
     return authService.logout(token, fcmToken, platform);
   },
@@ -1420,7 +1420,7 @@ export const restaurantAPI = {
     restaurantCurrentInFlight = null;
     restaurantCurrentCached = null;
     restaurantCurrentCacheTime = 0;
-    
+
     let fcmToken = null;
     let platform = "web";
     if (typeof window !== "undefined") {
@@ -1439,7 +1439,7 @@ export const restaurantAPI = {
         }
       } catch (err) { console.warn("FCM fetch error on logoutAll", err); }
     }
-    
+
     const token = refreshToken || (typeof localStorage !== "undefined" ? localStorage.getItem("restaurant_refreshToken") : null);
     return authService.logoutAll(token, fcmToken, platform);
   },
@@ -1734,11 +1734,11 @@ export const deliveryAPI = {
     deliveryMeCacheTime = 0;
     try {
       localStorage.removeItem("app:isOnline");
-    } catch (_) {}
-    
+    } catch (_) { }
+
     let fcmToken = customFcmToken;
     let platform = customPlatform || "web";
-    
+
     if (!fcmToken && typeof window !== "undefined") {
       try {
         if (window.flutter_inappwebview?.callHandler) {
@@ -1755,7 +1755,7 @@ export const deliveryAPI = {
         }
       } catch (err) { console.warn("FCM fetch error on logout", err); }
     }
-    
+
     const token = refreshToken || (typeof localStorage !== "undefined" ? localStorage.getItem("delivery_refreshToken") : null);
     return authService.logout(token, fcmToken, platform);
   },
@@ -2250,7 +2250,7 @@ export const userAPI = {
           memCache = parsed;
           return Promise.resolve(parsed);
         }
-      } catch (e) {}
+      } catch (e) { }
 
       if (!inFlight) {
         inFlight = apiClient
@@ -2259,7 +2259,7 @@ export const userAPI = {
             memCache = res;
             try {
               localStorage.setItem("api_addresses_cache", JSON.stringify(res));
-            } catch (e) {}
+            } catch (e) { }
             return res;
           })
           .finally(() => {
@@ -2271,7 +2271,7 @@ export const userAPI = {
     fn.invalidateCache = () => {
       inFlight = null;
       memCache = null;
-      try { localStorage.removeItem("api_addresses_cache"); } catch (e) {}
+      try { localStorage.removeItem("api_addresses_cache"); } catch (e) { }
     };
     return fn;
   })(),
@@ -2689,7 +2689,7 @@ export const diningAPI = {
           return (
             String(booking?.userId || "") === String(userId) ||
             String(booking?.user?._id || booking?.user?.id || "") ===
-              String(userId)
+            String(userId)
           );
         }
 
@@ -2793,14 +2793,14 @@ export const diningAPI = {
   createBooking: async (payload = {}) => {
     const restaurantId = String(
       payload?.restaurant ||
-        payload?.restaurantId ||
-        payload?.restaurantRef?._id ||
-        payload?.restaurantRef?.id ||
-        payload?.restaurantRef?.restaurant?._id ||
-        payload?.restaurantRef?.restaurant?.id ||
-        payload?.restaurant?._id ||
-        payload?.restaurant?.id ||
-        "",
+      payload?.restaurantId ||
+      payload?.restaurantRef?._id ||
+      payload?.restaurantRef?.id ||
+      payload?.restaurantRef?.restaurant?._id ||
+      payload?.restaurantRef?.restaurant?.id ||
+      payload?.restaurant?._id ||
+      payload?.restaurant?.id ||
+      "",
     ).trim();
 
     if (!restaurantId) {

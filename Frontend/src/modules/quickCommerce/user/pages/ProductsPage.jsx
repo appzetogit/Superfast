@@ -8,7 +8,7 @@ const products = [
         category: 'Fruits',
         price: 349,
         originalPrice: 499,
-        image: 'https://images.unsplash.com/photo-1518635017498-87f514b751ba?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 2,
@@ -16,7 +16,7 @@ const products = [
         category: 'Vegetables',
         price: 45,
         originalPrice: 60,
-        image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 3,
@@ -24,7 +24,7 @@ const products = [
         category: 'Fruits',
         price: 120,
         originalPrice: 180,
-        image: 'https://images.unsplash.com/photo-1601039641847-7857b994d704?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 4,
@@ -32,7 +32,7 @@ const products = [
         category: 'Vegetables',
         price: 85,
         originalPrice: 110,
-        image: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 5,
@@ -40,7 +40,7 @@ const products = [
         category: 'Vegetables',
         price: 35,
         originalPrice: 50,
-        image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 6,
@@ -48,7 +48,7 @@ const products = [
         category: 'Fruits',
         price: 60,
         originalPrice: 80,
-        image: 'https://images.unsplash.com/photo-1571771896612-6184984fc38b?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 7,
@@ -56,7 +56,7 @@ const products = [
         category: 'Dairy',
         price: 65,
         originalPrice: 70,
-        image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?q=80&w=260&auto=format&fit=crop', // Fallback image for consistent sizing
+        image: "", // Fallback image for consistent sizing
     },
     {
         id: 8,
@@ -64,7 +64,7 @@ const products = [
         category: 'Bakery',
         price: 45,
         originalPrice: 55,
-        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 9,
@@ -72,7 +72,7 @@ const products = [
         category: 'Drinks',
         price: 180,
         originalPrice: 220,
-        image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 10,
@@ -80,7 +80,7 @@ const products = [
         category: 'Meat',
         price: 280,
         originalPrice: 320,
-        image: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 11,
@@ -88,7 +88,7 @@ const products = [
         category: 'Dairy',
         price: 90,
         originalPrice: 110,
-        image: 'https://images.unsplash.com/photo-1516488556308-ea2447743663?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
     {
         id: 12,
@@ -96,7 +96,7 @@ const products = [
         category: 'Vegetables',
         price: 30,
         originalPrice: 40,
-        image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?q=80&w=260&auto=format&fit=crop',
+        image: "",
     },
 ];
 

@@ -50,37 +50,37 @@ export const SIDE_IMAGE_OPTIONS = [
     key: "hair-care",
     label: "Hair Care",
     imageUrl:
-      "https://images.unsplash.com/photo-1522338242762-594f63bcf581?w=200&h=200&fit=crop",
+      "",
   },
   {
     key: "grocery",
     label: "Grocery",
     imageUrl:
-      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop",
+      "",
   },
   {
     key: "electronics",
     label: "Electronics",
     imageUrl:
-      "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&h=200&fit=crop",
+      "",
   },
   {
     key: "beauty",
     label: "Beauty",
     imageUrl:
-      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&h=200&fit=crop",
+      "",
   },
   {
     key: "kitchen",
     label: "Kitchen",
     imageUrl:
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=200&fit=crop",
+      "",
   },
   {
     key: "fashion",
     label: "Fashion",
     imageUrl:
-      "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&h=200&fit=crop",
+      "",
   },
 ];
 

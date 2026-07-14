@@ -11,7 +11,7 @@ import * as orderController from '../../orders/controllers/order.controller.js';
 import * as subAdminController from '../controllers/subAdmin.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
 import { upload } from '../../../../middleware/upload.js';
-import { requireSuperAdmin } from '../../../../core/auth/auth.middleware.js';
+import { requireSuperAdmin, requireAdminManager } from '../../../../core/auth/auth.middleware.js';
 
 const router = express.Router();
 
@@ -27,10 +27,10 @@ const requireAdmin = (req, _res, next) => {
 router.use(requireAdmin);
 
 // ----- Sub Admins -----
-router.post('/sub-admins', requireSuperAdmin, subAdminController.createSubAdmin);
-router.get('/sub-admins', requireSuperAdmin, subAdminController.getSubAdmins);
-router.put('/sub-admins/:id', requireSuperAdmin, subAdminController.updateSubAdmin);
-router.delete('/sub-admins/:id', requireSuperAdmin, subAdminController.deleteSubAdmin);
+router.post('/sub-admins', requireAdminManager, subAdminController.createSubAdmin);
+router.get('/sub-admins', requireAdminManager, subAdminController.getSubAdmins);
+router.put('/sub-admins/:id', requireAdminManager, subAdminController.updateSubAdmin);
+router.delete('/sub-admins/:id', requireAdminManager, subAdminController.deleteSubAdmin);
 
 // ----- Broadcast Notifications -----
 router.post('/notifications/broadcast', notificationBroadcastController.createBroadcastNotificationController);

@@ -299,7 +299,7 @@ export default function AdminSignup() {
                     <Input
                       id="name"
                       type="text"
-                      placeholder="John Doe"
+                      placeholder=""
                       value={formData.name}
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })

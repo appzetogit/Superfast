@@ -5,7 +5,7 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 // Using placeholder for promotional banner
-const bannerPreview = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop"
+const bannerPreview = ""
 
 export default function PromotionalBanner() {
   const [activeLanguage, setActiveLanguage] = useState("default")
@@ -30,7 +30,7 @@ export default function PromotionalBanner() {
     { key: "en", label: "English(EN)" },
     { key: "bn", label: "Bengali - বাংলা(BN)" },
     { key: "ar", label: "Arabic - العربية (AR)" },
-    { key: "es", label: "Spanish - espa�ol(ES)" },
+    { key: "es", label: "Spanish - espa�ol(ES)" },
   ]
 
   const handleSubmit = (e) => {

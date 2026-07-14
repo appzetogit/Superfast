@@ -11,16 +11,28 @@ const COLORS = [
 const CategoryCard = ({ category }) => {
     return (
         <div className="flex flex-col items-center group w-full cursor-pointer h-full">
-            <div className="w-full aspect-square bg-[#F5F7FA] dark:bg-card rounded-[16px] md:rounded-[20px] shadow-sm flex items-center justify-center p-3 md:p-4 mb-2 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-md border border-transparent dark:border-border">
-                <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
-                />
+            <div className="relative w-full aspect-[3/4] rounded-t-full rounded-b-[24px] bg-[#F5F7FA] dark:bg-card shadow-sm border border-slate-100 dark:border-border flex flex-col items-center justify-between p-1.5 md:p-2 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-md overflow-hidden">
+                {/* Arch-shaped inner image frame with even space outside */}
+                <div className="relative w-full h-[65%] rounded-t-full rounded-b-[14px] md:rounded-b-[18px] overflow-hidden shrink-0 flex items-center justify-center bg-white/60 dark:bg-white/10 shadow-inner">
+                    {category.image ? (
+                        <img
+                            src={category.image}
+                            alt={category.name}
+                            className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+                        />
+                    ) : (
+                        <div className="flex h-full w-full items-center justify-center text-2xl font-black uppercase text-slate-400">
+                            {(category.name || "?").charAt(0)}
+                        </div>
+                    )}
+                </div>
+                {/* Dedicated bottom title area without overlap */}
+                <div className="relative w-full px-0.5 pb-0.5 text-center flex items-center justify-center min-h-[26px]">
+                    <span className="block text-[11px] md:text-[13px] font-bold text-foreground leading-tight line-clamp-2 transition-colors group-hover:text-emerald-600">
+                        {category.name}
+                    </span>
+                </div>
             </div>
-            <span className="text-[12px] md:text-[14px] font-medium md:font-semibold text-foreground text-center leading-tight line-clamp-2 px-1 mt-1">
-                {category.name}
-            </span>
         </div>
     );
 };

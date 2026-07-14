@@ -84,7 +84,7 @@ const normalizeProduct = (product = {}, fallback = {}) => {
     images:
       images.length > 0
         ? images
-        : ["https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1200&auto=format&fit=crop"],
+        : [""],
     details: [
       {
         label: "Unit",

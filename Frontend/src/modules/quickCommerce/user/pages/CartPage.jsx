@@ -368,11 +368,11 @@ const CartPage = () => {
               <div className="flex gap-4">
                 <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-50 dark:bg-neutral-800">
                   <img
-                    src={resolveQuickImageUrl(item.mainImage || item.image) || item.mainImage || item.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=200&auto=format&fit=crop"}
+                    src={resolveQuickImageUrl(item.mainImage || item.image) || item.mainImage || item.image}
                     alt={item.name}
                     className="h-full w-full object-contain p-2 dark:mix-blend-normal"
                     onError={(e) => {
-                      e.currentTarget.src = "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=200&auto=format&fit=crop";
+                      e.currentTarget.src = "";
                     }}
                   />
                 </div>

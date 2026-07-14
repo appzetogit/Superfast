@@ -33,7 +33,7 @@ const UserManagement = () => {
                                         <div className="flex items-center">
                                             <div className="h-9 w-9 bg-gray-200 rounded-full mr-3"></div>
                                             <div>
-                                                <p className="font-semibold text-gray-900 text-sm">John Doe {i}</p>
+                                                <p className="font-semibold text-gray-900 text-sm">User {i}</p>
                                                 <p className="text-xs text-gray-500">john{i}@example.com</p>
                                             </div>
                                         </div>

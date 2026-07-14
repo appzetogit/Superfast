@@ -14,7 +14,7 @@ import { useCompanyName } from "@food/hooks/useCompanyName"
 import { FaLocationDot } from "react-icons/fa6"
 
 // Using placeholder for dining restaurant banner
-const diningBanner = "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=400&fit=crop"
+const diningBanner = ""
 
 const popularRestaurants = [
   {
@@ -39,7 +39,7 @@ const popularRestaurants = [
     distance: "3.2 km",
     cuisine: "Multi-cuisine",
     price: "₹2000 for two",
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop",
+    image: "",
     offer: "Flat 25% OFF + 2 more",
     deliveryTime: "35-40 mins",
     featuredDish: "Grilled Chicken",
@@ -53,7 +53,7 @@ const popularRestaurants = [
     distance: "1.8 km",
     cuisine: "Continental",
     price: "₹1800 for two",
-    image: "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&h=600&fit=crop",
+    image: "",
     offer: "Flat 35% OFF + 4 more",
     deliveryTime: "25-30 mins",
     featuredDish: "Risotto",
@@ -67,7 +67,7 @@ const popularRestaurants = [
     distance: "2.1 km",
     cuisine: "Seafood",
     price: "₹1600 for two",
-    image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop",
+    image: "",
     offer: "Flat 20% OFF + 2 more",
     deliveryTime: "28-33 mins",
     featuredDish: "Fish Curry",
@@ -81,7 +81,7 @@ const popularRestaurants = [
     distance: "4.5 km",
     cuisine: "North Indian",
     price: "₹1200 for two",
-    image: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&h=600&fit=crop",
+    image: "",
     offer: "Flat 30% OFF + 3 more",
     deliveryTime: "40-45 mins",
     featuredDish: "Butter Chicken",

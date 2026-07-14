@@ -253,6 +253,13 @@ export const adminLogin = async (email, password) => {
     throw new AuthError("Your account has been deactivated.");
   }
 
+  // Auto-promote old ADMINs to PLATFORM_SUPERADMIN for backward compatibility
+  if (admin.role === 'ADMIN' && (!admin.adminLevel || admin.adminLevel === 'SUB_ADMIN')) {
+    admin.adminLevel = 'PLATFORM_SUPERADMIN';
+    admin.permissions = ['*'];
+    await admin.save();
+  }
+
   const payload = { userId: admin._id.toString(), role: admin.role };
 
   const accessToken = signAccessToken(payload);

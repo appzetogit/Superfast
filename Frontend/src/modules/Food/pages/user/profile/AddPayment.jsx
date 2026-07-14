@@ -92,7 +92,7 @@ export default function AddPayment() {
                 <Input
                   id="cardHolder"
                   name="cardHolder"
-                  placeholder="John Doe"
+                  placeholder=""
                   value={formData.cardHolder}
                   onChange={handleChange}
                   required

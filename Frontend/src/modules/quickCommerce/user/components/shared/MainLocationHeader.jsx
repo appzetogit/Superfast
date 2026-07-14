@@ -25,6 +25,7 @@ import shoppingCartAnimation from "@/assets/lottie/shopping-cart.json";
 import { Sparkles } from "lucide-react";
 import { customerApi } from "../../services/customerApi";
 import ThemeToggle from "../layout/ThemeToggle";
+import { getCachedSettings } from "@/modules/common/utils/businessSettings";
 
 // MUI Icons
 import HomeIcon from "@mui/icons-material/Home";
@@ -442,11 +443,14 @@ const MainLocationHeader = ({
   const displayNav = embedded ? "flex" : rawDisplayNav;
   const displayCart = embedded ? "block" : rawDisplayCart;
 
+  const adminQcColor = getCachedSettings()?.moduleThemes?.quickCommerce?.themeColor || "#00BFA5";
   const baseHeaderColor =
-    (embedded && embeddedHeaderColor) || activeCategory?.headerColor || null;
+    (embedded && embeddedHeaderColor) ||
+    (activeCategory && activeCategory.id !== "all" && activeCategory._id !== "all" && activeCategory.headerColor) ||
+    adminQcColor;
   const headerGradient = baseHeaderColor
     ? embedded
-      ? `linear-gradient(180deg, ${baseHeaderColor} 0%, ${lightenHex(baseHeaderColor, 0.2)} 100%)`
+      ? undefined
       : buildHeaderGradient(baseHeaderColor)
     : "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)";
   const searchBarBg = buildSearchBarBackgroundColor(baseHeaderColor || "#1e293b");
@@ -478,6 +482,7 @@ const MainLocationHeader = ({
             borderBottomLeftRadius: headerRoundness,
             borderBottomRightRadius: headerRoundness,
             opacity: bgOpacity,
+            backgroundColor: baseHeaderColor,
             backgroundImage: headerGradient,
           }}
           className={cn(
@@ -502,7 +507,6 @@ const MainLocationHeader = ({
                 className="absolute top-0 left-1/4 h-24 w-24 rounded-full blur-[48px] pointer-events-none"
                 style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
               />
-              <div className="absolute bottom-0 right-1/4 h-28 w-28 rounded-full bg-yellow-400/10 blur-[64px] pointer-events-none" />
             </>
           ) : (
             <div className="absolute inset-0 bg-white/8 pointer-events-none" />

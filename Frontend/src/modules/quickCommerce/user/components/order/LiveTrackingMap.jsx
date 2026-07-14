@@ -453,7 +453,7 @@ const LiveTrackingMap = memo(({
               <div className="relative">
                 <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden border-2 border-white shadow-sm">
                   <img
-                    src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&auto=format&fit=crop&q=60"
+                    src=""
                     alt="Rider"
                     className="h-full w-full object-cover"
                   />

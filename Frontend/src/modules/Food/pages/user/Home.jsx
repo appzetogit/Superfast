@@ -103,7 +103,7 @@ import VegModePopups from "@food/components/user/VegModePopups";
 
 import * as imgUtils from "@food/utils/imageUtils";
 import { useFoodHomeData } from "@food/hooks/useFoodHomeData";
-import { getCachedSettings } from "@/modules/common/utils/businessSettings";
+import { getCachedSettings, loadBusinessSettings } from "@/modules/common/utils/businessSettings";
 import { useServiceability } from "@/modules/common/hooks/useServiceability";
 import ServiceUnavailable from "@/modules/common/components/ServiceUnavailable";
 import bakeryIcon from "@food/assets/explore more icons/bakery.png";
@@ -167,18 +167,26 @@ export default function Home() {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const path = window.location.pathname;
-      if (path.endsWith("/quick") || path.includes("/quick/")) return "quick";
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('tab') === 'quick') return "quick";
     }
     return "food";
   });
   const [quickThemeColor, setQuickThemeColor] = useState(() => {
     const settings = getCachedSettings();
-    return settings?.moduleThemes?.quickCommerce?.themeColor || "#2f7a46";
+    return settings?.moduleThemes?.quickCommerce?.themeColor || "#00BFA5";
   });
   const [quickSecondaryThemeColor, setQuickSecondaryThemeColor] = useState(() => {
     const settings = getCachedSettings();
-    return settings?.moduleThemes?.quickCommerce?.secondaryThemeColor || "#1e5b32";
+    return settings?.moduleThemes?.quickCommerce?.secondaryThemeColor || "#008b74";
+  });
+  const [foodThemeColor, setFoodThemeColor] = useState(() => {
+    const settings = getCachedSettings();
+    return settings?.moduleThemes?.food?.themeColor || "#cc2532";
+  });
+  const [foodSecondaryThemeColor, setFoodSecondaryThemeColor] = useState(() => {
+    const settings = getCachedSettings();
+    return settings?.moduleThemes?.food?.secondaryThemeColor || "#b3202c";
   });
   const [showToast, setShowToast] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -198,9 +206,33 @@ export default function Home() {
       if (settings?.moduleThemes?.quickCommerce?.secondaryThemeColor) {
         setQuickSecondaryThemeColor(settings.moduleThemes.quickCommerce.secondaryThemeColor);
       }
+      if (settings?.moduleThemes?.food?.themeColor) {
+        setFoodThemeColor(settings.moduleThemes.food.themeColor);
+      }
+      if (settings?.moduleThemes?.food?.secondaryThemeColor) {
+        setFoodSecondaryThemeColor(settings.moduleThemes.food.secondaryThemeColor);
+      }
     };
     window.addEventListener('businessSettingsUpdated', handleSettingsUpdate);
     return () => window.removeEventListener('businessSettingsUpdated', handleSettingsUpdate);
+  }, []);
+
+  // Fetch fresh settings from server on mount to ensure colors are up-to-date
+  useEffect(() => {
+    loadBusinessSettings(true).then((settings) => {
+      if (settings?.moduleThemes?.quickCommerce?.themeColor) {
+        setQuickThemeColor(settings.moduleThemes.quickCommerce.themeColor);
+      }
+      if (settings?.moduleThemes?.quickCommerce?.secondaryThemeColor) {
+        setQuickSecondaryThemeColor(settings.moduleThemes.quickCommerce.secondaryThemeColor);
+      }
+      if (settings?.moduleThemes?.food?.themeColor) {
+        setFoodThemeColor(settings.moduleThemes.food.themeColor);
+      }
+      if (settings?.moduleThemes?.food?.secondaryThemeColor) {
+        setFoodSecondaryThemeColor(settings.moduleThemes.food.secondaryThemeColor);
+      }
+    });
   }, []);
 
   // --- Location Logic ---
@@ -306,19 +338,16 @@ export default function Home() {
 
   // Sync activeTab with URL
   useEffect(() => {
-    const path = routerLocation.pathname;
-    const isQuick = path.endsWith("/quick") || path.includes("/quick/");
-    let targetTab = "food";
-    if (isQuick) targetTab = "quick";
+    const searchParams = new URLSearchParams(routerLocation.search);
+    const targetTab = searchParams.get('tab') === 'quick' ? 'quick' : 'food';
 
     if (activeTab !== targetTab) setActiveTab(targetTab);
-  }, [routerLocation.pathname, activeTab]);
+  }, [routerLocation.search, activeTab]);
 
   // --- Handlers ---
   const handleTabChange = (tab) => {
     startTransition(() => setActiveTab(tab));
-    if (tab === "quick") navigate("/quick", { replace: true });
-    else navigate("/food/user", { replace: true });
+    navigate(`/?tab=${tab}`, { replace: true });
   };
 
   const handleVegModeChange = (newValue) => {
@@ -333,20 +362,21 @@ export default function Home() {
   };
 
   const handleSearchFocus = useCallback(() => {
-    if (activeTab === "quick") navigate("/quick/search");
-    else navigate("/food/user/search");
+    navigate(`/search?tab=${activeTab}`);
   }, [activeTab, navigate]);
 
   // --- Render ---
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-16 md:pb-6 overflow-x-clip">
+    <div 
+      className="relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-16 md:pb-6 overflow-x-clip"
+      style={{
+        '--primary-color': activeTab === "quick" ? quickThemeColor : foodThemeColor,
+        '--primary-theme': activeTab === "quick" ? quickThemeColor : foodThemeColor,
+        '--secondary-color': activeTab === "quick" ? quickSecondaryThemeColor : foodSecondaryThemeColor,
+        '--secondary-theme': activeTab === "quick" ? quickSecondaryThemeColor : foodSecondaryThemeColor,
+      }}
+    >
       <div className="md:hidden relative overflow-x-clip z-[50]">
-        {!state.isBootstrapped ? (
-          <div className="px-4 pt-6 pb-4">
-            <div className="h-10 w-48 bg-slate-100 animate-pulse rounded-xl mb-6" />
-            <div className="h-14 w-full bg-slate-100 animate-pulse rounded-2xl" />
-          </div>
-        ) : (
           <HomeHeader
             activeTab={activeTab}
             setActiveTab={handleTabChange}
@@ -361,12 +391,13 @@ export default function Home() {
             headerVideoUrl={landing.videoUrl}
             quickThemeColor={quickThemeColor}
             quickSecondaryThemeColor={quickSecondaryThemeColor}
+            foodThemeColor={foodThemeColor}
+            foodSecondaryThemeColor={foodSecondaryThemeColor}
             hideExtras={hideExtras}
             bannerComponent={
               <div className="h-[130px] sm:h-36 md:h-44 mt-3 relative z-10 w-full bg-transparent" />
             }
           />
-        )}
       </div>
 
       <AnimatePresence initial={false} mode="wait">
@@ -488,8 +519,7 @@ export default function Home() {
                       <Suspense fallback={<div className="h-screen w-full bg-white dark:bg-[#0a0a0a]" />}>
                         <QuickCommerceHomePage
                           embedded
-                          onThemeChange={({ color }) => color && setQuickThemeColor(color)}
-                          embeddedHeaderColor={quickThemeColor}
+                          embeddedHeaderColor={quickSecondaryThemeColor}
                         />
                       </Suspense>
                     </QuickProductDetailProvider>

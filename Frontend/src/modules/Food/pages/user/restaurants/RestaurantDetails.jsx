@@ -855,8 +855,19 @@ function RestaurantDetailsContent() {
                 }
 
                 let finalMenuSections = [...menuSections]
-                if (hasPreviousOrderForRestaurant) {
-                  finalMenuSections = [{ name: "Recommended for you", items: recommendedItems, subsections: [] }, ...finalMenuSections]
+                
+                const existingRecIndex = finalMenuSections.findIndex(s => s.name?.toLowerCase() === 'recommended for you')
+                let mergedRecItems = [...recommendedItems]
+                
+                if (existingRecIndex !== -1) {
+                  mergedRecItems = [...mergedRecItems, ...(finalMenuSections[existingRecIndex].items || [])]
+                  finalMenuSections.splice(existingRecIndex, 1)
+                }
+                
+                const uniqueRecItems = Array.from(new Map(mergedRecItems.map(item => [item.id || item._id, item])).values())
+
+                if (uniqueRecItems.length > 0 && (hasPreviousOrderForRestaurant || existingRecIndex !== -1)) {
+                  finalMenuSections = [{ name: "Recommended for you", items: uniqueRecItems, subsections: [] }, ...finalMenuSections]
                 }
                 if (searchedDishSection) {
                   finalMenuSections = [searchedDishSection, ...finalMenuSections]
@@ -1290,6 +1301,8 @@ function RestaurantDetailsContent() {
 
   const getSectionDisplayName = (section) => {
     if (isRecommendedSection(section)) {
+      const name = (section?.name || section?.title || "").trim().toLowerCase()
+      if (name === "result for your search") return "Result for your search"
       return "Recommended for you"
     }
     if (section?.name && typeof section.name === "string" && section.name.trim()) {
@@ -2257,7 +2270,7 @@ function RestaurantDetailsContent() {
                   {isRecommended && (
                     <div className="flex items-center justify-between">
                       <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                        Recommended for you
+                        {getSectionDisplayName(section)}
                       </h2>
                       <button
                         onClick={(e) => {

@@ -8,9 +8,9 @@ import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { FaLocationDot } from "react-icons/fa6"
 // Using placeholder for coffee banner
-const coffeeBanner = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=1200&h=400&fit=crop"
+const coffeeBanner = ""
 // Using placeholder for starbucks logo
-const starbucksLogo = "https://images.unsplash.com/photo-1511920170033-f8396924c348?w=200&h=200&fit=crop"
+const starbucksLogo = ""
 
 const starbucksStores = [
   {

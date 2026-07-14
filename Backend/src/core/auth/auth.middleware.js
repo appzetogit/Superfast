@@ -20,6 +20,35 @@ export const requireSuperAdmin = (req, res, next) => {
     next();
 };
 
+/**
+ * Allows Platform Superadmin and Module Superadmins to manage admins.
+ * Attaches the full admin document to req.adminDoc for downstream use.
+ * Subadmins are always rejected regardless of their permission flags.
+ */
+export const requireAdminManager = async (req, res, next) => {
+    try {
+        const admin = await FoodAdmin.findById(req.user.userId)
+            .select('adminLevel permissions role food_zone_ids quick_commerce_zone_ids servicesAccess')
+            .lean();
+        if (!admin) return sendError(res, 401, 'Admin not found');
+
+        // Derive effective level for backward compatibility
+        const level = admin.adminLevel || (admin.role === 'ADMIN' ? 'PLATFORM_SUPERADMIN' : 'SUB_ADMIN');
+        admin._effectiveLevel = level;
+        req.adminDoc = admin;
+
+        const allowed = ['PLATFORM_SUPERADMIN', 'FOOD_SUPERADMIN', 'QUICK_COMMERCE_SUPERADMIN'];
+        if (!allowed.includes(level)) {
+            return sendError(res, 403, 'You do not have permission to manage admins');
+        }
+
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+
 export const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;

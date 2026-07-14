@@ -45,7 +45,7 @@ const tabs = [
   },
 ];
 
-const normalizeHex = (hex, fallback = "#8e24aa") => {
+const normalizeHex = (hex, fallback = "#cc2532") => {
   const value = String(hex || "").trim();
   return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
 };
@@ -62,35 +62,21 @@ const withAlpha = (color, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const quickTheme = (baseColor, secondaryColor) => {
-  const base = normalizeHex(baseColor, "#2f7a46");
-  const secondary = secondaryColor ? normalizeHex(secondaryColor) : `color-mix(in srgb, ${base} 70%, black)`;
+const getTheme = (vegMode, isQuick, colors) => {
+  const primary = isQuick ? (colors.quickThemeColor || "#00BFA5") : (colors.foodThemeColor || "#cc2532");
+  const secondary = isQuick ? (colors.quickSecondaryThemeColor || "#008b74") : (colors.foodSecondaryThemeColor || "#b3202c");
+  
   return {
-    topBg: `linear-gradient(180deg, ${secondary} 0%, ${base} 100%)`,
-    accent: base,
+    topBg: primary,
+    secondaryBg: secondary,
+    accent: primary,
     text: "#ffffff",
-    activeBg: base,
+    activeBg: secondary,
     activeText: "#ffffff",
-    inactiveBg: "rgba(0,0,0,0.3)",
+    inactiveBg: "rgba(0,0,0,0.35)",
     inactiveBorder: "rgba(255,255,255,0.08)",
   };
 };
-
-const foodTheme = (vegMode) => {
-  const base = vegMode ? "#2f7a46" : "var(--primary-theme, #f97316)";
-  return {
-    topBg: vegMode
-      ? `linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 100%), ${base}`
-      : `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 100%), ${base}`,
-    accent: base,
-    text: "#ffffff",
-    activeBg: base,
-    activeText: "#ffffff",
-    inactiveBg: "rgba(0,0,0,0.25)",
-    inactiveBorder: "rgba(255,255,255,0.08)",
-  };
-};
-
 
 const isMeaningfulLocationValue = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -153,6 +139,8 @@ export default function HomeHeader({
   headerVideoUrl,
   quickThemeColor,
   quickSecondaryThemeColor,
+  foodThemeColor,
+  foodSecondaryThemeColor,
   onQuickTabIntent,
   bannerComponent,
   hideExtras = false,
@@ -192,11 +180,62 @@ export default function HomeHeader({
   }, []);
 
   const theme = useMemo(() => {
-    if (activeTab === "quick") return quickTheme(quickThemeColor, quickSecondaryThemeColor);
-    return foodTheme(vegMode);
-  }, [activeTab, quickThemeColor, quickSecondaryThemeColor, vegMode]);
+    return getTheme(vegMode, activeTab === "quick", {
+      quickThemeColor,
+      quickSecondaryThemeColor,
+      foodThemeColor,
+      foodSecondaryThemeColor
+    });
+  }, [activeTab, vegMode, quickThemeColor, quickSecondaryThemeColor, foodThemeColor, foodSecondaryThemeColor]);
   const isFood = activeTab === "food";
   const walletPath = isFood ? "/food/user/wallet" : "/quick/wallet";
+  
+  // Need to redefine this function here since we removed it from global scope
+  const isMeaningfulLocationValue = (value) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    return Boolean(
+      normalized &&
+      normalized !== "select location" &&
+      normalized !== "current location"
+    );
+  };
+
+  const buildLocationDisplay = (savedAddressText, location) => {
+    if (isMeaningfulLocationValue(savedAddressText)) {
+      const parts = String(savedAddressText)
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      if (parts.length >= 3) {
+        return {
+          title: parts.slice(0, 2).join(", "),
+          subtitle: parts.slice(2).join(", "),
+        };
+      }
+
+      if (parts.length === 2) {
+        return {
+          title: parts.join(", "),
+          subtitle: "Tap to choose delivery location",
+        };
+      }
+
+      return {
+        title: String(savedAddressText).trim(),
+        subtitle: "Tap to choose delivery location",
+      };
+    }
+
+    const fallbackTitle = location?.city || "Select Location";
+    const fallbackSubtitle = location?.name || "Tap to choose delivery location";
+
+    return {
+      title: fallbackTitle,
+      subtitle: fallbackSubtitle,
+    };
+  };
+
   const { title: locationTitle, subtitle: locationSubtitle } = useMemo(
     () => buildLocationDisplay(savedAddressText, location),
     [savedAddressText, location],
@@ -295,39 +334,6 @@ export default function HomeHeader({
         }`}
       style={{ background: theme.topBg, color: theme.text }}
     >
-      {headerVideoUrl && (
-        <div className="absolute inset-x-0 bottom-0 z-0 flex justify-center overflow-hidden" style={{ top: '130px' }}>
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-            className={`h-full w-full object-cover object-center transition-opacity duration-200 ${
-              isFood ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'webm' })} type="video/webm" />
-            <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'mp4' })} type="video/mp4" />
-            <source src={headerVideoUrl} />
-          </video>
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.0) 100%)`
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              background: `radial-gradient(circle at 20% 30%, ${withAlpha(theme.accent, 0.4)}, transparent 70%)`
-            }}
-          />
-        </div>
-      )}
-
 
 
       <div className="flex items-center justify-between px-5 pt-4 mb-2 relative z-10">
@@ -527,72 +533,95 @@ export default function HomeHeader({
         })}
       </div>
 
-      <div className={cn("relative z-10 pb-0 px-3 overflow-visible", isFood ? "pt-3" : "pt-0")}>
-        {isFood && isSticky && <div className="h-[46px] mb-2" />}
-        {isFood && !hideExtras && (
-          <div 
-            className={cn("flex items-center gap-2 mb-2", 
-              isSticky ? "fixed top-0 left-0 right-0 z-[100] px-4 py-2 pb-3 shadow-md backdrop-blur-xl border-b border-black/5 dark:border-white/5" : "relative w-full px-0"
-            )}
-            style={{ backgroundColor: isSticky ? withAlpha(theme.accent, 0.85) : "transparent" }}
-          >
-            <div
-              className="flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-white shadow-[0_6px_18px_rgba(15,23,42,0.10)] border-0 text-left"
-              onClick={handleSearchFocus}
+      <div style={{ background: theme.secondaryBg }} className="w-full relative z-0 overflow-hidden">
+        {headerVideoUrl && (
+          <div className="absolute inset-0 z-0 flex justify-center overflow-hidden">
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              aria-hidden="true"
+              className={`h-full w-full object-cover object-center transition-opacity duration-200 ${
+                isFood ? "opacity-100" : "opacity-0"
+              }`}
+              style={{ backgroundColor: theme.secondaryBg }}
             >
-              <div className="absolute left-0 top-0 bottom-0 w-[2.5px] rounded-l-[12px] bg-gradient-to-b from-[var(--primary-theme)] to-[#a81e29]" />
-              <Search className="h-[16px] w-[16px] ml-1.5 mr-2 flex-shrink-0 text-[var(--primary-theme)]" strokeWidth={2.3} />
-              <div className="flex-1 overflow-hidden relative h-[20px]">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={placeholderIndex}
-                    initial={{ y: 12, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -12, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute inset-0 whitespace-nowrap leading-[22px] text-[12.5px] font-medium text-gray-400"
+              <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'webm' })} type="video/webm" />
+              <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'mp4' })} type="video/mp4" />
+              <source src={headerVideoUrl} />
+            </video>
+          </div>
+        )}
+        <div className={cn("relative z-10 pb-0 px-3 overflow-visible", isFood ? "pt-3" : "pt-0")}>
+          {isFood && isSticky && <div className="h-[46px] mb-2" />}
+          {isFood && !hideExtras && (
+            <div 
+              className={cn("flex items-center gap-2 mb-2", 
+                isSticky ? "fixed top-0 left-0 right-0 z-[100] px-4 py-2 pb-3 shadow-md backdrop-blur-xl border-b border-black/5 dark:border-white/5" : "relative w-full px-0"
+              )}
+              style={{ backgroundColor: isSticky ? withAlpha(theme.accent, 0.85) : "transparent" }}
+            >
+              <div
+                className="flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-white shadow-[0_6px_18px_rgba(15,23,42,0.10)] border-0 text-left"
+                onClick={handleSearchFocus}
+              >
+                <div className="absolute left-0 top-0 bottom-0 w-[2.5px] rounded-l-[12px]" style={{ background: `linear-gradient(to bottom, ${theme.accent}, ${theme.activeBg})` }} />
+                <Search className="h-[16px] w-[16px] ml-1.5 mr-2 flex-shrink-0" style={{ color: theme.accent }} strokeWidth={2.3} />
+                <div className="flex-1 overflow-hidden relative h-[20px]">
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={placeholderIndex}
+                      initial={{ y: 12, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -12, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="absolute inset-0 whitespace-nowrap leading-[22px] text-[12.5px] font-medium text-gray-400"
+                    >
+                      {placeholders?.[placeholderIndex] || "Search for food..."}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-[1px] h-[16px]" style={{ backgroundColor: withAlpha(theme.accent, 0.3) }} />
+                  <button
+                    type="button"
+                    onClick={handleVoiceSearch}
+                    className={cn(
+                      "h-[28px] w-[28px] rounded-full flex items-center justify-center transition-all",
+                      isListening ? "bg-red-500 scale-110 animate-pulse" : "bg-red-50 hover:bg-red-100"
+                    )}
                   >
-                    {placeholders?.[placeholderIndex] || "Search for food..."}
-                  </motion.span>
-                </AnimatePresence>
+                    <Mic className={cn("h-[14px] w-[14px]", isListening && "text-white")} style={!isListening ? { color: theme.accent } : undefined} strokeWidth={2.3} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-[1px] h-[16px] bg-red-200" />
-                <button
-                  type="button"
-                  onClick={handleVoiceSearch}
-                  className={cn(
-                    "h-[28px] w-[28px] rounded-full flex items-center justify-center transition-all",
-                    isListening ? "bg-red-500 scale-110 animate-pulse" : "bg-red-50 hover:bg-red-100"
-                  )}
-                >
-                  <Mic className={cn("h-[14px] w-[14px]", isListening ? "text-white" : "text-[var(--primary-theme)]")} strokeWidth={2.3} />
-                </button>
-              </div>
-            </div>
 
-            <div className="px-2 flex flex-col items-center justify-center min-w-[64px]">
-              <div className="flex flex-col items-center mb-1">
-                <span className="text-[9px] font-black tracking-[0.5px] text-white leading-none">VEG</span>
-                <span className="text-[7px] font-black tracking-[0.5px] text-white/70 leading-none mt-0.5">MODE</span>
-              </div>
-              <div className="scale-[0.80]">
-                <Switch
-                  checked={vegMode}
-                  onCheckedChange={(checked) => onVegModeChange?.(checked)}
-                  className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-400"
-                />
+              <div className="px-2 flex flex-col items-center justify-center min-w-[64px]">
+                <div className="flex flex-col items-center mb-1">
+                  <span className="text-[9px] font-black tracking-[0.5px] text-white leading-none">VEG</span>
+                  <span className="text-[7px] font-black tracking-[0.5px] text-white/70 leading-none mt-0.5">MODE</span>
+                </div>
+                <div className="scale-[0.80]">
+                  <Switch
+                    checked={vegMode}
+                    onCheckedChange={(checked) => onVegModeChange?.(checked)}
+                    className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-400"
+                  />
+                </div>
               </div>
             </div>
+          )}
+        </div>
+
+        {isFood && bannerComponent && (
+          <div className="relative z-10 w-full pb-5 pt-1">
+            {bannerComponent}
           </div>
         )}
       </div>
-
-      {isFood && bannerComponent && (
-        <div className="relative z-10 w-full pb-5 pt-1">
-          {bannerComponent}
-        </div>
-      )}
     </motion.div>
   );
 }

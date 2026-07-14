@@ -258,7 +258,7 @@ export default function AllFoodPage() {
                   alt={food.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop"
+                    e.target.style.display = 'none'
                   }}
                 />
                 {/* Discount Badge */}

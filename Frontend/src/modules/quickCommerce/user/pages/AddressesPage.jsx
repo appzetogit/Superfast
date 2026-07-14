@@ -376,7 +376,7 @@ const AddressesPage = () => {
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="name">Full Name</Label>
-                            <Input id="name" placeholder="John Doe" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+                            <Input id="name" placeholder="" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="phone">Phone Number</Label>

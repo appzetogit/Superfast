@@ -148,7 +148,7 @@ export default function RestaurantDetailsPage() {
       {/* Hero Image Section */}
       <div className="relative w-full h-[250px] md:h-[300px] overflow-hidden">
         <img 
-          src={restaurantData.cover || "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=400&fit=crop"}
+          src={restaurantData.cover}
           alt="Restaurant Hero"
           className="w-full h-full object-cover"
         />

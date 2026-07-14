@@ -195,7 +195,7 @@ export default function Report() {
               >
                 <option value="All">All</option>
                 <option value="jane-doe">Jane Doe</option>
-                <option value="john-doe">John Doe</option>
+                
               </select>
             </div>
 

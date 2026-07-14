@@ -60,7 +60,7 @@ export default function AddFund() {
                 >
                   <option value="">Select Customer</option>
                   <option value="jane-doe">Jane Doe</option>
-                  <option value="john-doe">John Doe</option>
+                  
                 </select>
               </div>
 

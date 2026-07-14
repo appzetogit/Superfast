@@ -60,13 +60,13 @@ const DeliveryTracking = () => {
               name: order.deliveryBoy.name,
               phone: order.deliveryBoy.phone,
               avatar: order.deliveryBoy.name?.charAt(0) || "?",
-              image: order.deliveryBoy.image || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop",
+              image: order.deliveryBoy.image,
               rating: order.deliveryBoy.rating || 4.5,
             } : {
               name: "Not Assigned",
               phone: "N/A",
               avatar: "?",
-              image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop",
+              image: "",
               rating: 0,
             },
             location: order.status === 'delivered' && order.updatedAt

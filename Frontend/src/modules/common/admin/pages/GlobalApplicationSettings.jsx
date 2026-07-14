@@ -14,11 +14,12 @@ import { setCachedSettings } from "@/modules/common/utils/businessSettings";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/shared/utils/imageCompression";
 
-const SectionCard = ({ title, children, id }) => (
+const SectionCard = ({ title, children, id, headerAction }) => (
   <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8" id={id}>
     {title && (
-      <div className="px-8 py-4 border-b border-gray-100 bg-gray-50/30">
+      <div className="px-8 py-4 border-b border-gray-100 bg-gray-50/30 flex items-center justify-between">
         <h3 className="text-[13px] font-bold text-gray-700 uppercase tracking-tight">{title}</h3>
+        {headerAction && <div>{headerAction}</div>}
       </div>
     )}
     <div className="p-8">
@@ -124,9 +125,16 @@ const GlobalApplicationSettings = () => {
     bannedNumbers: [],
     showLocationPopup: true,
     moduleThemes: {
-      food: { themeColor: "var(--primary-theme, #cc2532)" },
-      quickCommerce: { themeColor: "var(--primary-theme, #00BFA5)" }
-    }
+      food: { 
+        themeColor: "#cc2532",
+        secondaryThemeColor: "#b3202c"
+      },
+      quickCommerce: { 
+        themeColor: "#00BFA5",
+        secondaryThemeColor: "#008b74"
+      }
+    },
+    dynamicModuleThemes: true
   });
   const [newBannedNumber, setNewBannedNumber] = useState("");
 
@@ -146,9 +154,16 @@ const GlobalApplicationSettings = () => {
           bannedNumbers: settings.bannedNumbers || [],
           showLocationPopup: settings.showLocationPopup ?? true,
           moduleThemes: {
-            food: { themeColor: settings.moduleThemes?.food?.themeColor || "var(--primary-theme, #cc2532)" },
-            quickCommerce: { themeColor: settings.moduleThemes?.quickCommerce?.themeColor || "var(--primary-theme, #00BFA5)" }
-          }
+            food: { 
+              themeColor: settings.moduleThemes?.food?.themeColor || "#cc2532",
+              secondaryThemeColor: settings.moduleThemes?.food?.secondaryThemeColor || "#b3202c"
+            },
+            quickCommerce: { 
+              themeColor: settings.moduleThemes?.quickCommerce?.themeColor || "#00BFA5",
+              secondaryThemeColor: settings.moduleThemes?.quickCommerce?.secondaryThemeColor || "#008b74"
+            }
+          },
+          dynamicModuleThemes: settings.dynamicModuleThemes ?? true
         });
 
         if (settings.logo?.url) setLogoPreview(settings.logo.url);
@@ -221,7 +236,8 @@ const GlobalApplicationSettings = () => {
         address: formData.address,
         bannedNumbers: formData.bannedNumbers,
         showLocationPopup: formData.showLocationPopup,
-        moduleThemes: formData.moduleThemes
+        moduleThemes: formData.moduleThemes,
+        dynamicModuleThemes: formData.dynamicModuleThemes
       };
 
       const files = {};
@@ -354,17 +370,49 @@ const GlobalApplicationSettings = () => {
         </SectionCard>
 
         {/* Module Themes */}
-        <SectionCard title="App / Module Themes">
-           <div className="space-y-8">
+        <SectionCard 
+          title="App / Module Themes"
+          headerAction={
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-gray-600">
+                {formData.dynamicModuleThemes ? "Enabled" : "Disabled"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, dynamicModuleThemes: !prev.dynamicModuleThemes }))}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2",
+                  formData.dynamicModuleThemes ? "bg-[var(--primary-theme)]" : "bg-gray-200"
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                    formData.dynamicModuleThemes ? "translate-x-4" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+          }
+        >
+           <div className={cn("space-y-8", !formData.dynamicModuleThemes && "opacity-50 pointer-events-none transition-opacity")}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-gray-100 pb-8">
-                 <div>
-                    <h4 className="text-sm font-bold text-gray-700 mb-4">Food Module</h4>
+                 <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-gray-700">Food Module</h4>
                     <InputField 
-                      label="Theme Color" 
+                      label="Food Primary Color" 
                       name="foodThemeColor" 
                       value={formData.moduleThemes.food.themeColor} 
                       onChange={(_, val) => setFormData(prev => ({...prev, moduleThemes: {...prev.moduleThemes, food: {...prev.moduleThemes.food, themeColor: val}}}))} 
-                      placeholder="var(--primary-theme, #cc2532)" 
+                      placeholder="#cc2532" 
+                    />
+                    <InputField 
+                      label="Food Secondary Color" 
+                      name="foodSecondaryThemeColor" 
+                      value={formData.moduleThemes.food.secondaryThemeColor} 
+                      onChange={(_, val) => setFormData(prev => ({...prev, moduleThemes: {...prev.moduleThemes, food: {...prev.moduleThemes.food, secondaryThemeColor: val}}}))} 
+                      placeholder="#b3202c" 
                     />
                  </div>
                  <ImageUploadBox title="Food Module Logo" size="512px x 512px" preview={foodLogoPreview} onUpload={handleFoodLogoUpload} onClear={() => { setFoodLogoPreview(null); setFoodLogoFile(null); }} />

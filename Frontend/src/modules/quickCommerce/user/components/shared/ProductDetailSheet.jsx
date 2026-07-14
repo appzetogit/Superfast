@@ -47,7 +47,7 @@ const ProductDetailSheet = () => {
         if (selectedProduct.galleryImages && Array.isArray(selectedProduct.galleryImages)) {
             images.push(...selectedProduct.galleryImages);
         }
-        return images.length > 0 ? images : ["https://images.unsplash.com/photo-1550989460-0adf9ea622e2"];
+        return images.length > 0 ? images : [""];
     }, [selectedProduct]);
 
     // Update variant when product changes

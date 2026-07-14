@@ -30,7 +30,7 @@ const CATEGORIES = [
         text: "#15803D",
         theme: "#10B981",
         shadow: "rgba(16, 185, 129, 0.3)",
-        img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600"
+        img: ""
     },
     {
         title: "Store",
@@ -40,7 +40,7 @@ const CATEGORIES = [
         text: "#0F766E",
         theme: "#0D9488",
         shadow: "rgba(13, 148, 136, 0.3)",
-        img: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=600"
+        img: ""
     },
     {
         title: "Food",
@@ -50,7 +50,7 @@ const CATEGORIES = [
         text: "#047857",
         theme: "#059669",
         shadow: "rgba(5, 150, 105, 0.3)",
-        img: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=600"
+        img: ""
     },
     {
         title: "Health",
@@ -60,7 +60,7 @@ const CATEGORIES = [
         text: "#4D7C0F",
         theme: "#84CC16",
         shadow: "rgba(132, 204, 22, 0.3)",
-        img: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1200" // Hands holding heart visual
+        img: "" // Hands holding heart visual
     },
 ];
 

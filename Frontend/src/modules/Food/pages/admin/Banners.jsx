@@ -7,12 +7,12 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 // Using placeholders for banner images
-const bannerImage1 = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop"
-const bannerImage2 = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&h=400&fit=crop"
-const bannerImage3 = "https://images.unsplash.com/photo-1556910096-6f5e72db6803?w=800&h=400&fit=crop"
-const bannerImage4 = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop"
-const bannerImage5 = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&h=400&fit=crop"
-const bannerImage6 = "https://images.unsplash.com/photo-1556910096-6f5e72db6803?w=800&h=400&fit=crop"
+const bannerImage1 = ""
+const bannerImage2 = ""
+const bannerImage3 = ""
+const bannerImage4 = ""
+const bannerImage5 = ""
+const bannerImage6 = ""
 
 const bannerImages = {
   1: bannerImage1,
@@ -42,7 +42,7 @@ export default function Banners() {
     { key: "en", label: "English(EN)" },
     { key: "bn", label: "Bengali - বাংলা(BN)" },
     { key: "ar", label: "Arabic - العربية (AR)" },
-    { key: "es", label: "Spanish - espa�ol(ES)" },
+    { key: "es", label: "Spanish - espa�ol(ES)" },
   ]
 
   const filteredBanners = useMemo(() => {
@@ -177,7 +177,7 @@ export default function Banners() {
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="">Select</option>
-                  <option value="cafe-monarch">Caf� Monarch</option>
+                  <option value="cafe-monarch">Caf� Monarch</option>
                   <option value="hungry-puppets">Hungry Puppets</option>
                 </select>
               </div>

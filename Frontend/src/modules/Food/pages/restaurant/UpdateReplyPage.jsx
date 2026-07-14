@@ -94,7 +94,7 @@ export default function UpdateReplyPage() {
                     alt={reviewData.productName}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop"
+                      e.target.style.display = 'none'
                     }}
                   />
                 </div>

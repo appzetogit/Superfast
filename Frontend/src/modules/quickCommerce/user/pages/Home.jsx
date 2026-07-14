@@ -82,6 +82,7 @@ import {
   getQuickCategoriesPath,
   getQuickCategoryPath,
 } from "../utils/routes";
+import { getCachedSettings } from "@/modules/common/utils/businessSettings";
 
 const DEFAULT_CATEGORY_THEME = {
   gradient: "linear-gradient(to bottom, #F7C332, #F7E08F)",
@@ -377,60 +378,60 @@ const bestsellerCategories = [
     id: 1,
     name: "Chips & Namkeen",
     images: [
-      "https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1613919113640-25732ec5e61f?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1599490659223-e1539e76926a?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1621444541669-451006c1103d?auto=format&fit=crop&q=80&w=200&h=200",
+      "",
+      "",
+      "",
+      "",
     ],
   },
   {
     id: 2,
     name: "Bakery & Biscuits",
     images: [
-      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1550617931-e17a7b70dce2?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1581339399838-2a120c18bba3?auto=format&fit=crop&q=80&w=200&h=200",
+      "",
+      "",
+      "",
+      "",
     ],
   },
   {
     id: 3,
     name: "Vegetable & Fruits",
     images: [
-      "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1518843025960-d70213740685?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1490818387583-1baba5e638af?auto=format&fit=crop&q=80&w=200&h=200",
+      "",
+      "",
+      "",
+      "",
     ],
   },
   {
     id: 4,
     name: "Oil, Ghee & Masala",
     images: [
-      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1596797038558-9c50f16ee64b?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1506368249639-73a05d6f6488?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1472141521881-95d0e87e2e39?auto=format&fit=crop&q=80&w=200&h=200",
+      "",
+      "",
+      "",
+      "",
     ],
   },
   {
     id: 5,
     name: "Sweet & Chocolates",
     images: [
-      "https://images.unsplash.com/photo-1581798459219-318e76aecc7b?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1481391243133-f96216dcb5d2?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1526081347589-7fa3cb419ee7?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1542841791-192d99906b27?auto=format&fit=crop&q=80&w=200&h=200",
+      "",
+      "",
+      "",
+      "",
     ],
   },
   {
     id: 6,
     name: "Drinks & Juices",
     images: [
-      "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1625772290748-39126cdd9fe9?auto=format&fit=crop&q=80&w=200&h=200",
-      "https://images.unsplash.com/photo-1544145945-f904253db0ad?auto=format&fit=crop&q=80&w=200&h=200",
+      "",
+      "",
+      "",
+      "",
     ],
   },
 ];
@@ -556,9 +557,18 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
     }
   };
 
+  const qcAdminColor = embeddedHeaderColor || getCachedSettings()?.moduleThemes?.quickCommerce?.themeColor || "#00BFA5";
+  const activeHeaderColor =
+    activeCategory &&
+    activeCategory.id !== "all" &&
+    activeCategory._id !== "all" &&
+    activeCategory.headerColor
+      ? activeCategory.headerColor
+      : qcAdminColor;
+
   useEffect(() => {
     if (typeof onThemeChange !== "function") return;
-    const resolvedColor = activeCategory?.headerColor || ALL_CATEGORY.headerColor;
+    const resolvedColor = activeHeaderColor;
     if (typeof window !== "undefined" && resolvedColor) {
       window.sessionStorage.setItem(QUICK_THEME_STORAGE_KEY, resolvedColor);
     }
@@ -566,7 +576,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
       name: activeCategory?.name || ALL_CATEGORY.name,
       color: resolvedColor,
     });
-  }, [activeCategory, onThemeChange]);
+  }, [activeCategory, onThemeChange, activeHeaderColor]);
 
   const isInitialPageLoading = !isBootstrapped;
   const hasHeroBanners = (heroConfig?.banners?.items || []).length > 0;
@@ -725,7 +735,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
               <div>
                 <div
                   className="relative w-full overflow-hidden"
-                  style={embedded ? { backgroundColor: activeCategory?.headerColor || ALL_CATEGORY.headerColor } : undefined}>
+                  style={embedded ? { backgroundColor: activeHeaderColor } : undefined}>
                   {isBannersLoading ? (
                     <div className="w-full h-[190px] bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
                   ) : hasHeroBanners ? (
@@ -778,7 +788,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                           </div>
                           <div className="absolute right-[-10px] bottom-0 top-0 w-2/5 flex items-center justify-center">
                             <img
-                              src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400&fm=webp"
+                              src=""
                               alt="Promo"
                               className="w-full h-full object-contain rotate-3 scale-110"
                             />
@@ -831,7 +841,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                           </div>
                           <div className="absolute right-[-10px] bottom-0 top-0 w-2/5 flex items-center justify-center">
                             <img
-                              src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400&fm=webp"
+                              src=""
                               alt="Promo"
                               className="w-full h-full object-contain rotate-3 scale-110"
                             />
@@ -855,20 +865,20 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                   ? "border-y-0 shadow-none"
                   : "border-y border-[#e6ddc4] dark:border-[#3a352a] bg-[#f7f0df] dark:bg-[#2a261f] shadow-[0_10px_30px_rgba(15,23,42,0.08)]",
               )}
-              style={embedded ? { backgroundColor: activeCategory?.headerColor || ALL_CATEGORY.headerColor } : undefined}>
+              style={embedded ? { backgroundColor: activeHeaderColor } : undefined}>
               <div
                 className={cn(
                   "absolute inset-y-0 left-0 w-10 pointer-events-none",
                   embedded ? "bg-none" : "bg-gradient-to-r from-[#f7f0df] dark:from-[#2a261f] via-[#f7f0df]/90 dark:via-[#2a261f]/90 to-transparent",
                 )}
-                style={embedded ? { backgroundImage: `linear-gradient(to right, ${activeCategory?.headerColor || ALL_CATEGORY.headerColor}, ${activeCategory?.headerColor || ALL_CATEGORY.headerColor}E6, transparent)` } : undefined}
+                style={embedded ? { backgroundImage: `linear-gradient(to right, ${activeHeaderColor}, ${activeHeaderColor}E6, transparent)` } : undefined}
               />
               <div
                 className={cn(
                   "absolute inset-y-0 right-0 w-10 pointer-events-none",
                   embedded ? "bg-none" : "bg-gradient-to-l from-[#f7f0df] dark:from-[#2a261f] via-[#f7f0df]/90 dark:via-[#2a261f]/90 to-transparent",
                 )}
-                style={embedded ? { backgroundImage: `linear-gradient(to left, ${activeCategory?.headerColor || ALL_CATEGORY.headerColor}, ${activeCategory?.headerColor || ALL_CATEGORY.headerColor}E6, transparent)` } : undefined}
+                style={embedded ? { backgroundImage: `linear-gradient(to left, ${activeHeaderColor}, ${activeHeaderColor}E6, transparent)` } : undefined}
               />
               <div
                 className={cn(
@@ -950,7 +960,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                         }}
                         className="flex flex-col items-center gap-1 min-w-[84px] md:min-w-[112px] lg:min-w-[128px] cursor-pointer group/item snap-start">
                         <div
-                          className="relative w-[84px] h-[96px] md:w-[112px] md:h-[126px] lg:w-[128px] lg:h-[140px] rounded-t-full rounded-b-[24px] shadow-[0_10px_22px_rgba(15,23,42,0.10)] border flex items-start justify-center p-2 transition-all duration-300 group-hover/item:-translate-y-1 group-hover/item:shadow-[0_16px_30px_rgba(15,23,42,0.14)] overflow-hidden"
+                          className="relative w-[86px] h-[112px] md:w-[114px] md:h-[142px] lg:w-[128px] lg:h-[156px] rounded-t-full rounded-b-[24px] shadow-[0_10px_22px_rgba(15,23,42,0.10)] border flex flex-col items-center justify-between p-1.5 md:p-2 transition-all duration-300 group-hover/item:-translate-y-1 group-hover/item:shadow-[0_16px_30px_rgba(15,23,42,0.14)] overflow-hidden"
                           style={{
                             backgroundImage: `linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.6) 24%, rgba(255,255,255,0.15) 100%), linear-gradient(135deg, ${palette.bgFrom}, ${palette.bgVia}, ${palette.bgTo})`,
                             borderColor: palette.frameColor,
@@ -959,19 +969,23 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                             className="absolute inset-0 opacity-40 pointer-events-none"
                             style={{ backgroundColor: palette.glowColor }}
                           />
-                          {categoryImage ? (
-                            <img
-                              src={categoryImage}
-                              alt={cat.name}
-                              className="absolute left-1/2 top-3 z-10 h-[68px] w-[68px] -translate-x-1/2 object-contain drop-shadow-[0_5px_12px_rgba(0,0,0,0.10)] mix-blend-multiply group-hover/item:scale-110 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="absolute left-1/2 top-3 z-10 flex h-[68px] w-[68px] -translate-x-1/2 items-center justify-center rounded-[20px] bg-white/55 text-2xl font-black uppercase text-slate-400">
-                              {(cat.name || "?").charAt(0)}
-                            </div>
-                          )}
-                          <div className="absolute inset-x-2 bottom-1.5 z-20 text-center">
-                            <span className="block text-[10px] md:text-[11px] lg:text-[12px] font-semibold text-[#1f2b20] dark:text-gray-900 leading-tight whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] group-hover/item:text-[#0c831f] dark:group-hover/item:text-emerald-700 transition-colors">
+                          {/* Arch-shaped inner image frame with even space outside */}
+                          <div className="relative z-10 w-full h-[68px] md:h-[92px] lg:h-[106px] rounded-t-full rounded-b-[14px] md:rounded-b-[18px] overflow-hidden shrink-0 flex items-center justify-center bg-white/40 shadow-inner">
+                            {categoryImage ? (
+                              <img
+                                src={categoryImage}
+                                alt={cat.name}
+                                className="h-full w-full object-cover object-center group-hover/item:scale-110 transition-transform duration-500"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-2xl font-black uppercase text-slate-400">
+                                {(cat.name || "?").charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          {/* Dedicated bottom title area without overlap */}
+                          <div className="relative z-20 w-full px-0.5 pb-0.5 text-center flex items-center justify-center min-h-[22px]">
+                            <span className="block text-[10px] md:text-[11px] lg:text-[12px] font-bold text-[#1f2b20] dark:text-gray-900 leading-tight truncate drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] group-hover/item:text-[#0c831f] dark:group-hover/item:text-emerald-700 transition-colors">
                               {cat.name}
                             </span>
                           </div>

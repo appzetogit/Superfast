@@ -24,6 +24,13 @@ let cachedSettings = (() => {
  */
 export const updateThemeColor = (color) => {
   if (!color || typeof document === 'undefined') return;
+  const path = window.location.pathname.toLowerCase();
+  
+  // Do not mutate global :root for user dashboard/auth pages, let them handle scoping
+  if (path.startsWith('/food/user') || path.startsWith('/quick') || path.startsWith('/user')) {
+    return;
+  }
+  
   document.documentElement.style.setProperty('--primary-theme', color);
   document.documentElement.style.setProperty('--sidebar-theme', color);
 };
@@ -118,14 +125,7 @@ export const loadBusinessSettings = async (force = false) => {
       const settings = response?.data?.data || response?.data;
 
       if (settings) {
-        cachedSettings = settings;
-        try {
-          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-        } catch (e) {}
-        
-        updateFavicon(getDynamicFaviconUrl(settings));
-        updateTitle(settings.companyName);
-        updateThemeColor(settings.themeColor);
+        setCachedSettings(settings);
       }
       // Mark as fetched even if settings are empty to prevent infinite retries
       hasFetchedFromServer = true;
@@ -198,6 +198,13 @@ export const clearCache = () => {
  * Get cached settings
  */
 export const getCachedSettings = () => {
+  // Always re-read from localStorage to pick up cross-tab updates immediately
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+      cachedSettings = JSON.parse(saved);
+    }
+  } catch (e) {}
   return cachedSettings;
 };
 
@@ -220,3 +227,20 @@ export const getCompanyNameAsync = async () => {
     return "SUPERFAST";
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === SETTINGS_KEY && e.newValue) {
+      try {
+        const parsedSettings = JSON.parse(e.newValue);
+        cachedSettings = parsedSettings;
+        updateFavicon(getDynamicFaviconUrl(parsedSettings));
+        updateTitle(parsedSettings.companyName);
+        updateThemeColor(parsedSettings.themeColor);
+        window.dispatchEvent(new CustomEvent('businessSettingsUpdated', { detail: parsedSettings }));
+      } catch (err) {
+        console.error('Failed to sync settings from storage', err);
+      }
+    }
+  });
+}

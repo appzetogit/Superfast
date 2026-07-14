@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Phone, ArrowRight, ShieldCheck, Loader2, UserRound, Zap, HeadphonesIcon } from "lucide-react"
 import { toast } from "sonner"
@@ -299,6 +299,7 @@ export default function UnifiedOTPFastLogin() {
       className="h-[100dvh] flex flex-col relative font-sans overflow-hidden"
       style={{
         backgroundColor: SUPERFAST_BRAND.cream,
+        '--primary-theme': '#f97316',
         paddingBottom: keyboardInset ? `${keyboardInset + 24}px` : undefined,
       }}
     >

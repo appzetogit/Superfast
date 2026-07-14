@@ -202,7 +202,7 @@ const SectionRenderer = ({ sections = [], productsById = {}, categoriesById = {}
           const allProducts = hydratedItems.map(p => ({
             ...p,
             id: p._id || p.id,
-            image: resolveQuickImageUrl(p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2"),
+            image: resolveQuickImageUrl(p.mainImage || p.image),
             price: Number(p.price || p.salePrice || 0),
             originalPrice: Number(p.originalPrice || p.mrp || p.price || p.salePrice || 0)
           }));

@@ -85,7 +85,7 @@ const CategoryProductsPage = () => {
                     const formattedProds = dbProds.map(p => ({
                         ...p,
                         id: p._id,
-                        image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2",
+                        image: p.mainImage || p.image,
                         price: p.salePrice || p.price,
                         originalPrice: p.price,
                         weight: p.weight || "1 unit",
