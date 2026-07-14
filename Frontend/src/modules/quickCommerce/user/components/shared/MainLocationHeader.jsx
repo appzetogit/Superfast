@@ -199,7 +199,7 @@ function CategoryNavColumn({
       style={{
         borderBottomColor: isActive ? "transparent" : categoryAccent,
       }}
-      className="relative z-[2] flex min-w-[48px] shrink-0 cursor-pointer flex-col items-center gap-0.5 border-b-2 px-2 pb-0.5 pt-0.5 snap-start md:min-w-[58px]">
+      className="relative z-[2] flex min-w-[48px] shrink-0 cursor-pointer flex-col items-center gap-1 border-b-2 px-2 pb-1 pt-1.5 snap-start md:min-w-[58px]">
       <div className="relative z-10 flex h-9 w-9 items-center justify-center md:h-11 md:w-11">
         {typeof cat.icon === "function" ||
           (typeof cat.icon === "object" && cat.icon.$$typeof) ? (
@@ -220,7 +220,7 @@ function CategoryNavColumn({
           />
         )}
       </div>
-      <div className="relative mt-px w-full">
+      <div className="relative mt-1 w-full">
         <span
           ref={labelRef}
           className={cn(
@@ -238,7 +238,7 @@ function CategoryNavColumn({
         <motion.svg
           layoutId="active-category-curve"
           aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[6] h-[22px] w-full overflow-visible"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[6] h-[28px] w-full overflow-visible"
           viewBox="0 0 100 20"
           preserveAspectRatio="none"
           shapeRendering="geometricPrecision"

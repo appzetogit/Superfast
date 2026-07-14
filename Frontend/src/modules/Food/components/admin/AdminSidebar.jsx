@@ -544,7 +544,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     const matchesPath = (candidatePath) =>
       currentPath === candidatePath || currentPath.startsWith(`${candidatePath}/`)
 
-    if (targetPath === "/admin" || targetPath === "/admin/food") {
+    if (targetPath === "/admin" || targetPath === "/admin/food" || targetPath === "/admin/quick-commerce") {
       return currentPath === targetPath
     }
 

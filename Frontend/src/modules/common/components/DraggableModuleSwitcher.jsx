@@ -15,14 +15,14 @@ const DraggableModuleSwitcher = () => {
     let icon = <UtensilsCrossed className="h-3 w-3" strokeWidth={2.6} />;
 
     if (pathname.startsWith('/food')) {
-        targetPath = "/quick/user";
+        targetPath = "/quick";
         targetName = "SuperfastMart";
         themeColor = "text-green-600";
         bgColor = "bg-green-50";
         icon = <ShoppingBag className="h-3 w-3" strokeWidth={2.6} />;
     } else if (pathname.startsWith('/quick')) {
         targetPath = "/food/user";
-        targetName = "SuperfastMart";
+        targetName = "SuperfastFood";
         themeColor = "text-red-600";
         bgColor = "bg-red-50";
         icon = <UtensilsCrossed className="h-3 w-3" strokeWidth={2.6} />;
@@ -37,7 +37,7 @@ const DraggableModuleSwitcher = () => {
             style={{ bottom: '100px', left: '16px' }} 
         >
             <div 
-                onClick={() => navigate(targetPath, { replace: true })}
+                onClick={() => { window.location.href = targetPath; }}
                 className="flex items-center gap-2 rounded-t-[16px] rounded-b-[8px] border border-gray-200 bg-white px-3 pb-2 pt-1.5 shadow-lg active:scale-95 transition-transform"
             >
                 <div className="text-left leading-none">

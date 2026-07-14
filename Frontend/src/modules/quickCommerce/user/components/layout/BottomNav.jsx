@@ -10,9 +10,12 @@ import {
     getQuickProfilePath,
 } from '../../utils/routes';
 import DraggableModuleSwitcher from "../../../../common/components/DraggableModuleSwitcher";
+import { useSettings } from '@core/context/SettingsContext';
 
 const BottomNav = () => {
     const location = useLocation();
+    const { settings } = useSettings();
+    const activeColor = settings?.moduleThemes?.quickCommerce?.secondaryThemeColor || '#0c831f';
     const isSharedQuickProfileRoute =
         location.pathname === '/profile' &&
         new URLSearchParams(location.search).get('from') === 'quick';
@@ -27,7 +30,7 @@ const BottomNav = () => {
             return true;
         }
         if (targetPath === getQuickHomePath(location.pathname)) {
-            return location.pathname === targetPath;
+            return location.pathname === targetPath || location.pathname === '/quick' || location.pathname === '/quick/user' || location.pathname === '/quick/user/';
         }
         return location.pathname === targetPath || location.pathname.startsWith(`${targetPath}/`);
     };
@@ -58,8 +61,9 @@ const BottomNav = () => {
                                         strokeWidth={isActive ? 2.5 : 2}
                                         className={cn(
                                             "transition-colors duration-300",
-                                            isActive ? "text-[var(--primary-theme)]" : "text-gray-400 dark:text-slate-500"
+                                            isActive ? "" : "text-gray-400 dark:text-slate-500"
                                         )}
+                                        style={isActive ? { color: activeColor } : {}}
                                     />
                                 </motion.div>
 
@@ -69,8 +73,9 @@ const BottomNav = () => {
                                     }}
                                     className={cn(
                                         "text-[10px] font-bold tracking-tight mt-1 transition-colors duration-300",
-                                        isActive ? "text-[var(--primary-theme)]" : "text-gray-400 dark:text-slate-500"
+                                        isActive ? "" : "text-gray-400 dark:text-slate-500"
                                     )}
+                                    style={isActive ? { color: activeColor } : {}}
                                 >
                                     {item.label}
                                 </motion.span>
@@ -79,7 +84,8 @@ const BottomNav = () => {
                             {isActive && (
                                 <motion.div
                                     layoutId="topLine"
-                                    className="absolute -top-[1px] w-8 h-[3px] bg-[var(--primary-theme)] rounded-full"
+                                    className="absolute -top-[1px] w-8 h-[3px] rounded-full"
+                                    style={{ backgroundColor: activeColor }}
                                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                 />
                             )}

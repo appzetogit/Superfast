@@ -168,7 +168,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get('tab') === 'quick') return "quick";
+      if (searchParams.get('tab') === 'quick' || window.location.pathname.startsWith('/quick')) return "quick";
     }
     return "food";
   });
@@ -339,15 +339,15 @@ export default function Home() {
   // Sync activeTab with URL
   useEffect(() => {
     const searchParams = new URLSearchParams(routerLocation.search);
-    const targetTab = searchParams.get('tab') === 'quick' ? 'quick' : 'food';
+    const targetTab = (searchParams.get('tab') === 'quick' || routerLocation.pathname.startsWith('/quick')) ? 'quick' : 'food';
 
     if (activeTab !== targetTab) setActiveTab(targetTab);
-  }, [routerLocation.search, activeTab]);
+  }, [routerLocation.search, routerLocation.pathname, activeTab]);
 
   // --- Handlers ---
   const handleTabChange = (tab) => {
     startTransition(() => setActiveTab(tab));
-    navigate(`/?tab=${tab}`, { replace: true });
+    navigate({ search: `?tab=${tab}` }, { replace: true });
   };
 
   const handleVegModeChange = (newValue) => {
