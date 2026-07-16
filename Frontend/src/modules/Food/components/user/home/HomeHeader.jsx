@@ -73,7 +73,7 @@ const getTheme = (vegMode, isQuick, colors) => {
     text: "#ffffff",
     activeBg: secondary,
     activeText: "#ffffff",
-    inactiveBg: "rgba(0,0,0,0.35)",
+    inactiveBg: "rgba(255,255,255,0.2)",
     inactiveBorder: "rgba(255,255,255,0.08)",
   };
 };

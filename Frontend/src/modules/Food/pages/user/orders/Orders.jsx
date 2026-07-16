@@ -292,6 +292,7 @@ export default function Orders() {
               orderId: order.orderId || order._id?.toString(), // Keep orderId for display
               status: isRestaurantCancelled ? 'restaurant_cancelled' : getOrderStatus({ ...order, status: backendStatus }),
               originalStatus: originalStatus, // Keep original status for reference
+              cancellationReason: order.cancellationReason || '', // Include reason
               createdAt: createdAt.toISOString(),
               address: order.address || order.deliveryAddress || {},
               items: (order.items || []).map(item => ({
@@ -955,7 +956,14 @@ Order again from this restaurant in the ${companyName} app.`
                       <p className="text-xs font-medium text-gray-500 mt-1">Cancelled by you</p>
                     )}
                     {isCancelled && !isRestaurantCancelled && !isUserCancelled && (
-                      <p className="text-xs font-medium text-gray-500 mt-1">Cancelled</p>
+                      <div className="flex flex-col">
+                        <p className="text-xs font-medium text-gray-500 mt-1">
+                          {order.originalStatus === 'cancelled_by_admin' ? 'Cancelled by Admin' : 'Cancelled'}
+                        </p>
+                        {order.cancellationReason && (
+                          <p className="text-xs text-red-500 mt-1">Reason: {order.cancellationReason}</p>
+                        )}
+                      </div>
                     )}
                     {order.status === 'scheduled' && (
                       <div className="flex items-center gap-1.5 mt-1.5 p-2 bg-blue-50 border border-blue-100 rounded-lg w-fit">

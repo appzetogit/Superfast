@@ -358,6 +358,9 @@ const orderSchema = new mongoose.Schema(
             ],
             default: 'created'
         },
+        cancellationReason: { type: String, default: null },
+        cancelledAt: { type: Date, default: null },
+        cancelledBy: { type: String, default: null },
         dispatch: {
             type: dispatchSchema,
             default: () => ({})

@@ -22,7 +22,8 @@ import api from "@food/api"
 import { restaurantAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
-import Cropper from "react-easy-crop"
+import Cropper from "react-cropper"
+import "cropperjs/dist/cropper.css"
 import { isFlutterBridgeAvailable } from "@food/utils/imageUploadUtils"
 import { getFoodVariants } from "@food/utils/foodVariants"
 const debugLog = (...args) => { }
@@ -95,6 +96,7 @@ export default function ItemDetailsPage() {
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [isCropping, setIsCropping] = useState(false)
+  const cropperRef = useRef(null)
   const [touchStart, setTouchStart] = useState(null)
   const [touchEnd, setTouchEnd] = useState(null)
   const [direction, setDirection] = useState(0)
@@ -439,7 +441,13 @@ export default function ItemDetailsPage() {
 
   const handleCropSave = async () => {
     try {
-      const croppedImage = await getCroppedImg(imageToCrop, croppedAreaPixels)
+      if (!cropperRef.current || !cropperRef.current.cropper) return;
+      const croppedImage = await new Promise((resolve) => {
+        cropperRef.current.cropper.getCroppedCanvas().toBlob((blob) => {
+          resolve(blob);
+        }, "image/jpeg");
+      });
+      if (!croppedImage) throw new Error("Failed to crop");
       
       // Single-image mode: keep only the first selected valid file
       const previewUrl = URL.createObjectURL(croppedImage)
@@ -1518,29 +1526,16 @@ export default function ItemDetailsPage() {
             </div>
             <div className="relative flex-1">
               <Cropper
-                image={imageToCrop}
-                crop={crop}
-                zoom={zoom}
-                aspect={4 / 3}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
+                src={imageToCrop}
+                style={{ height: "100%", width: "100%" }}
+                initialAspectRatio={NaN}
+                aspectRatio={NaN}
+                guides={true}
+                ref={cropperRef}
+                viewMode={1}
+                dragMode="crop"
+                background={false}
               />
-            </div>
-            <div className="p-6 bg-black/50 z-10">
-              <div className="flex items-center gap-4">
-                <span className="text-white text-sm">Zoom</span>
-                <input
-                  type="range"
-                  value={zoom}
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  aria-labelledby="Zoom"
-                  onChange={(e) => setZoom(e.target.value)}
-                  className="flex-1 accent-white"
-                />
-              </div>
             </div>
           </motion.div>
         )}

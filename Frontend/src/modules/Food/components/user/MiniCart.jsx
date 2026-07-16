@@ -31,12 +31,12 @@ const MiniCart = ({
                         animate={{ y: 0, opacity: 1, scale: 1 }}
                         exit={{ y: 50, opacity: 0, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        className="pointer-events-auto w-full max-w-[170px]"
+                        className="pointer-events-auto w-full max-w-[200px]"
                     >
                         <Link
                             to="/cart"
                             className={cn(
-                                "flex items-center gap-2 text-white rounded-full shadow-[0_12px_40px_rgba(0,0,0,0.3)] hover:scale-[1.05] active:scale-95 transition-all group border border-white/20 relative overflow-hidden py-1.5 px-2 bg-[#ed840c]",
+                                "flex items-center gap-2.5 text-white rounded-full shadow-[0_12px_40px_rgba(0,130,38,0.35)] hover:scale-[1.05] active:scale-95 transition-all group border border-white/20 relative overflow-hidden py-2 px-3 bg-gradient-to-r from-[#008226] to-[#09962e] hover:from-[#006f20] hover:to-[#088027]",
                             )}
                         >
                             <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none">
@@ -45,7 +45,7 @@ const MiniCart = ({
 
                             {/* Item Image */}
                             <div className={cn(
-                                "h-8 w-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden border border-gray-100",
+                                "h-9 w-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden border border-gray-100",
                             )}>
                                 {cart[0]?.image || cart[0]?.imageUrl ? (
                                     <img 
@@ -64,15 +64,15 @@ const MiniCart = ({
 
                             {/* Text Section */}
                             <div className="flex-1 flex flex-col justify-center min-w-0">
-                                <h4 className="font-black leading-tight text-[13px] truncate text-white uppercase tracking-tighter">View cart</h4>
-                                <p className="opacity-90 font-bold leading-tight text-[9px] text-white/95">
+                                <h4 className="font-black leading-tight text-[14px] truncate text-white uppercase tracking-tighter">View cart</h4>
+                                <p className="opacity-90 font-bold leading-tight text-[10px] text-white/95 mt-0.5">
                                   {cartCount} {cartCount === 1 ? 'item' : 'items'}
                                 </p>
                             </div>
 
                             {/* Arrow Icon in circle */}
-                            <div className="h-6 w-6 rounded-full bg-white/25 flex items-center justify-center flex-shrink-0 group-hover:bg-white/35 transition-colors">
-                                <ChevronRight size={16} strokeWidth={3} className="text-white" />
+                            <div className="h-7 w-7 rounded-full bg-white/25 flex items-center justify-center flex-shrink-0 group-hover:bg-white/35 transition-colors">
+                                <ChevronRight size={18} strokeWidth={3} className="text-white" />
                             </div>
                         </Link>
                     </motion.div>

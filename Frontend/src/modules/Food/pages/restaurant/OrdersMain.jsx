@@ -454,7 +454,9 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 , searchTerm = "" }) 
                 ? "Cancelled by User"
                 : order.cancelledBy === "restaurant"
                   ? "Cancelled by Restaurant"
-                  : "Cancelled";
+                  : order.cancelledBy === "admin"
+                    ? "Cancelled by Admin"
+                    : "Cancelled";
 
             return (
               <div

@@ -481,33 +481,6 @@ export default function ExploreMore() {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [deleteInput, setDeleteInput] = useState("")
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  const handleDeleteAccount = async () => {
-    if (deleteInput !== "DELETE" || isDeleting) return
-    try {
-      setIsDeleting(true)
-      await authAPI.deleteAccount("restaurant")
-      setDeleteConfirmOpen(false)
-
-      clearModuleAuth("restaurant")
-      localStorage.removeItem("restaurant_onboarding")
-      localStorage.removeItem("restaurant_accessToken")
-      localStorage.removeItem("restaurant_authenticated")
-      localStorage.removeItem("restaurant_user")
-      sessionStorage.removeItem("restaurantAuthData")
-      window.dispatchEvent(new Event("restaurantAuthChanged"))
-      
-      toast.success("Account deleted successfully")
-      navigate("/food/restaurant/login", { replace: true })
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to delete account")
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   const handleLogout = async () => {
     if (isLoggingOut) return // Prevent multiple clicks
@@ -1037,27 +1010,7 @@ export default function ExploreMore() {
           <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
         </motion.button>
 
-        <motion.button
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55, duration: 0.25 }}
-          onClick={() => {
-            setDeleteInput("")
-            setDeleteConfirmOpen(true)
-          }}
-          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-left mt-4 mb-6"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-100">
-              <Trash2 className="w-5 h-5 text-red-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-base font-semibold text-red-700">Delete Account</p>
-              <p className="text-sm text-red-500">Permanently delete your account</p>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
-        </motion.button>
+
       </div>
 
       {/* Search Popup */}
@@ -1110,72 +1063,6 @@ export default function ExploreMore() {
                   className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
                 >
                   {isLoggingOut ? "Logging out..." : "Yes"}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Confirmation Popup */}
-      <AnimatePresence>
-        {deleteConfirmOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-[60]"
-              onClick={() => {
-                if (!isDeleting) setDeleteConfirmOpen(false)
-              }}
-            />
-
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 24 }}
-              transition={{ duration: 0.22 }}
-              className="fixed inset-x-4 bottom-28 z-[61] mx-auto w-auto max-w-md rounded-3xl bg-white p-5 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                  <Trash2 className="w-5 h-5 text-red-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Delete Account?</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  This action cannot be undone. To confirm, type <strong className="text-gray-900">DELETE</strong> below.
-                </p>
-              </div>
-
-              <div className="mt-4">
-                <input 
-                  type="text" 
-                  value={deleteInput} 
-                  onChange={(e) => setDeleteInput(e.target.value.toUpperCase())} 
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 text-center uppercase font-bold outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all"
-                  placeholder="DELETE"
-                />
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmOpen(false)}
-                  disabled={isDeleting}
-                  className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
-                  disabled={isDeleting || deleteInput !== "DELETE"}
-                  className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </motion.div>

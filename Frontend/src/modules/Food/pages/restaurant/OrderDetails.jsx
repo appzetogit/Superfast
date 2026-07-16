@@ -236,7 +236,7 @@ export default function OrderDetails() {
               ...(reached.ready ? [{ event: 'Ready for pickup', timestamp: order.tracking?.ready?.timestamp ? new Date(order.tracking.ready.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
               ...(reached.outForDelivery ? [{ event: 'Out for delivery', timestamp: order.tracking?.outForDelivery?.timestamp ? new Date(order.tracking.outForDelivery.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
               ...(reached.delivered ? [{ event: 'Delivered', timestamp: order.tracking?.delivered?.timestamp ? new Date(order.tracking.delivered.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
-              ...(statusLower === 'cancelled' ? [{ event: 'Cancelled', timestamp: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString('en-GB') : '', status: 'rejected', reason: order.cancellationReason }] : [])
+              ...(statusLower.includes('cancel') ? [{ event: 'Cancelled', timestamp: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString('en-GB') : '', status: 'rejected', reason: order.cancellationReason }] : [])
             ]
           }
           
@@ -589,10 +589,10 @@ export default function OrderDetails() {
   }
 
   const getStatusColor = (status) => {
+    if (status === "REJECTED" || status?.includes("CANCELLED")) {
+      return "bg-red-700 text-white"
+    }
     switch (status) {
-      case "REJECTED":
-      case "CANCELLED":
-        return "bg-red-700 text-white"
       case "DELIVERED":
         return "bg-[#49AB14] text-white"
       default:
@@ -696,7 +696,10 @@ export default function OrderDetails() {
           <div className="flex items-start justify-between mb-3">
             <div className="flex flex-col items-end gap-1">
               <span className={`px-2.5 py-1 rounded text-xs font-bold ${getStatusColor(orderData.status)}`}>
-                {orderData.status}
+                {orderData.status === "CANCELLED_BY_ADMIN" ? "CANCELLED BY ADMIN" :
+                 orderData.status === "CANCELLED_BY_RESTAURANT" ? "CANCELLED BY RESTAURANT" :
+                 orderData.status === "CANCELLED_BY_USER" ? "CANCELLED BY USER" :
+                 orderData.status}
               </span>
               <span className="text-xs text-gray-500">{orderData.date}, {orderData.time}</span>
               {/* Resend button for order details */}

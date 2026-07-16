@@ -449,24 +449,38 @@ export default function UserOrderDetails() {
       {/* Scrollable Content */}
       <div className="p-4 space-y-4">
         {/* Status Card */}
-        <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl flex items-center gap-3 shadow-sm">
-          <div className="bg-gray-100 dark:bg-neutral-700 p-2 rounded-lg">
-            <ShoppingBag className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+        <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-100 dark:bg-neutral-700 p-2 rounded-lg">
+              <ShoppingBag className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-800 dark:text-white capitalize">
+                {order.status === "delivered"
+                  ? "Order was delivered"
+                  : order.status === "scheduled"
+                  ? `Scheduled for ${new Date(order.scheduledAt).toLocaleString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
+                  : order.status === "cancelled_by_admin"
+                  ? "Order Cancelled by Admin"
+                  : order.status === "cancelled_by_restaurant"
+                  ? "Order Cancelled by Restaurant"
+                  : order.status === "cancelled_by_user"
+                  ? "Order Cancelled by You"
+                  : "Order status: " + (order.status || "Processing")}
+              </h2>
+            </div>
           </div>
-          <div>
-            <h2 className="font-semibold text-gray-800 dark:text-white">
-              {order.status === "delivered"
-                ? "Order was delivered"
-                : order.status === "scheduled"
-                ? `Scheduled for ${new Date(order.scheduledAt).toLocaleString("en-US", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}`
-                : "Order status: " + (order.status || "Processing")}
-            </h2>
-          </div>
+          {['cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(order.status) && order.cancellationReason && (
+            <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
+              <p className="text-sm text-red-700 dark:text-red-400 font-medium">Cancellation Reason:</p>
+              <p className="text-sm text-red-600 dark:text-red-300 mt-1">{order.cancellationReason}</p>
+            </div>
+          )}
         </div>
 
         {/* Pickup Info Card */}

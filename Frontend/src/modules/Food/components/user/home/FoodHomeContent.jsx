@@ -99,7 +99,7 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
             </div>
 
             <div className="transform transition-transform duration-300 group-hover:-translate-y-1">
-              <CardContent className="flex flex-grow flex-col p-3 pt-3 sm:p-4 sm:pt-4 lg:p-5 lg:pt-5">
+              <CardContent className="flex flex-grow flex-col p-3 pt-2 sm:p-4 sm:pt-2 lg:p-5 lg:pt-3">
                 <div className="mb-2 flex items-start justify-between gap-2 lg:mb-3">
                   <div className="min-w-0 flex-1">
                     <h3 className="line-clamp-1 text-lg font-medium leading-tight tracking-tight text-gray-950 transition-colors duration-300 group-hover:text-[#ef4f5f] dark:text-white lg:text-2xl">

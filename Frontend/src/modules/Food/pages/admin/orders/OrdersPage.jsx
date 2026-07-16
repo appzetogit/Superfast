@@ -16,8 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Loader2 } from "lucide-react"
 import { OrdersDashboardSkeleton } from "@food/components/ui/loading-skeletons"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
-import alertSound from "@food/assets/audio/alert.mp3"
-import originalSound from "@food/assets/audio/original.mp3"
+const NEW_ADMIN_SOUND = "/universfield-new-notification-036-485897.mp3"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -74,10 +73,7 @@ export default function OrdersPage({ statusKey = "all" }) {
   }, [])
 
   const playDeliveryStyleBuzz = useCallback(async () => {
-    const selectedSound = localStorage.getItem("delivery_alert_sound") || "zomato_tone"
-    const soundFile = selectedSound === "original"
-      ? resolveAudioSource(originalSound, "admin-original")
-      : resolveAudioSource(alertSound, "admin-alert")
+    const soundFile = resolveAudioSource(NEW_ADMIN_SOUND, "admin-alert")
 
     try {
       if (!notificationAudioRef.current) {
@@ -110,7 +106,7 @@ export default function OrdersPage({ statusKey = "all" }) {
 
       try {
         if (!fallbackAudioRef.current) {
-          fallbackAudioRef.current = new Audio(alertSound)
+          fallbackAudioRef.current = new Audio(NEW_ADMIN_SOUND)
           fallbackAudioRef.current.preload = "auto"
           fallbackAudioRef.current.volume = 1
         }
@@ -235,7 +231,7 @@ export default function OrdersPage({ statusKey = "all" }) {
 
       try {
         if (!fallbackAudioRef.current) {
-          fallbackAudioRef.current = new Audio(alertSound)
+          fallbackAudioRef.current = new Audio(NEW_ADMIN_SOUND)
           fallbackAudioRef.current.preload = "auto"
           fallbackAudioRef.current.volume = 1
         }
@@ -248,10 +244,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         fallbackAudioRef.current.muted = false
 
         if (!notificationAudioRef.current) {
-          const selectedSound = localStorage.getItem("delivery_alert_sound") || "zomato_tone"
-          const soundFile = selectedSound === "original"
-            ? resolveAudioSource(originalSound, "admin-original")
-            : resolveAudioSource(alertSound, "admin-alert")
+          const soundFile = resolveAudioSource(NEW_ADMIN_SOUND, "admin-alert")
           notificationAudioRef.current = new Audio(soundFile)
           notificationAudioRef.current.preload = "auto"
           notificationAudioRef.current.volume = 1

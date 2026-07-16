@@ -97,10 +97,21 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
   const handleStatusChange = async (newRawStatus) => {
     const orderId = order?.id || order?._id;
     if (!orderId || !newRawStatus || newRawStatus === localRawStatus) return;
+    
+    let reason = undefined;
+    if (newRawStatus === 'cancelled_by_admin') {
+      reason = window.prompt("Please enter a reason for cancelling this order:");
+      if (reason === null) return; // Cancelled prompt
+      if (!reason.trim()) {
+        toast.error("Cancellation reason is required");
+        return;
+      }
+    }
+
     setIsUpdatingStatus(true);
     try {
       const { adminAPI } = await import('@/services/api');
-      const response = await adminAPI.updateOrderStatus(orderId, newRawStatus);
+      const response = await adminAPI.updateOrderStatus(orderId, newRawStatus, reason);
       if (response?.data?.success !== false) {
         setLocalRawStatus(newRawStatus);
         toast.success('Order status updated');
