@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
 import { exportToCSV, exportToExcel, exportToPDF, exportToJSON } from "./ordersExportUtils"
+import { NotoSansDevanagariBase64 } from "../../../../../utils/fonts/NotoSansDevanagari"
 
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings"
 const debugError = () => {}
@@ -292,6 +293,11 @@ export function useOrdersManagement(orders, statusKey, title) {
         unit: "mm",
         format: "a4",
       })
+      
+      doc.addFileToVFS("NotoSansDevanagari.ttf", NotoSansDevanagariBase64);
+      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "normal");
+      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "bold");
+      doc.setFont("NotoSansDevanagari", "normal");
 
       const pageWidth = doc.internal.pageSize.getWidth()
       const orderId = order.orderId || order.id || order.subscriptionId || "N/A"
@@ -482,6 +488,7 @@ export function useOrdersManagement(orders, statusKey, title) {
           lineColor: [226, 232, 240],
           lineWidth: 0.25,
           fontStyle: "bold",
+          font: "NotoSansDevanagari",
         },
         columnStyles: {
           0: { cellWidth: 45 },
@@ -512,10 +519,12 @@ export function useOrdersManagement(orders, statusKey, title) {
           textColor: 255,
           fontSize: 9,
           fontStyle: "bold",
+          font: "NotoSansDevanagari",
         },
         bodyStyles: {
           fontSize: 9,
           textColor: [30, 41, 59],
+          font: "NotoSansDevanagari",
         },
         alternateRowStyles: {
           fillColor: [248, 250, 252],

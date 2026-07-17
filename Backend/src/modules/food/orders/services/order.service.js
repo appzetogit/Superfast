@@ -1974,6 +1974,24 @@ export async function calculateOrder(userId, dto) {
 
 // ----- Create order -----
 export async function createOrder(userId, dto) {
+  if (!userId) throw new ValidationError('User ID is required');
+  const activeOrder = await FoodOrder.findOne({
+    userId,
+    orderStatus: {
+      $nin: [
+        'delivered',
+        'cancelled_by_user',
+        'cancelled_by_restaurant',
+        'cancelled_by_admin',
+        'cancelled'
+      ]
+    }
+  }).lean();
+
+  if (activeOrder) {
+    throw new ValidationError('You already have an active order. Please wait for it to be delivered or cancelled before placing a new one.');
+  }
+
   const items = normalizeOrderItems(dto.items, dto.orderType);
   await syncItemsWithDatabase(items);
 

@@ -24,6 +24,8 @@ const LEGACY_ENUM = new Set([
   "delivered",
   "cancelled",
   "returned",
+  "placed",
+  "created"
 ]);
 
 function legacyFromWorkflow(workflowStatus) {
@@ -112,6 +114,8 @@ const DISPLAY_LABELS = {
   out_for_delivery: "Out for delivery",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  placed: "Payment Pending",
+  created: "Payment Pending",
 };
 
 /** Human-readable status for list/detail badges (customer-facing tone). */

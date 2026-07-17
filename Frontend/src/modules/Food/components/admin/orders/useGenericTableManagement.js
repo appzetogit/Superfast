@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
-import { exportToExcel, exportToPDF } from "./ordersExportUtils"
+import { exportToCSV, exportToExcel, exportToPDF } from './ordersExportUtils'
+import { NotoSansDevanagariBase64 } from "../../../../../utils/fonts/NotoSansDevanagari"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -90,6 +91,11 @@ export function useGenericTableManagement(data, title, searchFields = []) {
         unit: 'mm',
         format: 'a4'
       })
+      
+      doc.addFileToVFS("NotoSansDevanagari.ttf", NotoSansDevanagariBase64);
+      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "normal");
+      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "bold");
+      doc.setFont("NotoSansDevanagari", "normal");
 
       // Add title
       doc.setFontSize(18)
@@ -165,7 +171,8 @@ export function useGenericTableManagement(data, title, searchFields = []) {
             fillColor: [59, 130, 246],
             textColor: 255,
             fontStyle: 'bold',
-            fontSize: 10
+            fontSize: 10,
+            font: "NotoSansDevanagari"
           },
           bodyStyles: {
             fontSize: 9,

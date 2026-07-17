@@ -23,6 +23,7 @@ import {
   Sparkles
 } from "lucide-react"
 import { jsPDF } from "jspdf"
+import { NotoSansDevanagariBase64 } from "../../../../../utils/fonts/NotoSansDevanagari"
 import autoTable from "jspdf-autotable"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Card, CardContent } from "@food/components/ui/card"
@@ -1791,6 +1792,11 @@ export default function OrderTracking() {
 
     try {
       const doc = new jsPDF({ unit: "pt", format: "a4" })
+      
+      doc.addFileToVFS("NotoSansDevanagari.ttf", NotoSansDevanagariBase64);
+      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "normal");
+      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "bold");
+      
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
       const margin = 40
@@ -1819,11 +1825,11 @@ export default function OrderTracking() {
       doc.setFillColor(18, 18, 18)
       doc.rect(0, 0, pageWidth, 116, "F")
       doc.setTextColor(255, 255, 255)
-      doc.setFont("helvetica", "bold")
+      doc.setFont("NotoSansDevanagari", "bold")
       doc.setFontSize(24)
       doc.text(INVOICE_BRAND_NAME, margin, 52)
       doc.setFontSize(11)
-      doc.setFont("helvetica", "normal")
+      doc.setFont("NotoSansDevanagari", "normal")
       doc.text("Tax Invoice", margin, 72)
       doc.text(`Order Invoice`, pageWidth - margin, 52, { align: "right" })
       doc.text(`Invoice Ref: INV-${order?.orderId || order?.id || "N/A"}`, pageWidth - margin, 72, { align: "right" })
@@ -1831,12 +1837,12 @@ export default function OrderTracking() {
 
       y = 148
       doc.setTextColor(17, 24, 39)
-      doc.setFont("helvetica", "bold")
+      doc.setFont("NotoSansDevanagari", "bold")
       doc.setFontSize(11)
       doc.text("Billed To", margin, y)
       doc.text("Order Snapshot", pageWidth / 2 + 10, y)
 
-      doc.setFont("helvetica", "normal")
+      doc.setFont("NotoSansDevanagari", "normal")
       doc.setFontSize(10)
       const billedToLines = [
         customerName,
@@ -1869,10 +1875,10 @@ export default function OrderTracking() {
       doc.line(margin, y, pageWidth - margin, y)
       y += 22
 
-      doc.setFont("helvetica", "bold")
+      doc.setFont("NotoSansDevanagari", "bold")
       doc.setFontSize(11)
       doc.text(order?.orderType === "mixed" ? "Pickup Points" : "Pickup Source", margin, y)
-      doc.setFont("helvetica", "normal")
+      doc.setFont("NotoSansDevanagari", "normal")
       doc.setFontSize(10)
       y += 16
 
@@ -1890,20 +1896,29 @@ export default function OrderTracking() {
         startY: y,
         margin: { left: margin, right: margin },
         head: [["Item", "Qty", "Unit Price", "Line Total"]],
-        body: (order?.items || []).map((item) => ([
-          item?.variantName ? `${item.name || "Item"} (${item.variantName})` : (item?.name || "Item"),
-          String(item?.quantity || 1),
-          formatInvoiceCurrency(item?.price || 0),
-          formatInvoiceCurrency((Number(item?.price || 0) * Number(item?.quantity || 1))),
-        ])),
+        body: (order?.items || []).map((item) => {
+          const safeName = item?.name || "Item";
+          const safeVariant = item?.variantName || "";
+          const displayName = safeVariant ? `${safeName} (${safeVariant})` : safeName;
+          return [
+            displayName,
+            String(item?.quantity || 1),
+            formatInvoiceCurrency(item?.price || 0),
+            formatInvoiceCurrency((Number(item?.price || 0) * Number(item?.quantity || 1))),
+          ];
+        }),
         theme: "striped",
         headStyles: {
           fillColor: [17, 24, 39],
           textColor: 255,
           fontStyle: "bold",
+          font: "NotoSansDevanagari",
+        },
+        bodyStyles: {
+          font: "NotoSansDevanagari",
         },
         styles: {
-          font: "helvetica",
+          font: "NotoSansDevanagari",
           fontSize: 9,
           cellPadding: 8,
           textColor: [31, 41, 55],
@@ -1933,7 +1948,7 @@ export default function OrderTracking() {
 
       doc.setFontSize(10)
       totals.forEach(([label, value]) => {
-        doc.setFont("helvetica", "normal")
+        doc.setFont("NotoSansDevanagari", "normal")
         doc.text(label, totalsXLabel, y)
         doc.text(value, totalsXValue, y, { align: "right" })
         y += 16
@@ -1942,7 +1957,7 @@ export default function OrderTracking() {
       doc.setDrawColor(17, 24, 39)
       doc.line(totalsXLabel, y + 2, totalsXValue, y + 2)
       y += 20
-      doc.setFont("helvetica", "bold")
+      doc.setFont("NotoSansDevanagari", "bold")
       doc.setFontSize(13)
       doc.text("Grand Total", totalsXLabel, y)
       doc.text(formatInvoiceCurrency(order?.totalAmount || order?.total || 0), totalsXValue, y, { align: "right" })
@@ -1950,7 +1965,7 @@ export default function OrderTracking() {
       const footerY = pageHeight - 72
       doc.setDrawColor(229, 231, 235)
       doc.line(margin, footerY - 18, pageWidth - margin, footerY - 18)
-      doc.setFont("helvetica", "normal")
+      doc.setFont("NotoSansDevanagari", "normal")
       doc.setFontSize(9)
       doc.setTextColor(107, 114, 128)
       doc.text(`${INVOICE_BRAND_NAME} order support invoice`, margin, footerY)

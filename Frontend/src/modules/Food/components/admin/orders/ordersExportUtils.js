@@ -1,6 +1,7 @@
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+import { NotoSansDevanagariBase64 } from "../../../../../utils/fonts/NotoSansDevanagari"
 
 // Export utility functions for orders
 export const exportToCSV = (orders, filename = "orders") => {
@@ -216,6 +217,11 @@ export const exportToPDF = async (orders, filename = "orders") => {
       unit: 'mm',
       format: 'a4'
     })
+    
+    doc.addFileToVFS("NotoSansDevanagari.ttf", NotoSansDevanagariBase64);
+    doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "normal");
+    doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "bold");
+    doc.setFont("NotoSansDevanagari", "normal");
 
     // Add title
     doc.setFontSize(16)
@@ -305,12 +311,14 @@ export const exportToPDF = async (orders, filename = "orders") => {
       styles: {
         fontSize: 7,
         cellPadding: 2,
+        font: "NotoSansDevanagari"
       },
       headStyles: {
         fillColor: [59, 130, 246],
         textColor: 255,
         fontStyle: 'bold',
-        fontSize: 8
+        fontSize: 8,
+        font: "NotoSansDevanagari"
       },
       bodyStyles: {
         fontSize: 7,

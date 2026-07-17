@@ -13,6 +13,9 @@ import icon6 from '@/assets/funky/icon_6.png'
 import icon7 from '@/assets/funky/icon_7.png'
 import icon8 from '@/assets/funky/icon_8.png'
 import icon9 from '@/assets/funky/icon_9.png'
+import pizzaIcon from '@/assets/funky/pizza.png'
+import burgerIcon from '@/assets/funky/burger.png'
+import sandwichIcon from '@/assets/funky/sandwich.png'
 
 export default function SplashScreen({ onComplete }) {
 
@@ -145,6 +148,40 @@ export default function SplashScreen({ onComplete }) {
       </motion.div>
 
 
+      {/* Pizza Icon */}
+      <motion.div
+        initial={{ opacity: 0, x: -100, y: -50 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ delay: 0.8, duration: 0.9, type: "spring" }}
+        className="absolute w-16 h-16 md:w-24 md:h-24 pointer-events-none"
+        style={{ left: "10%", top: "8%" }}
+      >
+        <motion.div
+          animate={{ y: [5, -5], rotate: [-4, 4] }}
+          transition={floatTransition(0.2)}
+          className="w-full h-full"
+        >
+          <img src={pizzaIcon} alt="Pizza" className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)]" />
+        </motion.div>
+      </motion.div>
+
+      {/* Burger Icon */}
+      <motion.div
+        initial={{ opacity: 0, x: -120, y: 50 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ delay: 1.0, duration: 1.0, type: "spring" }}
+        className="absolute w-16 h-16 md:w-24 md:h-24 pointer-events-none"
+        style={{ left: "20%", top: "45%" }}
+      >
+        <motion.div
+          animate={{ y: [-4, 6], rotate: [3, -3] }}
+          transition={floatTransition(0.5)}
+          className="w-full h-full"
+        >
+          <img src={burgerIcon} alt="Burger" className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)]" />
+        </motion.div>
+      </motion.div>
+
       {/* --- RIGHT SIDE: FUNKY DARK PNGs (Full Opacity: 1.0, Shifted to outer edge, Responsive Large Scale) --- */}
 
       {/* Icon 5 */}
@@ -232,6 +269,23 @@ export default function SplashScreen({ onComplete }) {
         </motion.div>
       </motion.div>
 
+
+      {/* Sandwich Icon */}
+      <motion.div
+        initial={{ opacity: 0, x: 100, y: -50 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ delay: 0.85, duration: 0.9, type: "spring" }}
+        className="absolute w-16 h-16 md:w-24 md:h-24 pointer-events-none"
+        style={{ right: "18%", top: "10%" }}
+      >
+        <motion.div
+          animate={{ y: [-5, 5], rotate: [-2, 2] }}
+          transition={floatTransition(0.3)}
+          className="w-full h-full"
+        >
+          <img src={sandwichIcon} alt="Sandwich" className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)]" />
+        </motion.div>
+      </motion.div>
 
       {/* --- MAIN LOGO & ZOOM ANIMATION --- */}
 

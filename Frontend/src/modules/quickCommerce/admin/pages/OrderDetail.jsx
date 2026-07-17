@@ -205,7 +205,10 @@ export default function OrderDetail() {
 
         invoiceWindow.document.write(`
             <html>
-                <head><title>Invoice ${orderDisplayId}</title></head>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Invoice ${orderDisplayId}</title>
+                </head>
                 <body style="font-family:Arial,sans-serif;padding:24px;color:#0f172a;">
                     <h1 style="margin-bottom:4px;">Quick Order Invoice</h1>
                     <p style="margin-top:0;color:#475569;">Order ID: ${orderDisplayId}</p>
