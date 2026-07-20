@@ -22,10 +22,20 @@ app.set('trust proxy', 1);
 // Request ID tracing (before other middlewares so all logs can use it)
 app.use(requestIdMiddleware);
 
-// Serve static uploads folder
+// Serve static uploads folder & VPS images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const storageDir = path.isAbsolute(config.vpsStoragePath)
+    ? config.vpsStoragePath
+    : path.join(__dirname, '..', config.vpsStoragePath);
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/images', express.static(storageDir, {
+    setHeaders: (res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    }
+}));
 
 // Health endpoints (no rate limit, minimal JSON, no secrets)
 app.get('/health', async (_req, res) => {
