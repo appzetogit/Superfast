@@ -17,7 +17,6 @@
     "migrate:order-payments": "node scripts/migrate-orders-to-transactions.js",
     "migrate:global-auth": "node scripts/migrate-global-auth-collections.js",
     "migrate:seller-quick-shared": "node scripts/migrate-seller-quick-commerce-to-shared.js",
-
     "cleanup:legacy-collections": "node scripts/cleanup-legacy-collections.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -48,8 +47,10 @@
     "pdfkit": "^0.18.0",
     "razorpay": "^2.9.2",
     "redis": "^4.6.14",
+    "sharp": "^0.35.3",
     "simplify-js": "^1.2.4",
     "socket.io": "^4.7.5",
+    "uuid": "^14.0.1",
     "xss-clean": "^0.1.4",
     "zod": "^3.23.8"
   },

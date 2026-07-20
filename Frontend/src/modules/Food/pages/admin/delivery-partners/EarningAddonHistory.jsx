@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -37,6 +38,8 @@ export default function EarningAddonHistory() {
   const [selectedHistory, setSelectedHistory] = useState(null)
   const [creditNotes, setCreditNotes] = useState("")
   const [isCheckingCompletions, setIsCheckingCompletions] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     deliveryman: true,
@@ -136,6 +139,17 @@ export default function EarningAddonHistory() {
       item.offerTitle?.toLowerCase().includes(query)
     )
   }, [history, searchQuery])
+
+  const paginatedHistory = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredHistory.slice(start, start + pageSize)
+  }, [filteredHistory, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredHistory.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   const handleCredit = async () => {
     if (!selectedHistory) return
@@ -406,11 +420,11 @@ export default function EarningAddonHistory() {
                       </td>
                     </tr>
                   ) : (
-                    filteredHistory.map((item) => (
+                    paginatedHistory.map((item, index) => (
                       <tr key={item._id} className="hover:bg-slate-50 transition-colors">
                         {visibleColumns.si && (
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-700">{item.sl}</span>
+                            <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                           </td>
                         )}
                         {visibleColumns.deliveryman && (
@@ -502,6 +516,20 @@ export default function EarningAddonHistory() {
                 </tbody>
               </table>
             </div>
+          )}
+          {filteredHistory.length > 0 && !isLoading && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredHistory.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
           )}
         </div>
       </div>

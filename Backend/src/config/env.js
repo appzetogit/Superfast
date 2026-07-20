@@ -7,6 +7,7 @@ export const config = {
     port: process.env.PORT || 5000,
     host: process.env.HOST || '0.0.0.0',
     nodeEnv: process.env.NODE_ENV || 'development',
+    backendUrl: process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`,
 
     // Database
     mongodbUri: process.env.MONGO_URI || process.env.MONGODB_URI,
@@ -44,6 +45,8 @@ export const config = {
     // Uploads
     uploadPath: process.env.UPLOAD_PATH || 'uploads/',
     requestBodyLimit: process.env.REQUEST_BODY_LIMIT || '2mb',
+    vpsStoragePath: process.env.VPS_STORAGE_PATH || (process.env.NODE_ENV === 'production' ? '/var/storage' : 'uploads'),
+    vpsImageUrl: process.env.VPS_IMAGE_URL || `https://api.domain.com/images`,
 
     // Redis
     redisEnabled: process.env.REDIS_ENABLED === 'true',

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Search } from "lucide-react"
 import { adminAPI } from "@food/api"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -12,6 +13,8 @@ export default function Coupons() {
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -282,6 +285,17 @@ export default function Coupons() {
       offer.couponCode?.toLowerCase().includes(query)
     )
   }, [offers, searchQuery])
+
+  const paginatedOffers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredOffers.slice(start, start + pageSize)
+  }, [filteredOffers, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredOffers.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -565,10 +579,10 @@ export default function Coupons() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredOffers.map((offer) => (
+                  {paginatedOffers.map((offer, index) => (
                     <tr key={`${offer.offerId}-${offer.dishId}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-700">{offer.sl}</span>
+                        <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-900">
@@ -687,6 +701,20 @@ export default function Coupons() {
                 </tbody>
               </table>
             </div>
+          )}
+          {filteredOffers.length > 0 && !loading && !error && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredOffers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
           )}
         </div>
       </div>

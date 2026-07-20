@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi } from '../services/adminApi';
 import { toast } from 'sonner';
+import Pagination from "@shared/components/ui/Pagination";
 
 const CategoryManagement = () => {
     const [categories, setCategories] = useState([]);
@@ -50,6 +51,9 @@ const CategoryManagement = () => {
     const fileInputRef = useRef(null);
     const [filterStatus, setFilterStatus] = useState('all');
     const [activeView, setActiveView] = useState('tree'); // 'tree' or 'subcategories'
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
 
     useEffect(() => {
         fetchCategories();
@@ -163,6 +167,17 @@ const CategoryManagement = () => {
             return matchesSearch && matchesStatus;
         });
     }, [allSubcategories, searchTerm, filterStatus]);
+
+    const paginatedSubcategories = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredSubcategories.slice(start, start + pageSize);
+    }, [filteredSubcategories, currentPage, pageSize]);
+
+    const totalSubcategoriesPages = Math.ceil(filteredSubcategories.length / pageSize) || 1;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterStatus, activeView, pageSize]);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -530,7 +545,7 @@ const CategoryManagement = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {filteredSubcategories.map((sub) => {
+                                        {paginatedSubcategories.map((sub) => {
                                             const id = sub._id || sub.id;
                                             return (
                                                 <tr key={id} className="hover:bg-slate-50/50 transition-colors group">
@@ -583,6 +598,20 @@ const CategoryManagement = () => {
                                     </tbody>
                                 </table>
                             </div>
+                            {filteredSubcategories.length > 0 && (
+                                <Pagination
+                                    page={currentPage}
+                                    totalPages={totalSubcategoriesPages}
+                                    total={filteredSubcategories.length}
+                                    pageSize={pageSize}
+                                    onPageChange={setCurrentPage}
+                                    onPageSizeChange={(size) => {
+                                        setPageSize(size);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="border-t-0 rounded-b-xl"
+                                />
+                            )}
                         </div>
                     )}
                 </div>

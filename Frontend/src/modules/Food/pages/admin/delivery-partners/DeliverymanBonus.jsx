@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/componen
 import { exportBonusToExcel, exportBonusToPDF } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { adminAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -46,6 +47,8 @@ export default function DeliverymanBonus() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [formErrors, setFormErrors] = useState({})
@@ -118,6 +121,17 @@ export default function DeliverymanBonus() {
       transaction.deliveryId?.toLowerCase().includes(query)
     )
   }, [transactions, searchQuery])
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredTransactions.slice(start, start + pageSize)
+  }, [filteredTransactions, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -449,11 +463,11 @@ export default function DeliverymanBonus() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredTransactions.map((transaction) => (
+                  {paginatedTransactions.map((transaction, index) => (
                     <tr key={transaction.sl} className="hover:bg-slate-50 transition-colors">
                       {visibleColumns.si && (
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-700">{transaction.sl}</span>
+                          <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                         </td>
                       )}
                       {visibleColumns.transactionId && (
@@ -486,6 +500,20 @@ export default function DeliverymanBonus() {
                 </tbody>
               </table>
             </div>
+          )}
+          {filteredTransactions.length > 0 && !loading && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredTransactions.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
           )}
         </div>
       </div>

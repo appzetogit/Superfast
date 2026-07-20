@@ -325,7 +325,6 @@ export default function Orders() {
               rating: restaurantRating || null,
               review: order.review || null,
               tracking: order.tracking || {},
-              cancellationReason: cancellationReason,
               isRestaurantCancelled: isRestaurantCancelled,
               isUserCancelled: isUserCancelled,
               cancelledBy: order.cancelledBy,

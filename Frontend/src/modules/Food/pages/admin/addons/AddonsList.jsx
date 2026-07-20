@@ -4,6 +4,7 @@ import { Switch } from "@food/components/ui/switch"
 import { adminAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
+import Pagination from "@shared/components/ui/Pagination"
 
 const debugError = (...args) => {}
 
@@ -45,6 +46,9 @@ export default function AddonsList() {
   const [editImagePreview, setEditImagePreview] = useState("")
   const [editImageFile, setEditImageFile] = useState(null)
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+
   useEffect(() => {
     const fetchAddons = async () => {
       try {
@@ -81,6 +85,17 @@ export default function AddonsList() {
   }, [addons])
 
   const countLabel = filteredAddons.length
+
+  const paginatedAddons = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredAddons.slice(start, start + pageSize)
+  }, [filteredAddons, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredAddons.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   const handleViewDetails = (addon) => {
     setSelectedAddon(addon)
@@ -259,10 +274,10 @@ export default function AddonsList() {
                   </td>
                 </tr>
               ) : (
-                filteredAddons.map((addon, index) => (
+                paginatedAddons.map((addon, index) => (
                   <tr key={String(addon.id || addon._id)} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-slate-700">{index + 1}</span>
+                      <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
@@ -326,6 +341,20 @@ export default function AddonsList() {
             </tbody>
           </table>
         </div>
+        {filteredAddons.length > 0 && (
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            total={filteredAddons.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setCurrentPage(1)
+            }}
+            className="border-t-0 rounded-b-xl"
+          />
+        )}
       </div>
 
       <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>

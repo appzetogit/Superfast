@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportReviewsToCSV, exportReviewsToExcel, exportReviewsToPDF, exportReviewsToJSON } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -14,6 +15,8 @@ export default function DeliverymanReviews() {
   const [searchQuery, setSearchQuery] = useState("")
   const [reviews, setReviews] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [selectedReview, setSelectedReview] = useState(null)
@@ -42,6 +45,17 @@ export default function DeliverymanReviews() {
       (review.deliverymanId && review.deliverymanId.toString().toLowerCase().includes(query))
     )
   }, [reviews, searchQuery])
+
+  const paginatedReviews = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredReviews.slice(start, start + pageSize)
+  }, [filteredReviews, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredReviews.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   const handleExport = (format) => {
     if (filteredReviews.length === 0) {
@@ -313,11 +327,11 @@ export default function DeliverymanReviews() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredReviews.map((review) => (
+                  {paginatedReviews.map((review, index) => (
                     <tr key={review.sl || review.orderId} className="hover:bg-slate-50 transition-colors">
                       {visibleColumns.si && (
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-700">{review.sl}</span>
+                          <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                         </td>
                       )}
                       {visibleColumns.orderId && (
@@ -385,6 +399,20 @@ export default function DeliverymanReviews() {
               </table>
             )}
           </div>
+          {filteredReviews.length > 0 && !isLoading && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredReviews.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
+          )}
         </div>
       </div>
 

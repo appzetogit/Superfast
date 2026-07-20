@@ -4,6 +4,7 @@ import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportJoinRequestsToExcel, exportJoinRequestsToPDF } from "@food/components/admin/deliveryman/joinRequestExportUtils"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -15,6 +16,8 @@ export default function JoinRequest() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [isApproveOpen, setIsApproveOpen] = useState(false)
   const [isDenyOpen, setIsDenyOpen] = useState(false)
   const [isViewOpen, setIsViewOpen] = useState(false)
@@ -125,6 +128,17 @@ export default function JoinRequest() {
 
     return result
   }, [requests, filters])
+
+  const paginatedRequests = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRequests.slice(start, start + pageSize)
+  }, [filteredRequests, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, activeTab, filters, pageSize])
 
   const handleApprove = (request) => {
     setSelectedRequest(request)
@@ -400,10 +414,10 @@ export default function JoinRequest() {
                       </td>
                     </tr>
                   ) : (
-                    filteredRequests.map((request) => (
+                    paginatedRequests.map((request, index) => (
                       <tr key={request._id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-700">{request.sl}</span>
+                          <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -513,6 +527,20 @@ export default function JoinRequest() {
               </table>
             )}
           </div>
+          {filteredRequests.length > 0 && !loading && !error && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredRequests.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
+          )}
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { Loader } from "@googlemaps/js-api-loader"
+import Pagination from "@shared/components/ui/Pagination"
 
 // Import icons from Dashboard-icons
 import locationIcon from "@food/assets/Dashboard-icons/image1.png"
@@ -110,6 +111,8 @@ export default function RestaurantsList() {
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [selectedRestaurant, setSelectedRestaurant] = useState(null)
   const [restaurantDetails, setRestaurantDetails] = useState(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -381,6 +384,17 @@ export default function RestaurantsList() {
 
     return result
   }, [restaurants, searchQuery, filters, sortConfig])
+
+  const paginatedRestaurants = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRestaurants.slice(start, start + pageSize)
+  }, [filteredRestaurants, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredRestaurants.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filters, sortConfig, pageSize])
 
   const handleSort = (key) => {
     let direction = "asc"
@@ -1516,13 +1530,13 @@ export default function RestaurantsList() {
                       </td>
                     </tr>
                   ) : (
-                    filteredRestaurants.map((restaurant, index) => (
+                    paginatedRestaurants.map((restaurant, index) => (
                       <tr
                         key={restaurant.id}
                         className="hover:bg-slate-50 transition-colors"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-700">{index + 1}</span>
+                          <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -1613,6 +1627,20 @@ export default function RestaurantsList() {
               </table>
             )}
           </div>
+          {filteredRestaurants.length > 0 && !loading && !error && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredRestaurants.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
+          )}
         </div>
       </div>
 

@@ -5281,18 +5281,30 @@ export async function getSidebarBadges() {
             pendingRestaurantComplaints,
             pendingCategories,
             // Per-status order counts for sidebar labels
-            orderCountAll,
-            orderCountScheduled,
-            orderCountPending,
-            orderCountProcessing,
+            orderCountFoodAll,
+            orderCountFoodScheduled,
+            orderCountFoodPending,
+            orderCountFoodProcessing,
             orderCountFoodOnTheWay,
-            orderCountDelivered,
-            orderCountCancelled,
-            orderCountRestaurantCancelled,
-            orderCountPaymentFailed,
-            orderCountRefunded,
-            orderCountOfflinePayments,
-            orderCountReturned,
+            orderCountFoodDelivered,
+            orderCountFoodCancelled,
+            orderCountFoodRestaurantCancelled,
+            orderCountFoodPaymentFailed,
+            orderCountFoodRefunded,
+            orderCountFoodOfflinePayments,
+            orderCountFoodReturned,
+            orderCountQuickAll,
+            orderCountQuickScheduled,
+            orderCountQuickPending,
+            orderCountQuickProcessing,
+            orderCountQuickOnTheWay,
+            orderCountQuickDelivered,
+            orderCountQuickCancelled,
+            orderCountQuickRestaurantCancelled,
+            orderCountQuickPaymentFailed,
+            orderCountQuickRefunded,
+            orderCountQuickOfflinePayments,
+            orderCountQuickReturned,
         ] = await Promise.all([
             FoodRestaurant.countDocuments({ status: 'pending' }),
             FoodDeliveryPartner.countDocuments({ status: 'pending' }),
@@ -5309,18 +5321,18 @@ export async function getSidebarBadges() {
             FoodDeliveryEmergencyHelp.countDocuments({ status: 'pending' }),
             FoodSupportTicket.countDocuments({ status: 'open', restaurantId: { $exists: true } }),
             FoodCategory.countDocuments({ approvalStatus: 'pending' }),
-            // Per-status order counts
-            FoodOrder.countDocuments({}),
-            FoodOrder.countDocuments({ orderStatus: 'scheduled' }),
-            FoodOrder.countDocuments({ orderStatus: { $in: ['created', 'placed', 'confirmed'] } }),
-            FoodOrder.countDocuments({ orderStatus: { $in: ['preparing', 'ready_for_pickup'] } }),
-            FoodOrder.countDocuments({ orderStatus: 'picked_up' }),
-            FoodOrder.countDocuments({ orderStatus: 'delivered' }),
-            FoodOrder.countDocuments({ orderStatus: { $in: ['cancelled_by_admin', 'cancelled_by_user'] } }),
-            FoodOrder.countDocuments({ orderStatus: 'cancelled_by_restaurant' }),
-            FoodOrder.countDocuments({ 'payment.status': 'failed' }),
-            FoodOrder.countDocuments({ 'payment.status': 'refunded' }),
-            FoodOrder.countDocuments({ 'payment.method': 'cash' }),
+            // Per-status order counts for Food (orderType != 'quick')
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' } }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: 'scheduled' }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: { $in: ['created', 'placed', 'confirmed'] } }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: { $in: ['preparing', 'ready_for_pickup'] } }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: 'picked_up' }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: 'delivered' }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: { $in: ['cancelled_by_admin', 'cancelled_by_user'] } }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, orderStatus: 'cancelled_by_restaurant' }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, 'payment.status': 'failed' }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, 'payment.status': 'refunded' }),
+            FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, 'payment.method': 'cash' }),
             (async () => {
                 try {
                     const returnedOrderIds = await QuickReturnRequest.distinct('orderId');
@@ -5332,9 +5344,38 @@ export async function getSidebarBadges() {
                     if (returnedOrderIds.length > 0) {
                         orConditions.push({ _id: { $in: returnedOrderIds } });
                     }
-                    return await FoodOrder.countDocuments({ $or: orConditions });
+                    return await FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, $or: orConditions });
                 } catch (e) {
-                    return await FoodOrder.countDocuments({ $or: [ { orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } } ] });
+                    return await FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, $or: [ { orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } } ] });
+                }
+            })(),
+            
+            // Per-status order counts for Quick Commerce (orderType == 'quick')
+            FoodOrder.countDocuments({ orderType: 'quick' }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: 'scheduled' }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: { $in: ['created', 'placed', 'confirmed'] } }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: { $in: ['preparing', 'ready_for_pickup'] } }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: 'picked_up' }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: 'delivered' }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: { $in: ['cancelled_by_admin', 'cancelled_by_user'] } }),
+            FoodOrder.countDocuments({ orderType: 'quick', orderStatus: 'cancelled_by_restaurant' }),
+            FoodOrder.countDocuments({ orderType: 'quick', 'payment.status': 'failed' }),
+            FoodOrder.countDocuments({ orderType: 'quick', 'payment.status': 'refunded' }),
+            FoodOrder.countDocuments({ orderType: 'quick', 'payment.method': 'cash' }),
+            (async () => {
+                try {
+                    const returnedOrderIds = await QuickReturnRequest.distinct('orderId');
+                    const orConditions = [
+                        { orderStatus: 'returned' },
+                        { workflowStatus: 'RETURNED' },
+                        { returnStatus: { $exists: true, $ne: '' } }
+                    ];
+                    if (returnedOrderIds.length > 0) {
+                        orConditions.push({ _id: { $in: returnedOrderIds } });
+                    }
+                    return await FoodOrder.countDocuments({ orderType: 'quick', $or: orConditions });
+                } catch (e) {
+                    return await FoodOrder.countDocuments({ orderType: 'quick', $or: [ { orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } } ] });
                 }
             })(),
         ]);
@@ -5358,18 +5399,46 @@ export async function getSidebarBadges() {
             restaurantComplaints: pendingRestaurantComplaints,
             // Per-status order counts
             orderCounts: {
-                all: orderCountAll,
-                scheduled: orderCountScheduled,
-                pending: orderCountPending,
-                processing: orderCountProcessing,
+                all: orderCountFoodAll + orderCountQuickAll,
+                scheduled: orderCountFoodScheduled + orderCountQuickScheduled,
+                pending: orderCountFoodPending + orderCountQuickPending,
+                processing: orderCountFoodProcessing + orderCountQuickProcessing,
+                foodOnTheWay: orderCountFoodOnTheWay + orderCountQuickOnTheWay,
+                delivered: orderCountFoodDelivered + orderCountQuickDelivered,
+                cancelled: orderCountFoodCancelled + orderCountQuickCancelled,
+                restaurantCancelled: orderCountFoodRestaurantCancelled + orderCountQuickRestaurantCancelled,
+                paymentFailed: orderCountFoodPaymentFailed + orderCountQuickPaymentFailed,
+                refunded: orderCountFoodRefunded + orderCountQuickRefunded,
+                offlinePayments: orderCountFoodOfflinePayments + orderCountQuickOfflinePayments,
+                returned: orderCountFoodReturned + orderCountQuickReturned,
+            },
+            foodOrderCounts: {
+                all: orderCountFoodAll,
+                scheduled: orderCountFoodScheduled,
+                pending: orderCountFoodPending,
+                processing: orderCountFoodProcessing,
                 foodOnTheWay: orderCountFoodOnTheWay,
-                delivered: orderCountDelivered,
-                cancelled: orderCountCancelled,
-                restaurantCancelled: orderCountRestaurantCancelled,
-                paymentFailed: orderCountPaymentFailed,
-                refunded: orderCountRefunded,
-                offlinePayments: orderCountOfflinePayments,
-                returned: orderCountReturned,
+                delivered: orderCountFoodDelivered,
+                cancelled: orderCountFoodCancelled,
+                restaurantCancelled: orderCountFoodRestaurantCancelled,
+                paymentFailed: orderCountFoodPaymentFailed,
+                refunded: orderCountFoodRefunded,
+                offlinePayments: orderCountFoodOfflinePayments,
+                returned: orderCountFoodReturned,
+            },
+            quickOrderCounts: {
+                all: orderCountQuickAll,
+                scheduled: orderCountQuickScheduled,
+                pending: orderCountQuickPending,
+                processing: orderCountQuickProcessing,
+                foodOnTheWay: orderCountQuickOnTheWay,
+                delivered: orderCountQuickDelivered,
+                cancelled: orderCountQuickCancelled,
+                restaurantCancelled: orderCountQuickRestaurantCancelled,
+                paymentFailed: orderCountQuickPaymentFailed,
+                refunded: orderCountQuickRefunded,
+                offlinePayments: orderCountQuickOfflinePayments,
+                returned: orderCountQuickReturned,
             },
         };
     } catch (error) {

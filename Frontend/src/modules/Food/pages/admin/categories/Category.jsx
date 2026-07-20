@@ -18,6 +18,7 @@ import { API_BASE_URL } from "@food/api/config"
 import { toast } from "sonner"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import Pagination from "@shared/components/ui/Pagination"
 
 const defaultFormData = {
   name: "",
@@ -64,6 +65,8 @@ export default function Category() {
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -121,6 +124,17 @@ export default function Category() {
       )
     })
   }, [categories, searchQuery])
+
+  const paginatedCategories = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredCategories.slice(start, start + pageSize)
+  }, [filteredCategories, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredCategories.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, showPendingOnly, pageSize])
 
   const fetchCategories = async () => {
     try {
@@ -458,7 +472,7 @@ export default function Category() {
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((category) => {
+                paginatedCategories.map((category) => {
                   const creatorName = category?.createdByRestaurant?.name || category?.restaurant?.name || "Admin"
                   const approvalStatus = category?.approvalStatus || "pending"
                   const isRestaurantCategory = Boolean(category?.createdByRestaurantId || category?.restaurantId)
@@ -586,6 +600,20 @@ export default function Category() {
             </tbody>
           </table>
         </div>
+        {filteredCategories.length > 0 && (
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            total={filteredCategories.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setCurrentPage(1)
+            }}
+            className="border-t-0 rounded-b-xl"
+          />
+        )}
       </div>
 
       {typeof window !== "undefined" &&

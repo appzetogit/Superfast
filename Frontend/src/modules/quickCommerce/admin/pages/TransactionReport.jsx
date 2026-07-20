@@ -4,6 +4,7 @@ import {
   FileText, Search, Download, Filter, 
   ChevronLeft, ChevronRight, Eye, RefreshCw
 } from 'lucide-react';
+import Pagination from '@shared/components/ui/Pagination';
 
 const TransactionReport = () => {
   const [transactions, setTransactions] = useState([]);
@@ -12,6 +13,7 @@ const TransactionReport = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
   const [summaryStats, setSummaryStats] = useState(null);
 
   const handleExportCSV = () => {
@@ -64,7 +66,7 @@ const TransactionReport = () => {
     setError(null);
     try {
       const [res, summaryRes] = await Promise.all([
-        adminApi.getFinanceTransactions({ page: currentPage, limit: 50 }),
+        adminApi.getFinanceTransactions({ page: currentPage, limit: pageSize }),
         adminApi.getFinanceSummary().catch(() => ({ data: { success: false, result: {} } }))
       ]);
 
@@ -90,7 +92,7 @@ const TransactionReport = () => {
 
   useEffect(() => {
     fetchTransactions(page);
-  }, [page]);
+  }, [page, pageSize]);
 
   const getStatusBadge = (status) => {
     const s = String(status || '').toLowerCase();
@@ -282,27 +284,18 @@ const TransactionReport = () => {
 
           {/* Pagination */}
           {!loading && transactions.length > 0 && (
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-              <span className="text-sm font-medium text-gray-500">
-                Showing page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
-              </span>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <button 
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              className="border-t-0 rounded-b-3xl"
+            />
           )}
 
         </div>

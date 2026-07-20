@@ -65,7 +65,7 @@ const withAlpha = (color, alpha) => {
 const getTheme = (vegMode, isQuick, colors) => {
   const primary = isQuick ? (colors.quickThemeColor || "#00BFA5") : (colors.foodThemeColor || "#cc2532");
   const secondary = isQuick ? (colors.quickSecondaryThemeColor || "#008b74") : (colors.foodSecondaryThemeColor || "#b3202c");
-  
+
   return {
     topBg: primary,
     secondaryBg: secondary,
@@ -189,7 +189,7 @@ export default function HomeHeader({
   }, [activeTab, vegMode, quickThemeColor, quickSecondaryThemeColor, foodThemeColor, foodSecondaryThemeColor]);
   const isFood = activeTab === "food";
   const walletPath = isFood ? "/food/user/wallet" : "/quick/wallet";
-  
+
   // Need to redefine this function here since we removed it from global scope
   const isMeaningfulLocationValue = (value) => {
     const normalized = String(value || "").trim().toLowerCase();
@@ -329,8 +329,8 @@ export default function HomeHeader({
   return (
     <motion.div
       className={`relative transition-[min-height] duration-400 ${isFood
-          ? "min-h-[280px] overflow-hidden"
-          : "min-h-[120px] overflow-visible"
+        ? "min-h-[280px] overflow-hidden"
+        : "min-h-[120px] overflow-visible"
         }`}
       style={{ background: theme.topBg, color: theme.text }}
     >
@@ -373,80 +373,80 @@ export default function HomeHeader({
                 <Wallet className="h-[19px] w-[19px] text-[#282c3f]" strokeWidth={2} />
               </Link>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="relative h-[38px] w-[38px] rounded-full bg-white/95 border border-white/60 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
-              >
-                <Bell className="h-[18px] w-[18px] text-[#282c3f]" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-yellow-400 border border-white" />
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 overflow-hidden border-none shadow-2xl rounded-2xl mt-2" align="end">
-              <div className="bg-white">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                    Notifications
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative h-[38px] w-[38px] rounded-full bg-white/95 border border-white/60 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+                  >
+                    <Bell className="h-[18px] w-[18px] text-[#282c3f]" />
                     {unreadCount > 0 && (
-                      <Badge variant="secondary" className="bg-red-100 text-red-600 border-none text-[10px] h-4">
-                        {unreadCount} New
-                      </Badge>
+                      <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-yellow-400 border border-white" />
                     )}
-                  </h3>
-                  <Link to="/food/user/notifications" className="text-xs font-bold text-red-600">
-                    {mergedNotifications.length > 0 ? "View All" : ""}
-                  </Link>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {mergedNotifications.length > 0 ? (
-                    mergedNotifications.slice(0, 5).map((item, index) => (
-                      <div key={item.id || `notif-${index}`} className="p-4 flex items-start gap-3 border-b border-gray-50 last:border-0">
-                        <div className="mt-1 p-2 rounded-full bg-red-100/50 text-red-600">
-                          <Bell className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <span className="text-sm font-bold text-gray-900 truncate">{item.title}</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-gray-400 whitespace-nowrap">{item.time}</span>
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  removeNotification(item.id, item.source);
-                                }}
-                                className="rounded-full p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 overflow-hidden border-none shadow-2xl rounded-2xl mt-2" align="end">
+                  <div className="bg-white">
+                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                      <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                        Notifications
+                        {unreadCount > 0 && (
+                          <Badge variant="secondary" className="bg-red-100 text-red-600 border-none text-[10px] h-4">
+                            {unreadCount} New
+                          </Badge>
+                        )}
+                      </h3>
+                      <Link to="/food/user/notifications" className="text-xs font-bold text-red-600">
+                        {mergedNotifications.length > 0 ? "View All" : ""}
+                      </Link>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {mergedNotifications.length > 0 ? (
+                        mergedNotifications.slice(0, 5).map((item, index) => (
+                          <div key={item.id || `notif-${index}`} className="p-4 flex items-start gap-3 border-b border-gray-50 last:border-0">
+                            <div className="mt-1 p-2 rounded-full bg-red-100/50 text-red-600">
+                              <Bell className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <span className="text-sm font-bold text-gray-900 truncate">{item.title}</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-gray-400 whitespace-nowrap">{item.time}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      removeNotification(item.id, item.source);
+                                    }}
+                                    className="rounded-full p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{item.message}</p>
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{item.message}</p>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center flex flex-col items-center gap-2">
+                          <BellOff className="h-10 w-10 text-gray-200" />
+                          <p className="text-xs text-gray-400 font-medium">All caught up!</p>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center flex flex-col items-center gap-2">
-                      <BellOff className="h-10 w-10 text-gray-200" />
-                      <p className="text-xs text-gray-400 font-medium">All caught up!</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-          <Link
-            to="/food/user/cart"
-            className="h-[38px] w-[38px] rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
-            aria-label="Open cart"
-          >
-            <ShoppingCart className="h-[20px] w-[20px] text-[#282c3f]" strokeWidth={2} />
-          </Link>
+              <Link
+                to="/food/user/cart"
+                className="h-[38px] w-[38px] rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+                aria-label="Open cart"
+              >
+                <ShoppingCart className="h-[20px] w-[20px] text-[#282c3f]" strokeWidth={2} />
+              </Link>
             </>
           )}
         </div>
@@ -490,7 +490,9 @@ export default function HomeHeader({
                   isActive ? "top-0 rounded-t-[20px]" : "top-[10px] rounded-t-[16px]"
                 )}
                 style={{
-                  background: isActive ? theme.activeBg : theme.inactiveBg,
+                  background: tab.id === "quick"
+                    ? (isActive ? "#0A784C" : "#5a9c8bff")
+                    : (isActive ? theme.activeBg : theme.inactiveBg),
                   borderTop: isActive ? `1px solid ${withAlpha(theme.accent, 0.1)}` : `1px solid ${theme.inactiveBorder}`,
                   boxShadow: isActive ? "0 -4px 20px rgba(0,0,0,0.12)" : "none",
                   backdropFilter: isActive ? undefined : "blur(12px)",
@@ -502,13 +504,13 @@ export default function HomeHeader({
                     <div
                       className="absolute bottom-0 -left-[14px] w-[14px] h-[14px] pointer-events-none"
                       style={{
-                        background: `radial-gradient(circle at 0 0, transparent 14px, ${theme.activeBg} 0)`
+                        background: `radial-gradient(circle at 0 0, transparent 14px, ${tab.id === "quick" ? "#15803d" : theme.activeBg} 0)`
                       }}
                     />
                     <div
                       className="absolute bottom-0 -right-[14px] w-[14px] h-[14px] pointer-events-none"
                       style={{
-                        background: `radial-gradient(circle at 100% 0, transparent 14px, ${theme.activeBg} 0)`
+                        background: `radial-gradient(circle at 100% 0, transparent 14px, ${tab.id === "quick" ? "#15803d" : theme.activeBg} 0)`
                       }}
                     />
                   </>
@@ -544,9 +546,8 @@ export default function HomeHeader({
               playsInline
               preload="metadata"
               aria-hidden="true"
-              className={`h-full w-full object-cover object-center transition-opacity duration-200 ${
-                isFood ? "opacity-100" : "opacity-0"
-              }`}
+              className={`h-full w-full object-cover object-center transition-opacity duration-200 ${isFood ? "opacity-100" : "opacity-0"
+                }`}
               style={{ backgroundColor: theme.secondaryBg }}
             >
               <source src={optimizeCloudinaryVideoUrl(headerVideoUrl, { format: 'webm' })} type="video/webm" />
@@ -558,8 +559,8 @@ export default function HomeHeader({
         <div className={cn("relative z-10 pb-0 px-3 overflow-visible", isFood ? "pt-3" : "pt-0")}>
           {isFood && isSticky && <div className="h-[46px] mb-2" />}
           {isFood && !hideExtras && (
-            <div 
-              className={cn("flex items-center gap-2 mb-2", 
+            <div
+              className={cn("flex items-center gap-2 mb-2",
                 isSticky ? "fixed top-0 left-0 right-0 z-[100] px-4 py-2 pb-3 shadow-md backdrop-blur-xl border-b border-black/5 dark:border-white/5" : "relative w-full px-0"
               )}
               style={{ backgroundColor: isSticky ? withAlpha(theme.accent, 0.85) : "transparent" }}

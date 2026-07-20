@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapPin, Plus, Search, Edit, Trash2, Eye, Map, Bike, ArrowLeft, Building2 } from "lucide-react"
 import { adminAPI } from "@food/api"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -15,6 +16,9 @@ export default function ZoneSetup() {
   const [selectedZone, setSelectedZone] = useState(null)
   const [restaurants, setRestaurants] = useState([])
   const [loadingRestaurants, setLoadingRestaurants] = useState(false)
+
+  const [currentRestPage, setCurrentRestPage] = useState(1)
+  const [restPageSize, setRestPageSize] = useState(25)
 
   useEffect(() => {
     fetchZones()
@@ -126,6 +130,17 @@ export default function ZoneSetup() {
     zone.serviceLocation?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const paginatedRestaurants = useMemo(() => {
+    const start = (currentRestPage - 1) * restPageSize
+    return restaurants.slice(start, start + restPageSize)
+  }, [restaurants, currentRestPage, restPageSize])
+
+  const totalRestPages = Math.ceil(restaurants.length / restPageSize) || 1
+
+  useEffect(() => {
+    setCurrentRestPage(1)
+  }, [restPageSize, selectedZone])
+
   if (selectedZone) {
     return (
       <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -172,7 +187,7 @@ export default function ZoneSetup() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-sm text-slate-700">
-                    {restaurants.map((restaurant) => (
+                    {paginatedRestaurants.map((restaurant) => (
                       <tr key={restaurant._id || restaurant.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -232,6 +247,20 @@ export default function ZoneSetup() {
                   </tbody>
                 </table>
               </div>
+              {restaurants.length > 0 && (
+                <Pagination
+                  page={currentRestPage}
+                  totalPages={totalRestPages}
+                  total={restaurants.length}
+                  pageSize={restPageSize}
+                  onPageChange={setCurrentRestPage}
+                  onPageSizeChange={(size) => {
+                    setRestPageSize(size)
+                    setCurrentRestPage(1)
+                  }}
+                  className="border-t-0 rounded-b-xl"
+                />
+              )}
             </div>
           )}
         </div>

@@ -3,6 +3,7 @@ import { Search, Download, ChevronDown, DollarSign, Calendar, Filter, Loader2, F
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -410,50 +411,18 @@ export default function DeliveryEarnings() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
-              <p className="text-sm text-slate-600">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} earnings
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page === 1}
-                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-                >
-                  Previous
-                </button>
-                {Array.from({ length: Math.min(5, pagination.pages) }).map((_, idx) => {
-                  const pageNum = pagination.page <= 3 
-                    ? idx + 1 
-                    : pagination.page >= pagination.pages - 2 
-                      ? pagination.pages - 4 + idx 
-                      : pagination.page - 2 + idx
-                  if (pageNum < 1 || pageNum > pagination.pages) return null
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-1 text-sm rounded border ${
-                        pagination.page === pageNum
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-                <button
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page === pagination.pages}
-                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+          {pagination.pages > 0 && earnings.length > 0 && (
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.pages}
+              total={pagination.total}
+              pageSize={pagination.limit}
+              onPageChange={(page) => handlePageChange(page)}
+              onPageSizeChange={(size) => {
+                setPagination(prev => ({ ...prev, limit: size, page: 1 }))
+              }}
+              className="border-t-0 rounded-b-xl mt-4"
+            />
           )}
         </div>
       </div>

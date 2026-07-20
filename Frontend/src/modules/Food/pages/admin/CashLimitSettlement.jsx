@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Search, Receipt, Loader2, Package } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -35,7 +36,7 @@ export default function CashLimitSettlement() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [pages, setPages] = useState(1)
-  const limit = 20
+  const [pageSize, setPageSize] = useState(25)
 
   const fetchData = async (overrides = {}) => {
     const p = overrides.page || page
@@ -44,7 +45,7 @@ export default function CashLimitSettlement() {
       const res = await adminAPI.getCashLimitSettlements({
         search: searchQuery.trim() || undefined,
         page: p,
-        limit
+        limit: pageSize
       })
       if (res?.data?.success) {
         const data = res.data.data
@@ -66,7 +67,7 @@ export default function CashLimitSettlement() {
 
   useEffect(() => {
     fetchData()
-  }, [page])
+  }, [page, pageSize])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -143,7 +144,7 @@ export default function CashLimitSettlement() {
                     transactions.map((tx, i) => (
                       <tr key={tx.id || i} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
-                          {(page - 1) * limit + i + 1}
+                          {(page - 1) * pageSize + i + 1}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                           {formatDate(tx.createdAt)}
@@ -179,30 +180,19 @@ export default function CashLimitSettlement() {
             </div>
           )}
 
-          {pages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
-              <p className="text-sm text-slate-600">
-                Page {page} of {pages} · {total} total
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(pages, p + 1))}
-                  disabled={page >= pages}
-                  className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+          {transactions.length > 0 && (
+            <Pagination
+              page={page}
+              totalPages={pages}
+              total={total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
           )}
         </div>
       </div>

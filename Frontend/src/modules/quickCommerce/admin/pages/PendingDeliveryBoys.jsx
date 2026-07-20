@@ -21,12 +21,15 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { adminApi } from '../services/adminApi';
+import Pagination from '@shared/components/ui/Pagination';
 
 const PendingDeliveryBoys = () => {
     const [pendingRiders, setPendingRiders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
     const [viewingRider, setViewingRider] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -74,6 +77,17 @@ const PendingDeliveryBoys = () => {
             return matchesSearch && matchesStatus;
         });
     }, [pendingRiders, searchTerm, filterStatus]);
+
+    const paginatedRiders = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredRiders.slice(start, start + pageSize);
+    }, [filteredRiders, currentPage, pageSize]);
+
+    const totalPages = Math.ceil(filteredRiders.length / pageSize) || 1;
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterStatus, pageSize]);
 
     const handleApprove = async (id) => {
         setIsProcessing(true);
@@ -196,7 +210,7 @@ const PendingDeliveryBoys = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredRiders.map((rider) => (
+                                paginatedRiders.map((rider) => (
                                     <tr key={rider.id} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="px-8 py-6">
                                             <div className="flex items-center gap-4">
@@ -257,6 +271,20 @@ const PendingDeliveryBoys = () => {
                         </tbody>
                     </table>
                 </div>
+                {filteredRiders.length > 0 && !isLoading && (
+                    <Pagination
+                        page={currentPage}
+                        totalPages={totalPages}
+                        total={filteredRiders.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                        }}
+                        className="border-t-0 rounded-b-xl"
+                    />
+                )}
             </Card>
 
             {/* Application Review Modal */}

@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportDeliverymenToExcel, exportDeliverymenToPDF } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugError = () => {}
 
 
@@ -19,6 +20,8 @@ export default function DeliverymanList() {
   const [deliverymen, setDeliverymen] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const [viewDetails, setViewDetails] = useState(null)
@@ -159,6 +162,17 @@ availableCashLimit: wallet?.availableCashLimit || 0,
     // Backend already handles search, but we can do client-side filtering if needed
     return deliverymen
   }, [deliverymen])
+
+  const paginatedDeliverymen = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredDeliverymen.slice(start, start + pageSize)
+  }, [filteredDeliverymen, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredDeliverymen.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   const handleView = async (deliveryman) => {
     try {
@@ -543,11 +557,11 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                       </td>
                     </tr>
                   ) : (
-                    filteredDeliverymen.map((dm) => (
+                    paginatedDeliverymen.map((dm, index) => (
                       <tr key={dm._id} className="hover:bg-slate-50 transition-colors">
                         {visibleColumns.si && (
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-700">{dm.sl}</span>
+                            <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                           </td>
                         )}
                         {visibleColumns.name && (
@@ -710,6 +724,20 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
               </table>
             )}
           </div>
+          {filteredDeliverymen.length > 0 && !loading && !error && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredDeliverymen.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
+          )}
         </div>
       </div>
 

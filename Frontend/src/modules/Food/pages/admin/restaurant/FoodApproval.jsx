@@ -11,6 +11,7 @@ import {
 } from "@food/components/ui/dialog"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -25,6 +26,8 @@ export default function FoodApproval() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [processing, setProcessing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const isMountedRef = useRef(true)
 
   // Fetch pending food approval requests
@@ -99,6 +102,17 @@ export default function FoodApproval() {
   }, [foodRequests, searchQuery])
 
   const totalRequests = filteredRequests.length
+
+  const paginatedRequests = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRequests.slice(start, start + pageSize)
+  }, [filteredRequests, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   // Handle approve food item or addon
   const handleApprove = async (request) => {
@@ -264,10 +278,10 @@ export default function FoodApproval() {
                         </td>
                       </tr>
                     ) : (
-                      filteredRequests.map((request, index) => (
+                      paginatedRequests.map((request, index) => (
                         <tr key={request._id || request.id} className="hover:bg-gray-50">
                           <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 font-semibold">
-                            {index + 1}
+                            {(currentPage - 1) * pageSize + index + 1}
                           </td>
                           <td className="px-3 py-3 whitespace-nowrap">
                             <div className="text-sm">
@@ -340,6 +354,20 @@ export default function FoodApproval() {
             </div>
           )}
         </div>
+        {filteredRequests.length > 0 && (
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            total={filteredRequests.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setCurrentPage(1)
+            }}
+            className="border-t-0 rounded-b-xl"
+          />
+        )}
       </Card>
 
       {/* Item Details Modal */}

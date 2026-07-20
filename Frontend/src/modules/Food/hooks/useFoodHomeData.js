@@ -24,20 +24,20 @@ export const useFoodHomeData = ({
   backendOrigin,
   availabilityTick 
 }) => {
-  // Use cache as initial state if valid
-  const hasValidCache = globalHomeCache.bootstrap && (Date.now() - globalHomeCache.lastFetched < CACHE_EXPIRY_MS);
+  // Use cache as initial state even if expired (Stale-While-Revalidate)
+  const hasData = !!globalHomeCache.bootstrap;
   
   // --- Bootstrap State ---
-  const [isBootstrapped, setIsBootstrapped] = useState(hasValidCache);
+  const [isBootstrapped, setIsBootstrapped] = useState(hasData);
   
   // --- Banners State ---
   const [heroBannerImages, setHeroBannerImages] = useState(globalHomeCache.bootstrap?.banners?.images || []);
   const [heroBannersData, setHeroBannersData] = useState(globalHomeCache.bootstrap?.banners?.data || []);
-  const [loadingBanners, setLoadingBanners] = useState(!hasValidCache);
+  const [loadingBanners, setLoadingBanners] = useState(!hasData);
 
   // --- Categories State ---
   const [realCategories, setRealCategories] = useState(globalHomeCache.bootstrap?.categories || []);
-  const [loadingRealCategories, setLoadingRealCategories] = useState(!hasValidCache);
+  const [loadingRealCategories, setLoadingRealCategories] = useState(!hasData);
   const [menuCategories, setMenuCategories] = useState([]);
   const [loadingMenuCategories, setLoadingMenuCategories] = useState(false);
   const [landingCategories, setLandingCategories] = useState([]);
@@ -48,7 +48,7 @@ export const useFoodHomeData = ({
   const [headerVideoUrl, setHeaderVideoUrl] = useState(globalHomeCache.bootstrap?.settings?.videoUrl || "");
   const [recommendedRestaurantIds, setRecommendedRestaurantIds] = useState(globalHomeCache.bootstrap?.settings?.recommendedIds || []);
   const [recommendedRestaurantsFromSettings, setRecommendedRestaurantsFromSettings] = useState(globalHomeCache.bootstrap?.settings?.recommendedRaw || []);
-  const [loadingLandingConfig, setLoadingLandingConfig] = useState(!hasValidCache);
+  const [loadingLandingConfig, setLoadingLandingConfig] = useState(!hasData);
 
   // --- Restaurants State ---
   const [restaurantsData, setRestaurantsData] = useState(globalHomeCache.restaurants || []);

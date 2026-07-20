@@ -207,7 +207,13 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
   // Returns count for order-status sidebar items (shows for all order sub-items)
   const getOrderStatusCount = (path = "") => {
-    const oc = badges.orderCounts
+    let oc = badges.orderCounts
+    if (isQuickAdmin && badges.quickOrderCounts) {
+      oc = badges.quickOrderCounts
+    } else if (!isQuickAdmin && !isCommonAdmin && badges.foodOrderCounts) {
+      oc = badges.foodOrderCounts
+    }
+    
     if (!oc) return null
     const p = path.toLowerCase()
     if (p.endsWith("/orders/all")) return oc.all ?? null

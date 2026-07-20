@@ -534,75 +534,16 @@ export default function TransactionReport() {
             </table>
           </div>
           {filteredTransactions.length > 0 && (
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-slate-600 flex items-center gap-4">
-                <div>
-                  Showing <span className="font-semibold">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
-                  <span className="font-semibold">{Math.min(currentPage * itemsPerPage, filteredTransactions.length)}</span> of{" "}
-                  <span className="font-semibold">{filteredTransactions.length}</span> entries
-                </div>
-                
-                <div className="flex items-center gap-2 border-l pl-4 border-slate-300">
-                  <span className="text-slate-500 hidden sm:inline">Rows per page:</span>
-                  <select 
-                    value={itemsPerPage} 
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="bg-white border border-slate-300 text-slate-700 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 block p-1"
-                  >
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  Previous
-                </button>
-                <div className="flex items-center gap-1 hidden sm:flex">
-                  {Array.from({ length: Math.min(5, Math.ceil(filteredTransactions.length / itemsPerPage)) }, (_, i) => {
-                    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage)
-                    let pageNum
-                    if (totalPages <= 5) {
-                      pageNum = i + 1
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                          currentPage === pageNum
-                            ? "bg-emerald-500 text-white shadow-md"
-                            : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    )
-                  })}
-                </div>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredTransactions.length / itemsPerPage), prev + 1))}
-                  disabled={currentPage === Math.ceil(filteredTransactions.length / itemsPerPage)}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <Pagination
+              page={currentPage}
+              total={filteredTransactions.length}
+              pageSize={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>

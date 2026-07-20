@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -16,6 +17,8 @@ export default function EarningAddon() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedAddon, setSelectedAddon] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState({
     title: true,
@@ -87,6 +90,17 @@ export default function EarningAddon() {
       addon.description?.toLowerCase().includes(query)
     )
   }, [earningAddons, searchQuery])
+
+  const paginatedAddons = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredAddons.slice(start, start + pageSize)
+  }, [filteredAddons, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredAddons.length / pageSize) || 1
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   const handleOpenDialog = (addon = null) => {
     if (addon) {
@@ -400,7 +414,7 @@ export default function EarningAddon() {
                       </td>
                     </tr>
                   ) : (
-                    filteredAddons.map((addon) => (
+                    paginatedAddons.map((addon) => (
                       <tr key={addon._id} className="hover:bg-slate-50 transition-colors">
                         {visibleColumns.title && (
                           <td className="px-6 py-4">
@@ -491,6 +505,20 @@ export default function EarningAddon() {
                 </tbody>
               </table>
             </div>
+          )}
+          {filteredAddons.length > 0 && !isLoading && (
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredAddons.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+              className="border-t-0 rounded-b-xl"
+            />
           )}
         </div>
       </div>

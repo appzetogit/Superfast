@@ -5,6 +5,8 @@ import morgan from 'morgan';
 import mongoSanitize from 'mongo-sanitize';
 import xssClean from 'xss-clean';
 import routes from './routes/index.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import errorHandler from './middleware/errorHandler.js';
 import { apiRateLimiter } from './middleware/rateLimit.js';
 import { responseTimeLogger } from './middleware/responseTimeLogger.js';
@@ -19,6 +21,11 @@ app.set('trust proxy', 1);
 
 // Request ID tracing (before other middlewares so all logs can use it)
 app.use(requestIdMiddleware);
+
+// Serve static uploads folder
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Health endpoints (no rate limit, minimal JSON, no secrets)
 app.get('/health', async (_req, res) => {

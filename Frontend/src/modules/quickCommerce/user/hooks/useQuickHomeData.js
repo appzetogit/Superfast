@@ -171,10 +171,11 @@ let globalQuickHomeCache = {
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 export const useQuickHomeData = ({ currentLocation }) => {
-  const hasValidCache = globalQuickHomeCache.data && (Date.now() - globalQuickHomeCache.lastFetched < CACHE_EXPIRY_MS);
+  // Use cache as initial state even if expired (Stale-While-Revalidate)
+  const hasData = !!globalQuickHomeCache.data;
   
-  const [isLoading, setIsLoading] = useState(!hasValidCache);
-  const [isBootstrapped, setIsBootstrapped] = useState(hasValidCache);
+  const [isLoading, setIsLoading] = useState(!hasData);
+  const [isBootstrapped, setIsBootstrapped] = useState(hasData);
   const [categories, setCategories] = useState(globalQuickHomeCache.data?.categories || [ALL_CATEGORY]);
   const [activeCategory, setActiveCategory] = useState(globalQuickHomeCache.data?.activeCategory || ALL_CATEGORY);
   const [products, setProducts] = useState(globalQuickHomeCache.data?.products || []);
@@ -198,12 +199,12 @@ export const useQuickHomeData = ({ currentLocation }) => {
   const fetchData = useCallback(async () => {
     const seq = ++fetchDataSeqRef.current;
     
-    // Use cache if strictly valid
-    if (globalQuickHomeCache.data && (Date.now() - globalQuickHomeCache.lastFetched < CACHE_EXPIRY_MS)) {
-       return;
+    // We do not return early here to allow Stale-While-Revalidate background fetching.
+    // Only show loading UI if we don't already have cached data.
+    if (!globalQuickHomeCache.data) {
+      setIsLoading(true);
     }
-
-    setIsLoading(true);
+    
     try {
       const hasValidLocation = Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude);
       const productParams = { limit: 20 };

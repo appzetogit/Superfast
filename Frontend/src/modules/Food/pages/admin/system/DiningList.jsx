@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react"
 import { Search, Settings, Loader2, Star, Building2, X } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import Pagination from "@shared/components/ui/Pagination"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -40,6 +41,8 @@ export default function DiningList() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingRestaurant, setEditingRestaurant] = useState(null)
     const [actionLoadingId, setActionLoadingId] = useState("")
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(25)
 
     // Fetch restaurants from backend API
     useEffect(() => {
@@ -129,6 +132,17 @@ export default function DiningList() {
 
         return result
     }, [restaurants, searchQuery, selectedCategory])
+
+    const paginatedRestaurants = useMemo(() => {
+        const start = (currentPage - 1) * pageSize
+        return filteredRestaurants.slice(start, start + pageSize)
+    }, [filteredRestaurants, currentPage, pageSize])
+
+    const totalPages = Math.ceil(filteredRestaurants.length / pageSize) || 1
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchQuery, selectedCategory, pageSize])
 
     const formatRestaurantId = (id) => {
         if (!id) return "REST000000"
@@ -307,7 +321,7 @@ export default function DiningList() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredRestaurants.map((restaurant, index) => (
+                                            paginatedRestaurants.map((restaurant, index) => (
                                                 <tr key={restaurant.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
@@ -409,6 +423,21 @@ export default function DiningList() {
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            {filteredRestaurants.length > 0 && !loading && (
+                                <Pagination
+                                    page={currentPage}
+                                    totalPages={totalPages}
+                                    total={filteredRestaurants.length}
+                                    pageSize={pageSize}
+                                    onPageChange={setCurrentPage}
+                                    onPageSizeChange={(size) => {
+                                        setPageSize(size)
+                                        setCurrentPage(1)
+                                    }}
+                                    className="border-t-0 rounded-b-xl"
+                                />
+                            )}
                         </>
                     )}
                 </div>
