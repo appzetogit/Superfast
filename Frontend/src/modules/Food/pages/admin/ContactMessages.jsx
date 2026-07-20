@@ -29,7 +29,6 @@ export default function ContactMessages() {
   const [selectedFeedback, setSelectedFeedback] = useState(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [ratingFilter, setRatingFilter] = useState("all")
-  const [ratingFilter, setRatingFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalEntries, setTotalEntries] = useState(0)
@@ -43,7 +42,6 @@ export default function ContactMessages() {
     try {
       setLoading(true)
       const params = {
-        const params = {
           page: currentPage,
           limit: pageSize,
           rating: ratingFilter !== 'all' ? ratingFilter : undefined,
