@@ -157,8 +157,6 @@ export default function DeliveryBoyWallet() {
             </div>
           )}
 
-          )}
-
           {wallets.length > 0 && !loading && (
             <Pagination
               page={page}
