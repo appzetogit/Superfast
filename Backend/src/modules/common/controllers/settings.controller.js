@@ -50,8 +50,11 @@ export async function updateGlobalSettings(req, res, next) {
             return res.status(400).json({ success: false, message: 'Invalid email address' });
         }
         
-        if (phoneNumber && !/^\d{7,15}$/.test(phoneNumber.trim())) {
-            return res.status(400).json({ success: false, message: 'Invalid phone number (7-15 digits required)' });
+        if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
+            const cleanedDigits = phoneNumber.replace(/\D/g, '');
+            if (cleanedDigits.length < 5 || cleanedDigits.length > 15) {
+                return res.status(400).json({ success: false, message: 'Invalid phone number (5-15 digits required)' });
+            }
         }
 
         let settings = await GlobalSettings.findOne();

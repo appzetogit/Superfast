@@ -4,9 +4,10 @@ import path from 'path';
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedExtensions.includes(ext)) {
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.ico', '.svg', '.gif'];
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon'];
+    if (allowedExtensions.includes(ext) || allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
         cb(new Error(`Invalid file type. Only ${allowedExtensions.join(', ')} are allowed.`), false);
