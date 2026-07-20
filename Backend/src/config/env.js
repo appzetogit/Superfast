@@ -46,7 +46,7 @@ export const config = {
     uploadPath: process.env.UPLOAD_PATH || 'uploads/',
     requestBodyLimit: process.env.REQUEST_BODY_LIMIT || '2mb',
     vpsStoragePath: process.env.VPS_STORAGE_PATH || (process.env.NODE_ENV === 'production' ? '/var/storage' : 'uploads'),
-    vpsImageUrl: process.env.VPS_IMAGE_URL || `https://api.domain.com/images`,
+    vpsImageUrl: process.env.VPS_IMAGE_URL || (process.env.NODE_ENV === 'production' ? `${process.env.BACKEND_URL || 'http://localhost:5000'}/images` : `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads`),
 
     // Redis
     redisEnabled: process.env.REDIS_ENABLED === 'true',

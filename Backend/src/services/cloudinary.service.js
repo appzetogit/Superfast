@@ -6,9 +6,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
+import { processAndSaveImage } from './storage.service.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 cloudinary.config({
     cloud_name: config.cloudinaryCloudName,
@@ -28,43 +29,20 @@ export const getOptimizedCloudinaryImageUrl = (url, { format = 'webp', quality =
     return url.replace('/upload/', `/upload/f_${format},q_${quality}/`);
 };
 
-// Helper to save buffer to local disk
-const saveBufferToDisk = async (buffer, folder, extension) => {
-    if (!buffer) throw new Error('File buffer is required');
-    
-    // Ensure the folder exists
-    const targetDir = path.join(UPLOADS_DIR, folder);
-    if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    // Generate a unique filename
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const filename = `${uniqueSuffix}.${extension}`;
-    const filePath = path.join(targetDir, filename);
-
-    // Save file
-    fs.writeFileSync(filePath, buffer);
-
-    // Return the local URL
-    const relativeUrl = `/uploads/${folder}/${filename}`.replace(/\\/g, '/');
-    return `${config.backendUrl}${relativeUrl}`;
-};
-
 export const uploadImageBuffer = async (buffer, folder = 'uploads') => {
-    return await saveBufferToDisk(buffer, folder, 'webp');
+    return await processAndSaveImage(buffer, folder);
 };
 
 export const uploadImageBufferDetailed = async (buffer, folder = 'uploads') => {
-    const url = await saveBufferToDisk(buffer, folder, 'webp');
-    return { secure_url: url, url, format: 'webp' };
+    const url = await processAndSaveImage(buffer, folder);
+    return { secure_url: url, url, public_id: url, format: 'webp' };
 };
 
 export const uploadBufferDetailed = async (
     buffer,
     { folder = 'uploads', resourceType = 'auto' } = {}
 ) => {
-    const extension = resourceType === 'image' ? 'webp' : 'bin';
-    const url = await saveBufferToDisk(buffer, folder, extension);
-    return { secure_url: url, url, format: extension };
+    const isRaw = resourceType !== 'image' && resourceType !== 'auto';
+    const url = await processAndSaveImage(buffer, folder, isRaw);
+    return { secure_url: url, url, public_id: url, format: isRaw ? 'bin' : 'webp' };
 };

@@ -1,5 +1,5 @@
 import { FoodHeroBanner } from '../models/heroBanner.model.js';
-import { v2 as cloudinary } from 'cloudinary';
+import { deleteImage } from '../../../../services/storage.service.js';
 import { uploadImageBufferDetailed } from '../../../../services/cloudinary.service.js';
 
 export const listHeroBanners = async () => {
@@ -46,9 +46,9 @@ export const deleteHeroBanner = async (id) => {
 
     if (doc.publicId) {
         try {
-            await cloudinary.uploader.destroy(doc.publicId);
+            await deleteImage(doc.publicId);
         } catch {
-            // ignore cloudinary deletion errors to avoid blocking deletion
+            // ignore deletion errors to avoid blocking deletion
         }
     }
 

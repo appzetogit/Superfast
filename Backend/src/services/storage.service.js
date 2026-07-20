@@ -27,9 +27,10 @@ const ensureDir = (dirPath) => {
  * Process and save an image buffer to VPS storage
  * @param {Buffer} buffer - The image buffer from Multer
  * @param {string} folder - The target folder (e.g., 'menu', 'banners')
+ * @param {boolean} isRaw - If true, skips sharp processing and saves raw buffer
  * @returns {Promise<string>} The public URL of the saved image
  */
-export const processAndSaveImage = async (buffer, folder = 'misc') => {
+export const processAndSaveImage = async (buffer, folder = 'misc', isRaw = false) => {
     if (!buffer) throw new Error('File buffer is required');
 
     // Determine processing options
@@ -51,23 +52,27 @@ export const processAndSaveImage = async (buffer, folder = 'misc') => {
     const filename = `${uuidv4()}.webp`;
     const filePath = path.join(targetDir, filename);
 
-    // Process image with Sharp
-    let sharpInstance = sharp(buffer);
-    
-    // Only resize if a dimension is provided
-    if (options.width || options.height) {
-        sharpInstance = sharpInstance.resize({
-            width: options.width,
-            height: options.height,
-            fit: options.fit || 'inside',
-            withoutEnlargement: true // Don't upscale small images
-        });
-    }
+    // Process image with Sharp or save raw
+    if (isRaw) {
+        fs.writeFileSync(filePath, buffer);
+    } else {
+        let sharpInstance = sharp(buffer);
+        
+        // Only resize if a dimension is provided
+        if (options.width || options.height) {
+            sharpInstance = sharpInstance.resize({
+                width: options.width,
+                height: options.height,
+                fit: options.fit || 'inside',
+                withoutEnlargement: true // Don't upscale small images
+            });
+        }
 
-    // Convert to webp and save
-    await sharpInstance
-        .webp({ quality: 80, effort: 6 })
-        .toFile(filePath);
+        // Convert to webp and save
+        await sharpInstance
+            .webp({ quality: 80, effort: 6 })
+            .toFile(filePath);
+    }
 
     // Return the URL: https://api.domain.com/images/folder/YYYY/MM/filename.webp
     const relativeUrl = `${folder}/${year}/${month}/${filename}`.replace(/\\/g, '/');
