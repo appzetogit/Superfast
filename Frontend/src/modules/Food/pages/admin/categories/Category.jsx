@@ -145,7 +145,12 @@ export default function Category() {
 
       const response = await adminAPI.getCategories(params)
       const list = response?.data?.data?.categories || response?.data?.categories || []
-      setCategories(Array.isArray(list) ? list : [])
+      const normalized = (Array.isArray(list) ? list : []).map((cat) => ({
+        ...cat,
+        id: String(cat?.id || cat?._id || ""),
+        _id: cat?._id || cat?.id,
+      }))
+      setCategories(normalized)
     } catch (error) {
       if (error?.response?.status === 401) {
         toast.error("Authentication required. Please login again.")
@@ -361,7 +366,8 @@ export default function Category() {
       }
 
       if (editingCategory) {
-        const response = await adminAPI.updateCategory(editingCategory.id, payload)
+        const categoryId = String(editingCategory._id || editingCategory.id || "")
+        const response = await adminAPI.updateCategory(categoryId, payload)
         if (response?.data?.success) toast.success("Category updated successfully")
       } else {
         const response = await adminAPI.createCategory(payload)
@@ -529,7 +535,7 @@ export default function Category() {
                       </td>
                       <td className="px-4 py-5 text-center">
                         <button
-                          onClick={() => handleToggleStatus(category.id)}
+                          onClick={() => handleToggleStatus(category._id || category.id)}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full ${category?.status ? "bg-blue-600" : "bg-slate-300"}`}
                           title={category?.status ? "Deactivate" : "Activate"}
                         >
@@ -552,7 +558,7 @@ export default function Category() {
                           <div className="flex flex-wrap justify-end gap-2">
                             {approvalStatus !== "approved" && (
                               <button
-                                onClick={() => handleApprove(category.id)}
+                                onClick={() => handleApprove(category._id || category.id)}
                                 className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
                               >
                                 Approve
@@ -584,7 +590,7 @@ export default function Category() {
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleDelete(category.id)}
+                              onClick={() => handleDelete(category._id || category.id)}
                               className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"
                               title="Delete"
                             >

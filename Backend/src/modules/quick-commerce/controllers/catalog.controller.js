@@ -5,7 +5,8 @@ import { FoodUser } from '../../../core/users/user.model.js';
 import { Seller } from '../seller/models/seller.model.js';
 import { ensureQuickCommerceSeedData } from '../services/seed.service.js';
 import mongoose from 'mongoose';
-import { transformImageFields } from '../../../../utils/urlHelper.js';
+import { transformImageFields } from '../../../utils/urlHelper.js';
+
 import {
   getQuickCategories,
   getQuickCoupons,

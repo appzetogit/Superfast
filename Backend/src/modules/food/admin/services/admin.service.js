@@ -29,11 +29,11 @@ import { FoodRestaurantSupportTicket } from '../../restaurant/models/supportTick
 import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurantWithdrawal.model.js';
-import { 
-    creditWallet, 
+import {
+    creditWallet,
     debitWallet
 } from '../../../../core/payments/wallet.service.js';
-import { 
+import {
     getBalance,
     getTransactionsByEntity
 } from '../../../../core/payments/transaction.service.js';
@@ -132,7 +132,7 @@ const detectZoneFromPartner = (partner, zones) => {
         const match = zones.find(z => isPointInPolygon(partner.lastLat, partner.lastLng, z.coordinates));
         if (match) detectedZone = match.zoneName || match.name;
     }
-    
+
     if (!detectedZone) {
         const city = (partner.city || '').trim().toLowerCase();
         const state = (partner.state || '').trim().toLowerCase();
@@ -143,14 +143,14 @@ const detectZoneFromPartner = (partner, zones) => {
             const zName = (z.name || '').toLowerCase();
             const zZoneName = (z.zoneName || '').toLowerCase();
             const zLoc = (z.serviceLocation || '').toLowerCase();
-            
+
             if (city && (zName === city || zZoneName === city || zLoc === city)) return true;
             if (zName && locStr.includes(zName)) return true;
             if (zZoneName && locStr.includes(zZoneName)) return true;
             if (zLoc && locStr.includes(zLoc)) return true;
             return false;
         });
-        
+
         if (match) detectedZone = match.zoneName || match.name;
     }
     return detectedZone;
@@ -486,43 +486,43 @@ export async function getDashboardStats(query = {}) {
                             $cond: [{ $in: ['$orderStatus', PROCESSING_ORDER_STATUSES] }, 1, 0]
                         }
                     },
-                    revenueTotal: { 
-                        $sum: { 
-                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.total', 0] }, 0] 
-                        } 
+                    revenueTotal: {
+                        $sum: {
+                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.total', 0] }, 0]
+                        }
                     },
-                    commissionTotal: { 
-                        $sum: { 
-                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.restaurantCommission', 0] }, 0] 
-                        } 
+                    commissionTotal: {
+                        $sum: {
+                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.restaurantCommission', 0] }, 0]
+                        }
                     },
-                    platformFeeTotal: { 
-                        $sum: { 
+                    platformFeeTotal: {
+                        $sum: {
                             $cond: [
                                 { $in: ['$orderStatus', [...CANCELLED_ORDER_STATUSES, 'refunded']] },
                                 0,
                                 { $ifNull: ['$pricing.platformFee', 0] }
-                            ] 
-                        } 
+                            ]
+                        }
                     },
-                    deliveryFeeTotal: { 
-                        $sum: { 
+                    deliveryFeeTotal: {
+                        $sum: {
                             $cond: [
                                 { $in: ['$orderStatus', [...CANCELLED_ORDER_STATUSES, 'refunded']] },
                                 0,
                                 { $ifNull: ['$pricing.deliveryFee', 0] }
-                            ] 
-                        } 
+                            ]
+                        }
                     },
-                    gstTotal: { 
-                        $sum: { 
-                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.tax', 0] }, 0] 
-                        } 
+                    gstTotal: {
+                        $sum: {
+                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.tax', 0] }, 0]
+                        }
                     },
-                    adminNetProfit: { 
-                        $sum: { 
-                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$platformProfit', 0] }, 0] 
-                        } 
+                    adminNetProfit: {
+                        $sum: {
+                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$platformProfit', 0] }, 0]
+                        }
                     }
                 }
             }
@@ -544,10 +544,10 @@ export async function getDashboardStats(query = {}) {
                         month: { $month: '$createdAt' }
                     },
                     orders: { $sum: 1 },
-                    revenue: { 
-                        $sum: { 
-                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.total', 0] }, 0] 
-                        } 
+                    revenue: {
+                        $sum: {
+                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.total', 0] }, 0]
+                        }
                     },
                     commission: {
                         $sum: {
@@ -573,12 +573,12 @@ export async function getDashboardStats(query = {}) {
             : FoodUser.countDocuments({}),
         FoodRestaurant.find({ ...restaurantMatch, status: 'pending' }).sort({ createdAt: -1 }).limit(5).select('restaurantName createdAt').lean(),
         FoodDeliveryPartner.find({ status: 'pending', requestType: { $ne: 'VEHICLE_CHANGE' } }).sort({ createdAt: -1 }).limit(5).select('name createdAt').lean(),
-        FoodOrder.find({ 
+        FoodOrder.find({
             ...orderMatch,
             orderStatus: { $in: [...PENDING_ORDER_STATUSES, ...PROCESSING_ORDER_STATUSES] },
         }).sort({ createdAt: -1 }).limit(5).select('orderId createdAt').lean(),
         FoodOrder.find({ ...orderMatch, orderStatus: 'delivered' }).sort({ updatedAt: -1 }).limit(5).select('orderId updatedAt').lean(),
-        FoodOrder.find({ 
+        FoodOrder.find({
             ...orderMatch,
             orderStatus: { $in: CANCELLED_ORDER_STATUSES },
         }).sort({ updatedAt: -1 }).limit(5).select('orderId updatedAt').lean(),
@@ -615,7 +615,7 @@ export async function getDashboardStats(query = {}) {
     ]);
 
     const liveSignals = [];
-    
+
     (recentPendingRestaurants || []).forEach(r => {
         liveSignals.push({
             type: 'restaurant',
@@ -801,7 +801,7 @@ export async function getTransactionReport(query = {}) {
             const restDoc = await mongoose.model('FoodRestaurant').findOne({ restaurantName: restaurant }).lean();
             if (restDoc) restFilter._id = restDoc._id;
         }
-        
+
         if (Object.keys(restFilter).length > 0) {
             const restaurantsList = await mongoose.model('FoodRestaurant').find(restFilter).select('_id').lean();
             restaurantIds = restaurantsList.map(r => r._id);
@@ -1261,13 +1261,13 @@ export async function getCustomers(query = {}) {
             start.setHours(0, 0, 0, 0);
             const end = new Date(d);
             end.setHours(23, 59, 59, 999);
-            
+
             const userIds = await FoodOrder.distinct('userId', {
                 orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES },
                 createdAt: { $gte: start, $lte: end },
                 userId: { $exists: true, $ne: null }
             });
-            
+
             filter._id = { $in: userIds };
         }
     }
@@ -1337,21 +1337,21 @@ export async function getCustomers(query = {}) {
     let customers = docs.map((u) => {
         const stats = orderStatsMap.get(String(u._id)) || { totalOrder: 0, totalOrderAmount: 0 };
         return ({
-        id: u._id,
-        _id: u._id,
-        name: u.name || 'Unnamed',
-        email: u.email || '',
-        phone: u.phone || '',
-        profileImage: sanitizeUrl(u.profileImage || ''),
-        countryCode: u.countryCode || '+91',
-        status: u.isActive !== false,
-        isActive: u.isActive !== false,
-        isVerified: u.isVerified === true,
-        isCodBlocked: u.isCodBlocked === true,
-        totalOrder: stats.totalOrder,
-        totalOrderAmount: stats.totalOrderAmount,
-        joiningDate: u.createdAt,
-        createdAt: u.createdAt
+            id: u._id,
+            _id: u._id,
+            name: u.name || 'Unnamed',
+            email: u.email || '',
+            phone: u.phone || '',
+            profileImage: sanitizeUrl(u.profileImage || ''),
+            countryCode: u.countryCode || '+91',
+            status: u.isActive !== false,
+            isActive: u.isActive !== false,
+            isVerified: u.isVerified === true,
+            isCodBlocked: u.isCodBlocked === true,
+            totalOrder: stats.totalOrder,
+            totalOrderAmount: stats.totalOrderAmount,
+            joiningDate: u.createdAt,
+            createdAt: u.createdAt
         });
     });
 
@@ -1522,26 +1522,26 @@ export async function getSupportTickets(query = {}) {
     const [userList, userTotal, restaurantList, restaurantTotal] = await Promise.all([
         shouldFetchUser
             ? FoodSupportTicket.find(userFilter)
-                  .sort({ createdAt: -1 })
-                  .skip(source === 'all' ? 0 : skip)
-                  .limit(source === 'all' ? limit * page : limit)
-                  .populate('userId', 'name phone email')
-                  .populate('restaurantId', 'restaurantName city area')
-                  .populate({
-                      path: 'orderId',
-                      select: 'restaurantId',
-                      populate: { path: 'restaurantId', select: 'restaurantName city area' }
-                  })
-                  .lean()
+                .sort({ createdAt: -1 })
+                .skip(source === 'all' ? 0 : skip)
+                .limit(source === 'all' ? limit * page : limit)
+                .populate('userId', 'name phone email')
+                .populate('restaurantId', 'restaurantName city area')
+                .populate({
+                    path: 'orderId',
+                    select: 'restaurantId',
+                    populate: { path: 'restaurantId', select: 'restaurantName city area' }
+                })
+                .lean()
             : Promise.resolve([]),
         shouldFetchUser ? FoodSupportTicket.countDocuments(userFilter) : Promise.resolve(0),
         shouldFetchRestaurant
             ? FoodRestaurantSupportTicket.find(restaurantFilter)
-                  .sort({ createdAt: -1 })
-                  .skip(source === 'all' ? 0 : skip)
-                  .limit(source === 'all' ? limit * page : limit)
-                  .populate('restaurantId', 'restaurantName city area')
-                  .lean()
+                .sort({ createdAt: -1 })
+                .skip(source === 'all' ? 0 : skip)
+                .limit(source === 'all' ? limit * page : limit)
+                .populate('restaurantId', 'restaurantName city area')
+                .lean()
             : Promise.resolve([]),
         shouldFetchRestaurant ? FoodRestaurantSupportTicket.countDocuments(restaurantFilter) : Promise.resolve(0)
     ]);
@@ -1550,11 +1550,11 @@ export async function getSupportTickets(query = {}) {
         const user =
             t.userId && typeof t.userId === 'object' && t.userId !== null
                 ? {
-                      _id: t.userId._id,
-                      name: t.userId.name || '',
-                      phone: t.userId.phone || '',
-                      email: t.userId.email || ''
-                  }
+                    _id: t.userId._id,
+                    name: t.userId.name || '',
+                    phone: t.userId.phone || '',
+                    email: t.userId.email || ''
+                }
                 : null;
         const userId =
             t.userId && typeof t.userId === 'object' && t.userId !== null ? String(t.userId._id) : String(t.userId);
@@ -1572,21 +1572,21 @@ export async function getSupportTickets(query = {}) {
         const restaurant =
             restaurantDoc && typeof restaurantDoc === 'object'
                 ? {
-                      _id: restaurantDoc._id,
-                      name: restaurantDoc.restaurantName || '',
-                      city: restaurantDoc.city || '',
-                      area: restaurantDoc.area || ''
-                  }
+                    _id: restaurantDoc._id,
+                    name: restaurantDoc.restaurantName || '',
+                    city: restaurantDoc.city || '',
+                    area: restaurantDoc.area || ''
+                }
                 : null;
 
         const restaurantId =
             restaurant && restaurant._id
                 ? String(restaurant._id)
                 : t.restaurantId
-                ? String(t.restaurantId)
-                : t.orderId && typeof t.orderId === 'object' && t.orderId !== null && t.orderId.restaurantId
-                ? String(t.orderId.restaurantId)
-                : null;
+                    ? String(t.restaurantId)
+                    : t.orderId && typeof t.orderId === 'object' && t.orderId !== null && t.orderId.restaurantId
+                        ? String(t.orderId.restaurantId)
+                        : null;
 
         const restaurantName = restaurant ? restaurant.name : '';
 
@@ -1613,11 +1613,11 @@ export async function getSupportTickets(query = {}) {
         const restaurant =
             t.restaurantId && typeof t.restaurantId === 'object'
                 ? {
-                      _id: t.restaurantId._id,
-                      name: t.restaurantId.restaurantName || '',
-                      city: t.restaurantId.city || '',
-                      area: t.restaurantId.area || ''
-                  }
+                    _id: t.restaurantId._id,
+                    name: t.restaurantId.restaurantName || '',
+                    city: t.restaurantId.city || '',
+                    area: t.restaurantId.area || ''
+                }
                 : null;
         const restaurantId =
             restaurant && restaurant._id ? String(restaurant._id) : t.restaurantId ? String(t.restaurantId) : null;
@@ -1855,13 +1855,13 @@ export async function updateDeliveryCommissionRule(id, body) {
     const candidate = existing.map((r) =>
         String(r._id) === String(id)
             ? {
-                  ...r,
-                  minDistance: body.minDistance,
-                  maxDistance: body.maxDistance ?? null,
-                  commissionPerKm: body.commissionPerKm,
-                  basePayout: body.basePayout,
-                  status: r.status !== false
-              }
+                ...r,
+                minDistance: body.minDistance,
+                maxDistance: body.maxDistance ?? null,
+                commissionPerKm: body.commissionPerKm,
+                basePayout: body.basePayout,
+                status: r.status !== false
+            }
             : r
     );
     validateCommissionRuleSet(candidate);
@@ -1969,7 +1969,7 @@ export async function getReferralSettings() {
 
 export async function upsertReferralSettings(body = {}) {
     const existing = await FoodReferralSettings.findOne({ isActive: true }).sort({ createdAt: -1 });
-    
+
     const formattedData = {
         user: {
             referrerReward: Math.max(0, Number(body.user?.referrerReward) || 0),
@@ -1986,8 +1986,8 @@ export async function upsertReferralSettings(body = {}) {
 
     if (existing) {
         const updated = await FoodReferralSettings.findByIdAndUpdate(
-            existing._id, 
-            { $set: formattedData }, 
+            existing._id,
+            { $set: formattedData },
             { new: true }
         ).lean();
         return updated;
@@ -2077,7 +2077,7 @@ export async function getContactMessages(query = {}) {
     if (query.search && String(query.search).trim()) {
         const term = String(query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const searchRegex = new RegExp(term, 'i');
-        
+
         const [users, restaurants, partners] = await Promise.all([
             FoodUser.find({
                 $or: [{ name: searchRegex }, { email: searchRegex }, { phone: searchRegex }]
@@ -2231,11 +2231,11 @@ export async function getRestaurantReviews(query = {}) {
     if (query.search && String(query.search).trim()) {
         const term = String(query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const searchRegex = new RegExp(term, 'i');
-        
+
         const restaurants = await FoodRestaurant.find({
             $or: [{ restaurantName: searchRegex }]
         }).select('_id').lean();
-        
+
         const customers = await FoodUser.find({
             $or: [{ name: searchRegex }, { email: searchRegex }]
         }).select('_id').lean();
@@ -2459,7 +2459,7 @@ export async function approveCustomOrderRequest(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const doc = await FoodRestaurant.findById(id);
     if (!doc) return null;
-    
+
     doc.customOrdersRequestStatus = 'approved';
     doc.customOrdersEnabled = doc.customOrdersRequestedState;
     await doc.save();
@@ -2483,7 +2483,7 @@ export async function rejectCustomOrderRequest(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const doc = await FoodRestaurant.findById(id);
     if (!doc) return null;
-    
+
     doc.customOrdersRequestStatus = 'rejected';
     // We do NOT change customOrdersEnabled on rejection, we leave it as whatever it currently is.
     await doc.save();
@@ -2794,7 +2794,7 @@ export async function getCategories(query) {
 export async function createCategory(body) {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw new ValidationError('Category name is required');
-    
+
     const existing = await FoodCategory.findOne({
         name: { $regex: new RegExp(`^${name}$`, 'i') },
         restaurantId: { $in: [null, undefined] }
@@ -3038,7 +3038,7 @@ export async function getRestaurantAddonsAdmin(query = {}) {
 export async function updateRestaurantAddonAdmin(addonId, body) {
     if (!addonId || !mongoose.Types.ObjectId.isValid(String(addonId))) return null;
     const _id = new mongoose.Types.ObjectId(String(addonId));
-    
+
     const addon = await FoodAddon.findOne({ _id, isDeleted: { $ne: true } });
     if (!addon) return null;
 
@@ -3610,7 +3610,7 @@ export async function getAllOffers(_query = {}) {
         const now = Date.now();
         const startTs = o.startDate ? new Date(o.startDate).getTime() : null;
         const endTs = o.endDate ? new Date(o.endDate).getTime() : null;
-        
+
         const isScheduled = Boolean(startTs && now < startTs);
         const isExpired = Boolean(endTs && now >= endTs);
 
@@ -3748,7 +3748,7 @@ export async function getDeliveryJoinRequests(query) {
             ]
         });
     }
-    
+
     // We will do zone filtering in memory since we need to match against polygon zones
     // but we can still apply other filters in DB
     if (andParts.length) filter.$and = andParts;
@@ -3768,7 +3768,7 @@ export async function getDeliveryJoinRequests(query) {
 
     let requests = list.map((doc) => {
         const detectedZone = detectZoneFromPartner(doc, zones);
-        
+
         return {
             ...doc,
             detectedZoneName: detectedZone || doc.city || doc.state || 'N/A'
@@ -3933,12 +3933,12 @@ export async function getDeliveryPartners(query) {
 
     const partnerIds = list.map(p => p._id);
     const orderCountsAgg = await FoodOrder.aggregate([
-        { 
-            $match: { 
+        {
+            $match: {
                 'dispatch.deliveryPartnerId': { $in: partnerIds },
                 orderStatus: 'delivered',
                 orderType: 'food'
-            } 
+            }
         },
         { $group: { _id: '$dispatch.deliveryPartnerId', totalOrders: { $sum: 1 } } }
     ]);
@@ -4506,7 +4506,7 @@ export async function cancelEarningAddonHistory(historyId, reason) {
 
 export async function checkEarningAddonCompletions(deliveryPartnerId, _force = false) {
     const now = new Date();
-    
+
     // Only search for active offers that are currently running.
     const activeOffers = await FoodEarningAddon.find({
         status: 'active',
@@ -4558,10 +4558,10 @@ export async function checkEarningAddonCompletions(deliveryPartnerId, _force = f
                     status: 'pending',
                     completedAt: now
                 });
-                
+
                 // Update current redemptions in addon
                 await FoodEarningAddon.findByIdAndUpdate(offer._id, { $inc: { currentRedemptions: 1 } });
-                
+
                 globalCompletions++;
             }
         }
@@ -4633,7 +4633,7 @@ export async function getDeliverymanReviews(query = {}) {
     if (query.search && String(query.search).trim()) {
         const term = String(query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const searchRegex = new RegExp(term, 'i');
-        
+
         // Find delivery partners matching search
         const partners = await FoodDeliveryPartner.find({
             $or: [
@@ -4641,7 +4641,7 @@ export async function getDeliverymanReviews(query = {}) {
                 { phone: searchRegex }
             ]
         }).select('_id').lean();
-        
+
         // Find customers matching search
         const customers = await FoodUser.find({
             $or: [
@@ -4741,11 +4741,11 @@ export async function approveDeliveryPartner(id) {
             const already = await FoodReferralLog.findOne({ refereeId: partner._id, role: 'DELIVERY_PARTNER' }).lean();
             if (!already) {
                 const settingsDoc = await FoodReferralSettings.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
-                
+
                 const referrerReward = Math.max(0, Number(settingsDoc?.delivery?.referrerReward) || 0);
                 const refereeReward = Math.max(0, Number(settingsDoc?.delivery?.refereeReward) || 0);
                 const limit = Math.max(0, Number(settingsDoc?.delivery?.limit) || 0);
-                
+
                 const referrer = await FoodDeliveryPartner.findById(referrerId).select('_id referralCount status').lean();
 
                 if (referrer && referrer.status === 'approved' && (referrerReward > 0 || refereeReward > 0) && limit > 0 && Number(referrer.referralCount || 0) < limit) {
@@ -4834,11 +4834,11 @@ export async function updateDeliveryPartnerStatus(id, availabilityStatus) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const partner = await FoodDeliveryPartner.findById(id);
     if (!partner) return null;
-    
+
     if (availabilityStatus && ['online', 'offline'].includes(availabilityStatus)) {
         partner.availabilityStatus = availabilityStatus;
         await partner.save();
-        
+
         try {
             const { getIO, rooms } = await import('../../../../config/socket.js');
             const io = getIO();
@@ -4983,7 +4983,7 @@ export async function getWithdrawals(query = {}) {
 
 export async function updateWithdrawalStatus(id, { status, adminNote, rejectionReason, transactionId }) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid withdrawal ID');
-    
+
     const update = {
         status: String(status).toLowerCase(),
         adminNote,
@@ -5063,7 +5063,7 @@ export async function getDeliveryWithdrawals(query = {}) {
 
 export async function updateDeliveryWithdrawalStatus(id, { status, adminNote, rejectionReason, transactionId }) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid withdrawal ID');
-    
+
     const update = {
         status: String(status).toLowerCase(),
         adminNote,
@@ -5132,7 +5132,7 @@ export async function getDeliveryWallets(query = {}) {
 
     const wallets = await Promise.all(partners.map(async (p) => {
         const wallet = await getDeliveryPartnerWalletEnhanced(p._id);
-        
+
         return {
             walletId: wallet?._id,
             deliveryId: p._id,
@@ -5148,21 +5148,21 @@ export async function getDeliveryWallets(query = {}) {
         };
     }));
 
-    return { 
-        wallets, 
-        pagination: { 
-            total, 
-            page, 
-            limit, 
-            pages: Math.ceil(total / limit) || 1 
-        } 
+    return {
+        wallets,
+        pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit) || 1
+        }
     };
 }
 
 export async function updateDeliveryBoyWallet(dto) {
     const { deliveryId, pocketBalance, cashInHand } = dto;
     const wallet = await getDeliveryPartnerWalletEnhanced(deliveryId);
-    
+
     // Adjust Pocket Balance via Bonus/Adjustment
     const pocketDiff = Number(pocketBalance) - wallet.pocketBalance;
     if (Math.abs(pocketDiff) > 0.01) {
@@ -5173,7 +5173,7 @@ export async function updateDeliveryBoyWallet(dto) {
             transactionId: generateBonusTransactionId()
         });
     }
-    
+
     // Adjust Cash In Hand via Deposit/Adjustment (Deposit reduces cashInHand)
     const cashDiff = wallet.cashInHand - Number(cashInHand);
     if (Math.abs(cashDiff) > 0.01) {
@@ -5185,7 +5185,7 @@ export async function updateDeliveryBoyWallet(dto) {
             razorpayOrderId: 'manual_adj_' + Date.now()
         });
     }
-    
+
     const updated = await getDeliveryPartnerWalletEnhanced(deliveryId);
     return {
         walletId: updated?._id,
@@ -5220,7 +5220,7 @@ export async function getCashLimitSettlements(query = {}) {
                     { profilePartnerId: searchRegex }
                 ]
             }).select('_id').lean();
-            
+
             if (partners.length > 0) {
                 filter.deliveryPartnerId = { $in: partners.map(p => p._id) };
             } else {
@@ -5251,14 +5251,14 @@ export async function getCashLimitSettlements(query = {}) {
         razorpayPaymentId: d.razorpayPaymentId || '-'
     }));
 
-    return { 
-        transactions, 
-        pagination: { 
-            total, 
-            page, 
-            limit, 
-            pages: Math.ceil(total / limit) || 1 
-        } 
+    return {
+        transactions,
+        pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit) || 1
+        }
     };
 }
 
@@ -5346,10 +5346,10 @@ export async function getSidebarBadges() {
                     }
                     return await FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, $or: orConditions });
                 } catch (e) {
-                    return await FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, $or: [ { orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } } ] });
+                    return await FoodOrder.countDocuments({ orderType: { $ne: 'quick' }, $or: [{ orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } }] });
                 }
             })(),
-            
+
             // Per-status order counts for Quick Commerce (orderType == 'quick')
             FoodOrder.countDocuments({ orderType: 'quick' }),
             FoodOrder.countDocuments({ orderType: 'quick', orderStatus: 'scheduled' }),
@@ -5375,7 +5375,7 @@ export async function getSidebarBadges() {
                     }
                     return await FoodOrder.countDocuments({ orderType: 'quick', $or: orConditions });
                 } catch (e) {
-                    return await FoodOrder.countDocuments({ orderType: 'quick', $or: [ { orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } } ] });
+                    return await FoodOrder.countDocuments({ orderType: 'quick', $or: [{ orderStatus: 'returned' }, { workflowStatus: 'RETURNED' }, { returnStatus: { $exists: true, $ne: '' } }] });
                 }
             })(),
         ]);
