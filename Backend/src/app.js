@@ -13,8 +13,10 @@ import { responseTimeLogger } from './middleware/responseTimeLogger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
 import { config } from './config/env.js';
+import { transformImageFields } from './utils/urlHelper.js';
 
 const app = express();
+
 
 // Trust first proxy (essential for express-rate-limit if behind a proxy)
 app.set('trust proxy', 1);
@@ -28,7 +30,13 @@ const __dirname = path.dirname(__filename);
 const storageDir = path.isAbsolute(config.vpsStoragePath)
     ? config.vpsStoragePath
     : path.join(__dirname, '..', config.vpsStoragePath);
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+    setHeaders: (res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    }
+}));
 app.use('/images', express.static(storageDir, {
     setHeaders: (res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -87,8 +95,21 @@ app.use('/api', apiRateLimiter);
 // Optional: log API response time (method, path, status, duration) - no sensitive data
 app.use('/api', responseTimeLogger);
 
+// Global response transformer: ensure all image paths across all controllers are converted to full URLs
+app.use((req, res, next) => {
+    const originalJson = res.json;
+    res.json = function (body) {
+        if (body && typeof body === 'object') {
+            body = transformImageFields(body);
+        }
+        return originalJson.call(this, body);
+    };
+    next();
+});
+
 // API Routes
 app.use('/api', routes);
+
 
 // Error Handling
 app.use(errorHandler);

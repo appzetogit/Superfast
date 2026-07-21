@@ -8,12 +8,14 @@ import {
 } from '../services/exploreIcon.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
+import { toFullUrl } from '../../../../utils/urlHelper.js';
 
 /** Normalize item for frontend: expose link, order, and imageUrl (alias for iconUrl) */
 const toItem = (doc) => {
     if (!doc) return doc;
     const { targetPath, sortOrder, iconUrl, ...rest } = doc;
-    return { ...rest, iconUrl, imageUrl: iconUrl, link: targetPath, order: sortOrder };
+    const fullIconUrl = toFullUrl(iconUrl);
+    return { ...rest, iconUrl: fullIconUrl, imageUrl: fullIconUrl, link: targetPath, order: sortOrder };
 };
 
 export const listExploreMoreController = async (req, res, next) => {

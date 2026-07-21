@@ -23,13 +23,13 @@ const apiClient = axios.create({
 
 function getModuleFromUrl(url = "") {
   const normalized = (typeof url === "string" ? url : (url?.url || "")).toLowerCase();
-  
+
   // 1. Admin detection (Priority)
   if (
-    normalized.includes("/admin/") || 
-    normalized.includes("/food/admin/") || 
-    normalized.includes("/food/auth/admin") || 
-    normalized.includes("/auth/admin") || 
+    normalized.includes("/admin/") ||
+    normalized.includes("/food/admin/") ||
+    normalized.includes("/food/auth/admin") ||
+    normalized.includes("/auth/admin") ||
     normalized.includes("admin/login")
   ) return "admin";
 
@@ -41,16 +41,16 @@ function getModuleFromUrl(url = "") {
 
   // 3. Restaurant detection
   if (
-    normalized.includes("/restaurant/") || 
+    normalized.includes("/restaurant/") ||
     normalized.includes("/food/restaurant") ||
     normalized.includes("/auth/restaurant")
   ) {
     return "restaurant";
   }
-  
+
   // 4. Delivery detection
   if (
-    normalized.includes("/delivery/") || 
+    normalized.includes("/delivery/") ||
     normalized.includes("/food/delivery") ||
     normalized.includes("/auth/delivery")
   ) return "delivery";
@@ -70,13 +70,13 @@ function getAccessToken(config) {
     // 1. Try module-specific token first
     const moduleToken = localStorage.getItem(key);
     if (moduleToken) return moduleToken;
-    
+
     // 2. Fallback for admin module (checks adminToken, auth_admin, or generic accessToken)
     if (module === "admin") {
       const adminToken = localStorage.getItem("adminToken") || localStorage.getItem("auth_admin") || localStorage.getItem("accessToken");
       if (adminToken) return adminToken;
     }
-    
+
     // 3. Fallback to auth_customer for user module (Quick Commerce token compatibility)
     if (module === "user") {
       const customerToken = localStorage.getItem("auth_customer");
@@ -98,7 +98,7 @@ function getRefreshToken(module) {
     // 1. Try module-specific refresh token
     const moduleRefreshToken = localStorage.getItem(`${module}_refreshToken`);
     if (moduleRefreshToken) return moduleRefreshToken;
-    
+
     // 2. Fallback to generic refresh token only for non-admin modules
     if (module !== "admin") {
       return localStorage.getItem("refreshToken") || null;
@@ -127,7 +127,7 @@ function clearModuleAuth(module) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("token");
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 let isRefreshing = false;
@@ -147,7 +147,7 @@ function onRefreshFailed(module) {
   // Fail any queued requests that were waiting for this refresh
   refreshSubscribers.forEach((cb) => cb(null, module));
   refreshSubscribers = [];
-  
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("authRefreshFailed", { detail: { module } }));
   }
@@ -221,7 +221,7 @@ apiClient.interceptors.response.use(
       if (newAccessToken) {
         try {
           localStorage.setItem(`${module}_accessToken`, newAccessToken);
-          
+
           // Also sync legacy and global keys for consistency across the app
           if (module === "admin") {
             localStorage.setItem("adminToken", newAccessToken);
@@ -229,10 +229,10 @@ apiClient.interceptors.response.use(
           localStorage.setItem("accessToken", newAccessToken);
 
           // Dispatch a custom event specifically for the module that refreshed
-          window.dispatchEvent(new CustomEvent("authRefreshed", { 
-            detail: { module, token: newAccessToken } 
+          window.dispatchEvent(new CustomEvent("authRefreshed", {
+            detail: { module, token: newAccessToken }
           }));
-        } catch (_) {}
+        } catch (_) { }
         onRefreshed(newAccessToken, module);
         original.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(original);

@@ -5,6 +5,7 @@ import { FoodUser } from '../../../core/users/user.model.js';
 import { Seller } from '../seller/models/seller.model.js';
 import { ensureQuickCommerceSeedData } from '../services/seed.service.js';
 import mongoose from 'mongoose';
+import { transformImageFields } from '../../../../utils/urlHelper.js';
 import {
   getQuickCategories,
   getQuickCoupons,
@@ -57,7 +58,6 @@ const publicCategoryFilter = {
 
 const publicProductFilter = {
   $and: [
-    approvedOrLegacyFilter,
     {
       $or: [
         { status: 'active' },
@@ -66,6 +66,7 @@ const publicProductFilter = {
         { isActive: { $exists: false } },
       ],
     },
+    approvedOrLegacyFilter,
   ],
 };
 
@@ -87,16 +88,17 @@ const mapCategory = (category) => ({
 });
 
 const buildSellerMap = async (products = []) => {
-  const sellerIds = [...new Set(
-    products
-      .map((product) => String(product?.sellerId || '').trim())
-      .filter(Boolean)
-  )];
-
+  const sellerIds = Array.from(
+    new Set(
+      products
+        .map((p) => p?.sellerId)
+        .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+    )
+  );
   if (!sellerIds.length) return {};
 
   const sellers = await Seller.find({ _id: { $in: sellerIds } })
-    .select('_id shopName name')
+    .select('_id name shopName')
     .lean();
 
   return sellers.reduce((acc, seller) => {
@@ -107,7 +109,7 @@ const buildSellerMap = async (products = []) => {
 
 const mapProduct = (product, sellerMap = {}) => {
   const seller = sellerMap[String(product?.sellerId || '')] || null;
-  return ({
+  return transformImageFields({
   id: product._id,
   _id: product._id,
   name: product.name,

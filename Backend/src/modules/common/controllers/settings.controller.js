@@ -6,6 +6,7 @@ import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { Seller } from '../../quick-commerce/seller/models/seller.model.js';
 import { FoodRefreshToken } from '../../../core/refreshTokens/refreshToken.model.js';
+import { transformImageFields } from '../../../utils/urlHelper.js';
 
 export async function getGlobalSettings(req, res, next) {
     try {
@@ -17,11 +18,12 @@ export async function getGlobalSettings(req, res, next) {
                 email: 'admin@SUPERFAST.com'
             });
         }
-        return sendResponse(res, 200, 'Global settings fetched successfully', settings);
+        return sendResponse(res, 200, 'Global settings fetched successfully', transformImageFields(settings));
     } catch (error) {
         next(error);
     }
 }
+
 
 export async function updateGlobalSettings(req, res, next) {
     try {
@@ -251,7 +253,7 @@ export async function updateGlobalSettings(req, res, next) {
             }
         }
 
-        return sendResponse(res, 200, 'Global settings updated successfully', settings);
+        return sendResponse(res, 200, 'Global settings updated successfully', transformImageFields(settings));
     } catch (error) {
         next(error);
     }

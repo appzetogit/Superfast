@@ -7,6 +7,7 @@ import {
 } from '../services/restaurantCategory.service.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { transformImageFields } from '../../../../utils/urlHelper.js';
 
 export const listCategoriesController = async (req, res, next) => {
     try {
@@ -17,7 +18,7 @@ export const listCategoriesController = async (req, res, next) => {
         if (!restaurantId) {
             // Public endpoint: no auth available. Return approved categories (zone-aware).
             const data = await listPublicCategories(query);
-            return sendResponse(res, 200, 'Categories fetched successfully', data);
+            return sendResponse(res, 200, 'Categories fetched successfully', transformImageFields(data));
         }
 
         if (!query.zoneId) {
@@ -27,7 +28,7 @@ export const listCategoriesController = async (req, res, next) => {
             }
         }
         const data = await listRestaurantCategories(restaurantId, query);
-        return sendResponse(res, 200, 'Categories fetched successfully', data);
+        return sendResponse(res, 200, 'Categories fetched successfully', transformImageFields(data));
     } catch (error) {
         next(error);
     }
@@ -37,7 +38,7 @@ export const createCategoryController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;
         const category = await createRestaurantCategory(restaurantId, req.body || {});
-        return sendResponse(res, 201, 'Category created successfully', { category });
+        return sendResponse(res, 201, 'Category created successfully', { category: transformImageFields(category) });
     } catch (error) {
         next(error);
     }
@@ -48,7 +49,7 @@ export const updateCategoryController = async (req, res, next) => {
         const restaurantId = req.user?.userId;
         const category = await updateRestaurantCategory(restaurantId, req.params.id, req.body || {});
         if (!category) return sendError(res, 404, 'Category not found');
-        return sendResponse(res, 200, 'Category updated successfully', { category });
+        return sendResponse(res, 200, 'Category updated successfully', { category: transformImageFields(category) });
     } catch (error) {
         next(error);
     }
@@ -59,9 +60,10 @@ export const deleteCategoryController = async (req, res, next) => {
         const restaurantId = req.user?.userId;
         const result = await deleteRestaurantCategory(restaurantId, req.params.id);
         if (!result) return sendError(res, 404, 'Category not found');
-        return sendResponse(res, 200, 'Category deleted successfully', result);
+        return sendResponse(res, 200, 'Category deleted successfully', transformImageFields(result));
     } catch (error) {
         next(error);
     }
 };
+
 

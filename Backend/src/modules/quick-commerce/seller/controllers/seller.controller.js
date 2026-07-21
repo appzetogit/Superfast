@@ -1,5 +1,6 @@
 import ms from "ms";
 import mongoose from "mongoose";
+import { transformImageFields } from "../../../../utils/urlHelper.js";
 import {
   createOrUpdateOtp,
   verifyOtp,
@@ -479,11 +480,12 @@ const serializeProduct = (product) => {
     typeof product.toObject === "function"
       ? product.toObject({ virtuals: true })
       : { ...product };
-  return {
+  return transformImageFields({
     ...doc,
     id: doc._id,
-  };
+  });
 };
+
 
 const sellerScope = (req) => req.user?.userId;
 

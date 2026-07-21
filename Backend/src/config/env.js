@@ -8,6 +8,7 @@ export const config = {
     host: process.env.HOST || '0.0.0.0',
     nodeEnv: process.env.NODE_ENV || 'development',
     backendUrl: process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`,
+    baseUrl: process.env.BASE_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`,
 
     // Database
     mongodbUri: process.env.MONGO_URI || process.env.MONGODB_URI,
@@ -94,6 +95,7 @@ export const config = {
 export const env = {
     nodeEnv: config.nodeEnv,
     port: Number(config.port),
+    baseUrl: config.baseUrl,
     mongoUri: config.mongodbUri,
     mongoDbName: process.env.MONGODB_DB_NAME || 'SUPERFAST_food',
     jwtSecret: config.jwtAccessSecret,

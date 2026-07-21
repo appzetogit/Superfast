@@ -4,12 +4,13 @@ import {
     updateRestaurantMenu,
     getPublicApprovedRestaurantMenu
 } from '../services/restaurantMenu.service.js';
+import { transformImageFields } from '../../../../utils/urlHelper.js';
 
 export const getMenuController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;
         const menu = await getRestaurantMenu(restaurantId);
-        return sendResponse(res, 200, 'Menu fetched successfully', { menu });
+        return sendResponse(res, 200, 'Menu fetched successfully', { menu: transformImageFields(menu) });
     } catch (error) {
         next(error);
     }
@@ -19,7 +20,7 @@ export const updateMenuController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;
         const menu = await updateRestaurantMenu(restaurantId, req.body || {});
-        return sendResponse(res, 200, 'Menu updated successfully', { menu });
+        return sendResponse(res, 200, 'Menu updated successfully', { menu: transformImageFields(menu) });
     } catch (error) {
         next(error);
     }
@@ -31,9 +32,10 @@ export const getPublicRestaurantMenuController = async (req, res, next) => {
         if (!menu) {
             return res.status(404).json({ success: false, message: 'Restaurant not found' });
         }
-        return sendResponse(res, 200, 'Menu fetched successfully', { menu });
+        return sendResponse(res, 200, 'Menu fetched successfully', { menu: transformImageFields(menu) });
     } catch (error) {
         next(error);
     }
 };
+
 

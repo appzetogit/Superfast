@@ -74,26 +74,48 @@ export const processAndSaveImage = async (buffer, folder = 'misc', isRaw = false
             .toFile(filePath);
     }
 
-    // Return the URL: https://api.domain.com/images/folder/YYYY/MM/filename.webp
+    // Return relative file path: e.g., uploads/folder/YYYY/MM/filename.webp or images/folder/YYYY/MM/filename.webp
     const relativeUrl = `${folder}/${year}/${month}/${filename}`.replace(/\\/g, '/');
-    return `${config.vpsImageUrl}/${relativeUrl}`;
+    const prefix = path.isAbsolute(config.vpsStoragePath) ? 'images' : 'uploads';
+    return `${prefix}/${relativeUrl}`;
 };
 
 /**
- * Delete an image from VPS storage given its URL
- * @param {string} url - The public URL of the image
+ * Delete an image from VPS storage given its relative path or public URL
+ * @param {string} url - The relative path or public URL of the image
  */
 export const deleteImage = async (url) => {
-    if (!url || typeof url !== 'string' || !url.startsWith(config.vpsImageUrl)) {
+    if (!url || typeof url !== 'string') {
         return false;
     }
 
     try {
-        const relativeUrl = url.replace(`${config.vpsImageUrl}/`, '');
-        const filePath = path.join(config.vpsStoragePath, relativeUrl);
+        let cleaned = url.trim();
+        const baseUrl = (config.baseUrl || config.backendUrl || 'http://localhost:5000').replace(/\/+$/, '');
+        if (cleaned.startsWith(baseUrl)) {
+            cleaned = cleaned.replace(baseUrl, '').replace(/^\/+/, '');
+        } else if (cleaned.startsWith(config.vpsImageUrl)) {
+            cleaned = cleaned.replace(config.vpsImageUrl, '').replace(/^\/+/, '');
+        } else {
+            cleaned = cleaned.replace(/^https?:\/\/[^/]+\//i, '');
+        }
 
+        let relativeUrl = cleaned;
+        if (relativeUrl.startsWith('uploads/')) {
+            relativeUrl = relativeUrl.slice('uploads/'.length);
+        } else if (relativeUrl.startsWith('images/')) {
+            relativeUrl = relativeUrl.slice('images/'.length);
+        }
+
+        const filePath = path.join(config.vpsStoragePath, relativeUrl);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
+            return true;
+        }
+
+        const fallbackPath = path.join(__dirname, '..', 'uploads', relativeUrl);
+        if (fs.existsSync(fallbackPath)) {
+            fs.unlinkSync(fallbackPath);
             return true;
         }
     } catch (err) {

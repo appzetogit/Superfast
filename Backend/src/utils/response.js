@@ -1,8 +1,10 @@
+import { transformImageFields } from './urlHelper.js';
+
 export const sendResponse = (res, statusCode, message, data = null) => {
     return res.status(statusCode).json({
         success: true,
         message,
-        data
+        data: transformImageFields(data)
     });
 };
 
@@ -12,3 +14,4 @@ export const sendError = (res, statusCode, message) => {
         message
     });
 };
+

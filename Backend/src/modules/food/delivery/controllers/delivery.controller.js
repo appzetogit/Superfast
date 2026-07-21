@@ -6,12 +6,13 @@ import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransa
 import { validateDeliveryRegisterDto, validateDeliveryProfileUpdateDto, validateDeliveryBankDetailsDto } from '../validators/delivery.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { getDeliveryReferralStats } from '../services/deliveryReferral.service.js';
+import { transformImageFields } from '../../../../utils/urlHelper.js';
 
 export const registerDeliveryPartnerController = async (req, res, next) => {
     try {
         const validated = validateDeliveryRegisterDto(req.body);
         const partner = await registerDeliveryPartner(validated, req.files);
-        return sendResponse(res, 201, 'Delivery partner registered successfully', partner);
+        return sendResponse(res, 201, 'Delivery partner registered successfully', transformImageFields(partner));
     } catch (error) {
         next(error);
     }
@@ -22,7 +23,7 @@ export const updateDeliveryPartnerProfileController = async (req, res, next) => 
         const userId = req.user?.userId;
         const validated = validateDeliveryProfileUpdateDto(req.body);
         const result = await updateDeliveryPartnerProfile(userId, validated, req.files);
-        return sendResponse(res, 200, 'Profile updated successfully', result);
+        return sendResponse(res, 200, 'Profile updated successfully', transformImageFields(result));
     } catch (error) {
         next(error);
     }
@@ -32,7 +33,7 @@ export const updateDeliveryPartnerDetailsController = async (req, res, next) => 
     try {
         const userId = req.user?.userId;
         const partner = await updateDeliveryPartnerDetails(userId, req.body || {});
-        return sendResponse(res, 200, 'Profile updated successfully', { partner });
+        return sendResponse(res, 200, 'Profile updated successfully', { partner: transformImageFields(partner) });
     } catch (error) {
         next(error);
     }
@@ -42,7 +43,7 @@ export const updateDeliveryPartnerProfilePhotoBase64Controller = async (req, res
     try {
         const userId = req.user?.userId;
         const partner = await updateDeliveryPartnerProfilePhotoBase64(userId, req.body || {});
-        return sendResponse(res, 200, 'Profile photo updated successfully', { partner });
+        return sendResponse(res, 200, 'Profile photo updated successfully', { partner: transformImageFields(partner) });
     } catch (error) {
         next(error);
     }
@@ -64,7 +65,7 @@ export const updateDeliveryPartnerBankDetailsController = async (req, res, next)
             },
             panNumber: partner.panNumber
         };
-        return sendResponse(res, 200, 'Bank details updated successfully', data);
+        return sendResponse(res, 200, 'Bank details updated successfully', transformImageFields(data));
     } catch (error) {
         next(error);
     }
@@ -74,7 +75,7 @@ export const listSupportTicketsController = async (req, res, next) => {
     try {
         const deliveryPartnerId = req.user?.userId;
         const tickets = await listSupportTicketsByPartner(deliveryPartnerId);
-        return sendResponse(res, 200, 'Tickets fetched successfully', { tickets });
+        return sendResponse(res, 200, 'Tickets fetched successfully', { tickets: transformImageFields(tickets) });
     } catch (error) {
         next(error);
     }
@@ -84,7 +85,7 @@ export const createSupportTicketController = async (req, res, next) => {
     try {
         const deliveryPartnerId = req.user?.userId;
         const ticket = await createSupportTicket(deliveryPartnerId, req.body);
-        return sendResponse(res, 201, 'Ticket created successfully', ticket);
+        return sendResponse(res, 201, 'Ticket created successfully', transformImageFields(ticket));
     } catch (error) {
         next(error);
     }
@@ -97,11 +98,12 @@ export const getSupportTicketByIdController = async (req, res, next) => {
         if (!ticket) {
             return res.status(404).json({ success: false, message: 'Ticket not found' });
         }
-        return sendResponse(res, 200, 'Ticket fetched successfully', ticket);
+        return sendResponse(res, 200, 'Ticket fetched successfully', transformImageFields(ticket));
     } catch (error) {
         next(error);
     }
 };
+
 
 export const updateAvailabilityController = async (req, res, next) => {
     try {
