@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { optimizeCloudinaryUrl } from '../../../shared/utils/cloudinaryUtils'
+import { getImageUrl } from '../../../shared/utils/imageHelper'
 
 /**
  * OptimizedImage Component
@@ -55,9 +56,7 @@ const OptimizedImage = React.memo(({
   }
 
   const resolveUrl = (url) => {
-    if (!url || typeof url !== 'string') return ""
-    if (/^(https?:|\/\/|data:|blob:)/i.test(url.trim())) return url
-    return backendOrigin ? `${backendOrigin.replace(/\/$/, "")}${url.startsWith("/") ? url : `/${url}`}` : url
+    return getImageUrl(url)
   }
 
   const resolvedSrc = useMemo(() => resolveUrl(src), [src, backendOrigin])

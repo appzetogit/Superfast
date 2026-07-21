@@ -92,7 +92,10 @@ export const deleteImage = async (url) => {
     try {
         let cleaned = url.trim();
         const baseUrl = (config.baseUrl || config.backendUrl || 'http://localhost:5000').replace(/\/+$/, '');
-        if (cleaned.startsWith(baseUrl)) {
+        const appUrl = (config.appUrl || 'http://localhost:5000').replace(/\/+$/, '');
+        if (cleaned.startsWith(appUrl)) {
+            cleaned = cleaned.replace(appUrl, '').replace(/^\/+/, '');
+        } else if (cleaned.startsWith(baseUrl)) {
             cleaned = cleaned.replace(baseUrl, '').replace(/^\/+/, '');
         } else if (cleaned.startsWith(config.vpsImageUrl)) {
             cleaned = cleaned.replace(config.vpsImageUrl, '').replace(/^\/+/, '');

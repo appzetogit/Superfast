@@ -74,17 +74,16 @@ export const toRelativeUrl = (filePath) => {
 };
 
 /**
- * Converts a relative file path (or legacy absolute localhost/domain URL) into a full URL
- * appropriate for the current environment based on `BASE_URL`.
+ * Resolves a relative file path or absolute local/vps URL into a full URL
+ * appropriate for the current environment based on `config.appUrl` (APP_URL).
  *
- * @param {string} filePath - Relative path (e.g., 'uploads/food/explore-icons/abc.webp') or absolute URL.
- * @returns {string} - Full URL or unchanged value if external/base64.
+ * @param {string} filePath - Relative path or absolute URL.
+ * @returns {string} - Full URL using the environment's APP_URL.
  */
-export const toFullUrl = (filePath) => {
+export const buildFileUrl = (filePath) => {
     if (!filePath || typeof filePath !== 'string') {
         return filePath || '';
     }
-
 
     const trimmed = filePath.trim();
     if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
@@ -96,18 +95,17 @@ export const toFullUrl = (filePath) => {
         return trimmed;
     }
 
-    // Get current base URL from env (e.g. http://localhost:5000 or https://superfastfood.in)
-    const baseUrl = (config.baseUrl || config.backendUrl || 'http://localhost:5000').replace(/\/+$/, '');
+    // Get current app URL from env (e.g. http://localhost:5000 or https://superfastfood.in)
+    const appUrl = (config.appUrl || config.baseUrl || config.backendUrl || 'http://localhost:5000').replace(/\/+$/, '');
 
     // Check if it's an existing absolute URL pointing to localhost, 127.0.0.1, or superfastfood.in
-    // E.g. http://localhost:5000/uploads/food/... or https://superfastfood.in/uploads/food/...
     if (/^https?:\/\/(localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i.test(trimmed)) {
         const match = trimmed.match(/^https?:\/\/(?:localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i);
         const pathPart = match && match[1] ? match[1] : '';
         if (!pathPart || pathPart === '/') {
-            return baseUrl;
+            return appUrl;
         }
-        return `${baseUrl}${pathPart.startsWith('/') ? pathPart : `/${pathPart}`}`;
+        return `${appUrl}${pathPart.startsWith('/') ? pathPart : `/${pathPart}`}`;
     }
 
     // If it starts with http:// or https:// and did not match our internal/localhost domains above,
@@ -121,7 +119,18 @@ export const toFullUrl = (filePath) => {
     if (!normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
         normalizedPath = `/uploads${normalizedPath}`;
     }
-    return `${baseUrl}${normalizedPath}`;
+    return `${appUrl}${normalizedPath}`;
+};
+
+/**
+ * Converts a relative file path (or legacy absolute localhost/domain URL) into a full URL
+ * appropriate for the current environment using `buildFileUrl`.
+ *
+ * @param {string} filePath - Relative path or absolute URL.
+ * @returns {string} - Full URL or unchanged value if external/base64.
+ */
+export const toFullUrl = (filePath) => {
+    return buildFileUrl(filePath);
 };
 
 
@@ -210,6 +219,7 @@ export const transformImageFields = (data) => {
 export default {
     toRelativeUrl,
     toFullUrl,
+    buildFileUrl,
     transformImageFields
 };
 
