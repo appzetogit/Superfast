@@ -2,10 +2,12 @@ import React, { memo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame } from "lucide-react";
-
+import { API_BASE_URL } from "@food/api/config";
+import OptimizedImage from "@food/components/OptimizedImage";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
 
 const RecommendedSection = memo(({ recommendedForYouRestaurants }) => {
+  const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
   if (!recommendedForYouRestaurants || recommendedForYouRestaurants.length === 0) return null;
 
   return (
@@ -48,11 +50,11 @@ const RecommendedSection = memo(({ recommendedForYouRestaurants }) => {
                 className={`block rounded-2xl overflow-hidden bg-white dark:bg-neutral-800 shadow-sm border border-gray-50 dark:border-neutral-700 ${isOffline ? "cursor-default pointer-events-none" : ""}`}
               >
                 <div className="relative aspect-[4/3] bg-gray-100 dark:bg-neutral-900">
-                  <img
+                  <OptimizedImage
                     src={restaurant.image}
                     alt={restaurant.name}
                     className="w-full h-full object-cover"
-                    loading="lazy"
+                    backendOrigin={BACKEND_ORIGIN}
                   />
                   <div className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-md ${isNew ? "bg-white/90 dark:bg-neutral-800/90 text-slate-500 dark:text-slate-300 border border-gray-100 dark:border-neutral-700" : "bg-black/80 dark:bg-white/80 text-white dark:text-black"}`}>
                     {isNew ? "NEW" : Number(restaurant.rating).toFixed(1)}

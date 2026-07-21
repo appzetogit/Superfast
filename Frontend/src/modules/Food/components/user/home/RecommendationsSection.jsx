@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Star, Compass, Zap, Clock } from "lucide-react";
 import { preferencesAPI } from "@food/api";
+import { API_BASE_URL } from "@food/api/config";
+import OptimizedImage from "@food/components/OptimizedImage";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
 
 const CATEGORY_EMOJIS = {
@@ -27,6 +29,7 @@ const CATEGORY_EMOJIS = {
 };
 
 const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
+  const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
   const [data, setData] = useState({ favouriteCategories: [], recommendedRestaurants: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState("all");
@@ -131,11 +134,11 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
               >
                 {/* Image Cover */}
                 <div className="relative aspect-[4/3] bg-slate-50 dark:bg-neutral-900 overflow-hidden">
-                  <img
+                  <OptimizedImage
                     src={image}
                     alt={name}
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                    loading="lazy"
+                    backendOrigin={BACKEND_ORIGIN}
                   />
                   
                   {/* Offer Badge Overlay on Top */}
