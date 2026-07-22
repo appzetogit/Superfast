@@ -29,18 +29,18 @@ export const getOptimizedCloudinaryImageUrl = (url, { format = 'webp', quality =
     return url.replace('/upload/', `/upload/f_${format},q_${quality}/`);
 };
 
-export const uploadImageBuffer = async (buffer, folder = 'uploads') => {
+export const uploadImageBuffer = async (buffer, folder = 'misc') => {
     return await processAndSaveImage(buffer, folder);
 };
 
-export const uploadImageBufferDetailed = async (buffer, folder = 'uploads') => {
+export const uploadImageBufferDetailed = async (buffer, folder = 'misc') => {
     const url = await processAndSaveImage(buffer, folder);
     return { secure_url: url, url, public_id: url, format: 'webp' };
 };
 
 export const uploadBufferDetailed = async (
     buffer,
-    { folder = 'uploads', resourceType = 'auto' } = {}
+    { folder = 'misc', resourceType = 'auto' } = {}
 ) => {
     const isRaw = resourceType !== 'image' && resourceType !== 'auto';
     const url = await processAndSaveImage(buffer, folder, isRaw);

@@ -73,16 +73,14 @@ export const toRelativeUrl = (filePath) => {
         trimmed = trimmed.replace(/^\/+/, '');
     }
 
+    // Standardize: if legacy path starts with uploads/, normalize to images/ so only images/... is stored in MongoDB
+    if (trimmed.startsWith('uploads/')) {
+        trimmed = 'images/' + trimmed.slice('uploads/'.length);
+    }
+
     return trimmed;
 };
 
-/**
- * Resolves an image path or absolute URL dynamically based on current environment.
- * Ensures Cloudinary/external URLs remain untouched while relative paths prepend dynamic BASE_URL.
- *
- * @param {string} imagePath - Relative path or absolute URL.
- * @returns {string} - Full URL using environment BASE_URL or untouched Cloudinary URL.
- */
 /**
  * Resolves an image path or absolute URL dynamically based on current environment.
  * Ensures Cloudinary/external URLs remain untouched while relative paths prepend dynamic BASE_URL.
@@ -127,7 +125,7 @@ export const getImageUrl = (imagePath, req = null) => {
 
     let normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
     if (!normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
-        normalizedPath = `/uploads${normalizedPath}`;
+        normalizedPath = `/images${normalizedPath}`;
     }
     return `${baseUrl}${normalizedPath}`;
 };

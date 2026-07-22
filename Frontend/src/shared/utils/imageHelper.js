@@ -30,32 +30,39 @@ export const getImageUrl = (path) => {
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('//')) {
     try {
       const parsed = new URL(trimmed);
-      const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
-      
-      // Rewrite localhost or 127.0.0.1 to backendOrigin if running on a real domain
+      const pathname = parsed.pathname || '';
+
+      // If the absolute URL points to our storage directories (/uploads/ or /images/) or is a localhost/superfast domain,
+      // always dynamically point to the active backendOrigin so images load reliably across environments.
       if (
-        currentHost &&
-        currentHost !== 'localhost' &&
-        currentHost !== '127.0.0.1' &&
-        /^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname)
+        pathname.startsWith('/uploads/') ||
+        pathname.startsWith('/images/') ||
+        /^(localhost|127\.0\.0\.1|superfastfood\.in)$/i.test(parsed.hostname)
       ) {
-        const originUrl = new URL(backendOrigin);
-        parsed.protocol = originUrl.protocol;
-        parsed.hostname = originUrl.hostname;
-        parsed.port = originUrl.port || '';
+        resolvedUrl = `${backendOrigin}${pathname}`;
+      } else {
+        const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+        if (
+          currentHost &&
+          currentHost !== 'localhost' &&
+          currentHost !== '127.0.0.1' &&
+          /^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname)
+        ) {
+          const originUrl = new URL(backendOrigin);
+          parsed.protocol = originUrl.protocol;
+          parsed.hostname = originUrl.hostname;
+          parsed.port = originUrl.port || '';
+        }
+        if (
+          typeof window !== 'undefined' && 
+          window.location.protocol === 'https:' && 
+          parsed.protocol === 'http:' && 
+          !/^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname)
+        ) {
+          parsed.protocol = 'https:';
+        }
+        resolvedUrl = parsed.toString();
       }
-      
-      // Ensure https in production
-      if (
-        typeof window !== 'undefined' && 
-        window.location.protocol === 'https:' && 
-        parsed.protocol === 'http:' && 
-        !/^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname)
-      ) {
-        parsed.protocol = 'https:';
-      }
-      
-      resolvedUrl = parsed.toString();
     } catch {
       resolvedUrl = trimmed;
     }
@@ -64,9 +71,9 @@ export const getImageUrl = (path) => {
     const normalized = trimmed.replace(/\\/g, '/');
     let pathPart = normalized.startsWith('/') ? normalized : `/${normalized}`;
     
-    // Auto-prepend /uploads if not already prefixed
+    // Auto-prepend /images if not already prefixed (/uploads/ remains valid via our dual static middleware)
     if (!pathPart.startsWith('/uploads/') && !pathPart.startsWith('/images/') && !pathPart.startsWith('/api/')) {
-      pathPart = `/uploads${pathPart}`;
+      pathPart = `/images${pathPart}`;
     }
     
     resolvedUrl = `${backendOrigin}${pathPart}`;
@@ -77,3 +84,21 @@ export const getImageUrl = (path) => {
 };
 
 export const resolveImageUrl = getImageUrl;
+
+/**
+ * Dynamically resolves the fallback image URL according to the active environment.
+ * Uses VITE_BACKEND_URL, VITE_BASE_URL, or derives from VITE_API_BASE_URL / window.location.origin.
+ *
+ * @returns {string} - The dynamic fallback image URL.
+ */
+export const getFallbackImage = () => {
+  const baseUrl =
+    import.meta.env?.VITE_BACKEND_URL ||
+    import.meta.env?.VITE_BASE_URL ||
+    (import.meta.env?.VITE_API_BASE_URL
+      ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')
+      : typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:5000');
+  return `${baseUrl}/uploads/placeholder-food.png`;
+};

@@ -30,20 +30,18 @@ const __dirname = path.dirname(__filename);
 const storageDir = path.isAbsolute(config.vpsStoragePath)
     ? config.vpsStoragePath
     : path.join(__dirname, '..', config.vpsStoragePath);
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+const localUploadsDir = path.join(__dirname, '..', 'uploads');
+
+const staticOptions = {
     setHeaders: (res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
     }
-}));
-app.use('/images', express.static(storageDir, {
-    setHeaders: (res) => {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
-    }
-}));
+};
+
+app.use('/images', express.static(storageDir, staticOptions), express.static(localUploadsDir, staticOptions));
+app.use('/uploads', express.static(storageDir, staticOptions), express.static(localUploadsDir, staticOptions));
 
 // Health endpoints (no rate limit, minimal JSON, no secrets)
 app.get('/health', async (_req, res) => {

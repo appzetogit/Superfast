@@ -74,10 +74,9 @@ export const processAndSaveImage = async (buffer, folder = 'misc', isRaw = false
             .toFile(filePath);
     }
 
-    // Return relative file path: e.g., uploads/folder/YYYY/MM/filename.webp or images/folder/YYYY/MM/filename.webp
+    // Return standardized relative file path: images/folder/YYYY/MM/filename.webp
     const relativeUrl = `${folder}/${year}/${month}/${filename}`.replace(/\\/g, '/');
-    const prefix = path.isAbsolute(config.vpsStoragePath) ? 'images' : 'uploads';
-    return `${prefix}/${relativeUrl}`;
+    return `images/${relativeUrl}`;
 };
 
 /**

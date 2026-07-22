@@ -18,6 +18,7 @@ import {
   Tag,
   Ticket,
 } from "lucide-react"
+import { getImageUrl } from "@shared/utils/imageHelper"
 import { Button } from "@food/components/ui/button"
 
 const formatAddress = (restaurant) =>
@@ -38,7 +39,7 @@ const buildImageList = (restaurant) => {
     restaurant?.profileImage,
   ]
   return candidates
-    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .map((value) => (typeof value === "string" ? getImageUrl(value.trim()) : ""))
     .filter(Boolean)
     .filter((value, index, list) => list.indexOf(value) === index)
 }

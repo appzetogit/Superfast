@@ -34,14 +34,23 @@ const foodCategorySchema = new mongoose.Schema(
         sortOrder: { type: Number, default: 0, index: true },
         isActive: { type: Boolean, default: true, index: true },
         slug: { type: String, unique: true, sparse: true, trim: true },
-        imageUrl: { type: String, trim: true, default: '' },
         displayOrder: { type: Number, default: 0, index: true }
     },
     {
         collection: 'food_categories',
-        timestamps: true
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
     }
 );
+
+foodCategorySchema.virtual('imageUrl')
+    .get(function () {
+        return this.image || '';
+    })
+    .set(function (val) {
+        this.image = val;
+    });
 
 foodCategorySchema.index({ isApproved: 1, createdAt: -1 });
 foodCategorySchema.index({ restaurantId: 1, isApproved: 1, createdAt: -1 });

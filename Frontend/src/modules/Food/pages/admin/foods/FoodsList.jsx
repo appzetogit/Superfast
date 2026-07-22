@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/componen
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import Pagination from "@shared/components/ui/Pagination"
 import { getFoodDisplayPrice, getFoodVariants } from "@food/utils/foodVariants"
+import { getFallbackImage } from "@shared/utils/imageHelper"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -583,7 +584,8 @@ export default function FoodsList() {
                           key={`${food.id}-${imageVersion}`}
                           loading="lazy"
                           onError={(e) => {
-                            e.target.src = "https://via.placeholder.com/40"
+                            e.currentTarget.onerror = null; // Stops infinite error loops immediately
+                            e.currentTarget.src = getFallbackImage(); // Dynamically resolved fallback URL
                           }}
                         />
                       </div>
@@ -669,7 +671,8 @@ export default function FoodsList() {
                           alt={selectedFood.name}
                           className="w-20 h-20 rounded-xl object-cover border border-slate-200"
                   onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/64"
+                    e.currentTarget.onerror = null; // Stops infinite error loops immediately
+                    e.currentTarget.src = getFallbackImage(); // Dynamically resolved fallback URL
                   }}
                 />
                 <div>

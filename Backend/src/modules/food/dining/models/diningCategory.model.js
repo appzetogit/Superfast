@@ -13,7 +13,7 @@ const diningCategorySchema = new mongoose.Schema(
             trim: true,
             unique: true
         },
-        imageUrl: {
+        image: {
             type: String,
             trim: true,
             default: ''
@@ -35,9 +35,19 @@ const diningCategorySchema = new mongoose.Schema(
     },
     {
         collection: 'food_dining_categories',
-        timestamps: true
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
     }
 );
+
+diningCategorySchema.virtual('imageUrl')
+    .get(function () {
+        return this.image || '';
+    })
+    .set(function (val) {
+        this.image = val;
+    });
 
 diningCategorySchema.index({ isActive: 1, sortOrder: 1, createdAt: -1 });
 

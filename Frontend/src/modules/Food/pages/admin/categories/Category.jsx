@@ -18,6 +18,7 @@ import { API_BASE_URL } from "@food/api/config"
 import { toast } from "sonner"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { getImageUrl } from "@shared/utils/imageHelper"
 import Pagination from "@shared/components/ui/Pagination"
 
 const defaultFormData = {
@@ -489,8 +490,8 @@ export default function Category() {
                       <td className="px-5 py-5">
                         <div className="flex items-start gap-3">
                           <div className="h-11 w-11 overflow-hidden rounded-2xl bg-slate-100">
-                            {category?.image ? (
-                              <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
+                            {category?.image || category?.imageUrl ? (
+                              <img src={getImageUrl(category.image || category.imageUrl)} alt={category.name} className="h-full w-full object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-500">
                                 {String(category?.name || "C").slice(0, 1).toUpperCase()}

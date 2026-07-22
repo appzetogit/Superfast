@@ -26,6 +26,7 @@ import {
 } from "@food/components/ui/dialog"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
+import { getImageUrl } from "@shared/utils/imageHelper"
 import { Switch } from "@food/components/ui/switch"
 import { restaurantAPI } from "@food/api"
 import { toast } from "sonner"
@@ -166,21 +167,23 @@ export default function OutletInfo() {
           
           // Set images
           if (data.profileImage?.url) {
-            setThumbnailImage(data.profileImage.url)
+            setThumbnailImage(getImageUrl(data.profileImage.url))
           } else if (typeof data.profileImage === 'string') {
-            setThumbnailImage(data.profileImage)
+            setThumbnailImage(getImageUrl(data.profileImage))
           }
 
           if (data.coverImages && Array.isArray(data.coverImages) && data.coverImages.length > 0) {
-            const formattedCovers = data.coverImages.map(img => typeof img === 'string' ? { url: img } : img)
+            const formattedCovers = data.coverImages.map(img => typeof img === 'string' ? { url: getImageUrl(img) } : { ...img, url: getImageUrl(img?.url || '') })
             setCoverImages(formattedCovers)
             setMainImage(formattedCovers[0].url)
           } else if (data.menuImages && Array.isArray(data.menuImages) && data.menuImages.length > 0) {
-            const formattedMenus = data.menuImages.map(img => typeof img === 'string' ? { url: img } : img)
+            const formattedMenus = data.menuImages.map(img => typeof img === 'string' ? { url: getImageUrl(img) } : { ...img, url: getImageUrl(img?.url || '') })
             setCoverImages(formattedMenus)
             setMainImage(formattedMenus[0].url)
-          } else {
-            setCoverImages([])
+          } else if (data.coverImage?.url || typeof data.coverImage === 'string') {
+            const coverUrl = getImageUrl(data.coverImage?.url || data.coverImage)
+            setCoverImages([{ url: coverUrl }])
+            setMainImage(coverUrl)
           }
         }
       } catch (error) {
@@ -522,7 +525,7 @@ export default function OutletInfo() {
 
         {/* Main Image Section */}
         <div className="relative w-full h-[200px] overflow-visible">
-          <img src={mainImage} alt="Restaurant banner" className="w-full h-full object-cover" />
+          <img src={getImageUrl(mainImage)} alt="Restaurant banner" className="w-full h-full object-cover" />
           
           <button
             onClick={() => handleImageClick('cover', menuImageInputRef, "Add Cover Image", true)}
@@ -564,7 +567,7 @@ export default function OutletInfo() {
                     onClick={() => setMainImage(img.url)}
                     className="w-full h-full"
                   >
-                    <img src={img.url} alt={`Cover ${index + 1}`} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(img.url)} alt={`Cover ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCoverImageDelete(index); }}
@@ -591,7 +594,7 @@ export default function OutletInfo() {
             <div className="relative group">
               <div className="w-24 h-24 rounded-2xl border-4 border-white bg-white shadow-lg overflow-hidden">
                 <img 
-                  src={thumbnailImage} 
+                  src={getImageUrl(thumbnailImage)} 
                   alt="Restaurant thumbnail" 
                   className="w-full h-full object-cover" 
                 />
@@ -912,7 +915,7 @@ export default function OutletInfo() {
               editingLabels.map((img, idx) => (
                 <div key={idx} className="flex gap-4 items-center bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-200 flex-shrink-0">
-                    <img src={img.url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(img.url)} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">

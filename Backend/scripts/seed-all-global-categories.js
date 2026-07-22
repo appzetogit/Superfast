@@ -70,6 +70,9 @@ const run = async () => {
 
     const { FoodCategory } = await import('../src/modules/food/admin/models/category.model.js');
 
+    // Remove legacy duplicate stored imageUrl field across all existing documents so only 'image' remains stored in MongoDB
+    await FoodCategory.collection.updateMany({ imageUrl: { $exists: true } }, { $unset: { imageUrl: "" } });
+
     // Find all global categories (where restaurantId is null/undefined/missing)
     const categories = await FoodCategory.find({
         $or: [
@@ -83,7 +86,7 @@ const run = async () => {
     for (const cat of categories) {
         console.log(`\n----------------------------------------`);
         console.log(`Processing Category: "${cat.name}" (ID: ${cat._id})`);
-        console.log(`Current image: "${cat.image}" | imageUrl: "${cat.imageUrl}"`);
+        console.log(`Current image: "${cat.image}" | virtual imageUrl: "${cat.imageUrl}"`);
 
         const sourceUrl = getImageUrlForCategory(cat.name);
         console.log(`Downloading premium Unsplash image: ${sourceUrl}`);
@@ -101,7 +104,6 @@ const run = async () => {
             const relativePath = toRelativeUrl(savedPath);
 
             cat.image = relativePath;
-            cat.imageUrl = relativePath;
             await cat.save();
 
             console.log(`✅ Successfully updated "${cat.name}" -> relative path: ${relativePath}`);

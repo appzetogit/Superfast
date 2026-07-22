@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { restaurantAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
+import { getImageUrl } from "@shared/utils/imageHelper"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { isFlutterBridgeAvailable } from "@food/utils/imageUploadUtils"
 
@@ -349,8 +350,8 @@ export default function MenuCategoriesPage() {
                 >
                   <div className="flex gap-3">
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                      {category?.image ? (
-                        <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
+                      {category?.image || category?.imageUrl ? (
+                        <img src={getImageUrl(category.image || category.imageUrl)} alt={category.name} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-lg font-bold text-slate-500">
                           {String(category?.name || "C").slice(0, 1).toUpperCase()}

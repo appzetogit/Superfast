@@ -1,8 +1,7 @@
 import { FoodExploreIcon } from '../models/exploreIcon.model.js';
-import { deleteImage } from '../../../../services/storage.service.js';
-import { uploadImageBufferDetailed } from '../../../../services/cloudinary.service.js';
+import { deleteImage, processAndSaveImage } from '../../../../services/storage.service.js';
 
-const CLOUDINARY_FOLDER = 'food/explore-icons';
+const STORAGE_FOLDER = 'food/explore-icons';
 
 /**
  * List all explore icons (admin). Sorted by sortOrder.
@@ -22,11 +21,11 @@ const getNextSortOrder = async () => {
 };
 
 /**
- * Upload buffer to Cloudinary and return { secure_url, public_id }.
+ * Upload buffer to local/VPS storage and return { secure_url, public_id }.
  */
-const uploadImageToCloudinary = (buffer) => {
-    return uploadImageBufferDetailed(buffer, CLOUDINARY_FOLDER)
-        .then((result) => ({ secure_url: result.secure_url, public_id: result.public_id }));
+const uploadIconImage = async (buffer) => {
+    const url = await processAndSaveImage(buffer, STORAGE_FOLDER);
+    return { secure_url: url, public_id: url };
 };
 
 /**
@@ -43,7 +42,7 @@ export const createExploreIcon = async (file, meta) => {
         throw new Error('Label is required');
     }
 
-    const { secure_url, public_id } = await uploadImageToCloudinary(file.buffer);
+    const { secure_url, public_id } = await uploadIconImage(file.buffer);
     const sortOrder = await getNextSortOrder();
 
     const doc = await FoodExploreIcon.create({
@@ -77,7 +76,7 @@ export const updateExploreIcon = async (id, payload) => {
             if (doc.publicId) {
                 await deleteImage(doc.publicId).catch(() => {});
             }
-            const { secure_url, public_id } = await uploadImageToCloudinary(payload.file.buffer);
+            const { secure_url, public_id } = await uploadIconImage(payload.file.buffer);
             updates.iconUrl = secure_url;
             updates.publicId = public_id;
         } catch (e) {

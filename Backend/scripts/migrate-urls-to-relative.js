@@ -35,8 +35,8 @@ const shouldConvertToRelative = (val) => {
         return true;
     }
 
-    // Check if it starts with leading slash /uploads or /images
-    if (/^\/(uploads|images)\//i.test(trimmed)) {
+    // Check if it starts with leading slash /uploads or /images or relative uploads/
+    if (/^\/?(uploads|images)\//i.test(trimmed)) {
         return true;
     }
 
