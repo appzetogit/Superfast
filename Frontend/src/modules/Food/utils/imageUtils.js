@@ -1,5 +1,7 @@
 import { optimizeCloudinaryUrl } from "../../../shared/utils/cloudinaryUtils";
-import { getImageUrl } from "../../../shared/utils/imageHelper";
+import { getImageUrl, getFallbackImage, handleImageError } from "../../../shared/utils/imageHelper";
+
+export { getImageUrl, getFallbackImage, handleImageError };
 
 export const normalizeImageUrl = (imageUrl, BACKEND_ORIGIN) => {
   return getImageUrl(imageUrl);

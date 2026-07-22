@@ -15,6 +15,7 @@ import MenuOverlay from "@food/components/restaurant/MenuOverlay"
 import { formatCurrency } from "@food/utils/currency"
 import { restaurantAPI } from "@food/api"
 import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 export default function AllFoodPage() {
   const navigate = useNavigate()
@@ -257,9 +258,7 @@ export default function AllFoodPage() {
                   src={food.image}
                   alt={food.name}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none'
-                  }}
+                  onError={(e) => handleImageError(e, 'food')}
                 />
                 {/* Discount Badge */}
                 {food.discount && (

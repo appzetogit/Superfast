@@ -23,6 +23,7 @@ import { useZone } from "@food/hooks/useZone"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getMenuFromResponse } from "@food/utils/menuItems"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 // Filter options
 const filterOptions = [
@@ -1359,10 +1360,7 @@ export default function CategoryPage() {
                           src={cat.image}
                           alt={cat.name}
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // If the backend image is missing/broken, show initials instead of fake assets.
-                            e.target.style.display = 'none'
-                          }}
+                          onError={(e) => handleImageError(e, 'category')}
                         />
                       </div>
                     ) : (
@@ -1499,33 +1497,14 @@ export default function CategoryPage() {
                               src={restaurant.categoryDishImage}
                               alt={restaurant.categoryDishName || restaurant.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                // Fallback to restaurant image if dish image fails
-                                if (restaurant.image) {
-                                  e.target.src = restaurant.image
-                                } else {
-                                  // Show emoji placeholder
-                                  e.target.style.display = 'none'
-                                  const placeholder = document.createElement('div')
-                                  placeholder.className = 'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl'
-                                  placeholder.textContent = '???'
-                                  e.target.parentElement.appendChild(placeholder)
-                                }
-                              }}
+                              onError={(e) => handleImageError(e, 'restaurant')}
                             />
                           ) : restaurant.image ? (
                             <img
                               src={restaurant.image}
                               alt={restaurant.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                // Show emoji placeholder
-                                e.target.style.display = 'none'
-                                const placeholder = document.createElement('div')
-                                placeholder.className = 'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl'
-                                placeholder.textContent = '???'
-                                e.target.parentElement.appendChild(placeholder)
-                              }}
+                              onError={(e) => handleImageError(e, 'restaurant')}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl">
@@ -1607,33 +1586,14 @@ export default function CategoryPage() {
                             src={restaurant.categoryDishImage}
                             alt={restaurant.categoryDishName || restaurant.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            onError={(e) => {
-                              // Fallback to restaurant image if dish image fails
-                              if (restaurant.image) {
-                                e.target.src = restaurant.image
-                              } else {
-                                // Show emoji placeholder
-                                e.target.style.display = 'none'
-                                const placeholder = document.createElement('div')
-                                placeholder.className = 'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl'
-                                placeholder.textContent = '???'
-                                e.target.parentElement.appendChild(placeholder)
-                              }
-                            }}
+                            onError={(e) => handleImageError(e, 'restaurant')}
                           />
                         ) : restaurant.image ? (
                           <img
                             src={restaurant.image}
                             alt={restaurant.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            onError={(e) => {
-                              // Show emoji placeholder
-                              e.target.style.display = 'none'
-                              const placeholder = document.createElement('div')
-                              placeholder.className = 'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl'
-                              placeholder.textContent = '???'
-                              e.target.parentElement.appendChild(placeholder)
-                            }}
+                            onError={(e) => handleImageError(e, 'restaurant')}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl">

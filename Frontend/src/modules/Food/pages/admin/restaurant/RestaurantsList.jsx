@@ -8,6 +8,7 @@ import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/resta
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { Loader } from "@googlemaps/js-api-loader"
 import Pagination from "@shared/components/ui/Pagination"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 // Import icons from Dashboard-icons
 import locationIcon from "@food/assets/Dashboard-icons/image1.png"
@@ -1548,9 +1549,7 @@ export default function RestaurantsList() {
                                 src={restaurant.logo}
                                 alt={restaurant.name}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.src = PLACEHOLDER_40
-                                }}
+                                onError={(e) => handleImageError(e, 'restaurant')}
                               />
                             </div>
                             <div className="flex flex-col">
@@ -1881,9 +1880,7 @@ export default function RestaurantsList() {
                         src={profileImgUrl || PLACEHOLDER_128}
                         alt={r?.restaurantName || r?.name || "Restaurant"}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => {
-                          e.target.src = PLACEHOLDER_128
-                        }}
+                        onError={(e) => handleImageError(e, 'restaurant')}
                       />
                     </div>
                     <div className="flex-1 text-center md:text-left pt-2">
@@ -2477,9 +2474,7 @@ export default function RestaurantsList() {
                                 src={r.onboarding.step2.profileImageUrl.url}
                                 alt="Profile"
                                 className="w-32 h-32 rounded-lg object-cover border border-slate-200 hover:border-blue-500 transition-colors"
-                                onError={(e) => {
-                                  e.target.src = PLACEHOLDER_128
-                                }}
+                                onError={(e) => handleImageError(e, 'restaurant')}
                               />
                             </a>
                           </div>

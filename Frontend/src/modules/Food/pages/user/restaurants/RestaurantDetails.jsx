@@ -60,6 +60,7 @@ import {
 } from "@food/utils/foodVariants"
 import fssaiLogo from "@food/assets/fssai.png"
 import { RestaurantDetailSkeleton } from "@food/components/ui/loading-skeletons"
+import { getFallbackImage, handleImageError } from "@shared/utils/imageHelper"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -67,7 +68,7 @@ const debugError = (...args) => {}
 
 
 
-const FOOD_IMAGE_FALLBACK = "https://picsum.photos/seed/food-fallback/800/600"
+const FOOD_IMAGE_FALLBACK = getFallbackImage('food')
 const RUPEE_SYMBOL = "\u20B9"
 const RESTAURANT_DETAILS_FILTERS_STORAGE_KEY = "food-restaurant-details-filters"
 
@@ -2194,9 +2195,7 @@ function RestaurantDetailsContent() {
                           src={category.image}
                           alt={category.name}
                           className="h-6 w-6 rounded-full object-cover border border-white/70 shadow-sm"
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none"
-                          }}
+                          onError={(event) => handleImageError(event, 'category')}
                         />
                       ) : (
                         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-[10px] font-bold uppercase text-gray-500">
@@ -2432,11 +2431,7 @@ function RestaurantDetailsContent() {
                                   src={item.image}
                                   alt={item.name}
                                   className="w-full h-full object-cover rounded-2xl shadow-sm"
-                                  onError={(e) => {
-                                    if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
-                                      e.currentTarget.src = FOOD_IMAGE_FALLBACK
-                                    }
-                                  }}
+                                  onError={(e) => handleImageError(e, 'food')}
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
@@ -2661,11 +2656,7 @@ function RestaurantDetailsContent() {
                                             src={item.image}
                                             alt={item.name}
                                             className="w-full h-full object-cover rounded-2xl shadow-sm"
-                                            onError={(e) => {
-                                              if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
-                                                e.currentTarget.src = FOOD_IMAGE_FALLBACK
-                                              }
-                                            }}
+                                            onError={(e) => handleImageError(e, 'food')}
                                           />
                                         ) : (
                                           <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
@@ -2858,9 +2849,7 @@ function RestaurantDetailsContent() {
                                 src={category.image}
                                 alt={category.name}
                                 className="h-10 w-10 rounded-xl object-cover border border-gray-200"
-                                onError={(event) => {
-                                  event.currentTarget.style.display = "none"
-                                }}
+                                onError={(event) => handleImageError(event, 'category')}
                               />
                             ) : (
                               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-sm font-bold uppercase text-gray-500">

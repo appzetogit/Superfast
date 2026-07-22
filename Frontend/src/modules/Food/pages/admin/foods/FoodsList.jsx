@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/componen
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import Pagination from "@shared/components/ui/Pagination"
 import { getFoodDisplayPrice, getFoodVariants } from "@food/utils/foodVariants"
-import { getFallbackImage } from "@shared/utils/imageHelper"
+import { getImageUrl, getFallbackImage, handleImageError } from "@shared/utils/imageHelper"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -73,8 +73,9 @@ export default function FoodsList() {
 
   const toArray = (value) => (Array.isArray(value) ? value : [])
   const withImageVersion = (url) => {
-    if (!url || typeof url !== "string") return "https://via.placeholder.com/40"
-    return `${url}${url.includes("?") ? "&" : "?"}v=${imageVersion}`
+    if (!url || typeof url !== "string") return getFallbackImage('food')
+    const resolved = getImageUrl(url)
+    return `${resolved}${resolved.includes("?") ? "&" : "?"}v=${imageVersion}`
   }
 
   const fetchAllFoods = useCallback(async () => {
@@ -583,10 +584,7 @@ export default function FoodsList() {
                           className="w-full h-full object-cover"
                           key={`${food.id}-${imageVersion}`}
                           loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null; // Stops infinite error loops immediately
-                            e.currentTarget.src = getFallbackImage(); // Dynamically resolved fallback URL
-                          }}
+                          onError={(e) => handleImageError(e, 'food')}
                         />
                       </div>
                     </td>

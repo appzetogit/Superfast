@@ -12,6 +12,7 @@ import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { FaLocationDot } from "react-icons/fa6"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 // Using placeholder for dining restaurant banner
 const diningBanner = ""
@@ -375,9 +376,7 @@ export default function DiningRestaurants() {
                           src={restaurant.image}
                           alt={restaurant.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none"
-                          }}
+                          onError={(e) => handleImageError(e, 'restaurant')}
                         />
 
                         {/* Featured Dish Badge - Top Left */}

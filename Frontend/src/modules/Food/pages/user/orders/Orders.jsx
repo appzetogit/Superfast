@@ -5,6 +5,7 @@ import { orderAPI } from "@food/api"
 import { useCart } from "@food/context/CartContext"
 import { toast } from "sonner"
 import { getCompanyNameAsync } from "@common/utils/businessSettings"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -753,9 +754,7 @@ Order again from this restaurant in the ${companyName} app.`
                         src={restaurantImage}
                         alt={order.restaurant}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                        }}
+                        onError={(e) => handleImageError(e, 'restaurant')}
                       />
                     </div>
 
@@ -833,9 +832,7 @@ Order again from this restaurant in the ${companyName} app.`
                                 src={itemImage}
                                 alt={itemName}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.style.display = 'none'
-                                }}
+                                onError={(e) => handleImageError(e, 'food')}
                               />
                             </div>
                           )}

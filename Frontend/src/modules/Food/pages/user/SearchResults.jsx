@@ -11,6 +11,7 @@ import { useLocation } from "@food/hooks/useLocation"
 import { useZone } from "@food/hooks/useZone"
 import { restaurantAPI, adminAPI } from "@food/api"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -913,9 +914,7 @@ export default function SearchResults() {
                             src={restaurant.image}
                             alt={restaurant.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                            }}
+                            onError={(e) => handleImageError(e, 'restaurant')}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -981,9 +980,7 @@ export default function SearchResults() {
                           src={restaurant.image}
                           alt={restaurant.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                          }}
+                          onError={(e) => handleImageError(e, 'restaurant')}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800">

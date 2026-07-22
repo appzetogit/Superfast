@@ -91,7 +91,7 @@ export const resolveImageUrl = getImageUrl;
  *
  * @returns {string} - The dynamic fallback image URL.
  */
-export const getFallbackImage = () => {
+export const getFallbackImage = (type = 'food') => {
   const baseUrl =
     import.meta.env?.VITE_BACKEND_URL ||
     import.meta.env?.VITE_BASE_URL ||
@@ -102,3 +102,27 @@ export const getFallbackImage = () => {
       : 'http://localhost:5000');
   return `${baseUrl}/uploads/placeholder-food.png`;
 };
+
+/**
+ * Universal error handler for React <img /> components.
+ * Prevents infinite request loops when fallback images fail or when React re-triggers synthetic onError.
+ *
+ * @param {Event} e - React or DOM error event
+ * @param {string} [fallbackType='food'] - Fallback category ('food', 'restaurant', 'category', etc.)
+ */
+export const handleImageError = (e, fallbackType = 'food') => {
+  if (!e || !e.currentTarget) return;
+  const target = e.currentTarget;
+  // If we already attempted fallback on this element, stop immediately to prevent infinite API calls
+  if (target.dataset.hasFallback === 'true') {
+    target.onerror = null;
+    return;
+  }
+  target.dataset.hasFallback = 'true';
+  target.onerror = null;
+  const fallbackUrl = getFallbackImage(fallbackType);
+  if (target.src !== fallbackUrl) {
+    target.src = fallbackUrl;
+  }
+};
+

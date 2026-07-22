@@ -10,6 +10,7 @@ import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { FaLocationDot } from "react-icons/fa6"
+import { handleImageError } from "@shared/utils/imageHelper"
 // Using placeholder for near and top rated banner
 const nearAndTopRated = ""
 
@@ -363,9 +364,7 @@ export default function DiningExploreNear() {
                           src={restaurant.image}
                           alt={restaurant.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none"
-                          }}
+                          onError={(e) => handleImageError(e, 'restaurant')}
                         />
 
                         {/* Featured Dish Badge - Top Left */}

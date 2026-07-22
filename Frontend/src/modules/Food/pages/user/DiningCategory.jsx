@@ -11,6 +11,7 @@ import { useProfile } from "@food/context/ProfileContext"
 import { FaLocationDot } from "react-icons/fa6"
 import { diningAPI } from "@food/api"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { handleImageError } from "@shared/utils/imageHelper"
 
 const slugifyRestaurant = (value) =>
   String(value || "")
@@ -210,9 +211,7 @@ export default function DiningCategory() {
                         src={restaurant.image}
                         alt={restaurant.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none"
-                        }}
+                        onError={(event) => handleImageError(event, 'restaurant')}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 

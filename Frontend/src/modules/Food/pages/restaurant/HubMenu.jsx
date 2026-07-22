@@ -24,6 +24,7 @@ import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { useNavigate } from "react-router-dom"
 import { restaurantAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
+import { handleImageError } from "@shared/utils/imageHelper"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -1255,9 +1256,7 @@ export default function HubMenu() {
                             src={addon.images[0]}
                             alt={addon.name}
                             className="w-20 h-20 object-cover rounded-lg"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                            }}
+                            onError={(e) => handleImageError(e, 'food')}
                           />
                         )}
                         <div className="flex flex-col gap-2">
@@ -2304,9 +2303,7 @@ export default function HubMenu() {
                               src={img}
                               alt={`Add-on ${index + 1}`}
                               className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                              onError={(e) => {
-                                e.target.style.display = 'none'
-                              }}
+                              onError={(e) => handleImageError(e, 'food')}
                             />
                           )}
                           <button
