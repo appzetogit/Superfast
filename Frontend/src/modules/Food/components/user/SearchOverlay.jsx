@@ -4,6 +4,7 @@ import { X, Search, Clock, Loader2, Mic } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { restaurantAPI } from "@food/api"
+import { getImageUrl } from "../../../../shared/utils/imageHelper"
 
 const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
 
@@ -37,22 +38,6 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
         // Ignore parse errors.
       }
       setRecentSuggestions([])
-    }
-
-    const getImageUrl = (value) => {
-      if (!value) return ""
-      if (typeof value === "string") return value
-      if (typeof value === "object") {
-        return (
-          value.url ||
-          value.secure_url ||
-          value.imageUrl ||
-          value.image ||
-          value.src ||
-          ""
-        )
-      }
-      return ""
     }
 
     const fetchDishesFromDB = async () => {

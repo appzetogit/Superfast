@@ -103,9 +103,9 @@ export const getImageUrl = (imagePath, req = null) => {
     const activeReq = req || requestContext.getStore();
     let baseUrl = '';
     if (activeReq && typeof activeReq.get === 'function') {
-        const host = activeReq.headers['x-forwarded-host'] || activeReq.get('host');
+        const host = (activeReq.headers && activeReq.headers['x-forwarded-host']) || activeReq.get('host');
         if (host) {
-            const proto = activeReq.headers['x-forwarded-proto'] || activeReq.protocol || 'http';
+            const proto = (activeReq.headers && activeReq.headers['x-forwarded-proto']) || activeReq.protocol || 'http';
             baseUrl = `${proto}://${host}`;
         }
     }
@@ -237,6 +237,88 @@ export const transformImageFields = (data, req = null) => {
     return transformed;
 };
 
+/**
+ * Recursively traverses an incoming request payload (req.body) or data structure
+ * and strips any base URLs (http://localhost:5000, https://superfastfood.in, leading slashes)
+ * from known image fields or strings containing /uploads/ or /images/ using `toRelativeUrl`.
+ * This ensures ONLY clean relative paths (e.g. `uploads/...` or `images/...`) are ever stored in MongoDB.
+ *
+ * @param {any} data - Input request body object, array, or field value.
+ * @returns {any} - Sanitized data structure containing only relative paths for local uploads.
+ */
+export const sanitizeBodyToRelative = (data) => {
+    if (!data || typeof data !== 'object') {
+        if (typeof data === 'string') {
+            if (/^https?:\/\/(?:localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?\/(?:uploads|images)\//i.test(data) || /^\/?(?:uploads|images)\//i.test(data)) {
+                return toRelativeUrl(data);
+            }
+        }
+        return data;
+    }
+
+    if (
+        data instanceof Date ||
+        data instanceof RegExp ||
+        Buffer.isBuffer(data) ||
+        (data.constructor && (data.constructor.name === 'ObjectId' || data.constructor.name === 'Decimal128')) ||
+        data._bsontype === 'ObjectID' ||
+        data._bsontype === 'ObjectId' ||
+        data._bsontype === 'Decimal128' ||
+        typeof data.toHexString === 'function'
+    ) {
+        return data;
+    }
+
+    if (Array.isArray(data)) {
+        return data.map((item) => (typeof item === 'string' ? sanitizeBodyToRelative(item) : sanitizeBodyToRelative(item)));
+    }
+
+    const sanitized = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value === null || value === undefined) {
+            sanitized[key] = value;
+            continue;
+        }
+
+        if (
+            typeof value === 'object' &&
+            (value instanceof Date ||
+                value instanceof RegExp ||
+                Buffer.isBuffer(value) ||
+                (value.constructor && (value.constructor.name === 'ObjectId' || value.constructor.name === 'Decimal128')) ||
+                value._bsontype === 'ObjectID' ||
+                value._bsontype === 'ObjectId' ||
+                value._bsontype === 'Decimal128' ||
+                typeof value.toHexString === 'function')
+        ) {
+            sanitized[key] = value;
+            continue;
+        }
+
+        if (isImageKey(key)) {
+            if (typeof value === 'string') {
+                sanitized[key] = toRelativeUrl(value);
+            } else if (Array.isArray(value)) {
+                sanitized[key] = value.map((item) =>
+                    typeof item === 'string' ? toRelativeUrl(item) : sanitizeBodyToRelative(item)
+                );
+            } else if (typeof value === 'object') {
+                sanitized[key] = sanitizeBodyToRelative(value);
+            } else {
+                sanitized[key] = value;
+            }
+        } else if (typeof value === 'string' && (/^https?:\/\/(?:localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?\/(?:uploads|images)\//i.test(value) || /^\/?(?:uploads|images)\//i.test(value))) {
+            sanitized[key] = toRelativeUrl(value);
+        } else if (typeof value === 'object') {
+            sanitized[key] = sanitizeBodyToRelative(value);
+        } else {
+            sanitized[key] = value;
+        }
+    }
+
+    return sanitized;
+};
+
 
 export default {
     requestContext,
@@ -244,6 +326,7 @@ export default {
     toRelativeUrl,
     toFullUrl,
     buildFileUrl,
-    transformImageFields
+    transformImageFields,
+    sanitizeBodyToRelative
 };
 

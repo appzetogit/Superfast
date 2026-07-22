@@ -13,7 +13,7 @@ import { responseTimeLogger } from './middleware/responseTimeLogger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
 import { config } from './config/env.js';
-import { transformImageFields, requestContext } from './utils/urlHelper.js';
+import { sanitizeBodyToRelative, transformImageFields, requestContext } from './utils/urlHelper.js';
 
 const app = express();
 
@@ -95,7 +95,16 @@ app.use('/api', apiRateLimiter);
 // Optional: log API response time (method, path, status, duration) - no sensitive data
 app.use('/api', responseTimeLogger);
 
-// Global response transformer: ensure all image paths across all controllers are converted to full URLs using active request context
+// Automatically sanitize incoming request bodies for write routes so any image fields or URLs
+// containing base URLs (http://localhost:5000, https://superfastfood.in) are stripped to relative paths before saving to MongoDB
+app.use((req, _res, next) => {
+    if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && typeof req.body === 'object') {
+        req.body = sanitizeBodyToRelative(req.body);
+    }
+    next();
+});
+
+// Global response transformer: ensure all image paths across all controllers are converted to full URLs for display/client rendering using active request context
 app.use((req, res, next) => {
     requestContext.run(req, () => {
         const originalJson = res.json;

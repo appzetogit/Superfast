@@ -1,4 +1,4 @@
-import { optimizeCloudinaryUrl } from './cloudinaryUtils';
+import { optimizeCloudinaryUrl } from './cloudinaryUtils.js';
 
 /**
  * Resolves an image path to an absolute URL suitable for the current environment.
@@ -8,7 +8,11 @@ import { optimizeCloudinaryUrl } from './cloudinaryUtils';
  * @returns {string} - The fully resolved and optimized image URL.
  */
 export const getImageUrl = (path) => {
-  if (!path || typeof path !== 'string') return '';
+  if (!path) return '';
+  if (typeof path === 'object') {
+    path = path.url || path.secure_url || path.imageUrl || path.image || path.src || '';
+  }
+  if (typeof path !== 'string') return '';
   const trimmed = path.trim();
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
@@ -71,3 +75,5 @@ export const getImageUrl = (path) => {
   // Fallback / optimization if Cloudinary
   return optimizeCloudinaryUrl(resolvedUrl);
 };
+
+export const resolveImageUrl = getImageUrl;

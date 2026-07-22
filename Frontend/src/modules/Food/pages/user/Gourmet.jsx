@@ -11,6 +11,7 @@ import OptimizedImage from "@food/components/OptimizedImage"
 import { RestaurantGridSkeleton } from "@food/components/ui/loading-skeletons"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { useLocation } from "@food/hooks/useLocation"
+import { resolveImageUrl } from "../../../../shared/utils/imageHelper"
 
 // Import banner
 import gourmetBanner from "@food/assets/groumetpagebanner.png"
@@ -28,17 +29,6 @@ export default function Gourmet() {
   const [error, setError] = useState(null)
   const { location } = useLocation()
   const showGourmetSkeleton = useDelayedLoading(loading)
-
-  const backendOrigin = (API_BASE_URL || "").replace(/\/api\/v1\/?$/, "")
-
-  const resolveImageUrl = (url) => {
-    if (typeof url !== "string") return ""
-    const trimmed = url.trim()
-    if (!trimmed) return ""
-    if (/^(https?:|\/\/|data:|blob:)/i.test(trimmed)) return trimmed
-    if (!backendOrigin) return trimmed
-    return `${backendOrigin.replace(/\/$/, "")}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`
-  }
 
   // Fetch Gourmet restaurants from public API
   useEffect(() => {
