@@ -1,4 +1,7 @@
+import { AsyncLocalStorage } from 'async_hooks';
 import { config } from '../config/env.js';
+
+export const requestContext = new AsyncLocalStorage();
 
 const NON_IMAGE_KEYS = new Set([
     'targetPath', 'ctaLink', 'link', 'videoLink', 'websiteUrl',
@@ -80,7 +83,15 @@ export const toRelativeUrl = (filePath) => {
  * @param {string} imagePath - Relative path or absolute URL.
  * @returns {string} - Full URL using environment BASE_URL or untouched Cloudinary URL.
  */
-export const getImageUrl = (imagePath) => {
+/**
+ * Resolves an image path or absolute URL dynamically based on current environment.
+ * Ensures Cloudinary/external URLs remain untouched while relative paths prepend dynamic BASE_URL.
+ *
+ * @param {string} imagePath - Relative path or absolute URL.
+ * @param {object|null} req - Optional Express req object to dynamically derive server host.
+ * @returns {string} - Full URL using environment BASE_URL or untouched Cloudinary URL.
+ */
+export const getImageUrl = (imagePath, req = null) => {
     if (!imagePath || typeof imagePath !== 'string') return '';
     const trimmed = imagePath.trim();
     if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return '';
@@ -89,18 +100,31 @@ export const getImageUrl = (imagePath) => {
         return trimmed;
     }
 
+    const activeReq = req || requestContext.getStore();
+    let baseUrl = '';
+    if (activeReq && typeof activeReq.get === 'function') {
+        const host = activeReq.headers['x-forwarded-host'] || activeReq.get('host');
+        if (host) {
+            const proto = activeReq.headers['x-forwarded-proto'] || activeReq.protocol || 'http';
+            baseUrl = `${proto}://${host}`;
+        }
+    }
+    if (!baseUrl) {
+        baseUrl = (process.env.BASE_URL || process.env.APP_URL || config.baseUrl || config.appUrl || 'http://localhost:5000').replace(/\/+$/, '');
+    } else {
+        baseUrl = baseUrl.replace(/\/+$/, '');
+    }
+
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('//')) {
         if (/^https?:\/\/(localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i.test(trimmed)) {
             const match = trimmed.match(/^https?:\/\/(?:localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i);
             const pathPart = match && match[1] ? match[1] : '';
-            const baseUrl = (process.env.BASE_URL || process.env.APP_URL || config.baseUrl || config.appUrl || 'http://localhost:5000').replace(/\/+$/, '');
             if (!pathPart || pathPart === '/') return baseUrl;
             return `${baseUrl}${pathPart.startsWith('/') ? '' : '/'}${pathPart}`;
         }
         return trimmed; // Cloudinary or external link untouched
     }
 
-    const baseUrl = (process.env.BASE_URL || process.env.APP_URL || config.baseUrl || config.appUrl || 'http://localhost:5000').replace(/\/+$/, '');
     let normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
     if (!normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
         normalizedPath = `/uploads${normalizedPath}`;
@@ -113,10 +137,11 @@ export const getImageUrl = (imagePath) => {
  * appropriate for the current environment based on `config.appUrl` (APP_URL).
  *
  * @param {string} filePath - Relative path or absolute URL.
+ * @param {object|null} req - Optional Express req object.
  * @returns {string} - Full URL using the environment's APP_URL.
  */
-export const buildFileUrl = (filePath) => {
-    return getImageUrl(filePath);
+export const buildFileUrl = (filePath, req = null) => {
+    return getImageUrl(filePath, req);
 };
 
 /**
@@ -124,10 +149,11 @@ export const buildFileUrl = (filePath) => {
  * appropriate for the current environment using `buildFileUrl`.
  *
  * @param {string} filePath - Relative path or absolute URL.
+ * @param {object|null} req - Optional Express req object.
  * @returns {string} - Full URL or unchanged value if external/base64.
  */
-export const toFullUrl = (filePath) => {
-    return buildFileUrl(filePath);
+export const toFullUrl = (filePath, req = null) => {
+    return buildFileUrl(filePath, req);
 };
 
 
@@ -136,9 +162,10 @@ export const toFullUrl = (filePath) => {
  * using `toFullUrl`.
  *
  * @param {any} data - Input object, array, or Mongoose document.
+ * @param {object|null} req - Optional Express req object.
  * @returns {any} - Transformed data copy with full image URLs.
  */
-export const transformImageFields = (data) => {
+export const transformImageFields = (data, req = null) => {
     if (!data || typeof data !== 'object') {
         return data;
     }
@@ -157,14 +184,13 @@ export const transformImageFields = (data) => {
         return data;
     }
 
-    // Handle Mongoose documents that might have .toObject()
     let target = data;
     if (typeof data.toObject === 'function') {
         target = data.toObject();
     }
 
     if (Array.isArray(target)) {
-        return target.map((item) => (typeof item === 'string' ? toFullUrl(item) : transformImageFields(item)));
+        return target.map((item) => (typeof item === 'string' ? toFullUrl(item, req) : transformImageFields(item, req)));
     }
 
     const transformed = {};
@@ -174,7 +200,6 @@ export const transformImageFields = (data) => {
             continue;
         }
 
-        // Check if this property value is a special object (ObjectId, Buffer, Date, etc.)
         if (
             typeof value === 'object' &&
             (value instanceof Date ||
@@ -192,18 +217,18 @@ export const transformImageFields = (data) => {
 
         if (isImageKey(key)) {
             if (typeof value === 'string') {
-                transformed[key] = toFullUrl(value);
+                transformed[key] = toFullUrl(value, req);
             } else if (Array.isArray(value)) {
                 transformed[key] = value.map((item) =>
-                    typeof item === 'string' ? toFullUrl(item) : transformImageFields(item)
+                    typeof item === 'string' ? toFullUrl(item, req) : transformImageFields(item, req)
                 );
             } else if (typeof value === 'object') {
-                transformed[key] = transformImageFields(value);
+                transformed[key] = transformImageFields(value, req);
             } else {
                 transformed[key] = value;
             }
         } else if (typeof value === 'object') {
-            transformed[key] = transformImageFields(value);
+            transformed[key] = transformImageFields(value, req);
         } else {
             transformed[key] = value;
         }
@@ -214,6 +239,7 @@ export const transformImageFields = (data) => {
 
 
 export default {
+    requestContext,
     getImageUrl,
     toRelativeUrl,
     toFullUrl,

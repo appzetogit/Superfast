@@ -13,7 +13,7 @@ import { responseTimeLogger } from './middleware/responseTimeLogger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
 import { config } from './config/env.js';
-import { transformImageFields } from './utils/urlHelper.js';
+import { transformImageFields, requestContext } from './utils/urlHelper.js';
 
 const app = express();
 
@@ -95,16 +95,18 @@ app.use('/api', apiRateLimiter);
 // Optional: log API response time (method, path, status, duration) - no sensitive data
 app.use('/api', responseTimeLogger);
 
-// Global response transformer: ensure all image paths across all controllers are converted to full URLs
+// Global response transformer: ensure all image paths across all controllers are converted to full URLs using active request context
 app.use((req, res, next) => {
-    const originalJson = res.json;
-    res.json = function (body) {
-        if (body && typeof body === 'object') {
-            body = transformImageFields(body);
-        }
-        return originalJson.call(this, body);
-    };
-    next();
+    requestContext.run(req, () => {
+        const originalJson = res.json;
+        res.json = function (body) {
+            if (body && typeof body === 'object') {
+                body = transformImageFields(body, req);
+            }
+            return originalJson.call(this, body);
+        };
+        next();
+    });
 });
 
 // API Routes
