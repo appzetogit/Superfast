@@ -74,6 +74,41 @@ export const toRelativeUrl = (filePath) => {
 };
 
 /**
+ * Resolves an image path or absolute URL dynamically based on current environment.
+ * Ensures Cloudinary/external URLs remain untouched while relative paths prepend dynamic BASE_URL.
+ *
+ * @param {string} imagePath - Relative path or absolute URL.
+ * @returns {string} - Full URL using environment BASE_URL or untouched Cloudinary URL.
+ */
+export const getImageUrl = (imagePath) => {
+    if (!imagePath || typeof imagePath !== 'string') return '';
+    const trimmed = imagePath.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return '';
+
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+        return trimmed;
+    }
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('//')) {
+        if (/^https?:\/\/(localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i.test(trimmed)) {
+            const match = trimmed.match(/^https?:\/\/(?:localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i);
+            const pathPart = match && match[1] ? match[1] : '';
+            const baseUrl = (process.env.BASE_URL || process.env.APP_URL || config.baseUrl || config.appUrl || 'http://localhost:5000').replace(/\/+$/, '');
+            if (!pathPart || pathPart === '/') return baseUrl;
+            return `${baseUrl}${pathPart.startsWith('/') ? '' : '/'}${pathPart}`;
+        }
+        return trimmed; // Cloudinary or external link untouched
+    }
+
+    const baseUrl = (process.env.BASE_URL || process.env.APP_URL || config.baseUrl || config.appUrl || 'http://localhost:5000').replace(/\/+$/, '');
+    let normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    if (!normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
+        normalizedPath = `/uploads${normalizedPath}`;
+    }
+    return `${baseUrl}${normalizedPath}`;
+};
+
+/**
  * Resolves a relative file path or absolute local/vps URL into a full URL
  * appropriate for the current environment based on `config.appUrl` (APP_URL).
  *
@@ -81,45 +116,7 @@ export const toRelativeUrl = (filePath) => {
  * @returns {string} - Full URL using the environment's APP_URL.
  */
 export const buildFileUrl = (filePath) => {
-    if (!filePath || typeof filePath !== 'string') {
-        return filePath || '';
-    }
-
-    const trimmed = filePath.trim();
-    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
-        return '';
-    }
-
-    // Preserve data URLs and blob URLs
-    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-        return trimmed;
-    }
-
-    // Get current app URL from env (e.g. http://localhost:5000 or https://superfastfood.in)
-    const appUrl = (config.appUrl || config.baseUrl || config.backendUrl || 'http://localhost:5000').replace(/\/+$/, '');
-
-    // Check if it's an existing absolute URL pointing to localhost, 127.0.0.1, or superfastfood.in
-    if (/^https?:\/\/(localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i.test(trimmed)) {
-        const match = trimmed.match(/^https?:\/\/(?:localhost|127\.0\.0\.1|superfastfood\.in)(?::\d+)?(\/.*)?$/i);
-        const pathPart = match && match[1] ? match[1] : '';
-        if (!pathPart || pathPart === '/') {
-            return appUrl;
-        }
-        return `${appUrl}${pathPart.startsWith('/') ? pathPart : `/${pathPart}`}`;
-    }
-
-    // If it starts with http:// or https:// and did not match our internal/localhost domains above,
-    // it is an external absolute URL (e.g. Cloudinary, Firebase, Google). Return unchanged.
-    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('//')) {
-        return trimmed;
-    }
-
-    // It is a relative file path (e.g. "uploads/food/explore-icons/abc.webp" or "/food/explore-icons/abc.webp")
-    let normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-    if (!normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
-        normalizedPath = `/uploads${normalizedPath}`;
-    }
-    return `${appUrl}${normalizedPath}`;
+    return getImageUrl(filePath);
 };
 
 /**
@@ -217,6 +214,7 @@ export const transformImageFields = (data) => {
 
 
 export default {
+    getImageUrl,
     toRelativeUrl,
     toFullUrl,
     buildFileUrl,

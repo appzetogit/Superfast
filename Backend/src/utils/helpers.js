@@ -20,3 +20,5 @@ export const buildPaginatedResult = ({ docs, total, page, limit }) => {
     };
 };
 
+export { getImageUrl } from './urlHelper.js';
+
