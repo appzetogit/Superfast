@@ -218,6 +218,7 @@ export default function RestaurantLogin() {
                 </>
               )}
             </Button>
+          </div>
         </div>
       </div>
 
