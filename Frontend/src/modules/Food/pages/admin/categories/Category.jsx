@@ -565,7 +565,7 @@ export default function Category() {
                                 Approve
                               </button>
                             )}
-                            {isRestaurantCategory && approvalStatus !== "rejected" && (
+                            {isRestaurantCategory && approvalStatus !== "approved" && approvalStatus !== "rejected" && (
                               <button
                                 onClick={() => handleReject(category)}
                                 className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"

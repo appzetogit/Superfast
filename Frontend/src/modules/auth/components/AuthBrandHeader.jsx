@@ -45,7 +45,7 @@ export default function AuthBrandHeader({ compact = false, subtitle }) {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 220, damping: 18 }}
             className={`${
-              compact ? "w-20 h-20 mb-2" : "w-24 h-24 md:w-28 md:h-28 mb-3"
+              compact ? "w-20 h-20 mb-2" : "w-[512px] h-[512px] mb-3"
             } bg-white rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden ring-4 ring-white/90`}
           >
             <img
