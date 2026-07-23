@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { optimizeCloudinaryUrl } from '../utils/cloudinaryUtils';
+import { getImageUrl, handleImageError } from '../utils/imageHelper';
 
-const LazyImage = ({ src, alt = '', className = '', ...rest }) => {
+const LazyImage = ({ src, alt = '', className = '', onError, ...rest }) => {
   const [loaded, setLoaded] = useState(false);
 
   const supportsOptimization = (imageSrc) => {
@@ -10,7 +11,8 @@ const LazyImage = ({ src, alt = '', className = '', ...rest }) => {
     return /^https?:\/\//.test(imageSrc);
   };
 
-  const optimizedSrc = useMemo(() => {
+  const finalSrc = useMemo(() => {
+    if (!src) return getImageUrl('');
     if (supportsOptimization(src)) {
       if (/res\.cloudinary\.com/i.test(src)) {
         return optimizeCloudinaryUrl(src, { format: 'auto', quality: 'auto:good' });
@@ -24,15 +26,19 @@ const LazyImage = ({ src, alt = '', className = '', ...rest }) => {
         }
       } catch {}
     }
-    return src;
+    return getImageUrl(src);
   }, [src]);
 
   return (
     <img
-      src={optimizedSrc}
+      src={finalSrc}
       alt={alt}
       loading="lazy"
       onLoad={() => setLoaded(true)}
+      onError={(e) => {
+        handleImageError(e);
+        if (onError) onError(e);
+      }}
       className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
       {...rest}
     />
@@ -40,4 +46,3 @@ const LazyImage = ({ src, alt = '', className = '', ...rest }) => {
 };
 
 export default LazyImage;
-

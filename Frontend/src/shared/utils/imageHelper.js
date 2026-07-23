@@ -7,12 +7,14 @@ import { optimizeCloudinaryUrl } from './cloudinaryUtils.js';
  * @param {string} path - The relative path or absolute URL of the image.
  * @returns {string} - The fully resolved and optimized image URL.
  */
+const DEFAULT_SVG_PLACEHOLDER = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" rx="16" fill="%23F3F4F6"/><path d="M40 140 L75 95 L105 125 L135 85 L165 140 Z" fill="%23CBD5E1"/><circle cx="70" cy="75" r="14" fill="%23CBD5E1"/></svg>`;
+
 export const getImageUrl = (path) => {
-  if (!path) return '';
+  if (!path) return DEFAULT_SVG_PLACEHOLDER;
   if (typeof path === 'object') {
     path = path.url || path.secure_url || path.imageUrl || path.image || path.src || '';
   }
-  if (typeof path !== 'string') return '';
+  if (typeof path !== 'string' || !path.trim()) return DEFAULT_SVG_PLACEHOLDER;
   const trimmed = path.trim();
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
@@ -32,8 +34,6 @@ export const getImageUrl = (path) => {
       const parsed = new URL(trimmed);
       const pathname = parsed.pathname || '';
 
-      // If the absolute URL points to our storage directories (/uploads/ or /images/) or is a localhost/superfast domain,
-      // always dynamically point to the active backendOrigin so images load reliably across environments.
       if (
         pathname.startsWith('/uploads/') ||
         pathname.startsWith('/images/') ||
@@ -71,7 +71,6 @@ export const getImageUrl = (path) => {
     const normalized = trimmed.replace(/\\/g, '/');
     let pathPart = normalized.startsWith('/') ? normalized : `/${normalized}`;
     
-    // Auto-prepend /images if not already prefixed (/uploads/ remains valid via our dual static middleware)
     if (!pathPart.startsWith('/uploads/') && !pathPart.startsWith('/images/') && !pathPart.startsWith('/api/')) {
       pathPart = `/images${pathPart}`;
     }
@@ -79,50 +78,24 @@ export const getImageUrl = (path) => {
     resolvedUrl = `${backendOrigin}${pathPart}`;
   }
 
-  // Fallback / optimization if Cloudinary
   return optimizeCloudinaryUrl(resolvedUrl);
 };
 
 export const resolveImageUrl = getImageUrl;
 
-/**
- * Dynamically resolves the fallback image URL according to the active environment.
- * Uses VITE_BACKEND_URL, VITE_BASE_URL, or derives from VITE_API_BASE_URL / window.location.origin.
- *
- * @returns {string} - The dynamic fallback image URL.
- */
 export const getFallbackImage = (type = 'food') => {
-  const baseUrl =
-    import.meta.env?.VITE_BACKEND_URL ||
-    import.meta.env?.VITE_BASE_URL ||
-    (import.meta.env?.VITE_API_BASE_URL
-      ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')
-      : typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:5000');
-  return `${baseUrl}/uploads/placeholder-food.png`;
+  return DEFAULT_SVG_PLACEHOLDER;
 };
 
-/**
- * Universal error handler for React <img /> components.
- * Prevents infinite request loops when fallback images fail or when React re-triggers synthetic onError.
- *
- * @param {Event} e - React or DOM error event
- * @param {string} [fallbackType='food'] - Fallback category ('food', 'restaurant', 'category', etc.)
- */
 export const handleImageError = (e, fallbackType = 'food') => {
   if (!e || !e.currentTarget) return;
   const target = e.currentTarget;
-  // If we already attempted fallback on this element, stop immediately to prevent infinite API calls
   if (target.dataset.hasFallback === 'true') {
     target.onerror = null;
     return;
   }
   target.dataset.hasFallback = 'true';
   target.onerror = null;
-  const fallbackUrl = getFallbackImage(fallbackType);
-  if (target.src !== fallbackUrl) {
-    target.src = fallbackUrl;
-  }
+  target.src = DEFAULT_SVG_PLACEHOLDER;
 };
 

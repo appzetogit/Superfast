@@ -145,6 +145,14 @@ const AppRoutes = () => {
     if (route.startsWith('/food/') || route.startsWith('/admin')) {
       localStorage.setItem(NATIVE_LAST_ROUTE_KEY, route)
     }
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    const scrollContainers = document.querySelectorAll('main, #root, .overflow-y-auto, [data-scroll-container]')
+    scrollContainers.forEach((el) => {
+      if (el && typeof el.scrollTop === 'number') {
+        el.scrollTop = 0
+      }
+    })
   }, [location.pathname, location.search])
 
   return (

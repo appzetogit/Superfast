@@ -443,13 +443,14 @@ export default function Profile() {
   return (
     <AnimatedPage className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a]">
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10 pb-20 sm:pb-24">
-        {/* Header: Back Arrow */}
-        <div className="flex items-center mb-4">
+        {/* Header: Back Arrow & Title */}
+        <div className="flex items-center gap-3 mb-4">
           <Link to={backPath}>
             <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
               <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
             </Button>
           </Link>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Profile</h1>
         </div>
 
         {/* Profile Info Card */}

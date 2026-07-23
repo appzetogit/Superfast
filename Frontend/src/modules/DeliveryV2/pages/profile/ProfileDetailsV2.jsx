@@ -697,7 +697,6 @@ export const ProfileDetailsV2 = () => {
         ref={profileCameraInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleProfileCameraSelected}
         style={{ display: "none" }}
@@ -924,7 +923,7 @@ export const ProfileDetailsV2 = () => {
                   </div>
                 )}
                 <input ref={upiQrInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpiQrSelected} />
-                <input ref={upiQrCameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpiQrCameraSelected} />
+                <input ref={upiQrCameraInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpiQrCameraSelected} />
                 <p className="text-[9px] text-purple-400 font-medium">Upload your UPI QR code from Google Pay, PhonePe, etc. to receive easy payouts.</p>
              </div>
           </div>

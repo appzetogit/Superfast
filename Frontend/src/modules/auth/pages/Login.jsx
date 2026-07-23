@@ -305,7 +305,10 @@ export default function UnifiedOTPFastLogin() {
     >
       <AuthBrandHeader />
 
-      <div className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col mt-10 md:mt-14 relative z-20 pb-4 h-full overflow-y-auto">
+      <div
+        className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col mt-10 md:mt-14 relative z-20 pb-4 overflow-y-auto"
+        style={keyboardInset > 0 ? { maxHeight: `${window.visualViewport.height - 80}px` } : undefined}
+      >
         {/* Main Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100 shrink-0 mb-4">
           <div className="text-center mb-5">
@@ -339,7 +342,6 @@ export default function UnifiedOTPFastLogin() {
                   <input
                     type="tel"
                     required
-                    autoFocus
                     value={phoneNumber}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "").slice(0, 10);
@@ -370,7 +372,6 @@ export default function UnifiedOTPFastLogin() {
                   <input
                     type="text"
                     required
-                    autoFocus
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value)
@@ -398,7 +399,6 @@ export default function UnifiedOTPFastLogin() {
                       type="tel"
                       inputMode="numeric"
                       required
-                      autoFocus={index === 0}
                       value={otp[index] || ""}
                       onChange={(e) => {
                         const val = e.target.value.replace(/\D/g, "").slice(-1);
@@ -504,16 +504,18 @@ export default function UnifiedOTPFastLogin() {
         </div>
         )}
 
-        <div className="text-center space-y-1 shrink-0 mt-auto pt-4 mb-2">
-          <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
-          <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">
-            <Link to="/food/user/profile/terms" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms & Conditions</Link>
-            <span className="text-gray-400">•</span>
-            <Link to="/food/user/profile/privacy" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
-            <span className="text-gray-400">•</span>
-            <Link to="/food/user/profile/support" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
+        {step === 1 && (
+          <div className="text-center space-y-1 shrink-0 mt-auto pt-4 mb-2">
+            <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">
+              <Link to="/food/user/profile/terms" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
+              <span className="text-gray-400">•</span>
+              <Link to="/food/user/profile/privacy" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
+              <span className="text-gray-400">•</span>
+              <Link to="/food/user/profile/support" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

@@ -7,20 +7,27 @@ function App() {
 
   useEffect(() => {
     const hasSeen = sessionStorage.getItem('hasSeenSplash')
-    
-    // In native apps (WebView), the actual path is often stored in the hash due to HashRouter.
-    const hashPath = window.location.hash ? window.location.hash.replace(/^#/, '') : '';
-    const effectivePath = hashPath || window.location.pathname || '/';
-    
-    // Determine if the route belongs to the user panel (exclude admin, seller, restaurant, and delivery)
-    const isUserRoute = 
-      !effectivePath.startsWith('/admin') && 
-      !effectivePath.startsWith('/seller') && 
-      !effectivePath.startsWith('/food/restaurant') && 
-      !effectivePath.startsWith('/food/delivery')
-
-    if (!hasSeen && isUserRoute) {
+    if (!hasSeen) {
       setShowSplash(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleGlobalButtonClick = (e) => {
+      const target = e.target
+      if (target && (target.closest('button') || target.closest('[type="submit"]') || target.closest('[role="button"]'))) {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+          document.activeElement.blur()
+        }
+      }
+    }
+
+    document.addEventListener('click', handleGlobalButtonClick, true)
+    document.addEventListener('touchstart', handleGlobalButtonClick, { passive: true })
+
+    return () => {
+      document.removeEventListener('click', handleGlobalButtonClick, true)
+      document.removeEventListener('touchstart', handleGlobalButtonClick)
     }
   }, [])
 

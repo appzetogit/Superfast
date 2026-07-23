@@ -708,7 +708,6 @@ export default function RestaurantOnboarding() {
       const input = document.createElement("input")
       input.type = "file"
       input.accept = "image/*"
-      input.capture = "environment"
       input.onchange = (event) => {
         const file = event?.target?.files?.[0] || null
         if (file) onSelectFile(file)
