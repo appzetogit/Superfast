@@ -33,6 +33,7 @@ export const config = {
     smsIndiaHubUsername: process.env.SMS_INDIA_HUB_USERNAME,
     smsApiKey: process.env.SMS_INDIA_HUB_API_KEY,
     smsSenderId: process.env.SMS_INDIA_HUB_SENDER_ID,
+    smsPeId: process.env.SMS_INDIA_HUB_PE_ID,
     smsDltTemplateId: process.env.SMS_INDIA_HUB_DLT_TEMPLATE_ID,
 
     // Rate limiting

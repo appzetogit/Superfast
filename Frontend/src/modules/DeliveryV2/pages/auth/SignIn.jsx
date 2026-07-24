@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { motion } from "framer-motion"
 import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
+import AuthBrandHeader from "@/modules/auth/components/AuthBrandHeader"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -98,7 +99,14 @@ export default function DeliverySignIn() {
 
 
   // Get selected country details dynamically
-  const selectedCountry = countryCodes.find(c => c.code === formData.countryCode) || countryCodes[2] // Default to India (+91)
+  const selectedCountry = countryCodes.find(c => c.code === formData.countryCode) || countryCodes[0]
+
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10)
+    setFormData(prev => ({ ...prev, phone: value }))
+    sessionStorage.setItem("deliverySignInPhone", value)
+    if (error) setError("")
+  }
 
   const validatePhone = (phone, countryCode) => {
     if (!phone || phone.trim() === "") {

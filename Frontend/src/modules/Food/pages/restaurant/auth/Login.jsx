@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { motion } from "framer-motion"
 import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
+import AuthBrandHeader from "@/modules/auth/components/AuthBrandHeader"
 
 const DEFAULT_COUNTRY_CODE = "+91"
 const countryCodes = [

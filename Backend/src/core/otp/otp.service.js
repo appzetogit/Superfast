@@ -41,8 +41,8 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         const msisdn = digits.startsWith('91') ? digits : `91${digits}`;
 
         // EXACT DLT TEMPLATE provided by user:
-        // "Welcome to the ##var## powered by SMSINDIAHUB. Your OTP for registration is ##var##"
-        const message = `Welcome to the SUPERFAST powered by SMSINDIAHUB. Your OTP for registration is ${otp}`;
+        // "Welcome to the ##var## powered by Appzeto.Your OTP for registration is ##var##.BGADEC"
+        const message = `Welcome to the SUPERFAST powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
 
         // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
         const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
@@ -54,6 +54,10 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         url.searchParams.append('fl', '0');
         if (config.smsIndiaHubUsername) {
             url.searchParams.append('uname', config.smsIndiaHubUsername);
+        }
+        if (config.smsPeId) {
+            url.searchParams.append('peid', config.smsPeId);
+            url.searchParams.append('PE_ID', config.smsPeId);
         }
         if (config.smsDltTemplateId) {
             url.searchParams.append('DLT_TE_ID', config.smsDltTemplateId);

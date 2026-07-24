@@ -65,7 +65,7 @@ export default function DeliveryRouter() {
         <Route path="signup/documents" element={<SignupStep2 />} />
         {/* Protected routes - require authentication */}
         <Route
-          path="/"
+          path=""
           element={
             <ProtectedRoute>
               <DeliveryLayout showGig={true}>
