@@ -123,24 +123,19 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
       >
         {items.map((item, index) => {
           const isVeg = item.foodType !== 'Non-Veg';
+          const itemImg = item.image || restaurant?.image || (Array.isArray(restaurant?.images) && restaurant.images[0]) || '';
           return (
             <div 
               key={item._id || index}
               onClick={(e) => handleItemClick(e, item._id)}
               className="w-full h-full flex-shrink-0 snap-center relative cursor-pointer"
             >
-              {item.image ? (
-                <OptimizedImage
-                  src={withCacheBuster(item.image, backendOrigin)}
-                  alt={item.name}
-                  priority={priority && index === 0}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800 text-gray-400">
-                  <span className="text-xs">No image</span>
-                </div>
-              )}
+              <OptimizedImage
+                src={itemImg ? withCacheBuster(itemImg, backendOrigin) : ''}
+                alt={item.name}
+                priority={priority && index === 0}
+                className="w-full h-full object-cover"
+              />
               
               {/* Subtle top gradient for better text readability */}
               <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />

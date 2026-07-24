@@ -140,18 +140,10 @@ const OptimizedImage = React.memo(({
   // Default blur placeholder (tiny gray square)
   const defaultBlurDataURL = blurDataURL || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjwvc3ZnPg=='
 
-  // Don't render if src is empty or null
-  if (!src || src === '') {
-    return (
-      <div className={`relative overflow-hidden ${className}`}>
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-          <span className="text-xs text-gray-400 dark:text-gray-600">Image unavailable</span>
-        </div>
-      </div>
-    )
-  }
+  const fallbackSvg = getFallbackImage()
 
-  const imageSrc = hasError ? 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle"%3EImage not found%3C/text%3E%3C/svg%3E' : resolvedSrc
+  // If src is empty, render the fallback SVG placeholder
+  const finalSrc = !src || src === '' ? fallbackSvg : (hasError ? fallbackSvg : resolvedSrc)
 
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
@@ -173,7 +165,7 @@ const OptimizedImage = React.memo(({
       )}
 
       {/* Loading Skeleton */}
-      {!isLoaded && !hasError && (
+      {!isLoaded && (
         <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-pulse" />
       )}
 
@@ -181,7 +173,7 @@ const OptimizedImage = React.memo(({
       {isInView && (
         <picture className="absolute inset-0 w-full h-full">
           {/* WebP source for modern browsers */}
-          {webPSrcSet && (
+          {webPSrcSet && !hasError && (
             <source
               srcSet={webPSrcSet}
               sizes={sizes}
@@ -191,10 +183,10 @@ const OptimizedImage = React.memo(({
 
           {/* Fallback to original format */}
           <motion.img
-            src={imageSrc}
-            srcSet={srcSet}
-            sizes={supportsOptimization(imageSrc) ? sizes : undefined}
-            alt={alt}
+            src={finalSrc}
+            srcSet={!hasError ? srcSet : undefined}
+            sizes={supportsOptimization(finalSrc) ? sizes : undefined}
+            alt={alt || 'Image'}
             className={`w-full h-full ${objectFit === 'cover' ? 'object-cover' : objectFit === 'contain' ? 'object-contain' : ''} ${priority || isLoaded ? 'opacity-100' : 'opacity-0'} ${!priority && 'transition-opacity duration-300'}`}
             loading={priority ? 'eager' : 'lazy'}
             decoding="async"
@@ -204,13 +196,6 @@ const OptimizedImage = React.memo(({
             {...props}
           />
         </picture>
-      )}
-
-      {/* Error State */}
-      {hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-          <span className="text-xs text-gray-400 dark:text-gray-600">Image unavailable</span>
-        </div>
       )}
     </div>
   )
