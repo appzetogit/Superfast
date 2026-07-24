@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { optimizeCloudinaryUrl } from '../../../shared/utils/cloudinaryUtils'
-import { getImageUrl } from '../../../shared/utils/imageHelper'
+import { getImageUrl, getFallbackImage } from '../../../shared/utils/imageHelper'
 
 /**
  * OptimizedImage Component

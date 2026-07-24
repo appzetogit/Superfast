@@ -1,4 +1,5 @@
 import { optimizeCloudinaryUrl } from './cloudinaryUtils.js';
+import foodPlaceholder from '@/assets/food-placeholder.jpg';
 
 /**
  * Resolves an image path to an absolute URL suitable for the current environment.
@@ -7,14 +8,14 @@ import { optimizeCloudinaryUrl } from './cloudinaryUtils.js';
  * @param {string} path - The relative path or absolute URL of the image.
  * @returns {string} - The fully resolved and optimized image URL.
  */
-const DEFAULT_SVG_PLACEHOLDER = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" rx="16" fill="%23F3F4F6"/><path d="M40 140 L75 95 L105 125 L135 85 L165 140 Z" fill="%23CBD5E1"/><circle cx="70" cy="75" r="14" fill="%23CBD5E1"/></svg>`;
+const DEFAULT_IMAGE_PLACEHOLDER = foodPlaceholder;
 
 export const getImageUrl = (path) => {
-  if (!path) return DEFAULT_SVG_PLACEHOLDER;
+  if (!path) return DEFAULT_IMAGE_PLACEHOLDER;
   if (typeof path === 'object') {
     path = path.url || path.secure_url || path.imageUrl || path.image || path.src || '';
   }
-  if (typeof path !== 'string' || !path.trim()) return DEFAULT_SVG_PLACEHOLDER;
+  if (typeof path !== 'string' || !path.trim()) return DEFAULT_IMAGE_PLACEHOLDER;
   const trimmed = path.trim();
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
@@ -84,7 +85,7 @@ export const getImageUrl = (path) => {
 export const resolveImageUrl = getImageUrl;
 
 export const getFallbackImage = (type = 'food') => {
-  return DEFAULT_SVG_PLACEHOLDER;
+  return DEFAULT_IMAGE_PLACEHOLDER;
 };
 
 export const handleImageError = (e, fallbackType = 'food') => {
@@ -96,6 +97,6 @@ export const handleImageError = (e, fallbackType = 'food') => {
   }
   target.dataset.hasFallback = 'true';
   target.onerror = null;
-  target.src = DEFAULT_SVG_PLACEHOLDER;
+  target.src = DEFAULT_IMAGE_PLACEHOLDER;
 };
 
