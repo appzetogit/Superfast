@@ -40,6 +40,7 @@ import {
   Share2,
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   CategoryChipRowSkeleton,
   ExploreGridSkeleton,
@@ -171,6 +172,13 @@ export default function Home() {
       if (searchParams.get('tab') === 'quick' || window.location.pathname.startsWith('/quick')) return "quick";
     }
     return "food";
+  });
+  const [hasMountedQuick, setHasMountedQuick] = useState(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.get('tab') === 'quick' || window.location.pathname.startsWith('/quick');
+    }
+    return false;
   });
   const [quickThemeColor, setQuickThemeColor] = useState(() => {
     const settings = getCachedSettings();
@@ -341,14 +349,21 @@ export default function Home() {
     const searchParams = new URLSearchParams(routerLocation.search);
     const targetTab = (searchParams.get('tab') === 'quick' || routerLocation.pathname.startsWith('/quick')) ? 'quick' : 'food';
 
+    if (targetTab === "quick" && !hasMountedQuick) {
+      setHasMountedQuick(true);
+    }
+
     if (activeTab !== targetTab) setActiveTab(targetTab);
-  }, [routerLocation.search, routerLocation.pathname, activeTab]);
+  }, [routerLocation.search, routerLocation.pathname, activeTab, hasMountedQuick]);
 
   // --- Handlers ---
-  const handleTabChange = (tab) => {
-    startTransition(() => setActiveTab(tab));
+  const handleTabChange = useCallback((tab) => {
+    if (tab === "quick" && !hasMountedQuick) {
+      setHasMountedQuick(true);
+    }
+    setActiveTab(tab);
     navigate({ search: `?tab=${tab}` }, { replace: true });
-  };
+  }, [hasMountedQuick, navigate]);
 
   const handleVegModeChange = (newValue) => {
     if (isHandlingSwitchOff.current) return;
@@ -400,30 +415,17 @@ export default function Home() {
           />
       </div>
 
-      <AnimatePresence initial={false} mode="wait">
-        {hideExtras ? (
-          <motion.div
-            key="unavailable"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="bg-white dark:bg-[#0a0a0a]"
-          >
-            <ServiceUnavailable
-              type={!isModuleEnabled ? "module" : "zone"}
-              moduleName={activeTab === 'food' ? 'Food Delivery' : 'SuperfastMart'}
-              onRefresh={() => window.location.reload()}
-            />
-          </motion.div>
-        ) : activeTab === "food" ? (
-          <motion.div
-            key="food-content"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="bg-white dark:bg-[#0a0a0a]"
-          >
+      {hideExtras ? (
+        <div className="bg-white dark:bg-[#0a0a0a]">
+          <ServiceUnavailable
+            type={!isModuleEnabled ? "module" : "zone"}
+            moduleName={activeTab === 'food' ? 'Food Delivery' : 'SuperfastMart'}
+            onRefresh={() => window.location.reload()}
+          />
+        </div>
+      ) : (
+        <>
+          <div className={cn("bg-white dark:bg-[#0a0a0a]", activeTab === "food" ? "block" : "hidden")}>
             <Suspense fallback={<CategoryChipRowSkeleton className="py-1" />}>
               <div className="sticky top-[66px] z-[40] md:relative md:top-auto bg-white dark:bg-[#0a0a0a] border-b border-slate-100 dark:border-white/5 transition-all">
                 <CategoryRail
@@ -501,35 +503,30 @@ export default function Home() {
                 restaurantLoadMoreRef={restaurantLoadMoreRef}
               />
             </Suspense>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="quick-content"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="bg-white dark:bg-[#0a0a0a]"
-          >
-            <QuickLocationProvider>
-              <QuickCartProvider>
-                <QuickWishlistProvider>
-                  <QuickCartAnimationProvider>
-                    <QuickProductDetailProvider>
-                      <Suspense fallback={<div className="h-screen w-full bg-white dark:bg-[#0a0a0a]" />}>
-                        <QuickCommerceHomePage
-                          embedded
-                          embeddedHeaderColor={quickSecondaryThemeColor}
-                        />
-                      </Suspense>
-                    </QuickProductDetailProvider>
-                  </QuickCartAnimationProvider>
-                </QuickWishlistProvider>
-              </QuickCartProvider>
-            </QuickLocationProvider>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+
+          {hasMountedQuick && (
+            <div className={cn("bg-white dark:bg-[#0a0a0a]", activeTab === "quick" ? "block" : "hidden")}>
+              <QuickLocationProvider>
+                <QuickCartProvider>
+                  <QuickWishlistProvider>
+                    <QuickCartAnimationProvider>
+                      <QuickProductDetailProvider>
+                        <Suspense fallback={<div className="h-screen w-full bg-white dark:bg-[#0a0a0a]" />}>
+                          <QuickCommerceHomePage
+                            embedded
+                            embeddedHeaderColor={quickSecondaryThemeColor}
+                          />
+                        </Suspense>
+                      </QuickProductDetailProvider>
+                    </QuickCartAnimationProvider>
+                  </QuickWishlistProvider>
+                </QuickCartProvider>
+              </QuickLocationProvider>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Veg Mode Popups (Enable / Switch Off) */}
       <VegModePopups

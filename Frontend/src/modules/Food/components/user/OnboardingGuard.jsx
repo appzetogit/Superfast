@@ -1,9 +1,10 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useProfile } from "@food/context/ProfileContext";
+import { clearModuleAuth, isProfileNameComplete } from "@food/utils/auth";
 
 /**
- * OnboardingGuard checks if preferences have been set.
+ * OnboardingGuard checks if preferences have been set and profile name is complete.
  * @param {string} mode - 'requirePreferences' (for /home) or 'preventPreferences' (for /preferences)
  */
 export default function OnboardingGuard({ children, mode }) {
@@ -24,7 +25,13 @@ export default function OnboardingGuard({ children, mode }) {
     );
   }
 
-  if (!isAuthenticated) {
+  // Check token & profile completion
+  const isNameComplete = isProfileNameComplete(userProfile);
+
+  if (!isAuthenticated || !isNameComplete) {
+    if (isAuthenticated && !isNameComplete) {
+      clearModuleAuth("user");
+    }
     return <Navigate to="/user/auth/login" state={{ from: location.pathname }} replace />;
   }
 

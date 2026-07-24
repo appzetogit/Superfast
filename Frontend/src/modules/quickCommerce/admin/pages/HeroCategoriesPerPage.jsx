@@ -10,6 +10,7 @@ import Card from "@shared/components/ui/Card";
 import Modal from "@shared/components/ui/Modal";
 import { useToast } from "@shared/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { invalidateCache } from "@core/api/dedupe";
 
 const emptyBannerItem = () => ({
   imageUrl: "",
@@ -181,6 +182,8 @@ export default function HeroCategoriesPerPage() {
         banners: { items },
         categoryIds: formCategoryIds,
       });
+      invalidateCache('/quick-commerce/experience/hero');
+      invalidateCache('/quick-commerce/experience');
       showToast("Hero config saved", "success");
       setPageData((prev) =>
         prev.map((p) =>

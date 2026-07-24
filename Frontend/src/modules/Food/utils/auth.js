@@ -132,13 +132,38 @@ export function getCurrentUser(module) {
 }
 
 /**
+ * Helper to check if a user object has a valid completed profile name
+ * @param {Object} user - User object
+ * @returns {boolean} - True if name is present, non-empty, and valid
+ */
+export function isProfileNameComplete(user) {
+  if (!user) return false;
+  const nameStr = typeof user.name === "string" ? user.name.trim() : "";
+  return nameStr.length > 0 && nameStr.toLowerCase() !== "null";
+}
+
+/**
  * Check if user is authenticated for a specific module
  * @param {string} module - Module name (admin, restaurant, delivery, user)
  * @returns {boolean} - True if authenticated
  */
 export function isModuleAuthenticated(module) {
   const token = getModuleToken(module);
-  return !!token && !isTokenExpired(token);
+  if (!token || isTokenExpired(token)) return false;
+
+  if (module === "user") {
+    const userStr = localStorage.getItem("user_user") || localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (!isProfileNameComplete(user)) return false;
+      } catch (e) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 /**

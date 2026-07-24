@@ -1,4 +1,5 @@
 import axiosInstance from '@core/api/axios';
+import { invalidateCache } from '@core/api/dedupe';
 
 const emptyResponse = (result = {}) =>
   Promise.resolve({
@@ -402,11 +403,14 @@ export const adminApi = {
   getExperienceSections: (params) => axiosInstance.get('/quick-commerce/admin/experience/sections', { params }),
   createExperienceSection: (payload) => axiosInstance.post('/quick-commerce/admin/experience/sections', payload),
   updateExperienceSection: (id, payload) => axiosInstance.put(`/quick-commerce/admin/experience/sections/${id}`, payload),
-  deleteExperienceSection: (id) => axiosInstance.delete(`/quick-commerce/admin/experience/sections/${id}`),
   reorderExperienceSections: (items) => axiosInstance.post('/quick-commerce/admin/experience/sections/reorder', items),
   uploadExperienceBanner: (formData) => adminApi.uploadSettingsImage(formData, 'experience'),
   getHeroConfig: (params) => axiosInstance.get('/quick-commerce/admin/experience/hero', { params }),
-  setHeroConfig: (payload) => axiosInstance.post('/quick-commerce/admin/experience/hero', payload),
+  setHeroConfig: (payload) => {
+    invalidateCache('/quick-commerce/experience/hero');
+    invalidateCache('/quick-commerce/experience');
+    return axiosInstance.post('/quick-commerce/admin/experience/hero', payload);
+  },
   getOffers: () => axiosInstance.get('/quick-commerce/offers'),
   createOffer: (payload) => axiosInstance.post('/quick-commerce/admin/offers', payload),
   updateOffer: (id, payload) => axiosInstance.put(`/quick-commerce/admin/offers/${id}`, payload),

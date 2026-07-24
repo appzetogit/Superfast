@@ -86,6 +86,36 @@ export default function OTP() {
     return () => clearInterval(timer)
   }, [navigate])
 
+  const handleBackToLogin = () => {
+    sessionStorage.removeItem("userAuthData")
+    setShowNameInput(false)
+    setName("")
+    setNameError("")
+    setVerifiedOtp("")
+    navigate("/user/auth/login", { replace: true })
+  }
+
+  useEffect(() => {
+    if (!showNameInput) return undefined
+
+    // Intercept hardware/browser back button on Name Input step
+    window.history.pushState({ step: "nameInput" }, "")
+
+    const handlePopState = () => {
+      sessionStorage.removeItem("userAuthData")
+      setShowNameInput(false)
+      setName("")
+      setNameError("")
+      setVerifiedOtp("")
+      navigate("/user/auth/login", { replace: true })
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+    }
+  }, [showNameInput, navigate])
+
   useEffect(() => {
     // Focus first input on mount
     if (inputRefs.current[0] && !showNameInput) {
@@ -421,7 +451,7 @@ export default function OTP() {
       <div className="w-full max-w-[420px] mx-auto flex flex-col min-h-screen">
         <div className="relative">
           <button
-            onClick={() => navigate("/user/auth/login")}
+            onClick={handleBackToLogin}
             className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition-colors"
             aria-label="Go back"
           >
