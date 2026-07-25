@@ -1,5 +1,6 @@
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
+import { toClientShape } from './outletTimings.service.js';
 import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
@@ -210,7 +211,8 @@ const toRestaurantProfile = (doc) => {
         businessType: doc.businessType || 'restaurant',
         customOrdersEnabled: Boolean(doc.customOrdersEnabled),
         customOrdersRequestStatus: doc.customOrdersRequestStatus || 'none',
-        recommendedItems: Array.isArray(doc.recommendedItems) ? doc.recommendedItems : []
+        recommendedItems: Array.isArray(doc.recommendedItems) ? doc.recommendedItems : [],
+        outletTimings: doc.outletTimings || null
     };
 };
 
@@ -552,9 +554,14 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
         .populate('zoneId', 'name zoneName serviceLocation')
         .lean();
     if (!doc) return null;
-    const diningSnapshot = await getRestaurantDiningSnapshot(restaurantId);
+    const [diningSnapshot, outletTimingsDoc] = await Promise.all([
+        getRestaurantDiningSnapshot(restaurantId),
+        FoodRestaurantOutletTimings.findOne({ restaurantId: new mongoose.Types.ObjectId(String(restaurantId)) }).select('timings').lean()
+    ]);
+    const outletTimings = outletTimingsDoc ? toClientShape(outletTimingsDoc) : null;
     return toRestaurantProfile({
         ...doc,
+        outletTimings,
         diningCategoryIds: diningSnapshot.categoryIds,
         diningCategories: diningSnapshot.categories,
         diningPrimaryCategoryId: diningSnapshot.primaryCategoryId,
@@ -1701,28 +1708,34 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     const value = String(idOrSlug || '').trim();
     if (!value) return null;
 
-    // ObjectId path
+    let doc = null;
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
-        const doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
-        if (!doc) return null;
-        return {
-            ...doc,
-            rating: normalizeRatingValue(doc.rating),
-            totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
-        };
+        doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
+    } else {
+        const restaurantNameNormalized = normalizeName(value);
+        if (restaurantNameNormalized) {
+            doc = await FoodRestaurant.findOne({
+                status: 'approved',
+                restaurantNameNormalized
+            }).lean();
+        }
     }
 
-    // Slug path: use normalized field for index-friendly exact match.
-    const restaurantNameNormalized = normalizeName(value);
-    if (!restaurantNameNormalized) return null;
-
-    const doc = await FoodRestaurant.findOne({
-        status: 'approved',
-        restaurantNameNormalized
-    }).lean();
     if (!doc) return null;
+
+    let outletTimings = null;
+    try {
+        const outletDoc = await FoodRestaurantOutletTimings.findOne({
+            restaurantId: new mongoose.Types.ObjectId(String(doc._id))
+        }).select('timings').lean();
+        if (outletDoc) {
+            outletTimings = toClientShape(outletDoc);
+        }
+    } catch (_) {}
+
     return {
         ...doc,
+        outletTimings,
         rating: normalizeRatingValue(doc.rating),
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
     };

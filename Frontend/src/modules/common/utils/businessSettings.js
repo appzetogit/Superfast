@@ -145,15 +145,20 @@ export const loadBusinessSettings = async (force = false) => {
  * Update favicon in document
  */
 export const updateFavicon = (url) => {
-  if (!url || typeof document === 'undefined') return;
-  const existingFavicons = document.querySelectorAll("link[rel*='icon']");
-  existingFavicons.forEach(el => el.remove());
-  const link = document.createElement("link");
-  link.rel = "icon";
-  link.type = "image/png";
-  link.href = url;
-  link.crossOrigin = "anonymous";
-  document.head.appendChild(link);
+  if (typeof document === 'undefined') return;
+  const targetUrl = url || '/favicon.png';
+  let link = document.getElementById("dynamic-favicon");
+  if (!link) {
+    link = document.querySelector("link[rel*='icon']");
+  }
+  if (!link) {
+    link = document.createElement("link");
+    link.id = "dynamic-favicon";
+    link.rel = "icon";
+    link.type = "image/png";
+    document.head.appendChild(link);
+  }
+  link.href = targetUrl;
 };
 
 /**

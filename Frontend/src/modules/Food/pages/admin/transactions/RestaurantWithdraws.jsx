@@ -196,12 +196,12 @@ export default function RestaurantWithdraws() {
     ]
     const exportData = filteredWithdraws.map((w, index) => ({
       sl: index + 1,
-      amount: formatCurrency(w.amount),
+      amount: `₹${Math.abs(Number(w.amount) || 0).toLocaleString('en-IN')}`,
       restaurantName: w.restaurantName || 'N/A',
       restaurantIdString: w.restaurantIdString || 'N/A',
       requestTime: formatDate(w.requestedAt || w.createdAt),
       processedTime: w.processedAt ? formatDate(w.processedAt) : '',
-      processedBy: w.processedBy?.name ? `${w.processedBy.name}${w.processedBy.email ? ` (${w.processedBy.email})` : ''}` : '',
+      processedBy: w.processedBy?.name ? `${w.processedBy.name}${w.processedBy.email ? ` (${w.processedBy.email})` : ''}` : (w.processedBy || (w.status === 'Approved' ? 'Admin' : 'Pending')),
       status: w.status,
       rejectionReason: w.rejectionReason || ''
     }))
@@ -228,6 +228,7 @@ export default function RestaurantWithdraws() {
       restaurantId: true,
       restaurantAddress: false,
       requestTime: true,
+      processedBy: true,
       status: true,
       actions: true,
     })

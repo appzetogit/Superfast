@@ -839,6 +839,11 @@ export default function JoiningRequest() {
                   r?.area,
                   r?.city,
                   r?.landmark,
+                  r?.address,
+                  r?.fullAddress,
+                  r?.formattedAddress,
+                  r?.location?.formattedAddress,
+                  r?.location?.address,
                   r?.location?.addressLine1,
                   r?.location?.addressLine2,
                   r?.location?.area,
@@ -847,7 +852,7 @@ export default function JoiningRequest() {
                   r?.onboarding?.step1?.location?.area,
                   r?.onboarding?.step1?.location?.city
                 ].filter(Boolean)
-                const hasAddress = addressParts.length > 0 || r?.location || r?.onboarding?.step1?.location
+                const hasAddress = addressParts.length > 0 || Boolean(r?.location || r?.onboarding?.step1?.location || r?.address)
                 const openingTime = r?.openingTime || r?.deliveryTimings?.openingTime || r?.onboarding?.step2?.deliveryTimings?.openingTime
                 const closingTime = r?.closingTime || r?.deliveryTimings?.closingTime || r?.onboarding?.step2?.deliveryTimings?.closingTime
                 const approvalStatus = r?.status || (r?.isActive !== false ? "approved" : "pending")
@@ -1035,12 +1040,8 @@ export default function JoiningRequest() {
                                   <p className="text-xs text-slate-500">Address</p>
                                   <p className="text-sm font-medium text-slate-900">
                                     {addressParts.length > 0
-                                      ? [r.addressLine1, r.addressLine2, r.area, r.city, r.landmark].filter(Boolean).join(", ")
-                                      : r?.location?.addressLine1
-                                        ? [r.location.addressLine1, r.location.addressLine2, r.location.area, r.location.city].filter(Boolean).join(", ")
-                                        : r?.onboarding?.step1?.location
-                                          ? [r.onboarding.step1.location.addressLine1, r.onboarding.step1.location.addressLine2, r.onboarding.step1.location.area, r.onboarding.step1.location.city].filter(Boolean).join(", ")
-                                          : r?.zone || "—"}
+                                      ? Array.from(new Set(addressParts)).join(", ")
+                                      : (r?.fullAddress || r?.formattedAddress || r?.address || r?.location?.formattedAddress || r?.location?.address || "Address not provided")}
                                   </p>
                                 </>
                               )}

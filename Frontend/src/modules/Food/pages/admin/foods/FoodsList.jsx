@@ -53,7 +53,8 @@ export default function FoodsList() {
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(25)
+  const [totalCount, setTotalCount] = useState(0)
   const [imageVersion, setImageVersion] = useState(Date.now())
 
   const getItemCreatedMs = (item = {}) => {
@@ -78,54 +79,59 @@ export default function FoodsList() {
     return `${resolved}${resolved.includes("?") ? "&" : "?"}v=${imageVersion}`
   }
 
-  const fetchAllFoods = useCallback(async () => {
+  const fetchFoods = useCallback(async (targetPage = currentPage) => {
     try {
       setLoading(true)
 
-      const [activeRestaurantsResponse, inactiveRestaurantsResponse] = await Promise.all([
-        adminAPI.getRestaurants({ limit: 1000 }),
-        adminAPI.getRestaurants({ limit: 1000, status: "inactive" }),
-      ])
-
-      const activeRestaurants = activeRestaurantsResponse?.data?.data?.restaurants ||
-        activeRestaurantsResponse?.data?.restaurants ||
-        []
-      const inactiveRestaurants = inactiveRestaurantsResponse?.data?.data?.restaurants ||
-        inactiveRestaurantsResponse?.data?.restaurants ||
-        []
-
-      const restaurantsMap = new Map()
-      ;[...activeRestaurants, ...inactiveRestaurants].forEach((restaurant) => {
-        const restaurantId = String(restaurant?._id || restaurant?.id || "")
-        if (!restaurantId) return
-        if (!restaurantsMap.has(restaurantId)) {
-          restaurantsMap.set(restaurantId, restaurant)
-        }
-      })
-      const restaurants = Array.from(restaurantsMap.values())
-      setRestaurantsForFilter(
-        restaurants
-          .map((restaurant) => ({
-            id: String(restaurant?._id || restaurant?.id || ""),
-            name: restaurant?.name || restaurant?.restaurantName || "Unknown Restaurant",
-          }))
-          .filter((restaurant) => restaurant.id)
-          .sort((a, b) => a.name.localeCompare(b.name))
-      )
-
-      if (restaurants.length === 0) {
-        setFoods([])
-        return
+      const params = {
+        page: targetPage,
+        limit: pageSize,
+        approvalStatus: 'approved'
+      }
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim()
+      }
+      if (selectedRestaurant !== "all") {
+        params.restaurantId = selectedRestaurant
       }
 
-      const foodsRes = await adminAPI.getFoods({ limit: 1000 })
-      const list = foodsRes?.data?.data?.foods || []
-      const approvedOnly = Array.isArray(list)
-        ? list.filter((f) => String(f?.approvalStatus || "").toLowerCase() === "approved")
-        : []
+      const [foodsRes, activeRestaurantsResponse, inactiveRestaurantsResponse] = await Promise.all([
+        adminAPI.getFoods(params),
+        restaurantsForFilter.length === 0 ? adminAPI.getRestaurants({ limit: 1000 }) : Promise.resolve(null),
+        restaurantsForFilter.length === 0 ? adminAPI.getRestaurants({ limit: 1000, status: "inactive" }) : Promise.resolve(null),
+      ])
+
+      if (activeRestaurantsResponse || inactiveRestaurantsResponse) {
+        const activeRestaurants = activeRestaurantsResponse?.data?.data?.restaurants || activeRestaurantsResponse?.data?.restaurants || []
+        const inactiveRestaurants = inactiveRestaurantsResponse?.data?.data?.restaurants || inactiveRestaurantsResponse?.data?.restaurants || []
+
+        const restaurantsMap = new Map()
+        ;[...activeRestaurants, ...inactiveRestaurants].forEach((restaurant) => {
+          const restaurantId = String(restaurant?._id || restaurant?.id || "")
+          if (!restaurantId) return
+          if (!restaurantsMap.has(restaurantId)) {
+            restaurantsMap.set(restaurantId, restaurant)
+          }
+        })
+        setRestaurantsForFilter(
+          Array.from(restaurantsMap.values())
+            .map((restaurant) => ({
+              id: String(restaurant?._id || restaurant?.id || ""),
+              name: restaurant?.name || restaurant?.restaurantName || "Unknown Restaurant",
+            }))
+            .filter((restaurant) => restaurant.id)
+            .sort((a, b) => a.name.localeCompare(b.name))
+        )
+      }
+
+      const raw = foodsRes?.data?.data || foodsRes?.data?.result || foodsRes?.data || {}
+      const list = raw.foods || raw.items || (Array.isArray(raw) ? raw : [])
+      const total = typeof raw.total === 'number' ? raw.total : list.length
+
+      setTotalCount(total)
       setFoods(
-        Array.isArray(approvedOnly)
-          ? approvedOnly.map((f) => ({
+        Array.isArray(list)
+          ? list.map((f) => ({
               id: String(f.id || f._id || ""),
               _id: f._id || f.id,
               name: f.name || "Unnamed Item",
@@ -153,15 +159,14 @@ export default function FoodsList() {
       debugError("Error fetching foods:", error)
       toast.error("Failed to load foods")
       setFoods([])
-      setRestaurantsForFilter([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPage, pageSize, searchQuery, selectedRestaurant, restaurantsForFilter.length])
 
   useEffect(() => {
-    fetchAllFoods()
-  }, [fetchAllFoods])
+    fetchFoods(currentPage)
+  }, [currentPage, pageSize, searchQuery, selectedRestaurant])
 
   const [searchParams] = useSearchParams()
   const productIdFromUrl = searchParams.get("productId")
@@ -180,24 +185,18 @@ export default function FoodsList() {
     if (!id) return "FOOD000000"
     
     const idString = String(id)
-    // Extract last 6 digits from the ID
-    // Handle formats like "1768285554154-0.703896654519399" or "item-1768285554154-0.703896654519399"
     const parts = idString.split(/[-.]/)
     let lastDigits = ""
     
-    // Get the last part and extract digits
     if (parts.length > 0) {
       const lastPart = parts[parts.length - 1]
-      // Extract only digits from the last part
       const digits = lastPart.match(/\d+/g)
       if (digits && digits.length > 0) {
-        // Get last 6 digits from all digits found
         const allDigits = digits.join("")
         lastDigits = allDigits.slice(-6).padStart(6, "0")
       }
     }
     
-    // If no digits found, use a hash of the ID
     if (!lastDigits) {
       const hash = idString.split("").reduce((acc, char) => {
         return ((acc << 5) - acc) + char.charCodeAt(0) | 0
@@ -208,46 +207,13 @@ export default function FoodsList() {
     return `FOOD${lastDigits}`
   }
 
-  const filteredFoods = useMemo(() => {
-    let result = [...foods]
-    
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(food =>
-        food.name.toLowerCase().includes(query) ||
-        food.id.toString().includes(query) ||
-        food.restaurantName?.toLowerCase().includes(query) ||
-        food.categoryName?.toLowerCase().includes(query)
-      )
-    }
-
-    if (selectedRestaurant !== "all") {
-      result = result.filter((food) => String(food.restaurantId) === selectedRestaurant)
-    }
-
-    result.sort((a, b) => getItemCreatedMs(b) - getItemCreatedMs(a))
-    return result
-  }, [foods, searchQuery, selectedRestaurant])
-
   const totalPages = useMemo(() => {
-    if (filteredFoods.length === 0) return 1
-    return Math.ceil(filteredFoods.length / pageSize)
-  }, [filteredFoods.length, pageSize])
-
-  const paginatedFoods = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredFoods.slice(start, start + pageSize)
-  }, [filteredFoods, currentPage, pageSize])
+    return Math.ceil(totalCount / pageSize) || 1
+  }, [totalCount, pageSize])
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, selectedRestaurant, pageSize])
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages)
-    }
-  }, [currentPage, totalPages])
 
   const restaurantOptions = useMemo(() => {
     return restaurantsForFilter
@@ -483,7 +449,7 @@ export default function FoodsList() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-slate-900">Food List</h2>
             <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-              {filteredFoods.length}
+              {totalCount}
             </span>
           </div>
 
@@ -558,7 +524,7 @@ export default function FoodsList() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredFoods.length === 0 ? (
+              ) : foods.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-20 text-center">
                     <div className="flex flex-col items-center justify-center">
@@ -568,11 +534,8 @@ export default function FoodsList() {
                   </td>
                 </tr>
               ) : (
-                paginatedFoods.map((food, index) => (
-                  <tr
-                    key={food.id}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
+                foods.map((food, index) => (
+                  <tr key={food.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                     </td>
@@ -640,11 +603,11 @@ export default function FoodsList() {
           </table>
         </div>
 
-        {!loading && filteredFoods.length > 0 && (
+        {!loading && totalCount > 0 && (
           <Pagination
             page={currentPage}
             totalPages={totalPages}
-            total={filteredFoods.length}
+            total={totalCount}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
             onPageSizeChange={(size) => {

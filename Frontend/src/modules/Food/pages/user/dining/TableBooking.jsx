@@ -147,7 +147,8 @@ export default function TableBooking() {
 
           const restaurantId = apiRestaurant?._id || apiRestaurant?.id || slug
           const timingsResponse = await restaurantAPI.getOutletTimingsByRestaurantId(restaurantId)
-          setOutletTimings(timingsResponse?.data?.data?.outletTimings || {})
+          const extractedTimings = timingsResponse?.data?.data?.outletTimings || timingsResponse?.data?.outletTimings || (timingsResponse?.data?.data && typeof timingsResponse?.data?.data === 'object' && !timingsResponse?.data?.data.outletTimings ? timingsResponse?.data?.data : {})
+          setOutletTimings(extractedTimings || {})
         }
       } catch {
         setRestaurant(null)
@@ -160,7 +161,10 @@ export default function TableBooking() {
       const restaurantId = location.state.restaurant?._id || location.state.restaurant?.id || slug
       restaurantAPI
         .getOutletTimingsByRestaurantId(restaurantId)
-        .then((response) => setOutletTimings(response?.data?.data?.outletTimings || {}))
+        .then((response) => {
+          const extractedTimings = response?.data?.data?.outletTimings || response?.data?.outletTimings || (response?.data?.data && typeof response?.data?.data === 'object' && !response?.data?.data.outletTimings ? response?.data?.data : {})
+          setOutletTimings(extractedTimings || {})
+        })
         .catch(() => setOutletTimings({}))
       setLoading(false)
       return
@@ -171,7 +175,9 @@ export default function TableBooking() {
 
   const dates = useMemo(() => buildDates(7), [])
   const selectedDayTiming = useMemo(() => {
-    const fromOutletTimings = outletTimings?.[getDayName(selectedDate)] || null
+    const targetDay = getDayName(selectedDate)
+    const fromOutletTimings = outletTimings?.[targetDay] ||
+      (outletTimings && typeof outletTimings === "object" ? Object.entries(outletTimings).find(([k]) => k.toLowerCase() === targetDay.toLowerCase())?.[1] : null)
     if (fromOutletTimings && fromOutletTimings.isOpen !== false) {
       return fromOutletTimings
     }

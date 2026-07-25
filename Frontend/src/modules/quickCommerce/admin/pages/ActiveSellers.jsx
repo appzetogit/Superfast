@@ -215,7 +215,7 @@ const ActiveSellers = () => {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-slate-700">
-                          {formatDate(seller.approvedAt || seller.applicationDate)}
+                          {formatDate(seller.approvedAt || seller.updatedAt || seller.applicationDate)}
                         </span>
                         <span className="text-[9px] font-medium text-slate-400">
                           {seller.serviceRadius ? `${seller.serviceRadius} km radius` : 'Radius not set'}

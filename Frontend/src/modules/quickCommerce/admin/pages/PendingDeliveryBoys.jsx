@@ -48,13 +48,17 @@ const PendingDeliveryBoys = () => {
                 name: r.name,
                 phone: r.phone,
                 email: r.email,
+                profilePic: r.profileImage || r.profilePic || r.documents?.profilePic || r.image || null,
                 appliedDate: new Date(r.createdAt).toLocaleDateString(),
-                location: r.currentArea || 'Unknown',
-                vehicle: r.vehicleType,
+                location: r.currentArea || r.city || 'Unknown',
+                vehicle: r.vehicleType || 'N/A',
+                vehicleBrand: r.vehicleBrand || r.vehicleDetails?.brand || r.brand || 'N/A',
+                vehicleModel: r.vehicleModel || r.vehicleDetails?.model || r.model || 'N/A',
                 documents: Object.keys(r.documents || {}).filter(key => r.documents[key]),
                 status: r.isVerified ? 'approved' : 'pending_review',
-                experience: 'Not Specified', // Mock for now
-                preferredArea: r.currentArea || 'Not Specified'
+                experience: r.experience || 'Not Specified',
+                preferredArea: r.currentArea || r.preferredZone || 'Not Specified',
+                deletionSource: (r.deletedByOwner === true || r.deletedBy === 'user') ? 'Account deleted by owner' : 'Admin action'
             }));
 
             setPendingRiders(mappedRiders);
@@ -307,9 +311,13 @@ const PendingDeliveryBoys = () => {
                             {/* Left: Applicant Profile Info */}
                             <div className="lg:w-80 bg-slate-50 p-5 border-r border-slate-100">
                                 <div className="text-center mb-10">
-                                    <div className="h-24 w-24 rounded-xl bg-white shadow-xl flex items-center justify-center text-slate-300 mx-auto mb-6">
-                                        <IdCard className="h-12 w-12" />
-                                    </div>
+                                    {viewingRider.profilePic ? (
+                                        <img src={viewingRider.profilePic} alt={viewingRider.name} className="h-24 w-24 rounded-2xl object-cover shadow-xl mx-auto mb-6 ring-2 ring-slate-100" />
+                                    ) : (
+                                        <div className="h-24 w-24 rounded-xl bg-white shadow-xl flex items-center justify-center text-slate-300 mx-auto mb-6">
+                                            <IdCard className="h-12 w-12" />
+                                        </div>
+                                    )}
                                     <h3 className="ds-h2">{viewingRider.name}</h3>
                                     <p className="ds-label text-primary mt-1">Applicant Node</p>
                                 </div>
@@ -379,7 +387,8 @@ const PendingDeliveryBoys = () => {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-black text-slate-900">{viewingRider.vehicle}</p>
-                                                    <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Eco-Friendly Ready</p>
+                                                    <p className="text-xs font-bold text-slate-700 mt-1">Brand: <span className="text-slate-900">{viewingRider.vehicleBrand}</span></p>
+                                                    <p className="text-xs font-bold text-slate-700">Model: <span className="text-slate-900">{viewingRider.vehicleModel}</span></p>
                                                 </div>
                                             </div>
                                         </div>

@@ -193,8 +193,8 @@ const PendingSellers = () => {
                           <HiOutlineBuildingOffice2 className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{seller.shopName}</p>
-                          <p className="text-[10px] font-bold text-slate-400">{seller.ownerName}</p>
+                          <p className="text-sm font-bold text-slate-900">{seller.shopName || seller.shopInfo?.shopName || seller.name || 'Store'}</p>
+                          <p className="text-[10px] font-bold text-slate-400">{seller.ownerName || seller.name || seller.shopInfo?.ownerName || 'Seller'}</p>
                         </div>
                       </div>
                     </td>

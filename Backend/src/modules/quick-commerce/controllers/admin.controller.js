@@ -325,13 +325,15 @@ const buildCategoryTree = (categories) => {
 const toSellerRequest = (seller) => ({
   id: seller._id,
   _id: seller._id,
-  shopName: seller.shopName || seller.name || 'Store',
-  ownerName: seller.name || 'Seller',
+  shopName: seller.shopName || seller.shopInfo?.shopName || seller.name || 'Store',
+  ownerName: seller.ownerName || seller.name || seller.shopInfo?.ownerName || 'Seller',
+  name: seller.name || seller.ownerName || seller.shopInfo?.ownerName || 'Seller',
   email: seller.email || '',
   phone: seller.phoneLast10 || seller.phone || '',
   location: seller.location?.formattedAddress || seller.location?.address || '',
   category: seller.shopInfo?.businessType || 'General',
   applicationDate: seller.createdAt,
+  approvedAt: seller.approvedAt || null,
   status:
     seller.approvalStatus ||
     (seller.approved === false ? 'pending' : 'approved'),

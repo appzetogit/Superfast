@@ -82,7 +82,7 @@ const mapDeliveryJoinRequests = (response) => {
 
   return (Array.isArray(rows) ? rows : []).map((item) => ({
     id: `approval-delivery-${String(item?._id || item?.id || "")}`,
-    title: "Delivery Partner Approval Pending",
+    title: "Delivery Partner Application",
     message: `${item?.name || "Delivery partner"} submitted a joining request. Phone: ${item?.phone || "N/A"}. Email: ${item?.email || "N/A"}.`,
     type: "approval",
     category: "delivery_approval",
@@ -90,6 +90,23 @@ const mapDeliveryJoinRequests = (response) => {
     createdAt: item?.createdAt || item?.updatedAt,
     timeLabel: toDateLabel(item?.createdAt || item?.updatedAt),
     metaLabel: joinMeta(item?.name, item?.phone, item?.email),
+  }));
+};
+
+const mapSellerJoinRequests = (response) => {
+  const payload = response?.data?.result || response?.data?.data || {};
+  const rows = Array.isArray(payload?.items) ? payload.items : (Array.isArray(payload) ? payload : []);
+
+  return rows.map((item) => ({
+    id: `approval-seller-${String(item?._id || item?.id || "")}`,
+    title: "Seller Application",
+    message: `${item?.shopName || item?.name || "Seller"} submitted a seller application. Owner: ${item?.ownerName || item?.name || "N/A"}. Contact: ${item?.phone || "N/A"}.`,
+    type: "approval",
+    category: "seller_approval",
+    path: "/admin/quick-commerce/sellers/pending",
+    createdAt: item?.createdAt || item?.applicationDate || item?.updatedAt,
+    timeLabel: toDateLabel(item?.createdAt || item?.applicationDate || item?.updatedAt),
+    metaLabel: joinMeta(item?.shopName || item?.name, item?.ownerName || item?.name, item?.phone),
   }));
 };
 

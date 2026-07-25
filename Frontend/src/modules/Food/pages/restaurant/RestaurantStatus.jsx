@@ -82,8 +82,8 @@ export default function RestaurantStatus() {
       restaurantAPI
         .getOutletTimings()
         .then((res) => {
-          const data = res?.data?.data?.outletTimings || res?.data?.outletTimings
-          if (data) setOutletTimings(data)
+          const data = res?.data?.data?.outletTimings || res?.data?.outletTimings || (res?.data?.data && typeof res.data.data === 'object' && !res.data.data.outletTimings ? res.data.data : res?.data)
+          if (data && typeof data === "object") setOutletTimings(data)
         })
         .catch((error) => {
           debugError("Error loading outlet timings:", error)
@@ -123,15 +123,18 @@ export default function RestaurantStatus() {
       const currentTimeInMinutes = currentHour * 60 + currentMinute
 
       const outletTimingsData = outletTimings
+      const dayData = outletTimingsData ? (
+        outletTimingsData[currentDayFull] ||
+        Object.entries(outletTimingsData).find(([k]) => k.toLowerCase() === currentDayFull.toLowerCase())?.[1]
+      ) : null
 
-      if (!outletTimingsData || !outletTimingsData[currentDayFull]) {
+      if (!dayData) {
         // No outlet timings configured for today yet
         setIsDayClosed(false)
         setIsWithinTimings(true)
         return
       }
 
-      const dayData = outletTimingsData[currentDayFull]
       if (dayData.isOpen === false) {
         setIsDayClosed(true)
         setIsWithinTimings(false)
@@ -311,9 +314,10 @@ export default function RestaurantStatus() {
     const currentDayFull = now.toLocaleDateString('en-US', { weekday: 'long' }) // "Monday", "Tuesday", etc.
     
     // Single source of truth: outlet timings
-    if (outletTimings && outletTimings[currentDayFull]) {
-      const dayData = outletTimings[currentDayFull]
-      if (dayData.isOpen && dayData.openingTime && dayData.closingTime) {
+    if (outletTimings && typeof outletTimings === "object") {
+      const dayData = outletTimings[currentDayFull] ||
+        Object.entries(outletTimings).find(([k]) => k.toLowerCase() === currentDayFull.toLowerCase())?.[1]
+      if (dayData && dayData.isOpen !== false && dayData.openingTime && dayData.closingTime) {
         return {
           openingTime: formatTime12Hour(dayData.openingTime),
           closingTime: formatTime12Hour(dayData.closingTime)

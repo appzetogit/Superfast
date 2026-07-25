@@ -26,7 +26,7 @@ const parseTimeToMinutes = (timeValue) => {
   if (!raw) return null
 
   const normalized = raw.toLowerCase()
-  const meridiemMatch = normalized.match(/^(\d{1,2}):(\d{2})\s*([ap]m)$/)
+  const meridiemMatch = normalized.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)$/)
   if (meridiemMatch) {
     let hour = Number(meridiemMatch[1])
     const minute = Number(meridiemMatch[2])
@@ -40,7 +40,7 @@ const parseTimeToMinutes = (timeValue) => {
     return hour * 60 + minute
   }
 
-  const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})$/)
+  const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
   if (!twentyFourHourMatch) return null
 
   const hour = Number(twentyFourHourMatch[1])
@@ -53,15 +53,20 @@ const parseTimeToMinutes = (timeValue) => {
 }
 
 const getTodayTiming = (restaurant, dayName) => {
-  const outletTimingsArray = restaurant?.outletTimings?.timings
+  let outletTimings = restaurant?.outletTimings
+  if (outletTimings && outletTimings.outletTimings && typeof outletTimings.outletTimings === "object") {
+    outletTimings = outletTimings.outletTimings
+  }
+
+  const outletTimingsArray = outletTimings?.timings || (Array.isArray(outletTimings) ? outletTimings : null)
   if (Array.isArray(outletTimingsArray)) {
     const exact = outletTimingsArray.find((entry) => normalizeDay(entry?.day) === dayName)
     if (exact) return exact
   }
 
-  const outletTimingsObject = restaurant?.outletTimings
-  if (outletTimingsObject && typeof outletTimingsObject === "object" && !Array.isArray(outletTimingsObject)) {
-    const direct = outletTimingsObject[dayName]
+  if (outletTimings && typeof outletTimings === "object" && !Array.isArray(outletTimings)) {
+    const direct = outletTimings[dayName] ||
+      Object.entries(outletTimings).find(([key]) => normalizeDay(key) === dayName)?.[1]
     if (direct && typeof direct === "object") return direct
   }
 
@@ -141,6 +146,7 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
 
   const ignoreOperationalStatus = options?.ignoreOperationalStatus === true
   const isActive = restaurant.isActive !== false
+  const manualOffline = restaurant.manualOffline === true
   const isAcceptingOrders = restaurant.isAcceptingOrders !== false
 
   if (!ignoreOperationalStatus && !isActive) {
@@ -153,11 +159,12 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     }
   }
 
-  if (!ignoreOperationalStatus && !isAcceptingOrders) {
+  // Only force offline if vendor manually toggled manualOffline: true
+  if (!ignoreOperationalStatus && manualOffline) {
     return {
       isOpen: false,
       isActive,
-      isAcceptingOrders,
+      isAcceptingOrders: false,
       isWithinTimings: false,
       reason: "not-accepting-orders",
     }

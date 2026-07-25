@@ -230,7 +230,7 @@ function RestaurantDetailsContent() {
           try {
             // First, try to get restaurant directly by slug/ID (no zoneId needed)
             try {
-              response = await restaurantAPI.getRestaurantById(slug)
+              response = await restaurantAPI.getRestaurantById(slug, { _ts: Date.now() })
               if (response?.data?.success && response?.data?.data) {
                 apiRestaurant = response.data.data
                 debugLog('? Found restaurant in restaurant API by slug/ID:', apiRestaurant)
@@ -556,6 +556,7 @@ function RestaurantDetailsContent() {
             onboarding: actualRestaurant?.onboarding || apiRestaurant?.onboarding || null,
             // Availability fields for grayscale styling
             isActive: actualRestaurant?.isActive !== false, // Default to true if not specified
+            manualOffline: actualRestaurant?.manualOffline === true || apiRestaurant?.manualOffline === true,
             isAcceptingOrders: actualRestaurant?.isAcceptingOrders !== false, // Default to true if not specified
           }
 
@@ -575,7 +576,7 @@ function RestaurantDetailsContent() {
             const outletRestaurantId = transformedRestaurant.mongoId || actualRestaurant?._id || apiRestaurant?._id
             if (outletRestaurantId) {
               const outletResponse = await restaurantAPI.getOutletTimingsByRestaurantId(outletRestaurantId, { noCache: true })
-              const outletTimingsData = outletResponse?.data?.data?.outletTimings || outletResponse?.data?.outletTimings
+              const outletTimingsData = outletResponse?.data?.data?.outletTimings || outletResponse?.data?.outletTimings || (outletResponse?.data?.data && typeof outletResponse?.data?.data === 'object' && !outletResponse?.data?.data.outletTimings ? outletResponse?.data?.data : null)
               if (outletTimingsData) {
                 setRestaurant((prev) => ({ ...prev, outletTimings: outletTimingsData }))
               }

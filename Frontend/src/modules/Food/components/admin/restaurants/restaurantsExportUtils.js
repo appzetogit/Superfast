@@ -7,19 +7,17 @@ export const exportRestaurantsToExcel = (restaurants, filename = "restaurants") 
     "Owner Name",
     "Owner Phone",
     "Zone",
-    "Cuisine",
     "Status",
     "Rating"
   ]
   
   const rows = restaurants.map((restaurant, index) => [
     index + 1,
-    restaurant.originalData?.restaurantId || restaurant.originalData?._id || restaurant._id || restaurant.id || "N/A",
-    restaurant.name || "N/A",
+    restaurant.restaurantId || restaurant.originalData?.restaurantId || restaurant.displayId || restaurant._id || restaurant.id || "N/A",
+    restaurant.name || restaurant.restaurantName || "N/A",
     restaurant.ownerName || "N/A",
-    restaurant.ownerPhone || "N/A",
-    restaurant.zone || "N/A",
-    restaurant.cuisine || "N/A",
+    restaurant.ownerPhone || restaurant.phone || "N/A",
+    restaurant.zone || restaurant.zoneName || "N/A",
     restaurant.status ? "Active" : "Inactive",
     restaurant.rating || 0
   ])
@@ -48,19 +46,17 @@ export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") =>
     "Owner Name",
     "Owner Phone",
     "Zone",
-    "Cuisine",
     "Status",
     "Rating"
   ]
   
   const rows = restaurants.map((restaurant, index) => [
     index + 1,
-    restaurant.originalData?.restaurantId || restaurant.originalData?._id || restaurant._id || restaurant.id || "N/A",
-    restaurant.name || "N/A",
+    restaurant.restaurantId || restaurant.originalData?.restaurantId || restaurant.displayId || restaurant._id || restaurant.id || "N/A",
+    restaurant.name || restaurant.restaurantName || "N/A",
     restaurant.ownerName || "N/A",
-    restaurant.ownerPhone || "N/A",
-    restaurant.zone || "N/A",
-    restaurant.cuisine || "N/A",
+    restaurant.ownerPhone || restaurant.phone || "N/A",
+    restaurant.zone || restaurant.zoneName || "N/A",
     restaurant.status ? "Active" : "Inactive",
     restaurant.rating || 0
   ])

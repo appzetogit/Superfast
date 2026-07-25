@@ -38,6 +38,36 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 
+const formatTime12Hour = (time24) => {
+  if (!time24) return ""
+  const [hours, minutes] = time24.split(":").map(Number)
+  if (isNaN(hours) || isNaN(minutes)) return time24
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  const minutesStr = minutes.toString().padStart(2, '0')
+  return `${hours12}:${minutesStr} ${period}`
+}
+
+const getTimingLabel = (data) => {
+  if (!data) return "Timings not set"
+  const outletTimings = data.outletTimings
+  if (outletTimings && typeof outletTimings === "object") {
+    const currentDayFull = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+    const dayData = outletTimings[currentDayFull] ||
+      Object.entries(outletTimings).find(([k]) => k.toLowerCase() === currentDayFull.toLowerCase())?.[1]
+    if (dayData) {
+      if (dayData.isOpen === false) return "Closed today"
+      if (dayData.openingTime && dayData.closingTime) {
+        return `${formatTime12Hour(dayData.openingTime)} - ${formatTime12Hour(dayData.closingTime)}`
+      }
+    }
+  }
+  if (data.openingTime && data.closingTime) {
+    return `${formatTime12Hour(data.openingTime)} - ${formatTime12Hour(data.closingTime)}`
+  }
+  return "Timings not set"
+}
+
 const CUISINES_STORAGE_KEY = "restaurant_cuisines"
 
 export default function OutletInfo() {
@@ -120,8 +150,17 @@ export default function OutletInfo() {
       try {
         setLoading(true)
         const response = await restaurantAPI.getCurrentRestaurant()
-        const data = response?.data?.data?.restaurant || response?.data?.restaurant
+        let data = response?.data?.data?.restaurant || response?.data?.restaurant
         if (data) {
+          if (!data.outletTimings) {
+            try {
+              const timingsRes = await restaurantAPI.getOutletTimings()
+              const outletTimingsData = timingsRes?.data?.data?.outletTimings || timingsRes?.data?.outletTimings || timingsRes?.data?.data
+              if (outletTimingsData) {
+                data = { ...data, outletTimings: outletTimingsData }
+              }
+            } catch (_) {}
+          }
           setRestaurantData(data)
           
           // Set restaurant name
@@ -760,9 +799,7 @@ export default function OutletInfo() {
                     <p className="text-xs text-gray-400 font-medium">Outlet Timings</p>
                   </div>
                   <p className="text-sm font-semibold text-gray-800">
-                    {restaurantData?.openingTime && restaurantData?.closingTime 
-                      ? `${restaurantData.openingTime} - ${restaurantData.closingTime}` 
-                      : "Timings not set"}
+                    {getTimingLabel(restaurantData)}
                   </p>
                 </div>
                 <button onClick={() => navigate("/food/restaurant/outlet-timings")} className="p-2 hover:bg-gray-50 rounded-full transition-colors">

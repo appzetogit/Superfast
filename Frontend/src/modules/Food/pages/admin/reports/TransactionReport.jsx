@@ -132,6 +132,10 @@ export default function TransactionReport() {
     fetchTransactionReport()
   }, [searchQuery, filters])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filters])
+
   const filteredTransactions = useMemo(() => {
     return transactions // Backend already filters, so just return transactions
   }, [transactions])
@@ -170,7 +174,7 @@ export default function TransactionReport() {
       (currentPage - 1) * itemsPerPage,
       currentPage * itemsPerPage
     );
-  }, [filteredTransactions, currentPage]);
+  }, [filteredTransactions, currentPage, itemsPerPage]);
 
   const formatCurrency = (amount) => {
     return `\u20B9 ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

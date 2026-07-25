@@ -13,7 +13,8 @@ const TransactionReport = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(25);
+  const [searchTerm, setSearchTerm] = useState('');
   const [summaryStats, setSummaryStats] = useState(null);
 
   const handleExportCSV = () => {
@@ -66,7 +67,7 @@ const TransactionReport = () => {
     setError(null);
     try {
       const [res, summaryRes] = await Promise.all([
-        adminApi.getFinanceTransactions({ page: currentPage, limit: pageSize }),
+        adminApi.getFinanceTransactions({ page: currentPage, limit: pageSize, search: searchTerm.trim() || undefined }),
         adminApi.getFinanceSummary().catch(() => ({ data: { success: false, result: {} } }))
       ]);
 
@@ -92,7 +93,7 @@ const TransactionReport = () => {
 
   useEffect(() => {
     fetchTransactions(page);
-  }, [page, pageSize]);
+  }, [page, pageSize, searchTerm]);
 
   const getStatusBadge = (status) => {
     const s = String(status || '').toLowerCase();
@@ -167,6 +168,11 @@ const TransactionReport = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input 
                 type="text" 
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search by Order ID, Customer, or Seller..." 
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-100 transition-all"
               />
@@ -270,7 +276,9 @@ const TransactionReport = () => {
                         <span className="text-sm font-bold text-indigo-600">₹{(txn.deliveryEarning || 0).toFixed(2)}</span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="text-sm font-bold text-purple-600">₹{(txn.adminEarning || 0).toFixed(2)}</span>
+                        <span className="text-sm font-bold text-purple-600">
+                          ₹{Number(txn.adminEarning ?? Math.max(0, (txn.userPaid || 0) - (txn.sellerEarning || 0) - (txn.deliveryEarning || 0))).toFixed(2)}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         {getStatusBadge(txn.status)}

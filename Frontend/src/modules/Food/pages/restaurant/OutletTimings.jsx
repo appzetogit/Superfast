@@ -71,7 +71,7 @@ export default function OutletTimings() {
       try {
         setLoading(true)
         const res = await restaurantAPI.getOutletTimings()
-        const outletTimings = res?.data?.data?.outletTimings || res?.data?.outletTimings
+        const outletTimings = res?.data?.data?.outletTimings || res?.data?.outletTimings || (res?.data?.data && typeof res.data.data === 'object' && !res.data.data.outletTimings ? res.data.data : res?.data)
         if (mounted && outletTimings && typeof outletTimings === "object") {
           setDays({ ...getDefaultDays(), ...outletTimings })
         }

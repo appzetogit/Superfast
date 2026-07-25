@@ -16,15 +16,32 @@ const normalizeDay = (value) => {
 };
 
 const normalizeTime = (value, fallback) => {
-    const raw = String(value || '').trim();
+    const raw = String(value || '').trim().toLowerCase();
     if (!raw) return fallback;
-    // Accept "HH:mm" or "H:mm"
-    const m = raw.match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return fallback;
-    const h = Number(m[1]);
-    const min = Number(m[2]);
-    if (!Number.isFinite(h) || !Number.isFinite(min) || h < 0 || h > 23 || min < 0 || min > 59) return fallback;
-    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+
+    // AM/PM format (e.g., "10:00 AM", "09:00:00 PM")
+    const ampm = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)$/);
+    if (ampm) {
+        let h = Number(ampm[1]);
+        const min = Number(ampm[2]);
+        const period = ampm[3];
+        if (!Number.isFinite(h) || !Number.isFinite(min) || min < 0 || min > 59) return fallback;
+        if (period === 'pm' && h < 12) h += 12;
+        if (period === 'am' && h === 12) h = 0;
+        if (h < 0 || h > 23) return fallback;
+        return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+    }
+
+    // HH:mm or HH:mm:ss format
+    const m = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (m) {
+        const h = Number(m[1]);
+        const min = Number(m[2]);
+        if (!Number.isFinite(h) || !Number.isFinite(min) || h < 0 || h > 23 || min < 0 || min > 59) return fallback;
+        return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+    }
+
+    return fallback;
 };
 
 const defaultTimings = () =>
@@ -35,7 +52,7 @@ const defaultTimings = () =>
         closingTime: '22:00'
     }));
 
-const toClientShape = (doc) => {
+export const toClientShape = (doc) => {
     const timings = Array.isArray(doc?.timings) ? doc.timings : [];
     const map = {};
     for (const day of DAY_NAMES) {
@@ -54,7 +71,8 @@ export async function getOutletTimingsForRestaurant(restaurantId) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
         throw new ValidationError('Invalid restaurant id');
     }
-    const doc = await FoodRestaurantOutletTimings.findOne({ restaurantId }).select('timings updatedAt').lean();
+    const targetObjId = new mongoose.Types.ObjectId(String(restaurantId));
+    const doc = await FoodRestaurantOutletTimings.findOne({ restaurantId: targetObjId }).select('timings updatedAt').lean();
     if (!doc) return { outletTimings: toClientShape({ timings: defaultTimings() }) };
     return { outletTimings: toClientShape(doc) };
 }
@@ -66,6 +84,8 @@ export async function upsertOutletTimingsForRestaurant(restaurantId, outletTimin
     if (!outletTimings || typeof outletTimings !== 'object' || Array.isArray(outletTimings)) {
         throw new ValidationError('outletTimings must be an object keyed by day name');
     }
+
+    const targetObjId = new mongoose.Types.ObjectId(String(restaurantId));
 
     const timings = DAY_NAMES.map((day) => {
         const src = outletTimings[day] && typeof outletTimings[day] === 'object' ? outletTimings[day] : {};
@@ -79,7 +99,7 @@ export async function upsertOutletTimingsForRestaurant(restaurantId, outletTimin
     });
 
     const doc = await FoodRestaurantOutletTimings.findOneAndUpdate(
-        { restaurantId },
+        { restaurantId: targetObjId },
         { $set: { timings } },
         { upsert: true, new: true, setDefaultsOnInsert: true, projection: 'timings updatedAt' }
     ).lean();
@@ -91,7 +111,7 @@ export async function upsertOutletTimingsForRestaurant(restaurantId, outletTimin
     const openDaysList = timings.filter((t) => t.isOpen).map((t) => t.day);
 
     await FoodRestaurant.updateOne(
-        { _id: restaurantId },
+        { _id: targetObjId },
         {
             $set: {
                 openingTime: generalOpeningTime,

@@ -96,7 +96,7 @@ const ActiveDeliveryBoys = () => {
         });
     }, [riders, searchTerm, statusFilter]);
 
-    const handleAction = (type, rider) => {
+    const handleAction = async (type, rider) => {
         if (type === 'view') {
             setViewingRider(rider);
         } else if (type === 'edit') {
@@ -105,7 +105,13 @@ const ActiveDeliveryBoys = () => {
             setIsEditModalOpen(true);
         } else if (type === 'delete') {
             if (window.confirm(`Are you sure you want to deactivate ${rider.name}?`)) {
-                setRiders(riders.filter(r => r.id !== rider.id));
+                try {
+                    await adminApi.deleteDeliveryPartner(rider.id);
+                    toast.success(`Delivery partner ${rider.name} deleted successfully`);
+                    setRiders(prev => prev.filter(r => r.id !== rider.id));
+                } catch (err) {
+                    toast.error('Failed to delete delivery partner');
+                }
             }
         }
     };

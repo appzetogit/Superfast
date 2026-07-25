@@ -416,8 +416,8 @@ export default function AddRestaurant() {
     if (!step1.restaurantName?.trim()) errors.push("Restaurant name is required")
     if (typeof step1.pureVegRestaurant !== "boolean") errors.push("Please select whether restaurant is pure veg")
     if (!step1.ownerName?.trim()) errors.push("Owner name is required")
-    if (step1.ownerName?.trim() && (!NAME_REGEX.test(step1.ownerName.trim()) || !hasLetters(step1.ownerName))) {
-      errors.push("Owner name must contain valid characters")
+    if (step1.ownerName?.trim() && !/^[a-zA-Z\s]+$/.test(step1.ownerName.trim())) {
+      errors.push("Owner full name must contain letters and spaces only (no numbers or special characters)")
     }
     if (!step1.ownerEmail?.trim()) errors.push("Owner email is required")
     if (step1.ownerEmail?.trim() && !EMAIL_REGEX.test(step1.ownerEmail.trim())) errors.push("Please enter a valid email address")
@@ -435,7 +435,6 @@ export default function AddRestaurant() {
     const errors = []
     if (!step2.menuImages || step2.menuImages.length === 0) errors.push("At least one menu image is required")
     if (!step2.profileImage) errors.push("Restaurant profile image is required")
-    if (!step2.cuisines || step2.cuisines.length === 0) errors.push("Please select at least one cuisine")
     if (!step2.estimatedDeliveryTime?.trim()) errors.push("Estimated delivery time is required")
     if (!step2.openingTime?.trim()) errors.push("Opening time is required")
     if (!step2.closingTime?.trim()) errors.push("Closing time is required")
@@ -444,8 +443,6 @@ export default function AddRestaurant() {
     if (openingMinutes !== null && closingMinutes !== null) {
       if (openingMinutes === closingMinutes) {
         errors.push("Opening time and closing time cannot be same")
-      } else if (closingMinutes < openingMinutes) {
-        errors.push("Closing time cannot be less than opening time")
       }
     }
     if (!step2.openDays || step2.openDays.length === 0) errors.push("Please select at least one open day")
@@ -457,8 +454,8 @@ export default function AddRestaurant() {
     if (!step3.panNumber?.trim()) errors.push("PAN number is required")
     if (step3.panNumber?.trim() && !PAN_REGEX.test(step3.panNumber.trim())) errors.push("PAN number must be in valid format")
     if (!step3.nameOnPan?.trim()) errors.push("Name on PAN is required")
-    if (step3.nameOnPan?.trim() && (!NAME_REGEX.test(step3.nameOnPan.trim()) || !hasLetters(step3.nameOnPan))) {
-      errors.push("Name on PAN must contain characters only")
+    if (step3.nameOnPan?.trim() && !/^[a-zA-Z\s]+$/.test(step3.nameOnPan.trim())) {
+      errors.push("Name on PAN must contain letters and spaces only (no numbers or special characters)")
     }
     if (!step3.panImage) errors.push("PAN image is required")
     if (!step3.fssaiNumber?.trim()) errors.push("FSSAI number is required")
@@ -470,8 +467,8 @@ export default function AddRestaurant() {
       if (!step3.gstNumber?.trim()) errors.push("GST number is required when GST registered")
       if (step3.gstNumber?.trim() && !GST_REGEX.test(step3.gstNumber.trim())) errors.push("GST number must be in valid format")
       if (!step3.gstLegalName?.trim()) errors.push("GST legal name is required when GST registered")
-      if (step3.gstLegalName?.trim() && (!NAME_REGEX.test(step3.gstLegalName.trim()) || !hasLetters(step3.gstLegalName))) {
-        errors.push("GST legal name must contain characters only")
+      if (step3.gstLegalName?.trim() && !/^[a-zA-Z\s]+$/.test(step3.gstLegalName.trim())) {
+        errors.push("GST legal name must contain letters and spaces only")
       }
       if (!step3.gstAddress?.trim()) errors.push("GST registered address is required when GST registered")
       if (step3.gstAddress?.trim() && /^\d+$/.test(step3.gstAddress.trim())) {
@@ -487,8 +484,14 @@ export default function AddRestaurant() {
     if (!step3.ifscCode?.trim()) errors.push("IFSC code is required")
     if (step3.ifscCode?.trim() && !IFSC_REGEX.test(step3.ifscCode.trim())) errors.push("IFSC code must be in valid format")
     if (!step3.accountHolderName?.trim()) errors.push("Account holder name is required")
-    if (step3.accountHolderName?.trim() && (!NAME_REGEX.test(step3.accountHolderName.trim()) || !hasLetters(step3.accountHolderName))) {
-      errors.push("Account holder name must contain characters only")
+    if (step3.accountHolderName?.trim()) {
+      const trimmedHolder = step3.accountHolderName.trim();
+      if (!/^[a-zA-Z\s]+$/.test(trimmedHolder)) {
+        errors.push("Account holder name must contain letters and spaces only")
+      }
+      if (trimmedHolder.split(/\s+/).filter(Boolean).length < 2) {
+        errors.push("Account holder name must include both first name and last name")
+      }
     }
     if (!step3.accountType?.trim()) errors.push("Account type is required")
     if (step3.accountType?.trim() && !["Saving", "Current"].includes(step3.accountType.trim())) errors.push("Account type must be either Saving or Current")
@@ -976,7 +979,8 @@ export default function AddRestaurant() {
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => {
+                  onMouseDown={(e) => {
+                    e.preventDefault()
                     const { lat, lng, display, addr } = s
                     const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || ""
                     const city = addr.city || addr.town || addr.village || ""
@@ -1388,7 +1392,10 @@ export default function AddRestaurant() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input value={step3.fssaiNumber || ""} onChange={(e) => setStep3({ ...step3, fssaiNumber: sanitizeFssai(e.target.value) })} className="bg-white text-sm" placeholder="FSSAI number*" inputMode="numeric" maxLength={14} />
+          <div>
+            <Label className="text-xs text-gray-700 mb-1 block">FSSAI number*</Label>
+            <Input value={step3.fssaiNumber || ""} onChange={(e) => setStep3({ ...step3, fssaiNumber: sanitizeFssai(e.target.value) })} className="bg-white text-sm" placeholder="14-digit FSSAI number*" inputMode="numeric" maxLength={14} />
+          </div>
           <div>
             <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date*</Label>
             <Input
