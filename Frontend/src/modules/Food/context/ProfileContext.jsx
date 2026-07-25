@@ -68,7 +68,11 @@ export function ProfileProvider({ children }) {
     return null
   })
   
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => {
+    if (!hasUserSession) return false
+    const cached = localStorage.getItem("user_user") || localStorage.getItem("userProfile")
+    return cached ? false : true
+  })
 
   const [addresses, setAddresses] = useState([])
 

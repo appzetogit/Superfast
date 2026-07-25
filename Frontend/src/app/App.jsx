@@ -6,7 +6,7 @@ function App() {
   const [showSplash, setShowSplash] = useState(false)
 
   useEffect(() => {
-    const hasSeen = sessionStorage.getItem('hasSeenSplash')
+    const hasSeen = sessionStorage.getItem('hasSeenSplash') || localStorage.getItem('hasSeenSplash')
     if (!hasSeen) {
       setShowSplash(true)
     }
@@ -33,6 +33,7 @@ function App() {
 
   const handleSplashComplete = () => {
     sessionStorage.setItem('hasSeenSplash', 'true')
+    localStorage.setItem('hasSeenSplash', 'true')
     setShowSplash(false)
   }
 

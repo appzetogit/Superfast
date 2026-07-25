@@ -1,4 +1,56 @@
 // Export utility functions for restaurants
+
+export const formatRestaurantId = (id) => {
+  if (!id) return "REST000000"
+
+  const idString = String(id)
+  if (idString.startsWith("REST")) return idString
+
+  const parts = idString.split(/[-.]/)
+  let lastDigits = ""
+
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1]
+    const digits = lastPart.match(/\d+/g)
+    if (digits && digits.length > 0) {
+      const allDigits = digits.join("")
+      lastDigits = allDigits.slice(-6).padStart(6, "0")
+    } else {
+      const allParts = parts.join("")
+      const allDigits = allParts.match(/\d+/g)
+      if (allDigits && allDigits.length > 0) {
+        const combinedDigits = allDigits.join("")
+        lastDigits = combinedDigits.slice(-6).padStart(6, "0")
+      }
+    }
+  }
+
+  if (!lastDigits) {
+    const hash = idString.split("").reduce((acc, char) => {
+      return ((acc << 5) - acc) + char.charCodeAt(0) | 0
+    }, 0)
+    lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0")
+  }
+
+  return `REST${lastDigits}`
+}
+
+const getRestaurantStatuses = (restaurant) => {
+  const isActive = restaurant.isActive !== undefined 
+    ? Boolean(restaurant.isActive) 
+    : (restaurant.originalData?.isActive !== undefined 
+        ? Boolean(restaurant.originalData.isActive) 
+        : true)
+  
+  const rawApproval = restaurant.approvalStatus || restaurant.originalData?.status || "approved"
+  const approval = String(rawApproval).charAt(0).toUpperCase() + String(rawApproval).slice(1).toLowerCase()
+
+  return {
+    approval,
+    outletStatus: isActive ? "Active" : "Inactive"
+  }
+}
+
 export const exportRestaurantsToExcel = (restaurants, filename = "restaurants") => {
   const headers = [
     "SI",
@@ -7,20 +59,26 @@ export const exportRestaurantsToExcel = (restaurants, filename = "restaurants") 
     "Owner Name",
     "Owner Phone",
     "Zone",
-    "Status",
+    "Approval",
+    "Outlet Status",
     "Rating"
   ]
   
-  const rows = restaurants.map((restaurant, index) => [
-    index + 1,
-    restaurant.restaurantId || restaurant.originalData?.restaurantId || restaurant.displayId || restaurant._id || restaurant.id || "N/A",
-    restaurant.name || restaurant.restaurantName || "N/A",
-    restaurant.ownerName || "N/A",
-    restaurant.ownerPhone || restaurant.phone || "N/A",
-    restaurant.zone || restaurant.zoneName || "N/A",
-    restaurant.status ? "Active" : "Inactive",
-    restaurant.rating || 0
-  ])
+  const rows = restaurants.map((restaurant, index) => {
+    const rawId = restaurant.restaurantId || restaurant.originalData?.restaurantId || restaurant.displayId || restaurant._id || restaurant.id
+    const { approval, outletStatus } = getRestaurantStatuses(restaurant)
+    return [
+      index + 1,
+      formatRestaurantId(rawId),
+      restaurant.name || restaurant.restaurantName || "N/A",
+      restaurant.ownerName || "N/A",
+      restaurant.ownerPhone || restaurant.phone || "N/A",
+      restaurant.zone || restaurant.zoneName || "N/A",
+      approval,
+      outletStatus,
+      restaurant.rating || 0
+    ]
+  })
   
   const csvContent = [
     headers.join("\t"),
@@ -46,20 +104,26 @@ export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") =>
     "Owner Name",
     "Owner Phone",
     "Zone",
-    "Status",
+    "Approval",
+    "Outlet Status",
     "Rating"
   ]
   
-  const rows = restaurants.map((restaurant, index) => [
-    index + 1,
-    restaurant.restaurantId || restaurant.originalData?.restaurantId || restaurant.displayId || restaurant._id || restaurant.id || "N/A",
-    restaurant.name || restaurant.restaurantName || "N/A",
-    restaurant.ownerName || "N/A",
-    restaurant.ownerPhone || restaurant.phone || "N/A",
-    restaurant.zone || restaurant.zoneName || "N/A",
-    restaurant.status ? "Active" : "Inactive",
-    restaurant.rating || 0
-  ])
+  const rows = restaurants.map((restaurant, index) => {
+    const rawId = restaurant.restaurantId || restaurant.originalData?.restaurantId || restaurant.displayId || restaurant._id || restaurant.id
+    const { approval, outletStatus } = getRestaurantStatuses(restaurant)
+    return [
+      index + 1,
+      formatRestaurantId(rawId),
+      restaurant.name || restaurant.restaurantName || "N/A",
+      restaurant.ownerName || "N/A",
+      restaurant.ownerPhone || restaurant.phone || "N/A",
+      restaurant.zone || restaurant.zoneName || "N/A",
+      approval,
+      outletStatus,
+      restaurant.rating || 0
+    ]
+  })
   
   const printWindow = window.open("", "_blank")
   const htmlContent = `
@@ -145,4 +209,3 @@ export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") =>
   printWindow.document.write(htmlContent)
   printWindow.document.close()
 }
-

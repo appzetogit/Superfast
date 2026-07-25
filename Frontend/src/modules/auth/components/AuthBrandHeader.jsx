@@ -1,7 +1,8 @@
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft } from "lucide-react"
 import SuperfastLogo from "@/assets/Logo.webp"
-import { getCachedSettings, getDynamicLogoUrl, getCompanyName } from "@common/utils/businessSettings"
+import { loadBusinessSettings, getCachedSettings, getDynamicLogoUrl, getCompanyName } from "@common/utils/businessSettings"
 import { SUPERFAST_BRAND } from "../constants/brand"
 
 const PORTAL_THEMES = {
@@ -55,8 +56,20 @@ export default function AuthBrandHeader({
   onBack,
   customTitle,
 }) {
-  const settings = getCachedSettings()
-  const logoUrl = getDynamicLogoUrl(settings) || null
+  const [settings, setSettings] = useState(() => getCachedSettings())
+
+  useEffect(() => {
+    loadBusinessSettings().then((s) => {
+      if (s) setSettings(s)
+    })
+    const handleUpdate = (e) => {
+      setSettings(e?.detail || getCachedSettings())
+    }
+    window.addEventListener("businessSettingsUpdated", handleUpdate)
+    return () => window.removeEventListener("businessSettingsUpdated", handleUpdate)
+  }, [])
+
+  const logoUrl = getDynamicLogoUrl(settings, portalType) || null
   const companyName = getCompanyName(settings) || "SUPER FAST"
 
   const theme = PORTAL_THEMES[portalType] || PORTAL_THEMES.user

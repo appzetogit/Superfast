@@ -104,6 +104,51 @@ const getPrimaryRestaurantImage = (restaurant, fallback = "") => {
   return fallback
 }
 
+const ALL_WEEKDAYS = [
+  { full: "Monday", short: "Mon" },
+  { full: "Tuesday", short: "Tue" },
+  { full: "Wednesday", short: "Wed" },
+  { full: "Thursday", short: "Thu" },
+  { full: "Friday", short: "Fri" },
+  { full: "Saturday", short: "Sat" },
+  { full: "Sunday", short: "Sun" },
+]
+
+const renderOpenDaysGrid = (openDaysList) => {
+  const rawArray = Array.isArray(openDaysList) ? openDaysList : []
+  const cleanDays = rawArray.map((raw) => {
+    if (!raw) return ""
+    let str = String(raw).trim()
+    if (str.includes("/")) {
+      const parts = str.split("/")
+      str = parts[parts.length - 1] || str
+    }
+    return str.split("?")[0].replace(/\.(png|jpg|jpeg|webp|svg)$/i, "").toLowerCase()
+  })
+
+  const openSet = new Set(cleanDays)
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1">
+      {ALL_WEEKDAYS.map(({ full, short }) => {
+        const isOpen = openSet.has(full.toLowerCase()) || openSet.has(short.toLowerCase())
+        return (
+          <span
+            key={full}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              isOpen
+                ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm"
+                : "bg-slate-100 text-slate-400 border border-slate-200"
+            }`}
+          >
+            {full}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 
 
 export default function RestaurantsList() {
@@ -2034,11 +2079,7 @@ export default function RestaurantsList() {
                         {openDaysVal && (
                           <div>
                             <p className="text-xs text-slate-500 mb-1">Open Days</p>
-                            <div className="flex flex-wrap gap-2">
-                              {openDaysVal.map((day, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">{day}</span>
-                              ))}
-                            </div>
+                            {renderOpenDaysGrid(openDaysVal)}
                           </div>
                         )}
                         <div>
@@ -2452,13 +2493,7 @@ export default function RestaurantsList() {
                         {r.onboarding.step2.openDays && Array.isArray(r.onboarding.step2.openDays) && r.onboarding.step2.openDays.length > 0 && (
                           <div>
                             <p className="text-xs text-slate-500 mb-2">Open Days (at registration)</p>
-                            <div className="flex flex-wrap gap-2">
-                              {r.onboarding.step2.openDays.map((day, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize">
-                                  {day}
-                                </span>
-                              ))}
-                            </div>
+                            {renderOpenDaysGrid(r.onboarding.step2.openDays)}
                           </div>
                         )}
                         {r.onboarding.step2.profileImageUrl?.url && (

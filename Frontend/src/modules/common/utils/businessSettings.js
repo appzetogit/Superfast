@@ -62,27 +62,28 @@ export const getDynamicFaviconUrl = (settings) => {
   return settings.portals?.user?.logo?.url || settings.favicon?.url || settings.logo?.url;
 };
 
-export const getDynamicLogoUrl = (settings) => {
-  if (typeof window === 'undefined' || !settings) return settings?.logo?.url;
+export const getDynamicLogoUrl = (settings, portalOverride = null) => {
+  if (!settings) return null;
   
-  const path = window.location.pathname.toLowerCase();
+  const portal = String(portalOverride || '').toLowerCase();
+  const path = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
   
-  if (path.includes('/delivery')) {
+  if (portal === 'delivery' || path.includes('/delivery')) {
     return settings.portals?.delivery?.logo?.url || settings.logo?.url;
   }
-  if (path.includes('/restaurant')) {
+  if (portal === 'restaurant' || path.includes('/restaurant')) {
     return settings.portals?.restaurant?.logo?.url || settings.logo?.url;
   }
-  if (path.includes('/admin')) {
-    return settings.logo?.url;
-  }
-  if (path.includes('/seller')) {
+  if (portal === 'seller' || portal === 'vendor' || path.includes('/seller')) {
     return settings.portals?.seller?.logo?.url || settings.logo?.url;
   }
-  if (path.includes('/food')) {
+  if (portal === 'admin' || path.includes('/admin')) {
+    return settings.logo?.url;
+  }
+  if (portal === 'food' || path.includes('/food')) {
     return settings.moduleThemes?.food?.logo?.url || settings.logo?.url;
   }
-  if (path.includes('/qc') || path.includes('/quick-commerce')) {
+  if (portal === 'qc' || path.includes('/qc') || path.includes('/quick-commerce')) {
     return settings.moduleThemes?.quickCommerce?.logo?.url || settings.logo?.url;
   }
   

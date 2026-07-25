@@ -41,6 +41,8 @@ const SharedProfileRefundPage = lazy(() => import('../modules/Food/pages/user/pr
 const SharedProfileShippingPage = lazy(() => import('../modules/Food/pages/user/profile/Shipping'))
 const SharedProfileCancellationPage = lazy(() => import('../modules/Food/pages/user/profile/Cancellation'))
 
+import Loader from '@food/components/Loader'
+
 const RouteAwarePageLoader = () => {
   const location = useLocation()
   const pathname = location.pathname || ''
@@ -49,13 +51,11 @@ const RouteAwarePageLoader = () => {
     return <AuthPortalSkeleton />
   }
 
-
-
   if (pathname.startsWith('/admin')) {
     return <ContentPageSkeleton hero={false} />
   }
 
-  return <AppShellSkeleton />
+  return <Loader />
 }
 /**
  * FoodAppWrapper — Quick-spicy App. को /food prefix के साथ render करता है.

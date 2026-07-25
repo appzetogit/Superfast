@@ -919,6 +919,24 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     note: 'Delivery completed successfully',
   });
 
+  if (!order.riderEarning || order.riderEarning === 0) {
+    try {
+      const pickupLoc = order.pickupPoints?.[0]?.location?.coordinates || order.restaurantLocation?.coordinates;
+      const delivLoc = order.deliveryAddress?.location?.coordinates;
+      if (pickupLoc && delivLoc && Array.isArray(pickupLoc) && Array.isArray(delivLoc)) {
+        const R = 6371;
+        const dLat = (delivLoc[1] - pickupLoc[1]) * Math.PI / 180;
+        const dLon = (delivLoc[0] - pickupLoc[0]) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(pickupLoc[1] * Math.PI / 180) * Math.cos(delivLoc[1] * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const distanceKm = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        const calculatedEarning = await foodTransactionService.getRiderEarning(distanceKm);
+        if (calculatedEarning > 0) {
+          order.riderEarning = calculatedEarning;
+        }
+      }
+    } catch (_) {}
+  }
+
   await order.save();
 
   const ledgerKind =

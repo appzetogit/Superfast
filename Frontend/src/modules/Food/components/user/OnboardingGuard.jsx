@@ -17,10 +17,10 @@ export default function OnboardingGuard({ children, mode }) {
   // Allow already-onboarded users to revisit preferences via ?edit=true
   const isEditMode = new URLSearchParams(location.search).get("edit") === "true";
 
-  if (loading) {
+  if (loading && !userProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-theme)]" />
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0a0a0a]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-theme,#49AB14)]" />
       </div>
     );
   }
