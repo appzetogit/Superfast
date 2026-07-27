@@ -64,10 +64,10 @@ export const ImageSourcePicker = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm w-[calc(100%-2rem)] rounded-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-sm w-[calc(100%-2rem)] rounded-2xl p-0 overflow-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
         <DialogHeader className="p-5 pb-3">
-          <DialogTitle className="text-lg font-bold text-gray-900">{title}</DialogTitle>
-          <DialogDescription className="text-sm text-gray-500">
+          <DialogTitle className="text-lg font-bold text-gray-900 dark:text-white">{title}</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 dark:text-zinc-400">
             {description}
           </DialogDescription>
         </DialogHeader>
@@ -75,21 +75,21 @@ export const ImageSourcePicker = ({
           <button
             type="button"
             onClick={handleOpenCamera}
-            className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white hover:border-gray-300 transition-all flex items-center justify-between group active:scale-[0.98]"
+            className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-gray-300 dark:hover:border-zinc-600 transition-all flex items-center justify-between group active:scale-[0.98]"
           >
-            <span className="font-medium text-sm text-gray-900">Use Camera</span>
-            <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+            <span className="font-medium text-sm text-gray-900 dark:text-white">Use Camera</span>
+            <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-950/40 group-hover:bg-orange-100 transition-colors">
               <Camera className="h-5 w-5 text-[var(--primary-theme)]" />
             </div>
           </button>
           <button
             type="button"
             onClick={handlePickFromDevice}
-            className="w-full p-3 rounded-xl border-2 border-gray-200 bg-white hover:border-gray-300 transition-all flex items-center justify-between group active:scale-[0.98]"
+            className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-gray-300 dark:hover:border-zinc-600 transition-all flex items-center justify-between group active:scale-[0.98]"
           >
-            <span className="font-medium text-sm text-gray-900">Upload from Device</span>
-            <div className="p-2 rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">
-              <Upload className="h-5 w-5 text-blue-600" />
+            <span className="font-medium text-sm text-gray-900 dark:text-white">Upload from Device</span>
+            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 group-hover:bg-blue-100 transition-colors">
+              <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
           </button>
         </div>

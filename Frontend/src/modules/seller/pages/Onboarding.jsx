@@ -363,9 +363,6 @@ export default function SellerOnboarding() {
       if (openMins === closeMins) {
         toast.error("Opening time and closing time cannot be same");
         return;
-      } else if (closeMins < openMins) {
-        toast.error("Closing time cannot be less than opening time");
-        return;
       }
     }
 
@@ -485,6 +482,17 @@ export default function SellerOnboarding() {
       return;
     }
 
+    if (!form.zoneId) {
+      toast.error("Please select a service zone before submitting");
+      return;
+    }
+
+    const accountHolderWords = String(form.accountHolderName || "").trim().split(/\s+/).filter(Boolean);
+    if (accountHolderWords.length < 2) {
+      toast.error("Account holder name must include both first and last name");
+      return;
+    }
+
     if (form.alternatePhone && form.alternatePhone === form.phone) {
       toast.error("Alternate phone number cannot be the same as primary phone number");
       return;
@@ -531,9 +539,23 @@ export default function SellerOnboarding() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_28%),linear-gradient(180deg,#f8fafc_0%,#fffaf2_100%)] px-4 py-6 font-['Outfit'] sm:py-8 md:px-8">
-
+    <div className="relative min-h-screen w-full max-w-full overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_28%),linear-gradient(180deg,#f8fafc_0%,#fffaf2_100%)] px-4 py-6 font-['Outfit'] sm:py-8 md:px-8">
       <div className="mx-auto max-w-7xl">
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                if (logout) await logout();
+              } catch (e) {}
+              navigate("/seller/auth", { replace: true });
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 border border-slate-200"
+          >
+            ← Back to Login
+          </button>
+        </div>
+
         <div className="grid gap-8 lg:grid-cols-[1.05fr_1.4fr]">
           <div
             className="rounded-[28px] sm:rounded-[34px] bg-[linear-gradient(160deg,#0f172a_0%,#0f766e_55%,#f59e0b_130%)] p-6 sm:p-8 text-white shadow-[0_35px_90px_rgba(15,23,42,0.22)] animate-in fade-in slide-in-from-bottom-4 duration-500"
@@ -644,21 +666,43 @@ export default function SellerOnboarding() {
                   <label className="text-xs font-bold text-slate-500">Primary phone <span className="text-red-500">*</span></label>
                   <input className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 font-semibold text-slate-500 outline-none" placeholder="Primary phone" value={form.phone} readOnly title="Linked from the seller OTP login" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-500">Business type <span className="text-red-500">*</span></label>
-                  <select required className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none focus:border-slate-900" value={form.businessType} onChange={(e) => updateField("businessType", e.target.value)}>
-                  <option value="">Select business type</option>
-                  {businessTypes.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-1 md:col-span-2">
+                  <label className="text-xs font-bold text-slate-500">Business type (Select multiple) <span className="text-red-500">*</span></label>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {businessTypes.map((item) => {
+                      const selectedList = Array.isArray(form.businessType)
+                        ? form.businessType
+                        : String(form.businessType || "").split(",").map((s) => s.trim()).filter(Boolean);
+                      const isSelected = selectedList.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            const next = isSelected
+                              ? selectedList.filter((b) => b !== item)
+                              : [...selectedList, item];
+                            updateField("businessType", next);
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                            isSelected
+                              ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                              : "bg-white border-slate-200 text-slate-700 hover:border-slate-400"
+                          }`}
+                        >
+                          {isSelected ? "✓ " : "+ "}{item}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-500">Alternate phone <span className="text-red-500">*</span></label>
                   <input
                     required
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className={`w-full rounded-2xl border px-4 py-3 font-semibold outline-none focus:border-slate-900 ${form.alternatePhone && form.alternatePhone === form.phone ? "border-red-400 bg-red-50" : "border-slate-200"}`}
                     placeholder="Alternate phone"
                     value={form.alternatePhone}
@@ -910,7 +954,7 @@ export default function SellerOnboarding() {
                       <Upload className="h-3.5 w-3.5" />
                       Choose
                     </span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setQrFile(e.target.files?.[0] || null)} />
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setQrFile(e.target.files?.[0] || null)} />
                   </label>
                 </div>
               </div>
@@ -1066,7 +1110,7 @@ export default function SellerOnboarding() {
                       <Upload className="h-3.5 w-3.5" />
                       Choose
                     </span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setLicenseFile(e.target.files?.[0] || null)} />
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setLicenseFile(e.target.files?.[0] || null)} />
                   </label>
                 </div>
               </div>

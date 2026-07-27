@@ -230,8 +230,18 @@ const ProductManagement = () => {
 
   const handleSave = async () => {
     try {
-      if (!formData.name || formData.price === "" || formData.stock === "" || !formData.header || !formData.category || !formData.subcategory) {
-        toast.error("Please fill all required fields, including categories");
+      if (!formData.name || formData.price === "" || formData.stock === "" || !formData.header || !formData.category) {
+        toast.error("Please fill all required fields, including main group and category");
+        return;
+      }
+
+      if (Number(formData.price) < 0 || Number(formData.salePrice) < 0) {
+        toast.error("Price cannot be a negative number");
+        return;
+      }
+
+      if (Number(formData.stock) < 0) {
+        toast.error("Stock cannot be a negative number");
         return;
       }
 
@@ -512,7 +522,7 @@ const ProductManagement = () => {
                   setSearchParams(next);
                 }}
                 placeholder="Search by name or SKU..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-100/50 border-none rounded-lg text-sm font-semibold text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-primary/5 transition-all outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900 transition-all outline-none"
               />
             </div>
             <div className="relative flex gap-2 shrink-0 w-full lg:w-auto" ref={filterDropdownRef}>

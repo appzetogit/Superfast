@@ -79,7 +79,7 @@ export default function ProfessionalSearch() {
 
   const performSearch = useCallback(async (searchTerm, catId) => {
     if (!searchTerm && !catId) {
-      setResults({ restaurants: [], dishes: [] })
+      setResults({ categories: [], dishes: [], restaurants: [] })
       return
     }
     
@@ -94,11 +94,11 @@ export default function ProfessionalSearch() {
       })
       
       if (res.data?.success) {
-        // Grouping results into Restaurants and potential Dishes
-        const all = res.data.data.restaurants || []
+        const payload = res.data.data || {}
         setResults({
-          restaurants: all.filter(r => r.matchType === 'restaurant' || !r.matchType),
-          dishes: all.filter(r => r.matchType === 'food')
+          categories: payload.categories || [],
+          dishes: payload.dishes || [],
+          restaurants: payload.restaurants || []
         })
       }
     } catch (err) {
@@ -123,16 +123,27 @@ export default function ProfessionalSearch() {
       return
     }
 
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'en-IN'
-    recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => setIsListening(false)
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript
-      setQuery(transcript)
-      addToHistory(transcript)
+    try {
+      const recognition = new SpeechRecognition()
+      recognition.lang = 'en-IN'
+      recognition.onstart = () => setIsListening(true)
+      recognition.onend = () => setIsListening(false)
+      recognition.onerror = (event) => {
+        setIsListening(false)
+        console.warn("Speech recognition error:", event?.error)
+      }
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript
+        if (transcript) {
+          setQuery(transcript)
+          addToHistory(transcript)
+        }
+      }
+      recognition.start()
+    } catch (err) {
+      setIsListening(false)
+      console.warn("Speech recognition start failed:", err)
     }
-    recognition.start()
   }
 
   const handleClear = () => {
@@ -255,42 +266,71 @@ export default function ProfessionalSearch() {
         {!loading && (query || selectedCategoryId) && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             
+            {/* Category Results Section */}
+            {results.categories && results.categories.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-5 bg-[var(--primary-theme)] rounded-full" />
+                  <h2 className="text-lg font-bold dark:text-white">Matching Categories</h2>
+                </div>
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                  {results.categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      onClick={() => handleCategoryClick(cat._id)}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all flex-shrink-0 ${
+                        selectedCategoryId === cat._id
+                          ? "bg-[var(--primary-theme)] text-white border-[var(--primary-theme)] shadow-md"
+                          : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-zinc-800 hover:border-[var(--primary-theme)]"
+                      }`}
+                    >
+                      {cat.image && (
+                        <img src={getMediaUrl(cat.image)} alt={cat.name} className="w-6 h-6 object-cover rounded-full" onError={(e) => e.target.style.display = 'none'} />
+                      )}
+                      <span className="font-semibold text-xs">{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Dish Results Section */}
-            {results.dishes.length > 0 && (
+            {results.dishes && results.dishes.length > 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-4">
                    <div className="w-1 h-5 bg-[var(--primary-theme)] rounded-full" />
-                   <h2 className="text-lg font-bold dark:text-white">Dishes from restaurants</h2>
+                   <h2 className="text-lg font-bold dark:text-white">Dishes</h2>
                 </div>
-                <div className="grid gap-4">
-                  {results.dishes.map((r) => (
-                    <Link to={`/user/restaurants/${r.slug || r._id}${r.matchedDishId ? `?dish=${r.matchedDishId}` : ''}`} key={r._id} className="flex gap-4 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 hover:shadow-md transition-shadow group">
-                       <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {results.dishes.map((dish) => (
+                    <Link
+                      to={`/user/restaurants/${dish.restaurantSlug || dish.restaurantId}?dish=${dish._id}`}
+                      key={dish._id || dish.name}
+                      className="flex gap-4 p-3.5 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 hover:shadow-md transition-shadow group"
+                    >
+                       <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 dark:bg-zinc-800 flex-shrink-0 relative">
                            <img 
-                            src={getMediaUrl(r.matchedDishImage || r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                            src={getMediaUrl(dish.image)} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             onError={(e) => (e.target.src = "/placeholder-dish.jpg")}
                           />
-                          {r.pureVegRestaurant && (
-                            <div className="absolute top-1 left-1 w-4 h-4 border border-green-600 p-[1px] bg-white rounded-sm">
-                               <div className="w-full h-full bg-green-600 rounded-full" />
-                            </div>
-                          )}
-                       </div>
-                       <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <div className="text-[var(--primary-theme)] text-[10px] font-bold uppercase tracking-wider mb-1">
-                             Matched: {r.matchedDish || query}
+                          <div className={`absolute top-1.5 left-1.5 w-4 h-4 border p-[1px] bg-white rounded-sm ${dish.isVeg ? 'border-green-600' : 'border-red-600'}`}>
+                             <div className={`w-full h-full rounded-full ${dish.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
                           </div>
-                          <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1">{r.restaurantName}</h3>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-zinc-400 mt-1">
-                             <div className="flex items-center gap-1">
-                                <Star className="w-3 h-3 text-[var(--primary-theme)] fill-[var(--primary-theme)]" />
-                                <span className="font-semibold text-slate-700 dark:text-white">{r.rating || "New"}</span>
+                       </div>
+                       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                          <div>
+                            <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1 text-sm group-hover:text-[var(--primary-theme)] transition-colors">{dish.name}</h3>
+                            <p className="text-xs font-extrabold text-[var(--primary-theme)] mt-0.5">₹{dish.price}</p>
+                            <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1 mt-1">From <span className="font-semibold text-slate-700 dark:text-zinc-300">{dish.restaurantName}</span></p>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-zinc-400 mt-1">
+                             <div className="flex items-center gap-0.5 text-amber-500 font-bold">
+                                <Star className="w-3 h-3 fill-amber-500" />
+                                <span>{dish.rating || "4.0"}</span>
                              </div>
                              <span>•</span>
-                             <span>{r.estimatedDeliveryTime || "30-40 mins"}</span>
-                             <span>•</span>
-                             <span className="line-clamp-1">{r.cuisines?.slice(0, 2).join(", ")}</span>
+                             <span>{dish.estimatedDeliveryTime || "30 mins"}</span>
                           </div>
                        </div>
                     </Link>
@@ -300,7 +340,7 @@ export default function ProfessionalSearch() {
             )}
 
             {/* Restaurant Results Section */}
-            {results.restaurants.length > 0 && (
+            {results.restaurants && results.restaurants.length > 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-4">
                    <div className="w-1 h-5 bg-[var(--primary-theme)] rounded-full" />
@@ -308,7 +348,7 @@ export default function ProfessionalSearch() {
                 </div>
                 <div className="grid gap-6">
                   {results.restaurants.map((r) => (
-                    <Link to={`/user/restaurants/${r._id}`} key={r._id} className="block group">
+                    <Link to={`/user/restaurants/${r.slug || r._id}`} key={r._id} className="block group">
                       <div className="relative rounded-3xl overflow-hidden aspect-[16/9] mb-3 bg-slate-200">
                          <img 
                           src={getMediaUrl(r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))} 
@@ -353,7 +393,7 @@ export default function ProfessionalSearch() {
             )}
 
             {/* Empty State */}
-            {!loading && results.restaurants.length === 0 && results.dishes.length === 0 && (
+            {!loading && (!results.restaurants || results.restaurants.length === 0) && (!results.dishes || results.dishes.length === 0) && (!results.categories || results.categories.length === 0) && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                  <div className="w-20 h-20 bg-slate-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-slate-300" />

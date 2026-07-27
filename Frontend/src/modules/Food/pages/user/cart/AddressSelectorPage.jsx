@@ -602,10 +602,13 @@ export default function AddressSelectorPage() {
         setAddressAutocompleteValue("")
         setKeywordAddressSuggestions([])
         
-        // Use "from" state if available, otherwise default to home page
-        const from = location?.state?.from || "/food/user"
+        const from = location?.state?.from || (window.history.length > 1 ? -1 : "/food/user/profile")
         setTimeout(() => {
-          navigate(from, { replace: true })
+          if (typeof from === "number") {
+            navigate(-1)
+          } else {
+            navigate(from, { replace: true })
+          }
         }, 500)
       }
     } catch (error) {

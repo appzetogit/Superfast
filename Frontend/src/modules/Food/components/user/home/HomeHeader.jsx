@@ -34,12 +34,12 @@ import { optimizeCloudinaryVideoUrl } from "@shared/utils/cloudinaryUtils";
 const tabs = [
   {
     id: "food",
-    name: "SuperfastFood",
+    name: "Superfood",
     icon: "https://cdn-icons-png.flaticon.com/512/3075/3075977.png",
   },
   {
     id: "quick",
-    name: "SuperfastMart",
+    name: "Supermart",
     icon: "https://cdn-icons-png.flaticon.com/512/3724/3724720.png",
     badge: "15 mins",
   },
@@ -307,23 +307,30 @@ export default function HomeHeader({
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      if (transcript) {
-        if (activeTab === "quick") {
-          navigate("/quick/search", { state: { query: transcript } });
-        } else {
-          // For food search, we might need to trigger the overlay or redirect to a dedicated search page
-          // Based on Home.jsx, it opens an overlay. But we can redirect to the search page if available.
-          navigate("/food/user/search", { state: { query: transcript } });
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event) => {
+        setIsListening(false);
+        console.warn("Speech recognition error:", event?.error);
+      };
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript) {
+          if (activeTab === "quick") {
+            navigate("/quick/search", { state: { query: transcript } });
+          } else {
+            navigate("/food/user/search", { state: { query: transcript } });
+          }
         }
-      }
-    };
-    recognition.start();
+      };
+      recognition.start();
+    } catch (err) {
+      setIsListening(false);
+      console.warn("Speech recognition start failed:", err);
+    }
   };
 
   return (
@@ -461,6 +468,14 @@ export default function HomeHeader({
             }
           };
           const handleTabClick = () => {
+            if (tab.id === "quick") {
+              navigate("/quick");
+              return;
+            }
+            if (tab.id === "food") {
+              navigate("/food/user");
+              return;
+            }
             if (tab.route) {
               const redirectTo =
                 `${routerLocation.pathname || "/food/user"}${routerLocation.search || ""}${routerLocation.hash || ""}`;

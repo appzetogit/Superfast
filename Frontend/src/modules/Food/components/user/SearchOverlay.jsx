@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { X, Search, Clock, Loader2, Mic } from "lucide-react"
+import { X, Search, Clock, Loader2, Mic, Utensils, Store, Grid2x2, Star } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
-import { restaurantAPI } from "@food/api"
+import { searchAPI } from "@/services/api"
 import { getImageUrl } from "../../../../shared/utils/imageHelper"
 
 const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
@@ -11,10 +11,11 @@ const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
 export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchChange }) {
   const navigate = useNavigate()
   const inputRef = useRef(null)
-  const [allFoods, setAllFoods] = useState([])
-  const [filteredFoods, setFilteredFoods] = useState([])
   const [recentSuggestions, setRecentSuggestions] = useState([])
-  const [loadingFoods, setLoadingFoods] = useState(false)
+  const [liveCategories, setLiveCategories] = useState([])
+  const [liveDishes, setLiveDishes] = useState([])
+  const [liveRestaurants, setLiveRestaurants] = useState([])
+  const [loading, setLoading] = useState(false)
   const [isListening, setIsListening] = useState(false)
 
   useEffect(() => {
@@ -40,34 +41,33 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
       setRecentSuggestions([])
     }
 
-    const fetchDishesFromDB = async () => {
-      setLoadingFoods(true)
-      try {
-        const dishesRes = await restaurantAPI.getPublicDishes({ limit: 800 })
-        const dishes =
-          dishesRes?.data?.data?.dishes ||
-          dishesRes?.data?.dishes ||
-          []
-
-        const normalized = (Array.isArray(dishes) ? dishes : [])
-          .filter((dish) => dish?.name)
-          .map((dish, index) => ({
-            id: dish?.id || dish?._id || `dish-${index}`,
-            name: String(dish.name).trim(),
-            image: getImageUrl(dish?.image),
-          }))
-
-        setAllFoods(normalized)
-      } catch {
-        setAllFoods([])
-      } finally {
-        setLoadingFoods(false)
-      }
-    }
-
     loadRecentSuggestions()
-    fetchDishesFromDB()
   }, [isOpen])
+
+  // Live real-time search effect
+  useEffect(() => {
+    if (!isOpen) return
+
+    const term = searchValue.trim()
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const res = await searchAPI.unifiedSearch({ q: term, limit: 30 })
+        if (res.data?.success) {
+          const payload = res.data.data || {}
+          setLiveCategories(payload.categories || [])
+          setLiveDishes(payload.dishes || [])
+          setLiveRestaurants(payload.restaurants || [])
+        }
+      } catch (err) {
+        console.warn("Live search error:", err)
+      } finally {
+        setLoading(false)
+      }
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [searchValue, isOpen])
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -86,17 +86,6 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
       document.body.style.overflow = "unset"
     }
   }, [isOpen, onClose])
-
-  useEffect(() => {
-    if (searchValue.trim() === "") {
-      setFilteredFoods(allFoods)
-    } else {
-      const filtered = allFoods.filter((food) =>
-        food.name.toLowerCase().includes(searchValue.toLowerCase())
-      )
-      setFilteredFoods(filtered)
-    }
-  }, [searchValue, allFoods])
 
   const saveRecentSearch = (term) => {
     const value = String(term || "").trim()
@@ -124,44 +113,65 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
     }
   }
 
-  const handleFoodClick = (food) => {
-    saveRecentSearch(food.name)
-    navigate(`/user/search?q=${encodeURIComponent(food.name)}`)
+  const handleCategoryClick = (category) => {
+    saveRecentSearch(category.name)
+    navigate(`/user/search?q=${encodeURIComponent(category.name)}&cat=${category._id}`)
+    onClose()
+    onSearchChange("")
+  }
+
+  const handleDishClick = (dish) => {
+    saveRecentSearch(dish.name)
+    navigate(`/user/restaurants/${dish.restaurantSlug || dish.restaurantId}?dish=${dish._id}`)
+    onClose()
+    onSearchChange("")
+  }
+
+  const handleRestaurantClick = (restaurant) => {
+    saveRecentSearch(restaurant.restaurantName)
+    navigate(`/user/restaurants/${restaurant.slug || restaurant._id}`)
     onClose()
     onSearchChange("")
   }
 
   const handleVoiceSearch = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      alert("Voice search is not supported in this browser.");
-      return;
+      alert("Voice search is not supported in this browser.")
+      return
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      if (transcript) {
-        onSearchChange(transcript);
-        saveRecentSearch(transcript);
+    try {
+      const recognition = new SpeechRecognition()
+      recognition.lang = 'en-IN'
+      recognition.onstart = () => setIsListening(true)
+      recognition.onend = () => setIsListening(false)
+      recognition.onerror = (event) => {
+        setIsListening(false)
+        console.warn("Speech recognition error:", event?.error)
       }
-    };
-    recognition.start();
-  };
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript
+        if (transcript) {
+          onSearchChange(transcript)
+          saveRecentSearch(transcript)
+        }
+      }
+      recognition.start()
+    } catch (err) {
+      setIsListening(false)
+      console.warn("Speech recognition start failed:", err)
+    }
+  }
 
   if (!isOpen) return null
 
   return (
     <div
       className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-[#0a0a0a]"
-      style={{
-        animation: 'fadeIn 0.3s ease-out'
-      }}
+      style={{ animation: 'fadeIn 0.2s ease-out' }}
     >
-      {/* Header with Search Bar */}
+      {/* Header with Search Input */}
       <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-4">
@@ -171,7 +181,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
                 ref={inputRef}
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search for food, restaurants..."
+                placeholder="Search for food items, categories, restaurants..."
                 className="pl-12 pr-12 h-12 w-full bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 focus:border-[var(--primary-theme)] dark:focus:border-[var(--primary-theme)] rounded-full text-lg dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
               />
               <button
@@ -195,135 +205,152 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 scrollbar-hide bg-white dark:bg-[#0a0a0a]">
-        {/* Suggestions Row */}
-        <div
-          className="mb-6"
-          style={{
-            animation: 'slideDown 0.3s ease-out 0.1s both'
-          }}
-        >
-          <h3 className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-[var(--primary-theme)]" />
-            Recent Searches
-          </h3>
-          <div className="flex gap-2 sm:gap-3 flex-wrap">
-            {recentSuggestions.slice(0, 8).map((suggestion, index) => (
-              <button
-                key={suggestion}
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 text-gray-700 dark:text-gray-300 hover:text-[var(--primary-theme)] dark:hover:text-red-400 transition-all duration-200 text-xs sm:text-sm font-medium shadow-sm hover:shadow-md"
-                style={{
-                  animation: `scaleIn 0.3s ease-out ${0.1 + index * 0.02}s both`
-                }}
-              >
-                <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-[var(--primary-theme)] flex-shrink-0" />
-                <span>{suggestion}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Food Grid */}
-        <div
-          style={{
-            animation: 'fadeIn 0.3s ease-out 0.2s both'
-          }}
-        >
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
-            {searchValue.trim() === "" ? "All Dishes" : `Search Results (${filteredFoods.length})`}
-          </h3>
-          {filteredFoods.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-              {filteredFoods.map((food, index) => (
-                <div
-                  key={food.id}
-                  className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group"
-                  style={{
-                    animation: `slideUp 0.3s ease-out ${0.25 + 0.05 * (index % 12)}s both`
-                  }}
-                  onClick={() => handleFoodClick(food)}
+      <div className="flex-1 overflow-y-auto max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 scrollbar-hide bg-white dark:bg-[#0a0a0a] space-y-8">
+        
+        {/* Recent Searches */}
+        {recentSuggestions.length > 0 && searchValue.trim() === "" && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-[var(--primary-theme)]" />
+              Recent Searches
+            </h3>
+            <div className="flex gap-2 flex-wrap">
+              {recentSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-zinc-800 hover:bg-[var(--primary-theme)]/10 text-gray-700 dark:text-gray-300 hover:text-[var(--primary-theme)] transition-all text-xs font-medium"
                 >
-                  <div className="relative w-full aspect-square rounded-full overflow-hidden transition-all duration-200 shadow-md group-hover:shadow-lg bg-white dark:bg-[#1a1a1a] p-1 sm:p-1.5">
-                    {food.image ? (
-                      <img
-                        src={food.image}
-                        alt={food.name}
-                        className="w-full h-full object-cover rounded-full"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                        <Search className="h-5 w-5 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="px-1 sm:px-2 text-center">
-                    <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-[var(--primary-theme)] dark:group-hover:text-red-400 transition-colors line-clamp-2">
-                      {food.name}
-                    </span>
-                  </div>
-                </div>
+                  <Clock className="h-3 w-3 text-gray-400" />
+                  <span>{suggestion}</span>
+                </button>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-12 sm:py-16">
-              {loadingFoods ? (
-                <>
-                  <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4 animate-spin" />
-                  <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg font-semibold">Loading dishes from database...</p>
-                </>
-              ) : (
-                <>
-                  <Search className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg font-semibold">
-                    {searchValue.trim() ? `No results found for "${searchValue}"` : "No dishes found in database"}
-                  </p>
-                  <p className="text-sm sm:text-base text-gray-500 dark:text-gray-500 mt-2">
-                    {searchValue.trim() ? "Try a different search term" : "Add menu items in restaurant menus to show here"}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 text-[var(--primary-theme)] animate-spin" />
+            <span className="ml-3 text-sm text-gray-500 font-medium">Searching items and categories...</span>
+          </div>
+        )}
+
+        {!loading && (
+          <>
+            {/* Matching Categories */}
+            {liveCategories.length > 0 && (
+              <section>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wider">
+                  <Grid2x2 className="h-4 w-4 text-[var(--primary-theme)]" />
+                  Categories
+                </h3>
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                  {liveCategories.map((cat) => (
+                    <div
+                      key={cat._id}
+                      onClick={() => handleCategoryClick(cat)}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-[var(--primary-theme)] cursor-pointer transition-all flex-shrink-0 group"
+                    >
+                      {cat.image && (
+                        <img src={getImageUrl(cat.image)} alt={cat.name} className="w-7 h-7 object-cover rounded-full" onError={(e) => e.target.style.display = 'none'} />
+                      )}
+                      <span className="font-semibold text-xs text-slate-800 dark:text-zinc-200 group-hover:text-[var(--primary-theme)]">{cat.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Matching Food Items / Dishes */}
+            {liveDishes.length > 0 && (
+              <section>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wider">
+                  <Utensils className="h-4 w-4 text-[var(--primary-theme)]" />
+                  Dishes ({liveDishes.length})
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {liveDishes.map((dish) => (
+                    <div
+                      key={dish._id || dish.name}
+                      onClick={() => handleDishClick(dish)}
+                      className="flex flex-col p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-sm hover:shadow-md cursor-pointer transition-all group"
+                    >
+                      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-zinc-800 mb-2">
+                        {dish.image ? (
+                          <img src={getImageUrl(dish.image)} alt={dish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Utensils className="h-6 w-6 text-slate-400" />
+                          </div>
+                        )}
+                        <div className={`absolute top-1.5 left-1.5 w-3.5 h-3.5 border p-[1px] bg-white rounded-sm ${dish.isVeg ? 'border-green-600' : 'border-red-600'}`}>
+                          <div className={`w-full h-full rounded-full ${dish.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-[var(--primary-theme)]">{dish.name}</span>
+                      <span className="text-xs font-extrabold text-[var(--primary-theme)] mt-0.5">₹{dish.price}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-zinc-400 line-clamp-1 mt-0.5">{dish.restaurantName}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Matching Restaurants */}
+            {liveRestaurants.length > 0 && (
+              <section>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wider">
+                  <Store className="h-4 w-4 text-[var(--primary-theme)]" />
+                  Restaurants ({liveRestaurants.length})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {liveRestaurants.map((res) => (
+                    <div
+                      key={res._id}
+                      onClick={() => handleRestaurantClick(res)}
+                      className="flex gap-3 p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-sm hover:shadow-md cursor-pointer transition-all group"
+                    >
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
+                        <img src={getImageUrl(res.profileImage || res.image)} alt={res.restaurantName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1 group-hover:text-[var(--primary-theme)]">{res.restaurantName}</h4>
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">{res.cuisines?.join(", ") || "Multi-cuisine"}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-1">
+                          <span className="flex items-center gap-0.5 text-amber-500 font-bold">
+                            <Star className="w-3 h-3 fill-amber-500" />
+                            {res.rating || "4.0"}
+                          </span>
+                          <span>•</span>
+                          <span>{res.estimatedDeliveryTime || "30 mins"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Empty State */}
+            {searchValue.trim() !== "" && liveCategories.length === 0 && liveDishes.length === 0 && liveRestaurants.length === 0 && (
+              <div className="text-center py-16">
+                <Search className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-600 dark:text-gray-400 text-base font-semibold">No food items, categories, or restaurants found for "{searchValue}"</p>
+                <p className="text-xs text-gray-400 mt-1">Try checking your spelling or searching for another term like "Paneer", "Pizza", or "Biryani".</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
       <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes slideDown {
-            from {
-              opacity: 0;
-              transform: translateY(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          @keyframes slideUp {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          @keyframes scaleIn {
-            from {
-              opacity: 0;
-              transform: scale(0.9);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
-        `}</style>
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }

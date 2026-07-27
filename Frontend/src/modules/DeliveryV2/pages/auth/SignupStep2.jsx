@@ -144,15 +144,12 @@ const sanitizeUploadedDocValue = (value) => {
   if (!value) return null
 
   if (typeof value === "string") {
-    return value.startsWith("blob:") ? null : value
+    return value.trim() ? value : null
   }
 
   if (typeof value === "object") {
     const url = typeof value.url === "string" ? value.url : ""
-    if (url.startsWith("blob:")) {
-      return null
-    }
-    return value
+    return url || value
   }
 
   return null
@@ -271,6 +268,10 @@ export default function SignupStep2() {
             const restoredFile = file instanceof File ? file : new File([file], `${type}.jpg`, { type: file.type || "image/jpeg" })
             restored[type] = restoredFile
             hasRestored = true
+            try {
+              const previewUrl = URL.createObjectURL(restoredFile)
+              setUploadedDocs(prev => ({ ...prev, [type]: previewUrl }))
+            } catch (err) {}
           }
         }
       } catch (e) {

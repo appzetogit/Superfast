@@ -2310,18 +2310,18 @@ export default function Cart() {
               {showNoteInput && (
                 <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl border border-slate-100 dark:border-gray-800">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                    Delivery instructions
+                    Restaurant instructions
                   </p>
                   <textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="Eg. Call when outside, ring bell once, leave at gate"
+                    placeholder="Eg. Less spicy, no onion/garlic, extra cutlery"
                     className="w-full border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl p-3 md:p-4 text-sm md:text-base resize-none h-20 md:h-24 focus:outline-none focus:border-[var(--primary-theme)] dark:focus:border-[var(--primary-theme)] bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100"
                     maxLength={240}
                   />
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      This note will be saved with the order and will be visible to the delivery partner.
+                      This note will be saved with the order and will be visible to the restaurant.
                     </p>
                     <span className="text-[11px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
                       {note.length}/240

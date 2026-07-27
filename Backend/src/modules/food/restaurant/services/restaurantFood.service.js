@@ -162,8 +162,8 @@ const resolveCategoryForRestaurant = async (context, body = {}) => {
     if (String(category.approvalStatus || '') !== 'approved') {
         throw new ValidationError('This category is awaiting admin approval');
     }
-    if (context.pureVegRestaurant && String(category.foodTypeScope || '') !== 'Veg') {
-        throw new ValidationError('Pure veg restaurants can only use veg categories');
+    if (context.pureVegRestaurant && String(category.foodTypeScope || '') === 'Non-Veg') {
+        throw new ValidationError('Pure veg restaurants cannot use Non-Veg categories');
     }
     if (!categoryAllowsFoodType(category.foodTypeScope, foodType)) {
         throw new ValidationError(`This ${category.foodTypeScope} category cannot accept ${foodType} food`);

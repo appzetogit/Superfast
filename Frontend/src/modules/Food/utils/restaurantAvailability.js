@@ -70,7 +70,20 @@ const getTodayTiming = (restaurant, dayName) => {
     if (direct && typeof direct === "object") return direct
   }
 
-  return null
+  // Fallback to registration/onboarding timings when outletTimings per day is empty
+  const fallbackOpen = restaurant?.openingTime ||
+    restaurant?.deliveryTimings?.openingTime ||
+    restaurant?.onboarding?.step2?.deliveryTimings?.openingTime ||
+    (restaurant?.openingHours ? String(restaurant.openingHours).split("-")[0]?.trim() : "") ||
+    "09:00"
+
+  const fallbackClose = restaurant?.closingTime ||
+    restaurant?.deliveryTimings?.closingTime ||
+    restaurant?.onboarding?.step2?.deliveryTimings?.closingTime ||
+    (restaurant?.openingHours ? String(restaurant.openingHours).split("-")[1]?.trim() : "") ||
+    "22:00"
+
+  return { isOpen: true, openingTime: fallbackOpen, closingTime: fallbackClose }
 }
 
 const isWithinTimeWindow = (nowMinutes, openingMinutes, closingMinutes) => {

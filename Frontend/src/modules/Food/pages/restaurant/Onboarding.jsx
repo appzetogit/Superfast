@@ -48,7 +48,7 @@ const PAN_NUMBER_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const GST_NUMBER_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
 const FSSAI_NUMBER_REGEX = /^\d{14}$/
 const BANK_ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/
-const IFSC_CODE_REGEX = /^[A-Z0-9]{11}$/
+const IFSC_CODE_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/
 const ACCOUNT_HOLDER_NAME_REGEX = /^[A-Za-z ]+$/
 const GST_LEGAL_NAME_REGEX = /^[A-Za-z ]+$/
 const FEATURED_DISH_NAME_REGEX = /^[A-Za-z ]+$/
@@ -1184,8 +1184,6 @@ export default function RestaurantOnboarding() {
         const closeMins = (closeH || 0) * 60 + (closeM || 0);
         if (openMins === closeMins) {
           errors.push("Opening time and closing time cannot be same");
-        } else if (closeMins < openMins) {
-          errors.push("Closing time cannot be less than opening time");
         }
       }
     }
@@ -1301,10 +1299,13 @@ export default function RestaurantOnboarding() {
     if (!step3.ifscCode?.trim()) {
       errors.push("IFSC code is required")
     } else if (!IFSC_CODE_REGEX.test(step3.ifscCode.trim().toUpperCase())) {
-      errors.push("IFSC code must contain exactly 11 alphanumeric characters")
+      errors.push("Invalid IFSC format. Must be 4 letters, '0', and 6 alphanumeric characters (e.g. SBIN0018764)")
     }
+    const nameWords = (step3.accountHolderName || "").trim().split(/\s+/).filter(Boolean);
     if (!step3.accountHolderName?.trim()) {
       errors.push("Account holder name is required")
+    } else if (nameWords.length < 2) {
+      errors.push("Account holder name must include both first and last name")
     } else if (!ACCOUNT_HOLDER_NAME_REGEX.test(step3.accountHolderName.trim())) {
       errors.push("Account holder name must contain only letters")
     }
@@ -1508,24 +1509,7 @@ export default function RestaurantOnboarding() {
               disabled={!isEditing}
             />
           </div>
-          <div>
-            <Label className="text-xs text-gray-700">Business Type*</Label>
-            <div className="mt-1">
-              <Select
-                value={step1.businessType || "restaurant"}
-                onValueChange={(val) => setStep1({ ...step1, businessType: val })}
-                disabled={!isEditing}
-              >
-                <SelectTrigger className="w-full bg-white text-sm text-black">
-                  <SelectValue placeholder="Select business type" />
-                </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="restaurant">Restaurant</SelectItem>
-                  {isHomeBakeryEnabled && <SelectItem value="home_bakery">Home Bakery</SelectItem>}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+
           <div>
             <Label className="text-xs text-gray-700">Pure veg restaurant?*</Label>
             <div className="mt-2 flex flex-wrap items-center gap-2">

@@ -3235,18 +3235,16 @@ const resolveAdminFoodCategory = async ({ categoryId, categoryName, foodType, pu
     let resolvedCategoryName = typeof categoryName === 'string' ? categoryName.trim() : '';
     let categoryDoc = null;
 
-    if (categoryId) {
-        if (!mongoose.Types.ObjectId.isValid(categoryId)) {
-            throw new ValidationError('Invalid category id');
-        }
+    if (categoryId && mongoose.Types.ObjectId.isValid(categoryId)) {
         categoryDoc = await FoodCategory.findById(categoryId)
             .select('name foodTypeScope')
             .lean();
-        if (!categoryDoc?._id) {
-            throw new ValidationError('Category not found');
+        if (categoryDoc?._id) {
+            resolvedCategoryId = categoryDoc._id;
+            resolvedCategoryName = categoryDoc.name || resolvedCategoryName;
         }
-        resolvedCategoryId = categoryDoc._id;
-        resolvedCategoryName = categoryDoc.name || resolvedCategoryName;
+    } else if (categoryId && typeof categoryId === 'string' && !resolvedCategoryName) {
+        resolvedCategoryName = categoryId.trim();
     }
 
     if (!resolvedCategoryName) {
@@ -3254,8 +3252,8 @@ const resolveAdminFoodCategory = async ({ categoryId, categoryName, foodType, pu
     }
 
     if (categoryDoc?.foodTypeScope) {
-        if (pureVegRestaurant && String(categoryDoc.foodTypeScope || '') !== 'Veg') {
-            throw new ValidationError('Pure veg restaurants can only use veg categories');
+        if (pureVegRestaurant && String(categoryDoc.foodTypeScope || '') === 'Non-Veg') {
+            throw new ValidationError('Pure veg restaurants cannot use Non-Veg categories');
         }
         if (!categoryAllowsFoodType(categoryDoc.foodTypeScope, foodType)) {
             throw new ValidationError(`This ${categoryDoc.foodTypeScope} category cannot accept ${foodType} food`);
@@ -3347,13 +3345,17 @@ export async function createFood(body) {
         pureVegRestaurant: restaurant.pureVegRestaurant === true
     });
 
+    const finalPrice = Number.isFinite(price) && price >= 0
+        ? price
+        : (variants.length > 0 ? Number(variants[0].price || 0) : 0);
+
     const doc = new FoodItem({
         restaurantId,
         categoryId,
         categoryName: resolvedCategoryName,
         name,
         description: typeof body.description === 'string' ? body.description.trim() : '',
-        price,
+        price: finalPrice,
         variants,
         image: typeof body.image === 'string' ? body.image.trim() : '',
         foodType,
@@ -3932,18 +3934,34 @@ export async function getDeliveryPartners(query) {
     ]);
 
     const partnerIds = list.map(p => p._id);
-    const orderCountsAgg = await FoodOrder.aggregate([
-        {
-            $match: {
-                'dispatch.deliveryPartnerId': { $in: partnerIds },
-                orderStatus: 'delivered',
-                orderType: 'food'
-            }
-        },
-        { $group: { _id: '$dispatch.deliveryPartnerId', totalOrders: { $sum: 1 } } }
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const [orderCountsAgg, todayCountsAgg] = await Promise.all([
+        FoodOrder.aggregate([
+            {
+                $match: {
+                    'dispatch.deliveryPartnerId': { $in: partnerIds },
+                    orderStatus: 'delivered'
+                }
+            },
+            { $group: { _id: '$dispatch.deliveryPartnerId', totalOrders: { $sum: 1 } } }
+        ]),
+        FoodOrder.aggregate([
+            {
+                $match: {
+                    'dispatch.deliveryPartnerId': { $in: partnerIds },
+                    orderStatus: 'delivered',
+                    updatedAt: { $gte: startOfToday, $lte: endOfToday }
+                }
+            },
+            { $group: { _id: '$dispatch.deliveryPartnerId', deliveredToday: { $sum: 1 } } }
+        ])
     ]);
 
     const countsMap = new Map(orderCountsAgg.map(item => [item._id.toString(), item.totalOrders]));
+    const todayCountsMap = new Map(todayCountsAgg.map(item => [item._id.toString(), item.deliveredToday]));
 
     // Fetch zones for detection
     const zones = await FoodZone.find({ isActive: true }).lean();
@@ -3966,6 +3984,8 @@ export async function getDeliveryPartners(query) {
             profilePhoto: doc.profilePhoto || null,
             profileImage: doc.profilePhoto ? { url: doc.profilePhoto } : null,
             totalOrders: countsMap.get(doc._id.toString()) || 0,
+            deliveredToday: todayCountsMap.get(doc._id.toString()) || 0,
+            todayDeliveredOrders: todayCountsMap.get(doc._id.toString()) || 0,
             lastLat: doc.lastLat || null,
             lastLng: doc.lastLng || null
         };
@@ -4718,6 +4738,9 @@ export async function approveDeliveryPartner(id) {
 
     try {
         const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
+        const { FoodNotification } = await import('../../../../core/notifications/models/notification.model.js');
+        const { getIO, rooms } = await import('../../../../socket.js');
+
         await notifyOwnerSafely(
             { ownerType: 'DELIVERY_PARTNER', ownerId: partner._id },
             {
@@ -4730,6 +4753,23 @@ export async function approveDeliveryPartner(id) {
                 }
             }
         );
+
+        await FoodNotification.create({
+            ownerId: partner._id,
+            ownerType: 'DELIVERY_PARTNER',
+            title: 'Welcome Aboard! 🚲',
+            message: 'Your delivery partner application has been approved. You can now go online and start earning!',
+            type: 'onboarding_approved',
+            isRead: false
+        });
+
+        const io = getIO();
+        if (io) {
+            io.to(rooms.delivery(String(partner._id))).emit('application_status_changed', {
+                status: 'approved',
+                message: 'Your application has been approved!'
+            });
+        }
     } catch (e) {
         console.error('Failed to send delivery partner approval notification:', e);
     }

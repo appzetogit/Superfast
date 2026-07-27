@@ -365,12 +365,14 @@ export default function FoodsList() {
           imageUrl
       }
 
+      const validCategoryId = (foodForm.categoryId && /^[0-9a-fA-F]{24}$/.test(foodForm.categoryId)) ? foodForm.categoryId : undefined
+
       const payload = {
         restaurantId: foodForm.restaurantId,
-        categoryId: foodForm.categoryId || undefined,
+        categoryId: validCategoryId,
         categoryName: String(foodForm.categoryName || "").trim(),
         name: foodForm.name.trim(),
-        price: hasVariants ? undefined : parsedPrice,
+        price: hasVariants ? (normalizedVariants[0]?.price || 0) : parsedPrice,
         variants: normalizedVariants.map((variant) => ({
           ...(variant.id && !variant.id.startsWith("variant-") ? { _id: variant.id } : {}),
           name: variant.name,
@@ -394,7 +396,11 @@ export default function FoodsList() {
       setFoodForm(createFoodForm())
       setSelectedImageFile(null)
       setImagePreviewUrl("")
-      await fetchAllFoods()
+      try {
+        await fetchFoods(currentPage)
+      } catch (refreshErr) {
+        debugError("Error refreshing foods list:", refreshErr)
+      }
     } catch (error) {
       debugError("Error saving food:", error)
       toast.error(error?.response?.data?.message || "Failed to save food")

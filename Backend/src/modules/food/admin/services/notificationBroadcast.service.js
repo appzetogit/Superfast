@@ -233,11 +233,14 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
     const message = normalizeText(body?.message, 'message');
     const link = normalizeText(body?.link, 'link', false);
     const targetType = normalizeTargetType(body?.targetType);
-    const resolvedTargets = await resolveTargets({
+    let resolvedTargets = await resolveTargets({
         targetType,
         targetIds: body?.targetIds,
         targets: body?.targets
     });
+
+    // Deduplicate by ownerType:ownerId
+    resolvedTargets = [...new Map(resolvedTargets.map(t => [`${t.ownerType}:${t.ownerId}`, t])).values()];
 
     if (!resolvedTargets.length) {
         throw new ValidationError(`No recipients found for ${targetType.toLowerCase()} broadcast`);

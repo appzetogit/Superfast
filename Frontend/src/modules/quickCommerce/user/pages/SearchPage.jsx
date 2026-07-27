@@ -194,18 +194,27 @@ const SearchPage = () => {
             return;
         }
 
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'en-IN';
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            if (transcript) {
-                setQuery(transcript);
-                saveSearch(transcript);
-            }
-        };
-        recognition.start();
+        try {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-IN';
+            recognition.onstart = () => setIsListening(true);
+            recognition.onend = () => setIsListening(false);
+            recognition.onerror = (event) => {
+                setIsListening(false);
+                console.warn("Speech recognition error:", event?.error);
+            };
+            recognition.onresult = (event) => {
+                const transcript = event.results?.[0]?.[0]?.transcript;
+                if (transcript) {
+                    setQuery(transcript);
+                    saveSearch(transcript);
+                }
+            };
+            recognition.start();
+        } catch (err) {
+            setIsListening(false);
+            console.warn("Speech recognition start failed:", err);
+        }
     };
 
     return (

@@ -1843,7 +1843,7 @@ function OrderCard({
         {/* Content */}
         <div className="flex-1 flex flex-col justify-between min-h-[80px]">
           {/* Top row */}
-          <div className="flex items-start justify-between gap-2">
+          <div className={`flex items-start justify-between gap-2 ${isPreparing && onCancel ? "pr-7" : ""}`}>
             <div>
               <p className="text-sm font-semibold text-black leading-tight">
                 Order #{orderId}

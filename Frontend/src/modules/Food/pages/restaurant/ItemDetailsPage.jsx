@@ -269,6 +269,21 @@ export default function ItemDetailsPage() {
     fetchItemData()
   }, [id, isNewItem, location.state, defaultCategory])
 
+  // Fetch restaurant profile to determine pure veg status
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await restaurantAPI.getProfile()
+        const rData = res?.data?.data || res?.data?.restaurant || res?.data?.result
+        if (rData?.pureVegRestaurant === true || rData?.foodType === 'Veg' || rData?.veg === true) {
+          setIsPureVegRestaurant(true)
+          setFoodType("Veg")
+        }
+      } catch (e) {}
+    }
+    fetchProfile()
+  }, [])
+
   // Fetch categories from restaurant-specific API
   useEffect(() => {
     const fetchCategories = async () => {
@@ -276,8 +291,12 @@ export default function ItemDetailsPage() {
         setLoadingCategories(true)
         const response = await restaurantAPI.getCategories()
         if (response.data.success && response.data.data.categories) {
+          let rawCats = response.data.data.categories || []
+          if (isPureVegRestaurant) {
+            rawCats = rawCats.filter(cat => cat.foodTypeScope !== "Non-Veg")
+          }
           // Format categories for the UI - flat list, no subcategories
-          const formattedCategories = response.data.data.categories.map(cat => ({
+          const formattedCategories = rawCats.map(cat => ({
             id: cat._id || cat.id,
             name: cat.name,
             foodTypeScope: cat.foodTypeScope || "Both",
@@ -308,7 +327,7 @@ export default function ItemDetailsPage() {
     }
 
     fetchCategories()
-  }, [category, defaultCategory, defaultCategoryId, isNewItem, selectedCategoryId])
+  }, [category, defaultCategory, defaultCategoryId, isNewItem, isPureVegRestaurant, selectedCategoryId])
 
   // Keep focused form fields visible above mobile keyboard
   useEffect(() => {
@@ -786,6 +805,7 @@ export default function ItemDetailsPage() {
           image: allImageUrls.length > 0 ? allImageUrls[0] : "",
           foodType: foodType,
           isAvailable: isInStock,
+          isRecommended: Boolean(isRecommended),
           preparationTime: preparationTime || "",
           categoryId: categoryId || undefined,
           categoryName,
@@ -808,6 +828,7 @@ export default function ItemDetailsPage() {
           image: allImageUrls.length > 0 ? allImageUrls[0] : "",
           foodType: foodType,
           isAvailable: isInStock,
+          isRecommended: Boolean(isRecommended),
           preparationTime: preparationTime || "",
           categoryId: categoryId || undefined,
           categoryName,

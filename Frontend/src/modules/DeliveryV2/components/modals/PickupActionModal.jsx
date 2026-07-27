@@ -189,6 +189,7 @@ export const PickupActionModal = ({
               ? 'text-[var(--primary-theme)] bg-orange-50 border-orange-100'
               : 'text-green-600 bg-green-50 border-green-100';
 
+            const pickupPhone = pickup.phone || pickup.phoneNumber || pickup.contactNumber || primaryPhone || order?.restaurantPhone || order?.sellerPhone || order?.restaurant?.phone || order?.seller?.phone || ""
             return (
               <div
                 key={pickup.id || `${pickup.pickupType}-${index}`}
@@ -201,11 +202,11 @@ export const PickupActionModal = ({
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-base font-bold text-gray-950">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
                   <a 
-                    href={pickup.phone ? `tel:${pickup.phone}` : '#'} 
+                    href={pickupPhone ? `tel:${pickupPhone}` : '#'} 
                     className={`ml-2 w-8 h-8 rounded-full ${isQuickStore ? 'bg-orange-50 text-[var(--primary-theme)] border-orange-100' : 'bg-green-50 text-green-600 border-green-100'} flex items-center justify-center border flex-shrink-0`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!pickup.phone) {
+                      if (!pickupPhone) {
                         e.preventDefault();
                         toast.error('Phone number not available');
                       }

@@ -1299,6 +1299,8 @@ function RestaurantDetailsContent() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
 
+
+
   const toRenderableArray = (value) => {
     if (Array.isArray(value)) return value
     if (!value || typeof value !== "object") return []
@@ -2376,11 +2378,11 @@ function RestaurantDetailsContent() {
                                 </div>
                               )}
 
-                              <div className="flex items-center gap-3 mt-1">
+                              <div className="flex items-center flex-wrap gap-2 md:gap-3 mt-1">
                                 <p className="font-semibold text-gray-900 dark:text-white">{getFoodPriceLabel(item)}</p>
                                 {/* Preparation Time - Show if available */}
                                 {item.preparationTime && String(item.preparationTime).trim() && (
-                                  <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                                  <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full shrink-0">
                                     <Clock size={12} className="text-gray-500" />
                                     <span>{String(item.preparationTime).trim()}</span>
                                   </div>

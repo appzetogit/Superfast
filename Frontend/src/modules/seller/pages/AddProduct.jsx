@@ -35,35 +35,55 @@ const AddProduct = () => {
   const [isSaving, setIsSaving] = useState(false);
   const mainImageInputRef = React.useRef(null);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    sku: "",
-    description: "",
-    price: "",
-    salePrice: "",
-    stock: "",
-    lowStockAlert: 5,
-    category: "",
-    subcategory: "",
-    header: "",
-    status: "active",
-    tags: "",
-    weight: "",
-    brand: "",
-    mainImage: null,
-    galleryImages: [],
-    variants: [
-      {
-        id: Date.now(),
-        name: "Default",
-        price: "",
-        salePrice: "",
-        stock: "",
-        sku: "",
-      },
-    ],
+  const [formData, setFormData] = useState(() => {
+    try {
+      const savedDraft = sessionStorage.getItem("addProductDraftData");
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        return {
+          ...parsed,
+          mainImage: null,
+          galleryImages: [],
+        };
+      }
+    } catch (e) {}
+    return {
+      name: "",
+      slug: "",
+      sku: "",
+      description: "",
+      price: "",
+      salePrice: "",
+      stock: "",
+      lowStockAlert: 5,
+      category: "",
+      subcategory: "",
+      header: "",
+      status: "active",
+      tags: "",
+      weight: "",
+      brand: "",
+      mainImage: null,
+      galleryImages: [],
+      variants: [
+        {
+          id: Date.now(),
+          name: "Default",
+          price: "",
+          salePrice: "",
+          stock: "",
+          sku: "",
+        },
+      ],
+    };
   });
+
+  React.useEffect(() => {
+    try {
+      const { mainImage, galleryImages, ...textFields } = formData;
+      sessionStorage.setItem("addProductDraftData", JSON.stringify(textFields));
+    } catch (e) {}
+  }, [formData]);
 
   const [dbCategories, setDbCategories] = useState([]);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
@@ -93,9 +113,9 @@ const AddProduct = () => {
       return;
     }
 
-    // Validate all three category levels are selected
-    if (!formData.header || !formData.category || !formData.subcategory) {
-      toast.error("Please select all three category levels: Main Group, Specific Category, and Sub-Category");
+    // Validate Main Group and Specific Category (Sub-Category is optional)
+    if (!formData.header || !formData.category) {
+      toast.error("Please select Main Group and Specific Category");
       return;
     }
 
@@ -103,8 +123,18 @@ const AddProduct = () => {
     const effectivePrice = firstVariant.price || formData.price;
     const effectiveStock = firstVariant.stock || formData.stock;
 
-    if (!effectivePrice || !effectiveStock) {
+    if (!effectivePrice || effectiveStock === "" || effectiveStock === null || effectiveStock === undefined) {
       toast.error("Please fill in Price and Stock in the Pricing & Stock tab");
+      return;
+    }
+
+    if (Number(effectivePrice) < 0 || Number(formData.price) < 0 || Number(formData.salePrice) < 0) {
+      toast.error("Price cannot be a negative number");
+      return;
+    }
+
+    if (Number(effectiveStock) < 0 || Number(formData.stock) < 0) {
+      toast.error("Stock cannot be a negative number");
       return;
     }
 
@@ -170,6 +200,7 @@ const AddProduct = () => {
       data.append("variants", JSON.stringify(formData.variants));
 
       await sellerApi.createProduct(data);
+      sessionStorage.removeItem("addProductDraftData");
       toast.success("Product saved successfully!");
       navigate("/seller/products");
     } catch (error) {

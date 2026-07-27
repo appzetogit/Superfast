@@ -234,6 +234,15 @@ export default function RestaurantNavbar({
   useEffect(() => {
     const updateStatus = () => {
       try {
+        const todayFull = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+        const dayTiming = restaurantData?.outletTimings?.[todayFull] ||
+          Object.entries(restaurantData?.outletTimings || {}).find(([k]) => k.toLowerCase() === todayFull.toLowerCase())?.[1]
+        
+        if (dayTiming && dayTiming.isOpen === false) {
+          setStatus("Offline")
+          return
+        }
+
         const savedStatus = localStorage.getItem('restaurant_online_status')
         if (savedStatus !== null) {
           const isOnline = JSON.parse(savedStatus)

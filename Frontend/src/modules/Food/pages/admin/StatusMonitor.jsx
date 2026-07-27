@@ -271,9 +271,16 @@ export default function StatusMonitor() {
     }
     setLoadingOrders(true);
     try {
-      const ordersRes = await adminAPI.getOrders({ deliveryPartnerId: selectedPartnerId, limit: 10 });
+      const ordersRes = await adminAPI.getOrders({ deliveryPartnerId: selectedPartnerId, limit: 50 });
       const ordersList = ordersRes?.data?.data?.orders || ordersRes?.data?.orders || [];
-      setPartnerOrders(ordersList);
+      const today = new Date();
+      const todayOrders = ordersList.filter((o) => {
+        const d = new Date(o.createdAt || o.requestedAt || o.updatedAt);
+        return d.getFullYear() === today.getFullYear() &&
+               d.getMonth() === today.getMonth() &&
+               d.getDate() === today.getDate();
+      });
+      setPartnerOrders(todayOrders);
     } catch (err) {
       console.error("Failed to load partner orders:", err);
     } finally {
@@ -388,10 +395,7 @@ export default function StatusMonitor() {
       const res = await adminAPI.assignOrder(orderIdInput.trim(), selectedPartnerId);
       if (res?.data?.success || res?.success) {
         setAssignmentMessage({ type: "success", text: `Order #${orderIdInput} assigned successfully!` });
-        // Refresh partner's orders list
-        const ordersRes = await adminAPI.getOrders({ deliveryPartnerId: selectedPartnerId, limit: 10 });
-        const ordersList = ordersRes?.data?.data?.orders || ordersRes?.data?.orders || [];
-        setPartnerOrders(ordersList);
+        await fetchOrdersForActivePartner();
         setOrderIdInput("");
       } else {
         setAssignmentMessage({ type: "error", text: res?.data?.message || "Failed to assign order" });
@@ -626,7 +630,9 @@ export default function StatusMonitor() {
                     <div className="border border-neutral-100 dark:border-neutral-800/80 rounded-xl p-4 flex items-center justify-between">
                       <div>
                         <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Delivered Today</span>
-                        <span className="text-xl font-black text-neutral-900 dark:text-white mt-1 block">{activePartner.totalOrders || 0}</span>
+                        <span className="text-xl font-black text-neutral-900 dark:text-white mt-1 block">
+                          {activePartner.deliveredToday ?? activePartner.todayDeliveredOrders ?? (Array.isArray(partnerOrders) ? partnerOrders.filter(o => ['delivered', 'completed'].includes(String(o.orderStatus || o.status || '').toLowerCase())).length : 0)}
+                        </span>
                       </div>
                       <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 flex items-center justify-center">
                         <CheckCircle2 className="w-5 h-5" />

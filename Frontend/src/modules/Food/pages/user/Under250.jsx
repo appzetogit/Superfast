@@ -17,6 +17,7 @@ import OptimizedImage from "@food/components/OptimizedImage"
 import api from "@food/api"
 import { restaurantAPI, adminAPI } from "@food/api"
 import { isModuleAuthenticated } from "@food/utils/auth"
+import { useProfile } from "@food/context/ProfileContext"
 import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
 import { calculateDistance, formatDistance } from "@food/utils/common"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
@@ -62,6 +63,7 @@ const readUnder250Filters = () => {
 
 
 export default function Under250() {
+  const { vegMode } = useProfile()
   const initialFiltersRef = useRef(readUnder250Filters())
   const { location } = useLocation()
   const { zoneId, zoneStatus, isInService, isOutOfService } = useZone(location)
@@ -1061,7 +1063,7 @@ export default function Under250() {
                         overflowY: "hidden",
                       }}
                     >
-                      {restaurant.menuItems.map((item, itemIndex) => {
+                      {restaurant.menuItems.filter(item => !vegMode || item.isVeg === true || item.vegType === 'veg' || item.foodType === 'veg').map((item, itemIndex) => {
                         const quantity = quantities[item.id] || 0
                         return (
                           <motion.div

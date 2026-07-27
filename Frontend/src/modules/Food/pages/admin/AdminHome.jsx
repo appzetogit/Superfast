@@ -404,7 +404,7 @@ export default function AdminHome() {
                 </p>
               </CardHeader>
               <CardContent className="min-w-0 pt-4">
-                <div className="h-80 w-full min-w-0">
+                <div className="h-80 w-full min-w-0 select-none">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <AreaChart data={monthlyData}>
                       <defs>
@@ -466,7 +466,7 @@ export default function AdminHome() {
                 </span>
               </CardHeader>
               <CardContent className="min-w-0 pt-4">
-                <div className="h-72 w-full min-w-0">
+                <div className="h-72 w-full min-w-0 select-none">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <PieChart>
                       <Pie
@@ -526,7 +526,7 @@ export default function AdminHome() {
                 <span className="text-xs text-neutral-500">Summary: {ordersTotal} Orders</span>
               </CardHeader>
               <CardContent className="min-w-0 pt-4">
-                <div className="h-64 w-full min-w-0">
+                <div className="h-64 w-full min-w-0 select-none">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart data={monthlyData.slice(-6)}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

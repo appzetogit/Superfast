@@ -84,7 +84,7 @@ const FoodRestaurantCard = memo(({
                     <h3 className="line-clamp-1 text-lg font-medium leading-tight tracking-tight text-gray-950 transition-colors duration-300 group-hover:text-[var(--primary-theme)] dark:text-white lg:text-2xl">
                       {restaurant.name}
                     </h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-2 flex flex-col items-start gap-2">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-widest shadow-sm ${
                           availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-400 text-white"
@@ -93,9 +93,9 @@ const FoodRestaurantCard = memo(({
                         {availability.isOpen ? "Open now" : "Offline"}
                       </span>
                       {availability.isOpen && availability.closingCountdownLabel && (
-                        <div className="flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-amber-700">
+                        <div className="flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-amber-700 max-w-[150px] sm:max-w-full">
                           <Timer className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
-                          <span>{availability.closingCountdownLabel}</span>
+                          <span className="truncate">{availability.closingCountdownLabel}</span>
                         </div>
                       )}
                     </div>

@@ -361,7 +361,17 @@ export const ProfileDetailsV2 = () => {
     setIsUpdatingBankDetails(true)
     try {
       // Validation
-      const { accountNumber, ifscCode, panNumber, upiId } = bankDetails
+      const { accountHolderName, accountNumber, ifscCode, bankName, panNumber, upiId } = bankDetails
+
+      const holderName = String(accountHolderName || "").trim()
+      const holderWords = holderName.split(/\s+/).filter(Boolean)
+      if (holderName && holderWords.length < 2) {
+        return toast.error("Account Holder Name requires both first and last name")
+      }
+
+      if (bankName && /[^a-zA-Z\s]/.test(bankName)) {
+        return toast.error("Bank Name can contain letters only")
+      }
 
       if (accountNumber && !/^\d{9,18}$/.test(accountNumber.trim())) {
         return toast.error("Invalid Account Number (9-18 digits)")
@@ -859,9 +869,9 @@ export const ProfileDetailsV2 = () => {
              {[
                { label: "Account Holder", key: "accountHolderName", icon: User, maxLength: 60, isAlphabetOnly: true },
                { label: "Account Number", key: "accountNumber", icon: Banknote, maxLength: 18, isNumeric: true },
-               { label: "IFSC Code", key: "ifscCode", icon: Shield, format: (v) => v.toUpperCase(), maxLength: 11 },
-               { label: "Bank Name", key: "bankName", icon: MapPin, maxLength: 60 },
-               { label: "PAN Number", key: "panNumber", icon: FileText, format: (v) => v.toUpperCase(), maxLength: 10 },
+               { label: "IFSC Code", key: "ifscCode", icon: Shield, format: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""), maxLength: 11 },
+               { label: "Bank Name", key: "bankName", icon: MapPin, maxLength: 60, isAlphabetOnly: true },
+               { label: "PAN Number", key: "panNumber", icon: FileText, format: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""), maxLength: 10 },
                { label: "UPI ID", key: "upiId", icon: Smartphone, maxLength: 60 }
              ].map((field) => (
                <div key={field.key} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group focus-within:border-[var(--primary-theme)]/50 transition-all">

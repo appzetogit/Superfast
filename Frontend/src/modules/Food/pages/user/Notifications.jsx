@@ -106,13 +106,19 @@ export default function Notifications() {
     }
   }, [])
   
+  const cleanText = (str) => String(str || "").replace(/\[user\]/gi, "").replace(/\s+/g, " ").trim()
+
   const mergedNotifications = useMemo(() => {
     const localItems = (notificationsList || []).map((item) => ({
       ...item,
+      title: cleanText(item.title) || item.title,
+      message: cleanText(item.message) || item.message,
       source: "local",
     }))
     const broadcastItems = (broadcastNotifications || []).map((item) => ({
       ...item,
+      title: cleanText(item.title) || item.title,
+      message: cleanText(item.message) || item.message,
       source: "broadcast",
       type: "broadcast",
       time: item.createdAt

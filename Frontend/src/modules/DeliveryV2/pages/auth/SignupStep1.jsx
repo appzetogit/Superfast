@@ -124,13 +124,21 @@ export default function SignupStep1() {
     sessionStorage.setItem("deliverySignupDetails", JSON.stringify(formData))
   }, [formData])
 
+  const isValidAddressValue = (value) => {
+    const trimmed = String(value || "").trim()
+    if (!trimmed) return false
+    if (/^[^a-zA-Z0-9]+$/.test(trimmed)) return false
+    if (/([@#$%\^&*+=_{}\[\]\\|/<>~`])\1{2,}/.test(trimmed)) return false
+    return true
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
     let updatedValue = value
 
-    // Auto-uppercase for Vehicle, DL and PAN numbers
+    // Auto-uppercase for Vehicle, DL and PAN numbers and reject special chars
     if (name === "vehicleNumber" || name === "panNumber" || name === "drivingLicenseNumber") {
-      updatedValue = value.toUpperCase()
+      updatedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "")
     }
 
     if (name === "name") {
@@ -142,7 +150,11 @@ export default function SignupStep1() {
     }
 
     if (name === "drivingLicenseNumber") {
-      updatedValue = updatedValue.replace(/[^A-Z0-9]/g, "").slice(0, 16)
+      updatedValue = updatedValue.slice(0, 16)
+    }
+
+    if (name === "panNumber") {
+      updatedValue = updatedValue.slice(0, 10)
     }
 
     // Restrict Aadhaar to numeric only and format as XXXX XXXX XXXX
@@ -163,23 +175,57 @@ export default function SignupStep1() {
       const nextData = {
         ...prev,
         [name]: updatedValue
-      };
-      if (name === "vehicleType" && updatedValue === "bicycle") {
-        nextData.vehicleNumber = "";
-        nextData.drivingLicenseNumber = "";
       }
-      return nextData;
-    });
+      // When vehicleType changes, preserve common fields (PAN, Aadhaar) but clear vehicle-specific fields
+      if (name === "vehicleType" && updatedValue !== prev.vehicleType) {
+        nextData.vehicleName = ""
+        nextData.vehicleNumber = ""
+        nextData.drivingLicenseNumber = ""
+      }
+      return nextData
+    })
 
-    // Clear error for this field and also for vehicle fields if bicycle
+    // Real-time error validations on change
     setErrors(prev => {
-      const nextErrors = { ...prev, [name]: "" };
-      if (name === "vehicleType" && updatedValue === "bicycle") {
-        nextErrors.vehicleNumber = "";
-        nextErrors.drivingLicenseNumber = "";
+      const nextErrors = { ...prev, [name]: "" }
+      
+      if (name === "email" && updatedValue.trim()) {
+        if (!isValidEmailValue(updatedValue)) {
+          nextErrors.email = "Enter a valid email address. Gmail must be gmail.com"
+        }
       }
-      return nextErrors;
-    });
+
+      if (name === "address" && updatedValue.trim()) {
+        if (!isValidAddressValue(updatedValue)) {
+          nextErrors.address = "Address contains invalid symbols or repeated characters"
+        }
+      }
+
+      if (name === "vehicleNumber" && updatedValue.trim()) {
+        if (!/^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/.test(updatedValue)) {
+          nextErrors.vehicleNumber = "Invalid Indian vehicle number format (e.g., MH12AB1234)"
+        }
+      }
+
+      if (name === "drivingLicenseNumber" && updatedValue.trim()) {
+        if (!/^[A-Z]{2}[0-9]{2}[0-9A-Z]{11,12}$/.test(updatedValue)) {
+          nextErrors.drivingLicenseNumber = "Invalid DL format (e.g., MH1220110012345)"
+        }
+      }
+
+      if (name === "panNumber" && updatedValue.trim()) {
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(updatedValue)) {
+          nextErrors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)"
+        }
+      }
+
+      if (name === "vehicleType") {
+        nextErrors.vehicleNumber = ""
+        nextErrors.drivingLicenseNumber = ""
+      }
+
+      return nextErrors
+    })
   }
 
   const validate = () => {

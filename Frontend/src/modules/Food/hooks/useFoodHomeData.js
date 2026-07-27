@@ -332,7 +332,7 @@ export const useFoodHomeData = ({
   const filteredRestaurants = useMemo(() => {
     // If vegMode is 'pure', only show 100% vegetarian restaurants.
     // If vegMode is 'all' or false, show all restaurants (dish level filtering handles 'all' mode).
-    let filtered = [...deferredRestaurants].filter(r => vegMode !== "pure" || r.pureVegRestaurant);
+    let filtered = [...deferredRestaurants].filter(r => (vegMode !== "pure" || r.pureVegRestaurant) && (r.itemsCount === undefined || r.itemsCount > 0));
     
     // Compute availability status for sorting rather than strictly filtering out closed ones
     filtered = filtered.map(r => {
@@ -371,8 +371,9 @@ export const useFoodHomeData = ({
     return recommendedRestaurantsFromSettings
       .map(r => fetchedByMongoId.get(String(r._id || r.restaurantId)))
       .filter(Boolean)
+      .filter(r => (vegMode !== "pure" || r.pureVegRestaurant) && (r.itemsCount === undefined || r.itemsCount > 0))
       .slice(0, 12);
-  }, [restaurantsData, recommendedRestaurantsFromSettings]);
+  }, [restaurantsData, recommendedRestaurantsFromSettings, vegMode]);
 
   // --- Actions ---
   const toggleFilter = useCallback((filterId) => {

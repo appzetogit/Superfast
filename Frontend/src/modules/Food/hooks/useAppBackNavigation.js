@@ -158,6 +158,10 @@ export default function useAppBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1 && (window.history.state?.idx > 0 || document.referrer)) {
+      navigate(-1)
+      return
+    }
     navigate(resolveBackPath(location))
   }, [location, navigate])
 }

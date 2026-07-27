@@ -377,8 +377,12 @@ export default function Home() {
   };
 
   const handleSearchFocus = useCallback(() => {
-    navigate(`/search?tab=${activeTab}`);
-  }, [activeTab, navigate]);
+    if (activeTab === "quick") {
+      navigate("/quick/search");
+    } else {
+      openSearch();
+    }
+  }, [activeTab, navigate, openSearch]);
 
   // --- Render ---
   return (

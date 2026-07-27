@@ -2078,7 +2078,10 @@ export default function Inventory() {
 
             <div
               ref={filterChipsRef}
-              className="inventory-filter-scroll mt-4 flex gap-2 overflow-x-auto scrollbar-hide pb-1"
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              style={{ touchAction: "pan-x" }}
+              className="inventory-filter-scroll mt-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide pb-1 touch-pan-x"
             >
               {activeFilterOptions.map((option) => {
                 const count = activeTab === "add-ons"

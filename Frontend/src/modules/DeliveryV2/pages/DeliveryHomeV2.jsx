@@ -599,7 +599,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           const orderStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
           return (
             ['unassigned', 'assigned'].includes(dispatchStatus) &&
-            ['created', 'confirmed', 'preparing', 'ready_for_pickup'].includes(orderStatus)
+            ['created', 'placed', 'pending', 'confirmed', 'preparing', 'packed', 'ready_for_pickup', 'assigning', 'accepted'].includes(orderStatus)
           );
         });
 
