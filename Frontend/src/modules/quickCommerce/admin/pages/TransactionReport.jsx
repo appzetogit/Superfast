@@ -276,9 +276,20 @@ const TransactionReport = () => {
                         <span className="text-sm font-bold text-indigo-600">₹{(txn.deliveryEarning || 0).toFixed(2)}</span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="text-sm font-bold text-purple-600">
-                          ₹{Number(txn.adminEarning ?? Math.max(0, (txn.userPaid || 0) - (txn.sellerEarning || 0) - (txn.deliveryEarning || 0) - (txn.paymentBreakdown?.gst || txn.paymentBreakdown?.tax || 0))).toFixed(2)}
-                        </span>
+                        {(() => {
+                          const earned = Number(
+                            txn.adminEarning ??
+                              ((txn.userPaid || 0) -
+                                (txn.sellerEarning || 0) -
+                                (txn.deliveryEarning || 0) -
+                                (txn.paymentBreakdown?.gst || txn.paymentBreakdown?.tax || 0))
+                          );
+                          return (
+                            <span className={`text-sm font-bold ${earned < 0 ? 'text-rose-600' : 'text-purple-600'}`}>
+                              {earned < 0 ? `-₹${Math.abs(earned).toFixed(2)}` : `₹${earned.toFixed(2)}`}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {getStatusBadge(txn.status)}

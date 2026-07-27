@@ -1687,7 +1687,7 @@ export const getAdminFinanceTransactions = async (req, res) => {
       const deliveryBoyName = order.dispatch?.deliveryPartnerId?.name || 'Unassigned';
 
       const gst = order.pricing?.gstAmount || order.pricing?.gst || order.pricing?.tax || 0;
-      const adminEarning = Math.max(0, (order.pricing?.payableTotal || order.pricing?.total || 0) - sellerEarning - (order.riderEarning || 0) - gst);
+      const adminEarning = (order.pricing?.payableTotal || order.pricing?.total || 0) - sellerEarning - (order.riderEarning || 0) - gst;
 
       return {
         _id: order._id,
