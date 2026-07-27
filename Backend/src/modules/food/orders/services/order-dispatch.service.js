@@ -21,10 +21,12 @@ import {
 
 async function listNearbyOnlineDeliveryPartners(
   sourceId,
-  { maxKm = 15, limit = 25, sourceType = "food" } = {},
+  { maxKm = 15, limit = 25, sourceType = "food", isCodOrder = false } = {},
 ) {
   if (!sourceId) return { partners: [], source: null };
   const sId = (sourceId?._id || sourceId).toString();
+
+  const { isPartnerEligibleForCodOrder } = await import('../../delivery/services/deliveryFinance.service.js');
 
   let source = null;
   if (sourceType === "quick") {
@@ -39,12 +41,22 @@ async function listNearbyOnlineDeliveryPartners(
       availabilityStatus: "online",
     })
       .select("_id status name")
-      .limit(Math.max(1, limit))
+      .limit(Math.max(1, limit * 2))
       .lean();
+
+    const eligiblePartners = [];
+    for (const p of partners) {
+      if (isCodOrder) {
+        const ok = await isPartnerEligibleForCodOrder(p._id);
+        if (!ok) continue;
+      }
+      eligiblePartners.push({ partnerId: p._id, distanceKm: null });
+      if (eligiblePartners.length >= limit) break;
+    }
 
     return {
       source,
-      partners: partners.map((p) => ({ partnerId: p._id, distanceKm: null })),
+      partners: eligiblePartners,
     };
   }
 
@@ -64,6 +76,11 @@ async function listNearbyOnlineDeliveryPartners(
 
   for (const p of allOnline) {
     if (!allowedStatuses.includes(p.status)) continue;
+
+    if (isCodOrder) {
+      const ok = await isPartnerEligibleForCodOrder(p._id);
+      if (!ok) continue;
+    }
 
     const isStale =
       !p.lastLocationAt ||
@@ -179,10 +196,12 @@ export async function tryAutoAssign(orderId, options = {}) {
         (point) => point?.pickupType === "quick" && point?.sourceId,
       )?.sourceId;
     const dispatchSourceId = isQuickOrder ? quickSellerId : order.restaurantId;
+    const isCodOrder = order.payment?.method === "cash" || order.paymentMethod === "cash";
     const searchOptions = {
       maxKm,
       limit: 15,
       sourceType: isQuickOrder ? "quick" : "food",
+      isCodOrder,
     };
     const { partners, source } = await listNearbyOnlineDeliveryPartners(
       dispatchSourceId,

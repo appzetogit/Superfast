@@ -143,17 +143,39 @@ const normalizeDataMap = (data = {}) => {
     return result;
 };
 
-const buildMessagePayload = (payload = {}, token) => {
-    const notification = {
-        title: sanitizeString(payload.title || payload.notification?.title || 'New notification'),
-        body: sanitizeString(payload.body || payload.notification?.body || '')
-    };
-    const data = normalizeDataMap(payload.data || {});
-    const image =
-        sanitizeString(payload.icon || payload.notification?.image || payload.notification?.icon || data.image || data.imageUrl);
+const getSoundForRole = (role, customSound) => {
+    const r = String(role || '').toUpperCase();
+    if (r === 'ADMIN') {
+        return 'universfield-new-notification-036-485897.mp3';
+    }
+    return 'zomato_sms.mp3';
+};
 
-    // If payload.dataOnly is true, we omit the 'notification' block.
-    // This prevents FCM from auto-displaying while allowing app code to show a 'Local Notification'.
+const buildMessagePayload = (payload = {}, token) => {
+    const role = String(payload.role || payload.data?.role || '').toUpperCase();
+    const soundFile = getSoundForRole(role, payload.sound);
+
+    const title = sanitizeString(payload.title || payload.notification?.title || 'New notification');
+    const body = sanitizeString(payload.body || payload.notification?.body || '');
+    const notification = { title, body };
+
+    const clickAction = sanitizeString(
+        payload.data?.click_action || payload.data?.link || payload.link || '/'
+    );
+
+    const data = normalizeDataMap({
+        ...(payload.data || {}),
+        orderId: payload.data?.orderId || payload.orderId || '',
+        role: role.toLowerCase() || 'user',
+        sound: soundFile,
+        click_action: clickAction,
+        link: clickAction
+    });
+
+    const image = sanitizeString(
+        payload.icon || payload.notification?.image || payload.notification?.icon || data.image || data.imageUrl
+    );
+
     const message = { token };
 
     if (!payload.dataOnly) {
@@ -167,16 +189,26 @@ const buildMessagePayload = (payload = {}, token) => {
         message.data = data;
     }
 
-    const soundEnabled = payload.sound === true || payload.sound === 'default' || payload.data?.type === 'new_order';
-
     message.android = {
         priority: 'high',
         notification: {
-            channel_id: soundEnabled ? 'default' : 'silent',
-            ...(soundEnabled ? { sound: 'default' } : {}),
-            default_vibrate_timings: soundEnabled,
+            title,
+            body,
+            channel_id: 'default',
+            sound: soundFile,
+            default_vibrate_timings: true,
             default_light_settings: true,
             click_action: 'FLUTTER_NOTIFICATION_CLICK'
+        }
+    };
+
+    message.apns = {
+        payload: {
+            aps: {
+                alert: { title, body },
+                sound: soundFile,
+                contentAvailable: true
+            }
         }
     };
 
@@ -185,9 +217,15 @@ const buildMessagePayload = (payload = {}, token) => {
             Urgency: 'high'
         },
         notification: {
-            title: notification.title,
-            body: notification.body,
-            icon: image || payload.icon || '/favicon.ico'
+            title,
+            body,
+            icon: image || payload.icon || '/favicon.ico',
+            sound: soundFile,
+            badge: '/favicon.ico',
+            data: data
+        },
+        fcm_options: {
+            link: clickAction
         }
     };
 
@@ -358,7 +396,7 @@ export const sendPushNotification = async (tokens, payload = {}) => {
 
 export const sendNotificationToOwner = async ({ ownerType, ownerId, payload, platform } = {}) => {
     // 💡 Clone the payload to avoid side-effects (e.g. adding multiple prefixes to the same object during broadcasting)
-    const enrichedPayload = { ...payload };
+    const enrichedPayload = { ...payload, role: ownerType };
 
     // 🏷️ Add Highlighter Prefix to the Title
     if (enrichedPayload && !enrichedPayload.skipHighlighter) {

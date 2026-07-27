@@ -605,20 +605,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
         if (!cancelled && nextIncomingOrder) {
           setIncomingOrder((prev) => {
-            const prevKey = [
-              prev?.orderId || prev?._id || prev?.orderMongoId || '',
-              prev?.dispatchLeg?.legId || prev?.legId || '',
-            ].filter(Boolean).join(':');
-            const nextKey = [
-              nextIncomingOrder?.orderId ||
-                nextIncomingOrder?._id ||
-                nextIncomingOrder?.orderMongoId ||
-                '',
-              nextIncomingOrder?.dispatchLeg?.legId ||
-                nextIncomingOrder?.legId ||
-                '',
-            ].filter(Boolean).join(':');
-            return prevKey === nextKey && prev ? prev : nextIncomingOrder;
+            if (!prev) return nextIncomingOrder;
+
+            const prevId = String(prev?.orderId || prev?._id || prev?.orderMongoId || '');
+            const nextId = String(nextIncomingOrder?.orderId || nextIncomingOrder?._id || nextIncomingOrder?.orderMongoId || '');
+
+            if (prevId && nextId && prevId === nextId) {
+              return {
+                ...nextIncomingOrder,
+                ...prev,
+                riderEarning: prev.riderEarning || prev.deliveryEarning || prev.earnings || nextIncomingOrder.riderEarning || nextIncomingOrder.deliveryEarning || 0,
+                deliveryEarning: prev.deliveryEarning || prev.riderEarning || prev.earnings || nextIncomingOrder.deliveryEarning || nextIncomingOrder.riderEarning || 0,
+                distanceKm: prev.distanceKm || prev.deliveryDistanceKm || nextIncomingOrder.distanceKm || nextIncomingOrder.deliveryDistanceKm || 0,
+                offeredAt: prev.offeredAt || nextIncomingOrder.offeredAt
+              };
+            }
+            return prev;
           });
         }
       } catch (error) {

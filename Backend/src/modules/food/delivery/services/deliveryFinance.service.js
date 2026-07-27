@@ -244,6 +244,24 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
 };
 
 /**
+ * Checks if a delivery partner is eligible to receive a COD order.
+ * A driver cannot receive COD orders if:
+ * 1. Their total cash limit is 0, OR
+ * 2. Their cash in hand (collected cash) meets or exceeds their cash limit (availableCashLimit <= 0).
+ */
+export const isPartnerEligibleForCodOrder = async (deliveryPartnerId) => {
+  try {
+    const snapshot = await getDeliveryPartnerFinancialSnapshot(deliveryPartnerId);
+    if (!snapshot) return false;
+    if (snapshot.totalCashLimit <= 0) return false;
+    if (snapshot.availableCashLimit <= 0) return false;
+    return true;
+  } catch (err) {
+    return true; // Fallback gracefully if error
+  }
+};
+
+/**
  * Submits a new withdrawal request for a delivery partner.
  */
 export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {

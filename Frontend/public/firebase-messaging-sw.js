@@ -160,15 +160,43 @@ async function loadFirebaseWebConfig() {
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
+  let payload = {};
   try {
-    const payload = event.data.json();
-    pushDebugLog(PUSH_DEBUG_PREFIX, "Received raw push event", { payload });
-    // No client relay here. onBackgroundMessage handles delivery, and relaying in both
-    // places can produce duplicate notifications in web clients.
-    event.waitUntil(Promise.resolve());
+    payload = event.data.json();
   } catch {
-    // Ignore malformed payloads.
+    payload = { notification: { title: "New Notification", body: event.data.text() } };
   }
+
+  event.waitUntil(
+    (async () => {
+      const visibleClient = await hasVisibleClientForTarget(payload);
+      if (!visibleClient) {
+        const title = payload?.notification?.title || payload?.data?.title || "New Notification";
+        const body = payload?.notification?.body || payload?.data?.body || "";
+        const image = payload?.notification?.image || payload?.data?.image || payload?.data?.imageUrl;
+        const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
+        const notificationKey = getNotificationKey(payload);
+        const clickAction = getTargetPathFromPayload(payload);
+
+        await self.registration.showNotification(title, {
+          body,
+          icon: "/favicon.ico",
+          image: image || undefined,
+          tag: notificationKey,
+          renotify: true,
+          silent: false,
+          requireInteraction: false,
+          vibrate: [200, 100, 200, 100, 300],
+          data: {
+            ...(payload?.data || {}),
+            click_action: clickAction,
+            sound: sound
+          }
+        });
+      }
+      await notifyOpenClients(payload);
+    })()
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

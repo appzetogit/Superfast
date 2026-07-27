@@ -851,10 +851,10 @@ export async function getTransactionReport(query = {}) {
             restaurant: tx.restaurantId?.restaurantName || 'N/A',
             customerName: tx.userId?.name || 'Guest',
             totalItemAmount: subtotal,
-            itemDiscount: pricing.discount || 0,
-            couponDiscount: 0, // Placeholder if you add coupon logic
-            referralDiscount: 0, // Placeholder
-            discountedAmount: Math.max(0, (pricing.subtotal || 0) - (pricing.discount || 0)),
+            itemDiscount: discount,
+            couponDiscount: discount,
+            referralDiscount: 0,
+            discountedAmount: Math.max(0, subtotal - discount),
             vatTax: tx.amounts?.taxAmount || pricing.tax || 0,
             deliveryCharge: pricing.deliveryFee || 0,
             platformFee,

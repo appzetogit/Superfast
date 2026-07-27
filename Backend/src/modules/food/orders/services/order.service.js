@@ -983,11 +983,32 @@ function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
     customerPhone: order?.userId?.phone || order?.deliveryAddress?.phone || "",
     userName: order?.userId?.name || order?.customerName || "",
     userPhone: order?.userId?.phone || order?.deliveryAddress?.phone || "",
-    riderEarning: order?.riderEarning || 0,
-    earnings: order?.riderEarning || order?.pricing?.deliveryFee || 0,
+    riderEarning: (() => {
+      let val = Number(order?.riderEarning || order?.earnings || 0);
+      if (val <= 0) {
+        const rLat = restaurantLocation?.latitude || (Array.isArray(restaurantLocation?.coordinates) ? restaurantLocation.coordinates[1] : undefined);
+        const rLng = restaurantLocation?.longitude || (Array.isArray(restaurantLocation?.coordinates) ? restaurantLocation.coordinates[0] : undefined);
+        const cLat = order?.deliveryAddress?.location?.coordinates?.[1] || order?.deliveryAddress?.latitude || order?.deliveryAddress?.lat;
+        const cLng = order?.deliveryAddress?.location?.coordinates?.[0] || order?.deliveryAddress?.longitude || order?.deliveryAddress?.lng;
+        if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(cLat) && Number.isFinite(cLng)) {
+          const d = haversineKm(rLat, rLng, cLat, cLng);
+          if (d > 0) val = d <= 3 ? 25 : Math.round((25 + (d - 3) * 8) * 100) / 100;
+        }
+        if (val <= 0) val = Number(order?.pricing?.deliveryFee || 25);
+      }
+      return val;
+    })(),
+    earnings: Number(order?.riderEarning || order?.earnings || order?.pricing?.deliveryFee || 25),
+    deliveryEarning: Number(order?.riderEarning || order?.earnings || order?.pricing?.deliveryFee || 25),
+    earningAmount: Number(order?.riderEarning || order?.earnings || order?.pricing?.deliveryFee || 25),
     deliveryFee: order?.pricing?.deliveryFee || 0,
     deliveryFleet: order?.deliveryFleet,
     dispatch: order?.dispatch,
+    offeredAt: (() => {
+      const offeredTo = Array.isArray(order?.dispatch?.offeredTo) ? order.dispatch.offeredTo : [];
+      const lastOffer = offeredTo.length > 0 ? offeredTo[offeredTo.length - 1] : null;
+      return lastOffer?.at || order?.createdAt || new Date();
+    })(),
     createdAt: order?.createdAt,
     updatedAt: order?.updatedAt,
   };
@@ -2127,20 +2148,22 @@ export async function createOrder(userId, dto) {
     qr: {},
   };
 
-  let distanceKm = null;
-  if (
-    (orderType === "food" || orderType === "mixed") &&
-    primaryRestaurant?.location?.coordinates?.length === 2 &&
-    dto.address?.location?.coordinates?.length === 2
-  ) {
-    const [rLng, rLat] = primaryRestaurant.location.coordinates;
-    const [dLng, dLat] = dto.address.location.coordinates;
+  let distanceKm = 0;
+  let rLat = primaryRestaurant?.location?.coordinates?.[1] ?? primaryRestaurant?.location?.latitude ?? primaryRestaurant?.location?.lat;
+  let rLng = primaryRestaurant?.location?.coordinates?.[0] ?? primaryRestaurant?.location?.longitude ?? primaryRestaurant?.location?.lng;
+  if ((rLat == null || rLng == null) && Array.isArray(pickupPoints) && pickupPoints.length > 0) {
+    const ptLoc = pickupPoints[0]?.location;
+    rLat = ptLoc?.coordinates?.[1] ?? ptLoc?.latitude ?? ptLoc?.lat;
+    rLng = ptLoc?.coordinates?.[0] ?? ptLoc?.longitude ?? ptLoc?.lng;
+  }
+  const dLat = dto.address?.location?.coordinates?.[1] ?? dto.address?.latitude ?? dto.address?.lat;
+  const dLng = dto.address?.location?.coordinates?.[0] ?? dto.address?.longitude ?? dto.address?.lng;
+
+  if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(dLat) && Number.isFinite(dLng)) {
     const d = haversineKm(rLat, rLng, dLat, dLng);
-    distanceKm = Number.isFinite(d) ? d : null;
-  } else {
-    console.warn(
-      `Food order ${orderId}: distance not available, rider earning set to 0`,
-    );
+    if (Number.isFinite(d) && d > 0) {
+      distanceKm = Math.round(d * 10) / 10;
+    }
   }
 
   const baseRiderEarning =
@@ -2282,6 +2305,8 @@ export async function createOrder(userId, dto) {
           ? dto.deliveryFleet || "standard"
           : "quick",
     scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+    distanceKm: distanceKm || 0,
+    deliveryDistanceKm: distanceKm || 0,
     riderEarning,
     riderEarningBreakdown: {
       baseEarning: baseRiderEarning,
@@ -3633,6 +3658,14 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
     throw new ValidationError("Order not ready for delivery assignment");
   }
 
+  if (order.payment?.method === "cash" || order.paymentMethod === "cash") {
+    const { isPartnerEligibleForCodOrder } = await import('../../delivery/services/deliveryFinance.service.js');
+    const isCodEligible = await isPartnerEligibleForCodOrder(deliveryPartnerId);
+    if (!isCodEligible) {
+      throw new ValidationError("Your cash limit has been reached (or cash limit is 0). Please submit collected cash to Admin before accepting COD orders.");
+    }
+  }
+
   if (isSplitDispatchOrder(order)) {
     const requestedLegId = String(body?.legId || "").trim();
     const { updatedOrder, claimedLegId } = await claimSplitDispatchLegAtomically(
@@ -3810,6 +3843,41 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
     dispatchStatus: order.dispatch?.status,
   });
 
+  // Trigger 3: Send Push Notifications to Restaurant and User on Driver Accept
+  try {
+    await notifyOwnerSafely(
+      { ownerType: "RESTAURANT", ownerId: order.restaurantId },
+      {
+        title: "Driver Assigned 🛵",
+        body: `A delivery partner has accepted Order #${order.orderId || order._id}.`,
+        sound: "zomato_sms.mp3",
+        data: {
+          type: "driver_assigned",
+          orderId: order.orderId || order._id?.toString?.(),
+          orderMongoId: order._id?.toString?.(),
+          link: `/restaurant/orders/${order._id?.toString?.()}`
+        }
+      }
+    );
+
+    await notifyOwnerSafely(
+      { ownerType: "USER", ownerId: order.userId },
+      {
+        title: "Driver Assigned! 🛵",
+        body: `Your delivery partner is on the way to pick up Order #${order.orderId || order._id}.`,
+        sound: "zomato_sms.mp3",
+        data: {
+          type: "driver_assigned",
+          orderId: order.orderId || order._id?.toString?.(),
+          orderMongoId: order._id?.toString?.(),
+          link: `/food/user/orders/${order._id?.toString?.()}`
+        }
+      }
+    );
+  } catch (err) {
+    logger.warn(`Push notification failed on driver accept: ${err?.message || err}`);
+  }
+
   return getOrderById(order._id, { deliveryPartnerId });
 }
 export async function rejectOrderDelivery(orderId, deliveryPartnerId) {
@@ -3984,6 +4052,28 @@ export async function confirmPickupDelivery(
     deliveryPartnerId,
     billImageUrl: billImageUrl || null
   });
+
+  // Trigger 4: Order Picked Up -> Notify User
+  try {
+    await notifyOwnerSafely(
+      { ownerType: "USER", ownerId: order.userId },
+      {
+        title: "Order Picked Up! 🛵",
+        body: `Your delivery partner has picked up Order #${order.orderId || order._id} and is on the way to your location!`,
+        sound: "zomato_sms.mp3",
+        data: {
+          type: "order_status_update",
+          orderId: order.orderId || order._id?.toString?.(),
+          orderMongoId: order._id?.toString?.(),
+          orderStatus: "picked_up",
+          link: `/food/user/orders/${order._id?.toString?.()}`
+        }
+      }
+    );
+  } catch (err) {
+    logger.warn(`Push notification failed on order pickup: ${err?.message || err}`);
+  }
+
   return order.toObject();
 }
 
@@ -4186,6 +4276,44 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     prevPayStatus,
     paymentStatus: order.payment?.status
   });
+
+  // Trigger 4: Order Delivered -> Notify User & Restaurant
+  try {
+    await notifyOwnerSafely(
+      { ownerType: "USER", ownerId: order.userId },
+      {
+        title: "Order Delivered! 🎉",
+        body: `Your order #${order.orderId || order._id} has been delivered successfully. Enjoy your meal!`,
+        sound: "zomato_sms.mp3",
+        data: {
+          type: "order_status_update",
+          orderId: order.orderId || order._id?.toString?.(),
+          orderMongoId: order._id?.toString?.(),
+          orderStatus: "delivered",
+          link: `/food/user/orders/${order._id?.toString?.()}`
+        }
+      }
+    );
+
+    await notifyOwnerSafely(
+      { ownerType: "RESTAURANT", ownerId: order.restaurantId },
+      {
+        title: "Order Completed ✅",
+        body: `Order #${order.orderId || order._id} has been delivered to the customer.`,
+        sound: "zomato_sms.mp3",
+        data: {
+          type: "order_status_update",
+          orderId: order.orderId || order._id?.toString?.(),
+          orderMongoId: order._id?.toString?.(),
+          orderStatus: "delivered",
+          link: `/restaurant/orders/${order._id?.toString?.()}`
+        }
+      }
+    );
+  } catch (err) {
+    logger.warn(`Push notification failed on delivery completion: ${err?.message || err}`);
+  }
+
   return sanitizeOrderForExternal(order);
 }
 
@@ -4688,6 +4816,14 @@ export async function assignDeliveryPartnerAdmin(
   if (partner.availabilityStatus !== "online")
     throw new ValidationError("Delivery partner is offline");
 
+  if (order.payment?.method === "cash" || order.paymentMethod === "cash") {
+    const { isPartnerEligibleForCodOrder } = await import('../../delivery/services/deliveryFinance.service.js');
+    const isCodEligible = await isPartnerEligibleForCodOrder(deliveryPartnerId);
+    if (!isCodEligible) {
+      throw new ValidationError("Delivery partner has reached their cash limit (or cash limit is 0). They cannot receive COD orders until they submit collected cash to Admin.");
+    }
+  }
+
   const activeCount = await FoodOrder.countDocuments({
     $or: [
       { "dispatch.deliveryPartnerId": partner._id },
@@ -5035,6 +5171,15 @@ export async function reassignDeliveryPartnerAdmin(orderId, { newDriverId, reaso
   }
   if (partner.availabilityStatus !== 'online') {
     throw new ValidationError("Proposed driver is offline");
+  }
+
+  const existingOrder = await FoodOrder.findOne(identity).select("payment paymentMethod").lean();
+  if (existingOrder && (existingOrder.payment?.method === "cash" || existingOrder.paymentMethod === "cash")) {
+    const { isPartnerEligibleForCodOrder } = await import('../../delivery/services/deliveryFinance.service.js');
+    const isCodEligible = await isPartnerEligibleForCodOrder(newDriverId);
+    if (!isCodEligible) {
+      throw new ValidationError("Proposed driver has reached their cash limit (or cash limit is 0). They cannot receive COD orders until they submit collected cash to Admin.");
+    }
   }
 
   const activeCount = await FoodOrder.countDocuments({

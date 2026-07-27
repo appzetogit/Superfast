@@ -1686,6 +1686,9 @@ export const getAdminFinanceTransactions = async (req, res) => {
       const customerName = order.userId?.name || order.customerName || order.deliveryAddress?.fullName || 'N/A';
       const deliveryBoyName = order.dispatch?.deliveryPartnerId?.name || 'Unassigned';
 
+      const gst = order.pricing?.gstAmount || order.pricing?.gst || order.pricing?.tax || 0;
+      const adminEarning = Math.max(0, (order.pricing?.payableTotal || order.pricing?.total || 0) - sellerEarning - (order.riderEarning || 0) - gst);
+
       return {
         _id: order._id,
         orderId: order.orderId,
@@ -1706,7 +1709,7 @@ export const getAdminFinanceTransactions = async (req, res) => {
         },
         sellerEarning,
         deliveryEarning: order.riderEarning || 0,
-        adminEarning: Math.max(0, (order.pricing?.payableTotal || order.pricing?.total || 0) - sellerEarning - (order.riderEarning || 0)),
+        adminEarning,
         items: order.items?.map(i => `${i.name} (x${i.quantity})`).join(', ') || ''
       };
     });

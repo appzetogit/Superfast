@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
@@ -12,19 +12,54 @@ import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/
  */
 export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
   const { riderLocation } = useDeliveryStore();
-  const [timeLeft, setTimeLeft] = useState(30);
   const pickupPoints = normalizePickupPoints(order);
   const primaryPickup = pickupPoints[0] || null;
   const mixedOrder = isMixedOrder(order);
 
+  // Real-time timestamp-based countdown timer (30s duration)
+  const orderId = order?._id || order?.orderId || order?.orderMongoId || 'temp';
+  const expiresAtRef = useRef(null);
+
+  if (!expiresAtRef.current || expiresAtRef.current.orderId !== orderId) {
+    const parsedTime = order?.offeredAt ? new Date(order.offeredAt).getTime() : Date.now();
+    const offeredTime = Number.isFinite(parsedTime) ? parsedTime : Date.now();
+    const elapsed = Date.now() - offeredTime;
+    const remainingMs = elapsed >= 0 && elapsed < 30000 ? (30000 - elapsed) : 30000;
+    expiresAtRef.current = {
+      orderId,
+      endTime: Date.now() + remainingMs
+    };
+  }
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const remaining = Math.ceil((expiresAtRef.current.endTime - Date.now()) / 1000);
+    return Math.max(0, Math.min(30, remaining));
+  });
+
   useEffect(() => {
-    if (timeLeft <= 0) {
-      onReject();
-      return;
-    }
-    const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, onReject]);
+    const updateTimer = () => {
+      const remainingSeconds = Math.ceil((expiresAtRef.current.endTime - Date.now()) / 1000);
+      if (remainingSeconds <= 0) {
+        setTimeLeft(0);
+        onReject();
+      } else {
+        setTimeLeft(Math.min(30, remainingSeconds));
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 500);
+
+    const handleVisibility = () => {
+      if (!document.hidden) updateTimer();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [orderId, onReject]);
 
   const isReturnPickup = order?.type === 'RETURN_PICKUP';
 
@@ -40,8 +75,8 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
 
     // Get pickup (restaurant/store) location
     const rest = primaryPickup?.location || order.restaurantLocation || order.restaurantId?.location || {};
-    const resLat = parseFloat(order.restaurant_lat || order.restaurantLat || rest.latitude || rest.lat);
-    const resLng = parseFloat(order.restaurant_lng || order.restaurantLng || rest.longitude || rest.lng);
+    const resLat = parseFloat(order.restaurant_lat || order.restaurantLat || rest.latitude || rest.lat || (Array.isArray(rest.coordinates) ? rest.coordinates[1] : NaN));
+    const resLng = parseFloat(order.restaurant_lng || order.restaurantLng || rest.longitude || rest.lng || (Array.isArray(rest.coordinates) ? rest.coordinates[0] : NaN));
 
     // Get customer (delivery) location
     const deliveryAddress = order?.deliveryAddress || {};
@@ -52,7 +87,9 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
             lng: deliveryAddress.location.coordinates[0],
             lat: deliveryAddress.location.coordinates[1],
           }
-        : null;
+        : (deliveryAddress.latitude && deliveryAddress.longitude
+            ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+            : null);
     const customerLoc = order.customerLocation || order.deliveryLocation || geoCoords || null;
     const custLat = parseFloat(customerLoc?.lat);
     const custLng = parseFloat(customerLoc?.lng);
@@ -78,16 +115,16 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
       const mins = Math.ceil(totalDistM / 416) + (order.prepTime || 5);
       
       return { 
-        distanceKm: km.toFixed(2), 
+        distanceKm: km.toFixed(1), 
         etaMins: mins 
       };
     }
 
     // Fallback to order provided total distance if locations are missing
-    const rawDist = order.deliveryDistanceKm || order.distanceKm || order.distance || order.deliveryDistance || order.totalDistance;
+    const rawDist = Number(order.distanceKm || order.deliveryDistanceKm || order.distance || order.deliveryDistance || order.totalDistance || 0);
     const rawEta = order.estimatedTime || order.duration || order.eta || order.deliveryTime;
     
-    if (rawDist != null) {
+    if (rawDist > 0) {
       return { 
         distanceKm: Number(rawDist).toFixed(1), 
         etaMins: rawEta && rawEta > 0 ? Math.ceil(rawEta) : Math.ceil((rawDist * 1000) / 416) + 5
@@ -95,19 +132,28 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
     }
 
     return { distanceKm: '??', etaMins: order.prepTime || 15 };
-  }, [order, primaryPickup]);
+  }, [order, primaryPickup, riderLocation]);
 
   if (!order) return null;
 
-  // Calculate earnings based on distance (base 20 + 8 per km) if no backend value
-  // Remove Math.round to show the exact calculated amount as requested
-  const calculatedEarning = distanceKm !== '??' ? (20 + Number(distanceKm) * 8) : 0;
+  // Calculate actual earnings based on distance (base 25 for first 3km + 8 per km above 3km)
+  const distNum = Number(order.distanceKm || order.deliveryDistanceKm || order.distance || order.deliveryDistance || distanceKm);
+  const validDist = Number.isFinite(distNum) && distNum > 0 ? distNum : (distanceKm !== '??' ? Number(distanceKm) : 0);
+  
+  const calculatedEarning = validDist > 0
+    ? (validDist <= 3 ? 25 : Math.round((25 + (validDist - 3) * 8) * 100) / 100)
+    : 0;
 
-  const backendEarning = order.deliveryEarning || order.earningAmount || order.amount || order.earnings || order.riderEarning || order.deliveryFee || order.fee || 0;
+  const backendEarning = Number(
+    order.riderEarning ||
+    order.deliveryEarning ||
+    order.earningAmount ||
+    order.earnings ||
+    order.amount ||
+    0
+  );
 
-  const earnings = isReturnPickup
-    ? (order.expectedEarning || backendEarning || calculatedEarning)
-    : (backendEarning || (order.orderAmount ? order.orderAmount * 0.1 : calculatedEarning));
+  const earnings = backendEarning > 0 ? backendEarning : calculatedEarning;
   const isQuickOrder = String(order?.orderType || order?.serviceType || order?.type || '').trim().toLowerCase() === 'quick';
   const restaurantName =
     order?.dispatchLeg?.sourceName ||

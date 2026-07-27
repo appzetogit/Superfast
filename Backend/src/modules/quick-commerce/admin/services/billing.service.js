@@ -104,13 +104,13 @@ export async function updateDeliveryCommissionRule(id, body) {
   const candidate = existing.map((r) =>
     String(r._id) === String(id)
       ? {
-          ...r,
-          minDistance: body.minDistance,
-          maxDistance: body.maxDistance ?? null,
-          commissionPerKm: body.commissionPerKm,
-          basePayout: body.basePayout,
-          status: r.status !== false,
-        }
+        ...r,
+        minDistance: body.minDistance,
+        maxDistance: body.maxDistance ?? null,
+        commissionPerKm: body.commissionPerKm,
+        basePayout: body.basePayout,
+        status: r.status !== false,
+      }
       : r,
   );
 

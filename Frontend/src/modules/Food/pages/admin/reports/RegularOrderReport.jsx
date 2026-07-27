@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
+import Pagination from "@shared/components/ui/Pagination"
 import searchIcon from "@food/assets/Dashboard-icons/image8.png"
 import exportIcon from "@food/assets/Dashboard-icons/image9.png"
 import scheduledIcon from "@food/assets/Dashboard-icons/image24.png"
@@ -54,6 +55,7 @@ export default function RegularOrderReport() {
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -273,13 +275,13 @@ export default function RegularOrderReport() {
 
   const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
 
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
 
   const paginatedOrders = useMemo(() => {
     const safePage = Math.min(currentPage, totalPages)
-    const start = (safePage - 1) * PAGE_SIZE
-    return filteredOrders.slice(start, start + PAGE_SIZE)
-  }, [filteredOrders, currentPage, totalPages])
+    const start = (safePage - 1) * pageSize
+    return filteredOrders.slice(start, start + pageSize)
+  }, [filteredOrders, currentPage, totalPages, pageSize])
 
   const statusCounts = useMemo(
     () =>
@@ -595,7 +597,7 @@ export default function RegularOrderReport() {
                     <tr key={order.orderId} className="hover:bg-slate-50 transition-colors">
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] font-medium text-slate-700">
-                          {(currentPage - 1) * PAGE_SIZE + index + 1}
+                          {(currentPage - 1) * pageSize + index + 1}
                         </span>
                       </td>
                       <td className="px-1.5 py-1">
@@ -608,7 +610,7 @@ export default function RegularOrderReport() {
                         <span className="text-[10px] text-slate-700 truncate block">{order.customerName}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.totalAmount)}</span>
+                        <span className="text-[10px] text-slate-700">{formatAmount(order.totalItemAmount)}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{formatAmount(order.couponDiscount)}</span>
@@ -638,46 +640,18 @@ export default function RegularOrderReport() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-[10px] text-slate-500">
-              Showing{" "}
-              <span className="font-semibold text-slate-700">
-                {paginatedOrders.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} -{" "}
-                {(currentPage - 1) * PAGE_SIZE + paginatedOrders.length}
-              </span>{" "}
-              of <span className="font-semibold text-slate-700">{filteredOrders.length}</span> orders
-            </p>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-2 py-1 text-[10px] rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }).map((_, idx) => (
-                <button
-                  key={idx + 1}
-                  onClick={() => handlePageChange(idx + 1)}
-                  className={`w-6 h-6 text-[10px] rounded border ${
-                    currentPage === idx + 1
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "border-slate-300 text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-2 py-1 text-[10px] rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          {filteredOrders.length > 0 && (
+            <Pagination
+              page={currentPage}
+              total={filteredOrders.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </div>
       </div>
 

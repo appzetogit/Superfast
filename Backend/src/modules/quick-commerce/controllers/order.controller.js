@@ -84,12 +84,12 @@ const normalizeOrderSummary = (order, returnedOrderIdsSet = new Set()) => {
     createdAt: order.createdAt,
     items: Array.isArray(order.items)
       ? order.items.map((item) => ({
-          itemId: item.itemId || item.productId || '',
-          name: item.name,
-          image: item.image,
-          price: item.price,
-          quantity: item.quantity,
-        }))
+        itemId: item.itemId || item.productId || '',
+        name: item.name,
+        image: item.image,
+        price: item.price,
+        quantity: item.quantity,
+      }))
       : [],
     pricing: order.pricing || {},
   };
@@ -116,11 +116,11 @@ const normalizeDeliveryAddress = (address) => {
     phone,
     ...(Number.isFinite(lat) && Number.isFinite(lng)
       ? {
-          location: {
-            type: 'Point',
-            coordinates: [lng, lat],
-          },
-        }
+        location: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+      }
       : {}),
   };
 };
@@ -254,15 +254,15 @@ export const placeOrder = async (req, res) => {
       .map((item) => {
         const product = productMap[String(item.productId)];
         if (!product) return null;
-        
+
         const variant = item.variantSku && Array.isArray(product.variants)
           ? product.variants.find((v) => v.sku === item.variantSku)
           : null;
-          
+
         const unitPrice = variant
           ? (Number(variant.salePrice || 0) > 0 ? Number(variant.salePrice) : Number(variant.price || 0))
           : (Number(product.salePrice || 0) > 0 ? Number(product.salePrice) : Number(product.price || 0));
-          
+
         const name = variant ? `${product.name} (${variant.name})` : product.name;
 
         return {
@@ -292,15 +292,15 @@ export const placeOrder = async (req, res) => {
         .map((item) => {
           const product = fallbackProductMap[String(item.productId)];
           if (!product) return null;
-          
+
           const variant = item.variantSku && Array.isArray(product.variants)
             ? product.variants.find((v) => v.sku === item.variantSku)
             : null;
-            
+
           const unitPrice = variant
             ? (Number(variant.salePrice || 0) > 0 ? Number(variant.salePrice) : Number(variant.price || 0))
             : (Number(product.salePrice || 0) > 0 ? Number(product.salePrice) : Number(product.price || 0));
-            
+
           const name = variant ? `${product.name} (${variant.name})` : product.name;
 
           return {
@@ -381,8 +381,8 @@ export const placeOrder = async (req, res) => {
         location: seller.location?.coordinates
           ? { type: 'Point', coordinates: seller.location.coordinates }
           : (Number.isFinite(seller.location?.latitude) && Number.isFinite(seller.location?.longitude)
-              ? { type: 'Point', coordinates: [seller.location.longitude, seller.location.latitude] }
-              : undefined),
+            ? { type: 'Point', coordinates: [seller.location.longitude, seller.location.latitude] }
+            : undefined),
         itemIds: sellerItems.map((item) => String(item.productId)),
       };
     });
@@ -455,84 +455,84 @@ export const placeOrder = async (req, res) => {
     });
 
     const sellerOrdersResults = sellerBuckets.size > 0
-        ? await Promise.all(Array.from(sellerBuckets.entries()).map(async ([sellerId, sellerItems]) => {
-            const sellerSubtotal = sellerItems.reduce(
-              (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
-              0,
-            );
-            const allocatedDeliveryFee = Number(
-              ((deliveryFee * sellerSubtotal) / Math.max(subtotal, 1)).toFixed(2),
-            );
+      ? await Promise.all(Array.from(sellerBuckets.entries()).map(async ([sellerId, sellerItems]) => {
+        const sellerSubtotal = sellerItems.reduce(
+          (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+          0,
+        );
+        const allocatedDeliveryFee = Number(
+          ((deliveryFee * sellerSubtotal) / Math.max(subtotal, 1)).toFixed(2),
+        );
 
-            // Calculate commission for this specific seller
-            const { commissionAmount } = await getSellerCommissionSnapshot(sellerId, sellerSubtotal);
-            const sellerReceivable = Math.max(
-              0,
-              Number((sellerSubtotal - commissionAmount).toFixed(2)),
-            );
+        // Calculate commission for this specific seller
+        const { commissionAmount } = await getSellerCommissionSnapshot(sellerId, sellerSubtotal);
+        const sellerReceivable = Math.max(
+          0,
+          Number((sellerSubtotal - commissionAmount).toFixed(2)),
+        );
 
-            return {
-              orderType: 'quick',
-              parentOrderId: order._id,
-              sellerId,
-              orderId: order.orderId,
-              customer: {
-                name: String(req.body?.address?.name || 'Customer').trim() || 'Customer',
-                phone: String(req.body?.address?.phone || '').trim(),
-              },
-              items: sellerItems.map((item) => ({
-                productId: item.productId,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                image: item.image,
-              })),
-              pricing: {
-                subtotal: sellerSubtotal,
-                commission: commissionAmount,
-                total: sellerSubtotal + allocatedDeliveryFee,
-                receivable: sellerReceivable,
-              },
-              status: paymentMode === 'razorpay' ? 'created' : 'pending',
-              workflowStatus: paymentMode === 'razorpay' ? 'PENDING_PAYMENT' : 'SELLER_PENDING',
-              sellerPendingExpiresAt: new Date(Date.now() + 2 * 60 * 1000),
-              address: {
-                address: deliveryAddress?.street || '',
-                city: deliveryAddress?.city || '',
-                ...(Array.isArray(deliveryAddress?.location?.coordinates)
-                  ? {
-                      location: {
-                        lat: deliveryAddress.location.coordinates[1],
-                        lng: deliveryAddress.location.coordinates[0],
-                      },
-                    }
-                  : {}),
-              },
-              payment: {
-                method: sellerPaymentMode,
-              },
-            };
-          }))
-        : [];
+        return {
+          orderType: 'quick',
+          parentOrderId: order._id,
+          sellerId,
+          orderId: order.orderId,
+          customer: {
+            name: String(req.body?.address?.name || 'Customer').trim() || 'Customer',
+            phone: String(req.body?.address?.phone || '').trim(),
+          },
+          items: sellerItems.map((item) => ({
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+          })),
+          pricing: {
+            subtotal: sellerSubtotal,
+            commission: commissionAmount,
+            total: sellerSubtotal + allocatedDeliveryFee,
+            receivable: sellerReceivable,
+          },
+          status: paymentMode === 'razorpay' ? 'created' : 'pending',
+          workflowStatus: paymentMode === 'razorpay' ? 'PENDING_PAYMENT' : 'SELLER_PENDING',
+          sellerPendingExpiresAt: new Date(Date.now() + 2 * 60 * 1000),
+          address: {
+            address: deliveryAddress?.street || '',
+            city: deliveryAddress?.city || '',
+            ...(Array.isArray(deliveryAddress?.location?.coordinates)
+              ? {
+                location: {
+                  lat: deliveryAddress.location.coordinates[1],
+                  lng: deliveryAddress.location.coordinates[0],
+                },
+              }
+              : {}),
+          },
+          payment: {
+            method: sellerPaymentMode,
+          },
+        };
+      }))
+      : [];
 
     const totalSellerCommission = sellerOrdersResults.reduce((sum, so) => sum + (so.pricing?.commission || 0), 0);
-    
+
     // Update the main order with the total commission
     if (totalSellerCommission > 0) {
       const platformProfit = Math.max(
         0,
         deliveryFee +
-          Number(pricing.platformFee || 0) +
-          totalSellerCommission -
-          (riderEarning || 0),
+        Number(pricing.platformFee || 0) +
+        totalSellerCommission -
+        (riderEarning || 0),
       );
       await QuickOrder.updateOne(
         { _id: order._id },
-        { 
-          $set: { 
+        {
+          $set: {
             'pricing.restaurantCommission': totalSellerCommission,
             platformProfit: platformProfit
-          } 
+          }
         }
       );
       order.pricing.restaurantCommission = totalSellerCommission;
@@ -546,7 +546,7 @@ export const placeOrder = async (req, res) => {
       try {
         const amountPaise = Math.round(getOrderPayableAmount(order) * 100);
         const rzOrder = await createRazorpayOrder(amountPaise, "INR", order.orderId);
-        
+
         await QuickOrder.updateOne(
           { _id: order._id },
           {
@@ -673,10 +673,10 @@ export const getMyOrders = async (req, res) => {
       storeName: seller?.shopName || seller?.name || '',
       seller: seller
         ? {
-            _id: seller._id,
-            name: seller.name || '',
-            shopName: seller.shopName || seller.name || 'Store',
-          }
+          _id: seller._id,
+          name: seller.name || '',
+          shopName: seller.shopName || seller.name || 'Store',
+        }
         : null,
     };
   });
@@ -727,9 +727,9 @@ export const getOrderById = async (req, res) => {
     const deliveryAddress = order.deliveryAddress || {};
     const deliveryCoords = Array.isArray(deliveryAddress.location?.coordinates)
       ? {
-          lat: Number(deliveryAddress.location.coordinates[1]),
-          lng: Number(deliveryAddress.location.coordinates[0]),
-        }
+        lat: Number(deliveryAddress.location.coordinates[1]),
+        lng: Number(deliveryAddress.location.coordinates[0]),
+      }
       : null;
     const dropOtp = order.deliveryVerification?.dropOtp || {};
     const handoverOtp = String(order.deliveryOtp || '').trim();
@@ -756,20 +756,20 @@ export const getOrderById = async (req, res) => {
         },
         seller: seller
           ? {
-              _id: seller._id,
-              id: seller._id,
-              name: seller.shopName || seller.name || 'Store',
-              shopName: seller.shopName || seller.name || 'Store',
-              location: seller.location || null,
-            }
+            _id: seller._id,
+            id: seller._id,
+            name: seller.shopName || seller.name || 'Store',
+            shopName: seller.shopName || seller.name || 'Store',
+            location: seller.location || null,
+          }
           : null,
         sellerOrder: sellerOrder
           ? {
-              _id: sellerOrder._id,
-              status: sellerOrder.status,
-              workflowStatus: sellerOrder.workflowStatus,
-              address: sellerOrder.address || null,
-            }
+            _id: sellerOrder._id,
+            status: sellerOrder.status,
+            workflowStatus: sellerOrder.workflowStatus,
+            address: sellerOrder.address || null,
+          }
           : null,
         deliveryVerification: {
           ...(order.deliveryVerification || {}),
@@ -894,7 +894,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-    
+
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
       return res.status(400).json({ success: false, message: 'Missing Razorpay credentials' });
     }
@@ -923,17 +923,17 @@ export const verifyPayment = async (req, res) => {
 
     let isAuthorized = false;
     try {
-        const paymentInfo = await fetchRazorpayPayment(razorpayPaymentId);
-        if (paymentInfo && (paymentInfo.status === 'captured' || paymentInfo.status === 'authorized')) {
-            isAuthorized = true;
-        }
+      const paymentInfo = await fetchRazorpayPayment(razorpayPaymentId);
+      if (paymentInfo && (paymentInfo.status === 'captured' || paymentInfo.status === 'authorized')) {
+        isAuthorized = true;
+      }
     } catch (e) {
-        logger.error(`Razorpay fetch failed: ${e.message}`);
+      logger.error(`Razorpay fetch failed: ${e.message}`);
     }
 
     if (!order.payment) order.payment = {};
     if (!order.payment.razorpay) order.payment.razorpay = {};
-    
+
     order.payment.status = isAuthorized ? 'paid' : 'failed';
     order.payment.razorpay.paymentId = razorpayPaymentId;
     order.payment.razorpay.signature = razorpaySignature;
@@ -942,30 +942,30 @@ export const verifyPayment = async (req, res) => {
     await order.save();
 
     if (isAuthorized) {
-        await SellerOrder.updateMany(
-            { orderId: order.orderId },
-            { 
-              $set: { 
-                'payment.status': 'paid',
-                'status': 'pending',
-                'workflowStatus': 'SELLER_PENDING'
-              } 
-            }
-        );
-        const updatedSellerOrders = await SellerOrder.find({ orderId: order.orderId }).lean();
-        emitQuickSellerOrders(updatedSellerOrders);
-        emitQuickOrderStatusUpdate(order, 'Quick order payment verified and placed successfully.');
+      await SellerOrder.updateMany(
+        { orderId: order.orderId },
+        {
+          $set: {
+            'payment.status': 'paid',
+            'status': 'pending',
+            'workflowStatus': 'SELLER_PENDING'
+          }
+        }
+      );
+      const updatedSellerOrders = await SellerOrder.find({ orderId: order.orderId }).lean();
+      emitQuickSellerOrders(updatedSellerOrders);
+      emitQuickOrderStatusUpdate(order, 'Quick order payment verified and placed successfully.');
     }
 
     return res.json({
-        success: true,
-        message: 'Payment verified successfully',
-        result: {
-            id: order._id,
-            status: order.orderStatus,
-            paymentStatus: order.payment.status,
-            paymentId: razorpayPaymentId
-        }
+      success: true,
+      message: 'Payment verified successfully',
+      result: {
+        id: order._id,
+        status: order.orderStatus,
+        paymentStatus: order.payment.status,
+        paymentId: razorpayPaymentId
+      }
     });
   } catch (error) {
     logger.error(`Quick verifyPayment failed: ${error?.message || error}`);

@@ -221,16 +221,14 @@ export default function EarningBreakdown() {
 
           <div className="border-t border-slate-200">
             <Pagination
-              currentPage={currentPage}
-              totalPages={Math.ceil(filteredTransactions.length / itemsPerPage)}
+              page={currentPage}
+              total={filteredTransactions.length}
+              pageSize={itemsPerPage}
               onPageChange={setCurrentPage}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={(val) => {
+              onPageSizeChange={(val) => {
                 setItemsPerPage(val)
                 setCurrentPage(1)
               }}
-              itemsPerPageOptions={[25, 50, 100]}
-              totalItems={filteredTransactions.length}
             />
           </div>
         </div>

@@ -22,6 +22,7 @@ import { emptyCampaignOrderReports, emptyCampaignOrderStats } from "@food/utils/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
+import Pagination from "@shared/components/ui/Pagination"
 
 export default function CampaignOrderReport() {
   const [filters, setFilters] = useState({
@@ -31,6 +32,8 @@ export default function CampaignOrderReport() {
     time: "All Time",
   })
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [orders] = useState(emptyCampaignOrderReports)
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -61,6 +64,14 @@ export default function CampaignOrderReport() {
 
     return result
   }, [orders, searchQuery, filters])
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
+
+  const paginatedOrders = useMemo(() => {
+    const safePage = Math.min(currentPage, totalPages)
+    const start = (safePage - 1) * pageSize
+    return filteredOrders.slice(start, start + pageSize)
+  }, [filteredOrders, currentPage, totalPages, pageSize])
 
   const handleExport = (format) => {
     if (filteredOrders.length === 0) {
@@ -385,10 +396,10 @@ export default function CampaignOrderReport() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredOrders.map((order) => (
-                  <tr key={order.sl} className="hover:bg-slate-50 transition-colors">
+                {paginatedOrders.map((order, index) => (
+                  <tr key={order.sl || order.orderId} className="hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="text-xs font-medium text-slate-700">{order.sl}</span>
+                      <span className="text-xs font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className="text-xs font-medium text-slate-700">{order.orderId}</span>
@@ -432,6 +443,19 @@ export default function CampaignOrderReport() {
               </tbody>
             </table>
           </div>
+
+          {filteredOrders.length > 0 && (
+            <Pagination
+              page={currentPage}
+              total={filteredOrders.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </div>
       </div>
 
