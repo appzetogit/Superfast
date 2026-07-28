@@ -169,6 +169,11 @@ export const notificationAPI = {
 
 /** Admin API - new backend only (GET /auth/me, PATCH /auth/admin/profile, POST /auth/admin/change-password) */
 export const adminAPI = {
+  saveFcmToken: (token, platform = "web") => {
+    if (!token) return Promise.reject(new Error("FCM token is required"));
+    const path = platform === "mobile" ? "/fcm-tokens/mobile/save" : "/fcm-tokens/save";
+    return apiClient.post(path, { token: String(token), platform }, { contextModule: "admin" });
+  },
   getSidebarBadges: () =>
     apiClient.get("/food/admin/sidebar-badges", { contextModule: "admin" }),
   login: (email, password) => authService.adminLogin(email, password),
@@ -212,6 +217,10 @@ export const adminAPI = {
       { currentPassword, newPassword },
       { contextModule: "admin" },
     ),
+  deleteDeliveryPartner: (id) =>
+    apiClient.delete(`/food/admin/delivery/partners/${String(id)}`, {
+      contextModule: "admin",
+    }),
   logout: (refreshToken) => {
     const token =
       refreshToken ||
@@ -1729,6 +1738,16 @@ export const deliveryAPI = {
     })),
   getReferralStats: () =>
     apiClient.get("/food/delivery/referrals/stats", {
+      contextModule: "delivery",
+    }),
+  checkVehicleNumber: (vehicleNumber) =>
+    apiClient.get("/food/delivery/check-vehicle", {
+      params: { vehicleNumber },
+      contextModule: "delivery",
+    }),
+  checkField: (field, value) =>
+    apiClient.get("/food/delivery/check-field", {
+      params: { field, value },
       contextModule: "delivery",
     }),
   logout: async (refreshToken, customFcmToken = null, customPlatform = null) => {

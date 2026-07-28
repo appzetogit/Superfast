@@ -8,7 +8,7 @@ import {
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
 import { uploadAPI } from '@food/api';
 import { toast } from 'sonner';
-import { openCamera } from "@food/utils/imageUploadUtils";
+import { openCamera, openGallery } from "@food/utils/imageUploadUtils";
 import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
 
 /**
@@ -79,7 +79,10 @@ export const PickupActionModal = ({
   }
 
   const handlePickFromGallery = () => {
-    cameraInputRef.current?.click()
+    openGallery({
+      onSelectFile: (file) => handleBillImageSelect(file),
+      fileNamePrefix: `bill-${order.orderId || order._id}`
+    })
   }
 
   const isAtPickup = status === 'REACHED_PICKUP';

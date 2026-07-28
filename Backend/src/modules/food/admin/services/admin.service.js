@@ -4870,6 +4870,23 @@ export async function rejectDeliveryPartner(id, reason) {
     return updated;
 }
 
+export async function deleteDeliveryPartner(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const partner = await FoodDeliveryPartner.findByIdAndUpdate(
+        id,
+        {
+            $set: {
+                status: 'suspended',
+                availabilityStatus: 'offline',
+                isDeactivated: true,
+                deactivatedAt: new Date()
+            }
+        },
+        { new: true }
+    ).lean();
+    return partner;
+}
+
 export async function updateDeliveryPartnerStatus(id, availabilityStatus) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const partner = await FoodDeliveryPartner.findById(id);

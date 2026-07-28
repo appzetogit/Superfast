@@ -33,30 +33,10 @@ export const ImageSourcePicker = ({
 
   const handlePickFromDevice = async () => {
     onClose()
-    
-    // 1. Try Bridge first
-    if (isFlutterBridgeAvailable()) {
-      await openGallery({
-        onSelectFile: onFileSelect,
-        fileNamePrefix: fileNamePrefix
-      })
-      return
-    }
-
-    // 2. Try provided ref (Standard browser behavior)
-    if (galleryInputRef && galleryInputRef.current) {
-      galleryInputRef.current.click()
-    } else {
-      // 3. Last resort - generic browser input
-      const input = document.createElement("input")
-      input.type = "file"
-      input.accept = "image/*"
-      input.onchange = (e) => {
-        const file = e.target.files?.[0]
-        if (file) onFileSelect(file)
-      }
-      input.click()
-    }
+    await openGallery({
+      onSelectFile: onFileSelect,
+      fileNamePrefix: fileNamePrefix
+    })
   }
 
   // If no bridge is available, we might not even need the dialog if we want to default to gallery

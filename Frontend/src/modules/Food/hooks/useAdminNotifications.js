@@ -334,7 +334,29 @@ export default function useAdminNotifications(options = {}) {
       auth: { token },
     });
 
-    socket.on("admin_notification", () => {
+    socket.on("admin_notification", (payload) => {
+      // Show a live toast for delivery partner applications
+      if (payload?.type === "delivery_partner_application") {
+        const name = payload?.name || "Someone";
+        const vehicleType = payload?.vehicleType ? ` (${payload.vehicleType})` : "";
+        import("sonner").then(({ toast }) => {
+          toast.success(`🛵 New delivery application`, {
+            description: `${name}${vehicleType} has applied. Tap to review.`,
+            duration: 8000,
+            action: { label: "Review", onClick: () => { window.location.href = "/admin/food/delivery-partners/join-request"; } }
+          });
+        }).catch(() => {});
+      } else if (payload?.type === "restaurant_application") {
+        const name = payload?.name || "A restaurant";
+        const city = payload?.city ? ` in ${payload.city}` : "";
+        import("sonner").then(({ toast }) => {
+          toast.success(`🏪 New restaurant application`, {
+            description: `${name}${city} has applied. Tap to review.`,
+            duration: 8000,
+            action: { label: "Review", onClick: () => { window.location.href = "/admin/food/restaurants/joining-request"; } }
+          });
+        }).catch(() => {});
+      }
       dispatchAdminNotificationsUpdated();
     });
 

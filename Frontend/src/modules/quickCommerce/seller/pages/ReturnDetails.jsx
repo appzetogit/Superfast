@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ChevronLeft, Loader2, Package, CheckCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import axiosInstance from "@core/api/axios";
+import { openCamera } from "@food/utils/imageUploadUtils";
 
 const ReturnDetails = () => {
   const navigate = useNavigate();
@@ -143,11 +144,19 @@ const ReturnDetails = () => {
                         <button onClick={() => setSellerImage("")} className="absolute top-2 right-2 bg-white/80 p-1 rounded text-red-600 font-bold text-xs">Remove</button>
                       </div>
                     ) : (
-                      <label className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
+                      <button onClick={() => {
+                        openCamera({
+                          onSelectFile: (file) => {
+                            if (!file) return;
+                            const fakeUrl = URL.createObjectURL(file);
+                            setSellerImage(fakeUrl);
+                          },
+                          fileNamePrefix: "return-received"
+                        })
+                      }} className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
                         <Upload className="w-6 h-6 text-gray-400 mb-2" />
                         <span className="text-sm text-gray-500 font-medium">Take Photo</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                      </label>
+                      </button>
                     )}
                   </div>
 

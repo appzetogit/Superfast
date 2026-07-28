@@ -176,8 +176,10 @@ router.get('/delivery/support-tickets/stats', adminController.getSupportTicketSt
 router.get('/delivery/support-tickets', adminController.getSupportTickets);
 router.patch('/delivery/support-tickets/:id', adminController.updateSupportTicket);
 router.get('/delivery/partners', adminController.getDeliveryPartners);
+router.delete('/delivery/partners/:id', adminController.deleteDeliveryPartner);
 router.patch('/delivery/partners/:id/status', adminController.updateDeliveryPartnerStatus);
 router.get('/delivery/:id', adminController.getDeliveryPartnerById);
+router.delete('/delivery/:id', adminController.deleteDeliveryPartner);
 router.patch('/delivery/:id/approve', adminController.approveDeliveryPartner);
 router.patch('/delivery/:id/reject', adminController.rejectDeliveryPartner);
 

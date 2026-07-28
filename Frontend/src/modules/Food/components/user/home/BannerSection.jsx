@@ -1,51 +1,47 @@
-import React, { memo } from "react";
+import React, { memo, useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HeroBannerSkeleton } from "@food/components/ui/loading-skeletons";
 import { optimizeCloudinaryVideoUrl } from "@shared/utils/cloudinaryUtils";
-
-const TypewriterText = ({ text, isActive, delay = 0 }) => {
-  const words = text.split(" ");
-  return (
-    <span className="inline-flex flex-wrap gap-x-1 sm:gap-x-1.5">
-      {words.map((word, wordIndex) => (
-        <span key={wordIndex} className="inline-block">
-          {word.split("").map((char, charIndex) => {
-            const previousCharsCount = words.slice(0, wordIndex).join("").length + wordIndex;
-            const absoluteIndex = previousCharsCount + charIndex;
-            return (
-              <motion.span
-                key={`${char}-${charIndex}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isActive ? 1 : 0 }}
-                transition={{ duration: 0.05, delay: isActive ? delay + absoluteIndex * 0.03 : 0 }}
-              >
-                {char}
-              </motion.span>
-            );
-          })}
-        </span>
-      ))}
-    </span>
-  );
-};
 import OptimizedImage from "@food/components/OptimizedImage";
 
 const BannerSection = memo(({
   showBannerSkeleton,
-  heroBannerImages,
-  heroBannersData,
-  currentBannerIndex,
+  heroBannerImages = [],
+  heroBannersData = [],
+  currentBannerIndex = 0,
   setCurrentBannerIndex,
-  heroShellRef,
-  handleTouchStart,
-  handleTouchMove,
-  handleTouchEnd,
-  handleMouseDown,
-  handleMouseMove,
-  handleMouseUp,
   navigate,
   backendOrigin = ""
 }) => {
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const autoSlideTimerRef = useRef(null);
+
+  const bannerCount = heroBannerImages.length;
+
+  const goToNext = useCallback(() => {
+    if (bannerCount <= 1) return;
+    setCurrentBannerIndex((prev) => (prev + 1) % bannerCount);
+  }, [bannerCount, setCurrentBannerIndex]);
+
+  const goToPrev = useCallback(() => {
+    if (bannerCount <= 1) return;
+    setCurrentBannerIndex((prev) => (prev - 1 + bannerCount) % bannerCount);
+  }, [bannerCount, setCurrentBannerIndex]);
+
+  // Auto-slide effect that pauses on user hover or touch
+  useEffect(() => {
+    if (bannerCount <= 1 || isHovered) return;
+    autoSlideTimerRef.current = setInterval(() => {
+      goToNext();
+    }, 3500);
+    return () => {
+      if (autoSlideTimerRef.current) clearInterval(autoSlideTimerRef.current);
+    };
+  }, [bannerCount, isHovered, goToNext]);
+
   if (showBannerSkeleton) {
     return (
       <div className="h-full w-full">
@@ -54,104 +50,144 @@ const BannerSection = memo(({
     );
   }
 
-  if (!heroBannerImages || heroBannerImages.length === 0) return null;
+  if (!heroBannerImages || bannerCount === 0) return null;
+
+  // Touch gesture handlers for manual swiping
+  const handleTouchStart = (e) => {
+    setIsHovered(true);
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    setIsHovered(false);
+    if (!touchStartX || !touchEndX) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 35;
+    if (distance > minSwipeDistance) {
+      goToNext(); // Swiped left -> next banner
+    } else if (distance < -minSwipeDistance) {
+      goToPrev(); // Swiped right -> previous banner
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  const handleBannerClick = (index) => {
+    const bannerData = heroBannersData[index];
+    const linkedRestaurants = bannerData?.linkedRestaurants || [];
+    if (linkedRestaurants.length > 0) {
+      const firstRestaurant = linkedRestaurants[0];
+      const restaurantSlug = firstRestaurant.slug || firstRestaurant.restaurantId || firstRestaurant._id;
+      navigate(`/restaurants/${restaurantSlug}`);
+    }
+  };
 
   return (
-    <div className="h-full w-full">
+    <div
+      className="group relative h-full w-full overflow-hidden rounded-[22px] select-none bg-transparent"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Sliding Track */}
       <div
-        ref={heroShellRef}
-        data-home-hero-shell="true"
-        className="relative w-full h-full overflow-hidden bg-transparent"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        className="flex h-full w-full transition-transform duration-500 ease-out cursor-pointer"
+        style={{ transform: `translateX(-${currentBannerIndex * 100}%)` }}
       >
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-            <motion.div
-              animate={{
-                x: ['-200%', '200%'],
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                repeatDelay: 5,
-                ease: "easeInOut"
-              }}
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg] w-[150%] h-full"
-            />
-          </div>
-          {heroBannerImages.map((image, index) => {
-            const bannerData = heroBannersData[index];
-            const isVideo = bannerData?.type === 'video' || (typeof image === 'string' && image.toLowerCase().endsWith('.mp4'));
-            const isActive = currentBannerIndex === index;
+        {heroBannerImages.map((image, index) => {
+          const bannerData = heroBannersData[index];
+          const isVideo = bannerData?.type === 'video' || (typeof image === 'string' && image.toLowerCase().endsWith('.mp4'));
 
-            return (
-              <div
-                key={`${index}-${image}`}
-                className="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                style={{
-                  opacity: isActive ? 1 : 0,
-                  zIndex: isActive ? 2 : 1,
-                  pointerEvents: "none",
-                }}>
-                {isVideo ? (
-                  <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="h-full w-full object-contain"
-                    style={{ filter: "brightness(0.95)" }}
-                  >
-                    <source src={optimizeCloudinaryVideoUrl(image, { format: 'webm' })} type="video/webm" />
-                    <source src={optimizeCloudinaryVideoUrl(image, { format: 'mp4' })} type="video/mp4" />
-                    <source src={image} />
-                  </video>
-                ) : (
-                    <OptimizedImage
-                      src={image}
-                      alt={`Hero Banner ${index + 1}`}
-                      className="h-full w-full object-contain"
-                      priority={index === currentBannerIndex}
-                      backendOrigin={backendOrigin}
-                      draggable={false}
-                    />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          className="absolute inset-0 z-20 h-full w-full border-0 p-0 bg-transparent text-left"
-          onClick={() => {
-            const bannerData = heroBannersData[currentBannerIndex];
-            const linkedRestaurants = bannerData?.linkedRestaurants || [];
-            if (linkedRestaurants.length > 0) {
-              const firstRestaurant = linkedRestaurants[0];
-              const restaurantSlug = firstRestaurant.slug || firstRestaurant.restaurantId || firstRestaurant._id;
-              navigate(`/restaurants/${restaurantSlug}`);
-            }
-          }}
-          aria-label={`Open hero banner ${currentBannerIndex + 1}`}
-        />
-
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1.5 px-2 py-1 z-30 pointer-events-none">
-          {heroBannerImages.map((_, index) => (
+          return (
             <div
+              key={`${index}-${image}`}
+              className="relative h-full w-full flex-shrink-0"
+              onClick={() => handleBannerClick(index)}
+            >
+              {isVideo ? (
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                >
+                  <source src={optimizeCloudinaryVideoUrl(image, { format: 'webm' })} type="video/webm" />
+                  <source src={optimizeCloudinaryVideoUrl(image, { format: 'mp4' })} type="video/mp4" />
+                  <source src={image} />
+                </video>
+              ) : (
+                <OptimizedImage
+                  src={image}
+                  alt={`Hero Banner ${index + 1}`}
+                  className="h-full w-full object-cover"
+                  priority={index === currentBannerIndex}
+                  backendOrigin={backendOrigin}
+                  draggable={false}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Clean Navigation Arrows */}
+      {bannerCount > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              goToPrev();
+            }}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
+            aria-label="Previous Banner"
+          >
+            <ChevronLeft className="h-4 w-4 stroke-[2.5]" />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              goToNext();
+            }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
+            aria-label="Next Banner"
+          >
+            <ChevronRight className="h-4 w-4 stroke-[2.5]" />
+          </button>
+        </>
+      )}
+
+      {/* Clean Floating Pagination Dots (No black/grey background strip) */}
+      {bannerCount > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2 py-0.5">
+          {heroBannerImages.map((_, index) => (
+            <button
               key={index}
-              className={`h-1 rounded-full transition-all duration-300 ${currentBannerIndex === index ? "bg-white/80 w-4" : "bg-white/30 w-1"
-                }`}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentBannerIndex(index);
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] ${
+                currentBannerIndex === index
+                  ? "w-4.5 bg-white"
+                  : "w-1.5 bg-white/50 hover:bg-white/90"
+              }`}
+              aria-label={`Go to banner ${index + 1}`}
             />
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 });

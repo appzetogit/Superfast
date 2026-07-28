@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
+import Select from "react-select"
+import { State, City } from "country-state-city"
+import { deliveryAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -45,6 +48,135 @@ export default function SignupStep1() {
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [states, setStates] = useState([])
+  const [cities, setCities] = useState([])
+  const [vehicleNumberChecking, setVehicleNumberChecking] = useState(false)
+  const vehicleNumberCheckRef = useRef(null)
+  const [aadharChecking, setAadharChecking] = useState(false)
+  const aadharCheckRef = useRef(null)
+  const [panChecking, setPanChecking] = useState(false)
+  const panCheckRef = useRef(null)
+  const [emailChecking, setEmailChecking] = useState(false)
+  const emailCheckRef = useRef(null)
+
+  useEffect(() => {
+    const IN_STATES = State.getStatesOfCountry("IN")
+    setStates(IN_STATES.map(state => ({ label: state.name, value: state.name, isoCode: state.isoCode })))
+  }, [])
+
+  useEffect(() => {
+    if (formData.state) {
+      const selectedState = states.find(s => s.value === formData.state)
+      if (selectedState) {
+        const stateCities = City.getCitiesOfState("IN", selectedState.isoCode)
+        setCities(stateCities.map(city => ({ label: city.name, value: city.name })))
+      } else {
+        setCities([])
+      }
+    } else {
+      setCities([])
+    }
+  }, [formData.state, states])
+
+  // Real-time vehicle number uniqueness check with debounce
+  useEffect(() => {
+    const vehicleNumber = formData.vehicleNumber
+    if (!vehicleNumber || formData.vehicleType === "bicycle") return
+
+    // Only check when format is valid
+    const isValidFormat = /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/.test(vehicleNumber)
+    if (!isValidFormat) return
+
+    // Clear any previous timer
+    if (vehicleNumberCheckRef.current) {
+      clearTimeout(vehicleNumberCheckRef.current)
+    }
+
+    setVehicleNumberChecking(true)
+    vehicleNumberCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await deliveryAPI.checkVehicleNumber(vehicleNumber)
+        const isRegistered = res?.data?.data?.isRegistered
+        if (isRegistered) {
+          setErrors(prev => ({ ...prev, vehicleNumber: "This vehicle number is already registered" }))
+        } else {
+          setErrors(prev => {
+            if (prev.vehicleNumber === "This vehicle number is already registered") {
+              return { ...prev, vehicleNumber: "" }
+            }
+            return prev
+          })
+        }
+      } catch {
+        // Silently ignore check failures
+      } finally {
+        setVehicleNumberChecking(false)
+      }
+    }, 600)
+
+    return () => {
+      if (vehicleNumberCheckRef.current) clearTimeout(vehicleNumberCheckRef.current)
+    }
+  }, [formData.vehicleNumber, formData.vehicleType])
+
+  // Real-time Aadhaar uniqueness check
+  useEffect(() => {
+    const raw = formData.aadharNumber
+    const digits = String(raw || '').replace(/\s/g, '')
+    if (digits.length !== 12) return
+    if (aadharCheckRef.current) clearTimeout(aadharCheckRef.current)
+    setAadharChecking(true)
+    aadharCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await deliveryAPI.checkField('aadhar', digits)
+        const isRegistered = res?.data?.data?.isRegistered
+        setErrors(prev => ({
+          ...prev,
+          aadharNumber: isRegistered ? 'This Aadhaar number is already registered' : (prev.aadharNumber === 'This Aadhaar number is already registered' ? '' : prev.aadharNumber)
+        }))
+      } catch { /* silent */ } finally { setAadharChecking(false) }
+    }, 600)
+    return () => { if (aadharCheckRef.current) clearTimeout(aadharCheckRef.current) }
+  }, [formData.aadharNumber])
+
+  // Real-time PAN uniqueness check
+  useEffect(() => {
+    const pan = formData.panNumber
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) return
+    if (panCheckRef.current) clearTimeout(panCheckRef.current)
+    setPanChecking(true)
+    panCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await deliveryAPI.checkField('pan', pan)
+        const isRegistered = res?.data?.data?.isRegistered
+        setErrors(prev => ({
+          ...prev,
+          panNumber: isRegistered ? 'This PAN number is already registered' : (prev.panNumber === 'This PAN number is already registered' ? '' : prev.panNumber)
+        }))
+      } catch { /* silent */ } finally { setPanChecking(false) }
+    }, 600)
+    return () => { if (panCheckRef.current) clearTimeout(panCheckRef.current) }
+  }, [formData.panNumber])
+
+  // Real-time email uniqueness check
+  useEffect(() => {
+    const email = formData.email
+    if (!email || !email.includes('@') || !email.includes('.')) return
+    if (emailCheckRef.current) clearTimeout(emailCheckRef.current)
+    setEmailChecking(true)
+    emailCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await deliveryAPI.checkField('email', email)
+        const isRegistered = res?.data?.data?.isRegistered
+        setErrors(prev => ({
+          ...prev,
+          email: isRegistered ? 'This email is already registered' : (prev.email === 'This email is already registered' ? '' : prev.email)
+        }))
+      } catch { /* silent */ } finally { setEmailChecking(false) }
+    }, 600)
+    return () => { if (emailCheckRef.current) clearTimeout(emailCheckRef.current) }
+  }, [formData.email])
+
   const [keyboardInset, setKeyboardInset] = useState(0)
 
   useEffect(() => {
@@ -130,6 +262,19 @@ export default function SignupStep1() {
     if (/^[^a-zA-Z0-9]+$/.test(trimmed)) return false
     if (/([@#$%\^&*+=_{}\[\]\\|/<>~`])\1{2,}/.test(trimmed)) return false
     return true
+  }
+
+  const handleSelectChange = (name, selectedOption) => {
+    setFormData(prev => {
+      const newData = { ...prev, [name]: selectedOption ? selectedOption.value : "" }
+      if (name === "state") {
+        newData.city = ""
+      }
+      return newData
+    })
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }))
+    }
   }
 
   const handleChange = (e) => {
@@ -371,20 +516,27 @@ export default function SignupStep1() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email (Optional)
             </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="email"
-              inputMode="email"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.email ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="Enter your email"
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+            <div className="relative">
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="email"
+                inputMode="email"
+                className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.email ? "border-red-500" : emailChecking ? "border-yellow-400" : (formData.email && formData.email.includes('@') && !errors.email ? "border-green-500" : "border-gray-300")}`}
+                placeholder="Enter your email"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                {emailChecking && <svg className="w-4 h-4 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+                {!emailChecking && errors.email && <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>}
+                {!emailChecking && !errors.email && formData.email && formData.email.includes('@') && <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>}
+              </div>
+            </div>
+            {emailChecking && <p className="text-yellow-600 text-xs mt-1">Checking availability...</p>}
+            {errors.email && !emailChecking && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           {/* Address */}
@@ -404,37 +556,58 @@ export default function SignupStep1() {
             {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
           </div>
 
-          {/* City and State */}
+          {/* State and City */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.city ? "border-red-500" : "border-gray-300"
-                  }`}
-                placeholder="City"
-              />
-              {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
-            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 State <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.state ? "border-red-500" : "border-gray-300"
-                  }`}
+              <Select
+                options={states}
+                value={states.find(s => s.value === formData.state) || null}
+                onChange={(option) => handleSelectChange("state", option)}
                 placeholder="State"
+                isSearchable
+                styles={{
+                  control: (base, state) => ({
+                    ...base,
+                    padding: '3px 2px',
+                    borderRadius: '0.5rem',
+                    borderColor: errors.state ? '#ef4444' : state.isFocused ? '#22c55e' : '#d1d5db',
+                    boxShadow: state.isFocused ? '0 0 0 2px rgba(34, 197, 94, 0.5)' : 'none',
+                    '&:hover': {
+                      borderColor: state.isFocused ? '#22c55e' : '#9ca3af'
+                    }
+                  })
+                }}
               />
               {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                City <span className="text-red-500">*</span>
+              </label>
+              <Select
+                options={cities}
+                value={cities.find(c => c.value === formData.city) || null}
+                onChange={(option) => handleSelectChange("city", option)}
+                placeholder="City"
+                isSearchable
+                isDisabled={!formData.state}
+                styles={{
+                  control: (base, state) => ({
+                    ...base,
+                    padding: '3px 2px',
+                    borderRadius: '0.5rem',
+                    borderColor: errors.city ? '#ef4444' : state.isFocused ? '#22c55e' : '#d1d5db',
+                    boxShadow: state.isFocused ? '0 0 0 2px rgba(34, 197, 94, 0.5)' : 'none',
+                    '&:hover': {
+                      borderColor: state.isFocused ? '#22c55e' : '#9ca3af'
+                    }
+                  })
+                }}
+              />
+              {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
             </div>
           </div>
 
@@ -478,17 +651,41 @@ export default function SignupStep1() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Vehicle Number <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="vehicleNumber"
-                  value={formData.vehicleNumber}
-                  onChange={handleChange}
-                  maxLength={10}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.vehicleNumber ? "border-red-500" : "border-gray-300"
-                    }`}
-                  placeholder="e.g., MH12AB1234"
-                />
-                {errors.vehicleNumber && <p className="text-red-500 text-sm mt-1">{errors.vehicleNumber}</p>}
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="vehicleNumber"
+                    value={formData.vehicleNumber}
+                    onChange={handleChange}
+                    maxLength={10}
+                    className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.vehicleNumber ? "border-red-500" : (vehicleNumberChecking ? "border-yellow-400" : (!errors.vehicleNumber && formData.vehicleNumber && /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/.test(formData.vehicleNumber) ? "border-green-500" : "border-gray-300"))
+                      }`}
+                    placeholder="e.g., MH12AB1234"
+                  />
+                  {/* Status icon inside input */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    {vehicleNumberChecking && (
+                      <svg className="w-4 h-4 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                    )}
+                    {!vehicleNumberChecking && errors.vehicleNumber && (
+                      <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {!vehicleNumberChecking && !errors.vehicleNumber && formData.vehicleNumber && /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/.test(formData.vehicleNumber) && (
+                      <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                {vehicleNumberChecking && (
+                  <p className="text-yellow-600 text-xs mt-1">Checking availability...</p>
+                )}
+                {errors.vehicleNumber && !vehicleNumberChecking && <p className="text-red-500 text-sm mt-1">{errors.vehicleNumber}</p>}
               </div>
 
               {/* Driving License Number */}
@@ -516,17 +713,24 @@ export default function SignupStep1() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               PAN Number <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              name="panNumber"
-              value={formData.panNumber}
-              onChange={handleChange}
-              maxLength={10}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 uppercase ${errors.panNumber ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="ABCDE1234F"
-            />
-            {errors.panNumber && <p className="text-red-500 text-sm mt-1">{errors.panNumber}</p>}
+            <div className="relative">
+              <input
+                type="text"
+                name="panNumber"
+                value={formData.panNumber}
+                onChange={handleChange}
+                maxLength={10}
+                className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 uppercase ${errors.panNumber ? "border-red-500" : panChecking ? "border-yellow-400" : (formData.panNumber && /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) && !errors.panNumber ? "border-green-500" : "border-gray-300")}`}
+                placeholder="ABCDE1234F"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                {panChecking && <svg className="w-4 h-4 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+                {!panChecking && errors.panNumber && <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>}
+                {!panChecking && !errors.panNumber && formData.panNumber && /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) && <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>}
+              </div>
+            </div>
+            {panChecking && <p className="text-yellow-600 text-xs mt-1">Checking availability...</p>}
+            {errors.panNumber && !panChecking && <p className="text-red-500 text-sm mt-1">{errors.panNumber}</p>}
           </div>
 
           {/* Aadhar Number */}
@@ -534,30 +738,37 @@ export default function SignupStep1() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Aadhar Number <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              name="aadharNumber"
-              value={formData.aadharNumber}
-              onChange={handleChange}
-              maxLength={14}
-              inputMode="numeric"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.aadharNumber ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="1234 5678 9012"
-            />
-            {errors.aadharNumber && <p className="text-red-500 text-sm mt-1">{errors.aadharNumber}</p>}
+            <div className="relative">
+              <input
+                type="text"
+                name="aadharNumber"
+                value={formData.aadharNumber}
+                onChange={handleChange}
+                maxLength={14}
+                inputMode="numeric"
+                className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.aadharNumber ? "border-red-500" : aadharChecking ? "border-yellow-400" : (formData.aadharNumber.replace(/\s/g, '').length === 12 && !errors.aadharNumber ? "border-green-500" : "border-gray-300")}`}
+                placeholder="1234 5678 9012"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                {aadharChecking && <svg className="w-4 h-4 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+                {!aadharChecking && errors.aadharNumber && <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>}
+                {!aadharChecking && !errors.aadharNumber && formData.aadharNumber.replace(/\s/g, '').length === 12 && <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>}
+              </div>
+            </div>
+            {aadharChecking && <p className="text-yellow-600 text-xs mt-1">Checking availability...</p>}
+            {errors.aadharNumber && !aadharChecking && <p className="text-red-500 text-sm mt-1">{errors.aadharNumber}</p>}
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting}
-            className={`w-full py-4 rounded-lg font-bold text-white text-base transition-colors mt-6 ${isSubmitting
+            disabled={isSubmitting || vehicleNumberChecking || aadharChecking || panChecking || emailChecking}
+            className={`w-full py-4 rounded-lg font-bold text-white text-base transition-colors mt-6 ${isSubmitting || vehicleNumberChecking || aadharChecking || panChecking || emailChecking
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-[#00B761] hover:bg-[#00A055]"
               }`}
           >
-            {isSubmitting ? "Saving..." : "Continue"}
+            {isSubmitting ? "Saving..." : (vehicleNumberChecking || aadharChecking || panChecking || emailChecking) ? "Checking..." : "Continue"}
           </button>
         </form>
       </div>

@@ -470,14 +470,38 @@ export const registerRestaurant = async (payload, files) => {
         try {
             const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
             void notifyAdminsSafely({
-                title: 'New Restaurant Registration 🏪',
-                body: `A new restaurant "${restaurant.restaurantName}" has registered and is pending approval.`,
+                title: '🏪 New Restaurant Application',
+                body: `${restaurant.restaurantName} has registered and is pending approval. Tap to review.`,
+                role: 'ADMIN',
                 data: {
-                    type: 'new_registration',
+                    type: 'new_restaurant_application',
                     subType: 'restaurant',
-                    id: String(restaurant._id)
+                    id: String(restaurant._id),
+                    name: restaurant.restaurantName,
+                    link: '/admin/food/restaurants/joining-request',
+                    click_action: '/admin/food/restaurants/joining-request'
                 }
             });
+
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
+            const io = getIO();
+            if (io) {
+                const admins = await FoodAdmin.find({ isActive: true }).select('_id').lean();
+                admins.forEach((admin) => {
+                    io.to(rooms.admin(admin._id)).emit('admin_notification', {
+                        type: 'restaurant_application',
+                        id: String(restaurant._id),
+                        name: restaurant.restaurantName,
+                        ownerName: restaurant.ownerName || '',
+                        phone: restaurant.ownerPhone || '',
+                        city: restaurant.city || '',
+                        message: `${restaurant.restaurantName} has applied as a restaurant`,
+                        link: '/admin/food/restaurants/joining-request',
+                        timestamp: new Date().toISOString()
+                    });
+                });
+            }
         } catch (e) {
             console.error('Failed to notify admins of new restaurant registration:', e);
         }

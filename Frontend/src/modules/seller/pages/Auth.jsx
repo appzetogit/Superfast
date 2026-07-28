@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Store, Phone, KeyRound, ArrowLeft, Loader2, ConciergeBell, Soup, Utensils, Home } from "lucide-react";
+import { ArrowRight, ShieldCheck, Store, Phone, KeyRound, ArrowLeft, Loader2, ConciergeBell, Soup, Utensils, Home, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@food/components/ui/button";
@@ -272,8 +272,17 @@ export default function SellerAuth() {
                      <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
                    </div>
                 </div>
-                <p className="text-sm text-gray-500 font-medium">
-                  Sent to <span className="text-[#16a34a] font-bold">{maskedPhone}</span>
+                <p className="text-sm text-gray-500 font-medium flex items-center justify-center gap-1.5 flex-wrap">
+                  <span>Sent to <span className="text-[#16a34a] font-bold">{maskedPhone}</span></span>
+                  <button
+                    type="button"
+                    onClick={() => setStep("phone")}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#16a34a] hover:underline bg-[#16a34a]/10 px-2 py-0.5 rounded-full transition-all"
+                    title="Edit phone number"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
                 </p>
                 <div className="h-1 w-8 bg-[#16a34a] mx-auto mt-2 rounded-full" />
               </div>

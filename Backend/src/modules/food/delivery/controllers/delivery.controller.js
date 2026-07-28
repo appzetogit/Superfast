@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner } from '../services/delivery.service.js';
+import { checkVehicleNumber, checkAadharNumber, checkPanNumber, checkEmail, registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner } from '../services/delivery.service.js';
 import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
@@ -7,6 +7,45 @@ import { validateDeliveryRegisterDto, validateDeliveryProfileUpdateDto, validate
 import { sendResponse } from '../../../../utils/response.js';
 import { getDeliveryReferralStats } from '../services/deliveryReferral.service.js';
 import { transformImageFields } from '../../../../utils/urlHelper.js';
+
+export const checkVehicleNumberController = async (req, res, next) => {
+    try {
+        const { vehicleNumber } = req.query;
+        if (!vehicleNumber) {
+            return sendResponse(res, 400, 'Vehicle number is required');
+        }
+        
+        const isRegistered = await checkVehicleNumber(vehicleNumber);
+        return sendResponse(res, 200, 'Check complete', { isRegistered });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/** Unified field uniqueness check: ?field=aadhar|pan|email&value=... */
+export const checkFieldController = async (req, res, next) => {
+    try {
+        const { field, value } = req.query;
+        if (!field || !value) {
+            return sendResponse(res, 400, 'field and value are required');
+        }
+
+        let isRegistered = false;
+        if (field === 'aadhar') {
+            isRegistered = await checkAadharNumber(value);
+        } else if (field === 'pan') {
+            isRegistered = await checkPanNumber(value);
+        } else if (field === 'email') {
+            isRegistered = await checkEmail(value);
+        } else {
+            return sendResponse(res, 400, 'Invalid field. Must be aadhar, pan, or email');
+        }
+
+        return sendResponse(res, 200, 'Check complete', { isRegistered });
+    } catch (error) {
+        next(error);
+    }
+};
 
 export const registerDeliveryPartnerController = async (req, res, next) => {
     try {

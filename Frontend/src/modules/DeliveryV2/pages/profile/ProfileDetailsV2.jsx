@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import BottomPopup from "@delivery/components/BottomPopup"
 import { toast } from "sonner"
-import { openCamera, isFlutterBridgeAvailable } from "@food/utils/imageUploadUtils"
+import { openCamera, openGallery } from "@food/utils/imageUploadUtils"
 import { deliveryAPI } from "@food/api"
 import { motion, AnimatePresence } from "framer-motion"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
@@ -221,37 +221,37 @@ export const ProfileDetailsV2 = () => {
   }
 
   const handleTakeCameraPhoto = (target) => {
-    if (isFlutterBridgeAvailable()) {
-      openCamera({
-        onSelectFile: (file) => {
-          if (target === "profilePhoto") {
-            setUploadTarget("profilePhoto")
-            uploadProfileFile(file)
-            return
-          }
+    openCamera({
+      onSelectFile: (file) => {
+        if (target === "profilePhoto") {
+          setUploadTarget("profilePhoto")
+          uploadProfileFile(file)
+          return
+        }
 
-          if (target === "upiQrCode") {
-            uploadUpiQrFile(file)
-          }
-        },
-        fileNamePrefix: `profile-${target}`,
-      })
-      return
-    }
-
-    if (target === "profilePhoto") {
-      profileCameraInputRef.current?.click()
-      return
-    }
-
-    if (target === "upiQrCode") {
-      upiQrCameraInputRef.current?.click()
-    }
+        if (target === "upiQrCode") {
+          uploadUpiQrFile(file)
+        }
+      },
+      fileNamePrefix: `profile-${target}`,
+    })
   }
 
-  const handlePickFromGallery = (target, ref) => {
-    setUploadTarget(target)
-    ref.current?.click()
+  const handlePickFromGallery = (target) => {
+    openGallery({
+      onSelectFile: (file) => {
+        if (target === "profilePhoto") {
+          setUploadTarget("profilePhoto")
+          uploadProfileFile(file)
+          return
+        }
+
+        if (target === "upiQrCode") {
+          uploadUpiQrFile(file)
+        }
+      },
+      fileNamePrefix: `profile-${target}`,
+    })
   }
 
 

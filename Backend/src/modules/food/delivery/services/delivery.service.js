@@ -9,6 +9,48 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import { QuickReturnRequest } from '../../../quick-commerce/models/ReturnRequest.model.js';
 
+export const checkVehicleNumber = async (vehicleNumber) => {
+    if (!vehicleNumber) return false;
+    const existing = await FoodDeliveryPartner.findOne({ 
+        vehicleNumber: { $regex: new RegExp(`^${vehicleNumber}$`, 'i') },
+        status: { $ne: 'rejected' } 
+    }).select('_id').lean();
+    return !!existing;
+};
+
+export const checkAadharNumber = async (aadharNumber) => {
+    if (!aadharNumber) return false;
+    const digits = String(aadharNumber).replace(/\s/g, '');
+    const existing = await FoodDeliveryPartner.findOne({
+        aadharNumber: { $regex: new RegExp(`^${digits.replace(/(.{4})(.{4})(.{4})/, '$1.?$2.?$3')}$`) },
+        status: { $ne: 'rejected' }
+    }).select('_id').lean();
+    // fallback exact match after stripping spaces
+    if (!existing) {
+        const allCandidates = await FoodDeliveryPartner.find({ status: { $ne: 'rejected' } }).select('aadharNumber').lean();
+        return allCandidates.some(p => p.aadharNumber && p.aadharNumber.replace(/\s/g, '') === digits);
+    }
+    return !!existing;
+};
+
+export const checkPanNumber = async (panNumber) => {
+    if (!panNumber) return false;
+    const existing = await FoodDeliveryPartner.findOne({
+        panNumber: { $regex: new RegExp(`^${panNumber}$`, 'i') },
+        status: { $ne: 'rejected' }
+    }).select('_id').lean();
+    return !!existing;
+};
+
+export const checkEmail = async (email) => {
+    if (!email) return false;
+    const existing = await FoodDeliveryPartner.findOne({
+        email: { $regex: new RegExp(`^${email}$`, 'i') },
+        status: { $ne: 'rejected' }
+    }).select('_id').lean();
+    return !!existing;
+};
+
 export const registerDeliveryPartner = async (payload, files) => {
     const {
         name, phone, email, countryCode, address, city, state,
@@ -103,12 +145,18 @@ export const registerDeliveryPartner = async (payload, files) => {
     try {
         const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
         void notifyAdminsSafely({
-            title: 'New Delivery Partner Registration 🚲',
-            body: `A new delivery partner "${partner.name}" has signed up and is pending approval.`,
+            title: '🛵 New Delivery Partner Application',
+            body: `${partner.name} has applied to join as a delivery partner. Tap to review.`,
+            role: 'ADMIN',
             data: {
-                type: 'new_registration',
+                type: 'new_delivery_partner_application',
                 subType: 'delivery_partner',
-                id: String(partner._id)
+                id: String(partner._id),
+                name: partner.name,
+                phone: partner.phone || '',
+                vehicleType: partner.vehicleType || '',
+                link: '/admin/food/delivery-partners/join-request',
+                click_action: '/admin/food/delivery-partners/join-request'
             }
         });
 
@@ -119,9 +167,16 @@ export const registerDeliveryPartner = async (payload, files) => {
             const admins = await FoodAdmin.find({ isActive: true }).select('_id').lean();
             admins.forEach((admin) => {
                 io.to(rooms.admin(admin._id)).emit('admin_notification', {
-                    type: 'delivery_partner_registration',
+                    type: 'delivery_partner_application',
                     id: String(partner._id),
-                    name: partner.name
+                    name: partner.name,
+                    phone: partner.phone || '',
+                    vehicleType: partner.vehicleType || '',
+                    city: partner.city || '',
+                    state: partner.state || '',
+                    message: `${partner.name} has applied as a delivery partner`,
+                    link: '/admin/food/delivery-partners/join-request',
+                    timestamp: new Date().toISOString()
                 });
             });
         }

@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom"
 import AdminSidebar from "./AdminSidebar"
 import AdminNavbar from "./AdminNavbar"
 import { API_BASE_URL } from "@food/api/config"
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
@@ -11,6 +12,19 @@ const debugError = (...args) => { }
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Register for web push notifications so admin receives FCM pushes even when tab is in background
+  useEffect(() => {
+    const token = localStorage.getItem("auth_admin") || localStorage.getItem("admin_accessToken");
+    if (!token) return;
+    // Small delay to ensure the page is fully mounted before requesting permission
+    const timer = setTimeout(() => {
+      registerWebPushForCurrentModule(window.location.pathname).catch((e) => {
+        debugWarn("Admin FCM registration failed:", e?.message || e);
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Get initial collapsed state from localStorage to set initial margin
   useEffect(() => {

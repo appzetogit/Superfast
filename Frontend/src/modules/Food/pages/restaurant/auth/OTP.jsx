@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, ShieldCheck, Timer, RefreshCw, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home } from "lucide-react"
+import { ArrowLeft, ShieldCheck, Timer, RefreshCw, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home, Pencil } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
 import {
@@ -371,8 +371,17 @@ export default function RestaurantOTP() {
                  <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#49AB14] transform rotate-45" />
                </div>
             </div>
-            <p className="text-sm text-gray-500 font-medium">
-              Sent to <span className="text-[#49AB14] font-bold">{contactInfo}</span>
+            <p className="text-sm text-gray-500 font-medium flex items-center justify-center gap-1.5 flex-wrap">
+              <span>Sent to <span className="text-[#49AB14] font-bold">{contactInfo}</span></span>
+              <button
+                type="button"
+                onClick={() => navigate("/food/restaurant/login")}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#49AB14] hover:underline bg-[#49AB14]/10 px-2 py-0.5 rounded-full transition-all"
+                title="Edit phone number"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </p>
             <div className="h-1 w-8 bg-[#49AB14] mx-auto mt-2 rounded-full" />
           </div>

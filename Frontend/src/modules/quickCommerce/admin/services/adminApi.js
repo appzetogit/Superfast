@@ -150,6 +150,7 @@ export const adminApi = {
     };
   },
   signup: () => Promise.reject(new Error('Admin signup is not available in this project')),
+  deleteDeliveryPartner: (id) => axiosInstance.delete(`/food/admin/delivery/partners/${String(id)}`),
 
   getStats: async () => ({
     data: {

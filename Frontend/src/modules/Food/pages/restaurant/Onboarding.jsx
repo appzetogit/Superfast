@@ -23,7 +23,7 @@ import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { clearModuleAuth, clearAuthData } from "@food/utils/auth"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
-import { convertBase64ToFile, isFlutterBridgeAvailable, openCamera } from "@food/utils/imageUploadUtils"
+import { convertBase64ToFile, isFlutterBridgeAvailable, openCamera, openGallery } from "@food/utils/imageUploadUtils"
 import { getCachedSettings } from "@common/utils/businessSettings"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -732,10 +732,13 @@ export default function RestaurantOnboarding() {
     setSourcePicker((prev) => ({ ...prev, isOpen: false }))
   }
 
-  const handlePickFromDevice = () => {
-    const fallbackRef = sourcePicker.fallbackInputRef
+  const handlePickFromDevice = async () => {
+    const pickerConfig = {
+      onSelectFile: sourcePicker.onSelectFile,
+      fileNamePrefix: sourcePicker.fileNamePrefix,
+    }
     closeImageSourcePicker()
-    fallbackRef?.current?.click()
+    await openGallery(pickerConfig)
   }
 
   const handlePickFromCamera = async () => {

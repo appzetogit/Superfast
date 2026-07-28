@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Loader2, AlertCircle, Smartphone } from "lucide-react"
+import { ArrowLeft, Loader2, AlertCircle, Smartphone, Pencil } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
@@ -395,6 +395,10 @@ export default function OTP() {
     }
   }
 
+  const handleBackToLogin = () => {
+    navigate(contactType === "email" ? "/food/login/email" : "/food/login")
+  }
+
   const handleResend = async () => {
     if (resendTimer > 0 || isLoading) return
 
@@ -481,9 +485,22 @@ export default function OTP() {
                     : "Verify your phone"}
               </h2>
               <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                {showNameInput
-                  ? "We're excited to have you join us! Please tell us your full name to get started."
-                  : `We've sent a 4-digit code to ${contactInfo}`}
+                {showNameInput ? (
+                  "We're excited to have you join us! Please tell us your full name to get started."
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 justify-center flex-wrap">
+                    <span>We've sent a 4-digit code to <strong className="text-gray-800 font-semibold">{contactInfo}</strong></span>
+                    <button
+                      type="button"
+                      onClick={handleBackToLogin}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline ml-1"
+                      title="Edit phone number"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+                  </span>
+                )}
               </p>
               <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
             </div>

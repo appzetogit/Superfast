@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { Search, Download, ChevronDown, Eye, User, Star, ArrowUpDown, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, Trash2, X } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, User, Star, ChevronsUpDown, ChevronUp, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, Trash2, X } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
@@ -27,8 +27,34 @@ export default function DeliverymanList() {
   const [viewDetails, setViewDetails] = useState(null)
   const [editingDeliveryId, setEditingDeliveryId] = useState(null)
   const [editValues, setEditValues] = useState({ pocketBalance: "", cashInHand: "" })
-  const [savingDeliveryId, setSavingDeliveryId] = useState(null)
   const [deletingDeliveryId, setDeletingDeliveryId] = useState(null)
+  const [sortColumn, setSortColumn] = useState(null)
+  const [sortDirection, setSortDirection] = useState("asc")
+
+  const handleSort = (columnKey) => {
+    if (sortColumn === columnKey) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc")
+      } else {
+        setSortColumn(null)
+        setSortDirection("asc")
+      }
+    } else {
+      setSortColumn(columnKey)
+      setSortDirection("asc")
+    }
+  }
+
+  const renderSortIcon = (columnKey) => {
+    if (sortColumn !== columnKey) {
+      return <ChevronsUpDown className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-slate-600 transition-colors" />
+    }
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-4 h-4 shrink-0 text-blue-600 font-bold" strokeWidth={3} />
+    ) : (
+      <ChevronDown className="w-4 h-4 shrink-0 text-blue-600 font-bold" strokeWidth={3} />
+    )
+  }
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     name: true,
@@ -159,9 +185,37 @@ availableCashLimit: wallet?.availableCashLimit || 0,
   }, [searchQuery])
 
   const filteredDeliverymen = useMemo(() => {
-    // Backend already handles search, but we can do client-side filtering if needed
-    return deliverymen
-  }, [deliverymen])
+    if (!sortColumn) return deliverymen
+
+    return [...deliverymen].sort((a, b) => {
+      let aVal = a[sortColumn]
+      let bVal = b[sortColumn]
+
+      if (sortColumn === "si") {
+        aVal = a._id
+        bVal = b._id
+      } else if (sortColumn === "contact") {
+        aVal = a.phone || a.email || ""
+        bVal = b.phone || b.email || ""
+      } else if (sortColumn === "zone") {
+        aVal = a.zoneName || a.zone || a.city || ""
+        bVal = b.zoneName || b.zone || b.city || ""
+      } else if (["totalOrders", "pocketBalance", "cashInHand", "remainingCashLimit"].includes(sortColumn)) {
+        aVal = Number(aVal || 0)
+        bVal = Number(bVal || 0)
+      } else if (sortColumn === "availabilityStatus") {
+        aVal = String(aVal || "").toLowerCase()
+        bVal = String(bVal || "").toLowerCase()
+      } else if (sortColumn === "name") {
+        aVal = String(a.name || "").toLowerCase()
+        bVal = String(b.name || "").toLowerCase()
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1
+      return 0
+    })
+  }, [deliverymen, sortColumn, sortDirection])
 
   const paginatedDeliverymen = useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -473,74 +527,101 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     {visibleColumns.si && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("si")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>SI</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("si")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.name && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("name")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Name</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("name")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.contact && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("contact")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Contact</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("contact")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.zone && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("zone")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Zone</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("zone")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.totalOrders && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("totalOrders")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Total Orders</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("totalOrders")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.pocketBalance && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("pocketBalance")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Pocket Balance</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("pocketBalance")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.cashInHand && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("cashInHand")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Cash In Hand</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("cashInHand")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.remainingCashLimit && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("remainingCashLimit")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Remaining Cash Limit</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("remainingCashLimit")}
                         </div>
                       </th>
                     )}
                     {visibleColumns.availabilityStatus && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th
+                        onClick={() => handleSort("availabilityStatus")}
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                      >
                         <div className="flex items-center gap-2">
                           <span>Availability Status</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          {renderSortIcon("availabilityStatus")}
                         </div>
                       </th>
                     )}

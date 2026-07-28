@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Phone, ArrowRight, ShieldCheck, Loader2, UserRound, Zap, HeadphonesIcon } from "lucide-react"
+import { Phone, ArrowRight, ShieldCheck, Loader2, UserRound, Zap, HeadphonesIcon, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI, userAPI } from "@food/api"
 import { isModuleAuthenticated, setAuthData } from "@food/utils/auth"
@@ -63,6 +63,14 @@ export default function UnifiedOTPFastLogin() {
     setNameError("")
   }
 
+  const handleEditNumber = () => {
+    setStep(1)
+    setOtp("")
+    setResendTimer(0)
+    clearNameFlow()
+    setOtpSent(false)
+  }
+
   const normalizedPhone = () => {
     const digits = String(phoneNumber).replace(/\D/g, "").slice(-10)
     return digits.length === 10 ? digits : ""
@@ -120,12 +128,6 @@ export default function UnifiedOTPFastLogin() {
     }
   }
 
-  const handleEditNumber = () => {
-    setStep(1)
-    setOtp("")
-    setResendTimer(0)
-    clearNameFlow()
-  }
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault()
@@ -388,8 +390,19 @@ export default function UnifiedOTPFastLogin() {
             ) : (
               <div className="space-y-4">
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 font-medium">Enter the 4-digit code sent to</p>
-                  <p className="text-sm text-gray-900 font-bold mt-1">+91 {phoneNumber} <button type="button" onClick={handleEditNumber} className="text-xs ml-1 hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Edit</button></p>
+                  <p className="text-sm text-gray-900 font-bold mt-1 inline-flex items-center gap-1.5 justify-center">
+                    <span>+91 {phoneNumber}</span>
+                    <button
+                      type="button"
+                      onClick={handleEditNumber}
+                      className="inline-flex items-center gap-1 text-xs font-bold hover:underline bg-orange-50 px-2 py-0.5 rounded-full transition-all"
+                      style={{ color: SUPERFAST_BRAND.primary }}
+                      title="Edit phone number"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Edit</span>
+                    </button>
+                  </p>
                 </div>
                 <div className="flex justify-center gap-2">
                   {[0, 1, 2, 3].map((index) => (
