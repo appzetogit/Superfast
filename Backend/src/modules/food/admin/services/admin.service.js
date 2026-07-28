@@ -841,9 +841,15 @@ export async function getTransactionReport(query = {}) {
                 ? Number(pricing.platformFee || 0) || 0
                 : platformFeeDerived;
 
-        const adminEarning = tx.amounts?.platformNetProfit || 0;
-        const restaurantEarning = tx.amounts?.restaurantShare || 0;
-        const deliverymanEarning = tx.amounts?.riderShare || 0;
+        const adminEarning = tx.amounts?.platformNetProfit !== undefined && tx.amounts?.platformNetProfit !== null
+            ? tx.amounts.platformNetProfit
+            : (platformFee + deliveryFee + (pricing.restaurantCommission || 0) - (tx.amounts?.riderShare || 0));
+        
+        const restaurantEarning = tx.amounts?.restaurantShare !== undefined && tx.amounts?.restaurantShare !== null
+            ? tx.amounts.restaurantShare
+            : Math.max(0, subtotal + packagingFee - (pricing.restaurantCommission || 0));
+            
+        const deliverymanEarning = tx.amounts?.riderShare || order.riderEarning || 0;
 
         return {
             id: tx._id,

@@ -204,8 +204,8 @@ availableCashLimit: wallet?.availableCashLimit || 0,
         aVal = Number(aVal || 0)
         bVal = Number(bVal || 0)
       } else if (sortColumn === "availabilityStatus") {
-        aVal = String(aVal || "").toLowerCase()
-        bVal = String(bVal || "").toLowerCase()
+        aVal = String(a.status || "").toLowerCase()
+        bVal = String(b.status || "").toLowerCase()
       } else if (sortColumn === "name") {
         aVal = String(a.name || "").toLowerCase()
         bVal = String(b.name || "").toLowerCase()

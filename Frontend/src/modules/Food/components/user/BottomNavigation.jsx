@@ -67,7 +67,7 @@ export default function BottomNavigation() {
       <DraggableModuleSwitcher />
 
       <div
-        className="relative bg-white dark:bg-[#1a1a1a] border-t border-gray-200 dark:border-gray-800 shadow-lg"
+        className="relative bg-white dark:bg-[#1a1a1a] border-t border-gray-200 dark:border-gray-800 shadow-lg pb-[env(safe-area-inset-bottom)]"
       >
       <div className="flex items-center justify-around h-auto px-2 sm:px-4">
         {/* Delivery Tab */}

@@ -14,24 +14,32 @@ const BannerSection = memo(({
   navigate,
   backendOrigin = ""
 }) => {
-  const [touchStartX, setTouchStartX] = useState(null);
-  const [touchEndX, setTouchEndX] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const autoSlideTimerRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const bannerCount = heroBannerImages.length;
 
+  const scrollToIndex = useCallback((index) => {
+    if (!scrollRef.current) return;
+    const width = scrollRef.current.offsetWidth;
+    scrollRef.current.scrollTo({ left: index * width, behavior: 'smooth' });
+    setCurrentBannerIndex(index);
+  }, [setCurrentBannerIndex]);
+
   const goToNext = useCallback(() => {
     if (bannerCount <= 1) return;
-    setCurrentBannerIndex((prev) => (prev + 1) % bannerCount);
-  }, [bannerCount, setCurrentBannerIndex]);
+    const nextIndex = (currentBannerIndex + 1) % bannerCount;
+    scrollToIndex(nextIndex);
+  }, [bannerCount, currentBannerIndex, scrollToIndex]);
 
   const goToPrev = useCallback(() => {
     if (bannerCount <= 1) return;
-    setCurrentBannerIndex((prev) => (prev - 1 + bannerCount) % bannerCount);
-  }, [bannerCount, setCurrentBannerIndex]);
+    const prevIndex = (currentBannerIndex - 1 + bannerCount) % bannerCount;
+    scrollToIndex(prevIndex);
+  }, [bannerCount, currentBannerIndex, scrollToIndex]);
 
-  // Auto-slide effect that pauses on user hover or touch
+  // Auto-slide effect that pauses on user hover
   useEffect(() => {
     if (bannerCount <= 1 || isHovered) return;
     autoSlideTimerRef.current = setInterval(() => {
@@ -52,29 +60,14 @@ const BannerSection = memo(({
 
   if (!heroBannerImages || bannerCount === 0) return null;
 
-  // Touch gesture handlers for manual swiping
-  const handleTouchStart = (e) => {
-    setIsHovered(true);
-    setTouchStartX(e.targetTouches[0].clientX);
-    setTouchEndX(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e) => {
-    setTouchEndX(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    setIsHovered(false);
-    if (!touchStartX || !touchEndX) return;
-    const distance = touchStartX - touchEndX;
-    const minSwipeDistance = 35;
-    if (distance > minSwipeDistance) {
-      goToNext(); // Swiped left -> next banner
-    } else if (distance < -minSwipeDistance) {
-      goToPrev(); // Swiped right -> previous banner
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollLeft = scrollRef.current.scrollLeft;
+    const width = scrollRef.current.offsetWidth;
+    const index = Math.round(scrollLeft / width);
+    if (index !== currentBannerIndex && index >= 0 && index < bannerCount) {
+      setCurrentBannerIndex(index);
     }
-    setTouchStartX(null);
-    setTouchEndX(null);
   };
 
   const handleBannerClick = (index) => {
@@ -92,14 +85,15 @@ const BannerSection = memo(({
       className="group relative h-full w-full overflow-hidden rounded-[22px] select-none bg-transparent"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
     >
       {/* Sliding Track */}
       <div
-        className="flex h-full w-full transition-transform duration-500 ease-out cursor-pointer"
-        style={{ transform: `translateX(-${currentBannerIndex * 100}%)` }}
+        ref={scrollRef}
+        className="flex h-full w-full overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-pointer [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        onScroll={handleScroll}
       >
         {heroBannerImages.map((image, index) => {
           const bannerData = heroBannersData[index];
@@ -108,7 +102,7 @@ const BannerSection = memo(({
           return (
             <div
               key={`${index}-${image}`}
-              className="relative h-full w-full flex-shrink-0"
+              className="relative h-full w-full flex-shrink-0 snap-start"
               onClick={() => handleBannerClick(index)}
             >
               {isVideo ? (
@@ -176,7 +170,7 @@ const BannerSection = memo(({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setCurrentBannerIndex(index);
+                scrollToIndex(index);
               }}
               className={`h-1.5 rounded-full transition-all duration-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] ${
                 currentBannerIndex === index
