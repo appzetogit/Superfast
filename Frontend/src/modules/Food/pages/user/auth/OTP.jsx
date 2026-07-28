@@ -92,7 +92,7 @@ export default function OTP() {
     setName("")
     setNameError("")
     setVerifiedOtp("")
-    navigate("/user/auth/login", { replace: true })
+    navigate(contactType === "email" ? "/food/login/email" : "/food/login", { replace: true })
   }
 
   useEffect(() => {
@@ -395,9 +395,7 @@ export default function OTP() {
     }
   }
 
-  const handleBackToLogin = () => {
-    navigate(contactType === "email" ? "/food/login/email" : "/food/login")
-  }
+
 
   const handleResend = async () => {
     if (resendTimer > 0 || isLoading) return
