@@ -66,6 +66,7 @@ export default function UnifiedOTPFastLogin() {
   const handleEditNumber = () => {
     setStep(1)
     setOtp("")
+    setResendTimer(0)
     clearNameFlow()
     setOtpSent(false)
   }
@@ -127,12 +128,7 @@ export default function UnifiedOTPFastLogin() {
     }
   }
 
-  const handleEditNumber = () => {
-    setStep(1)
-    setOtp("")
-    setResendTimer(0)
-    clearNameFlow()
-  }
+
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault()
