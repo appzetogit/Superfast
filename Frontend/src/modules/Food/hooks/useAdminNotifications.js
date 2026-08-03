@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { adminAPI, supportAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import io from "socket.io-client";
@@ -250,9 +250,27 @@ const resolveSocketOrigin = (value) => {
   }
 };
 
-export default function useAdminNotifications(options = {}) {
+export const useAdminNotifications = (options = {}) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(Boolean(options?.autoload !== false));
+  
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    // Load notification sound
+    if (typeof window !== "undefined") {
+      audioRef.current = new window.Audio("/universfield-new-notification-036-485897.mp3");
+      audioRef.current.preload = 'auto';
+      audioRef.current.volume = 1;
+    }
+  }, []);
+
+  const playSound = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+    }
+  }, []);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -339,6 +357,7 @@ export default function useAdminNotifications(options = {}) {
       if (payload?.type === "delivery_partner_application") {
         const name = payload?.name || "Someone";
         const vehicleType = payload?.vehicleType ? ` (${payload.vehicleType})` : "";
+        playSound();
         import("sonner").then(({ toast }) => {
           toast.success(`🛵 New delivery application`, {
             description: `${name}${vehicleType} has applied. Tap to review.`,
@@ -349,6 +368,7 @@ export default function useAdminNotifications(options = {}) {
       } else if (payload?.type === "restaurant_application") {
         const name = payload?.name || "A restaurant";
         const city = payload?.city ? ` in ${payload.city}` : "";
+        playSound();
         import("sonner").then(({ toast }) => {
           toast.success(`🏪 New restaurant application`, {
             description: `${name}${city} has applied. Tap to review.`,
@@ -363,7 +383,7 @@ export default function useAdminNotifications(options = {}) {
     return () => {
       socket.disconnect();
     };
-  }, [loadNotifications]);
+  }, [loadNotifications, playSound]);
 
   const dismissOne = useCallback((id) => {
     if (!id) return;
@@ -392,3 +412,5 @@ export default function useAdminNotifications(options = {}) {
     [clearAll, dismissOne, items, loadNotifications, loading]
   );
 }
+
+export default useAdminNotifications;

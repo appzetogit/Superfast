@@ -662,11 +662,6 @@ export const useRestaurantNotifications = () => {
       setNewOrder(null);
     });
 
-    socketRef.current.on('admin_notification', (payload) => {
-      debugLog('?? Admin broadcast received:', payload);
-      dispatchNotificationInboxRefresh();
-    });
-    
     socketRef.current.on('restaurant_notification', (payload) => {
       debugLog('?? Restaurant notification received:', payload);
       dispatchNotificationInboxRefresh();

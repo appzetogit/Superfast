@@ -990,11 +990,11 @@ export default function OrdersPage({ statusKey = "all" }) {
       />
 
       <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reject Order {selectedOrderForReject?.orderId}</DialogTitle>
+        <DialogContent className="sm:max-w-md p-6">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl">Reject Order {selectedOrderForReject?.orderId}</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-2">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Reason for rejection
             </label>

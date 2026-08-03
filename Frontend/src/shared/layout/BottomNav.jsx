@@ -32,7 +32,11 @@ const BottomNav = ({ navItems }) => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 min-h-[4rem] pb-[env(safe-area-inset-bottom)] bg-[#0a0c10] border-t border-white/5 z-[60] md:hidden px-2 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.4)]">
+        <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto flex w-full max-w-md items-end gap-2 mt-2">
+                <div className="flex-1 min-w-0">
+                    <div className="relative overflow-visible rounded-[30px] bg-[#0a0c10] py-2 pl-2 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.4)] border border-white/5">
+                        <div className="relative flex items-center justify-around gap-1 min-h-[3rem]">
             {primaryItems.map((item) => (
                 <NavLink
                     key={item.path}
@@ -47,6 +51,10 @@ const BottomNav = ({ navItems }) => {
                     <span className="text-[10px] font-bold uppercase tracking-tight">{item.label}</span>
                 </NavLink>
             ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

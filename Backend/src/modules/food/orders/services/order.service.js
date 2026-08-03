@@ -1996,6 +1996,7 @@ export async function calculateOrder(userId, dto) {
 // ----- Create order -----
 export async function createOrder(userId, dto) {
   if (!userId) throw new ValidationError('User ID is required');
+  /* 
   const activeOrder = await FoodOrder.findOne({
     userId,
     orderStatus: {
@@ -2012,6 +2013,7 @@ export async function createOrder(userId, dto) {
   if (activeOrder) {
     throw new ValidationError('You already have an active order. Please wait for it to be delivered or cancelled before placing a new one.');
   }
+  */
 
   const items = normalizeOrderItems(dto.items, dto.orderType);
   await syncItemsWithDatabase(items);

@@ -214,6 +214,7 @@ export const placeOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'sessionId or userId is required' });
     }
 
+    /*
     const activeOrder = await QuickOrder.findOne({
       ...idQuery,
       orderStatus: {
@@ -233,6 +234,7 @@ export const placeOrder = async (req, res) => {
         message: 'You already have an active order. Please wait for it to be delivered or cancelled before placing a new one.'
       });
     }
+    */
 
     const cart = await QuickCart.findOne(idQuery).lean();
     const requestedItems = normalizeRequestedItems(req.body?.items);

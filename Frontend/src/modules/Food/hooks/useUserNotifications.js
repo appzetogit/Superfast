@@ -137,15 +137,6 @@ export const useUserNotifications = () => {
       });
     });
 
-    socketRef.current.on('admin_notification', (payload) => {
-      toast.message(payload?.title || 'Notification', {
-        id: `admin-notif-${Date.now()}`,
-        description: payload?.message || 'New broadcast notification received.',
-        duration: 5000
-      });
-      dispatchNotificationInboxRefresh();
-    });
-
     socketRef.current.on('connect_error', (error) => {
       if (import.meta.env.DEV) {
         // debugLog('❌ Socket connection error:', error.message);

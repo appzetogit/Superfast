@@ -62,14 +62,14 @@ export default function BottomNavigation() {
 
   return (
     <div
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
     >
       <DraggableModuleSwitcher />
 
-      <div
-        className="relative bg-white dark:bg-[#1a1a1a] border-t border-gray-200 dark:border-gray-800 shadow-lg pb-[env(safe-area-inset-bottom)]"
-      >
-      <div className="flex items-center justify-around h-auto px-2 sm:px-4">
+      <div className="mx-auto flex w-full max-w-md items-end gap-2 mt-2">
+        <div className="flex-1 min-w-0">
+          <div className="relative overflow-visible rounded-[30px] bg-white dark:bg-[#1a1a1a] py-2 pl-2 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_16px_40px_rgba(255,255,255,0.05)] border border-gray-100 dark:border-gray-800">
+            <div className="relative flex items-center justify-around gap-1">
         {/* Delivery Tab */}
         <Link
           to="/food/user"
@@ -92,8 +92,7 @@ export default function BottomNavigation() {
           )}
         </Link>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+
 
         {/*
         <Link
@@ -136,8 +135,7 @@ export default function BottomNavigation() {
           )}
         </Link>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+
 
         {/* Orders Tab */}
         <Link
@@ -161,8 +159,7 @@ export default function BottomNavigation() {
           )}
         </Link>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+
 
         {/* Profile Tab */}
         <Link
@@ -184,7 +181,9 @@ export default function BottomNavigation() {
             <div className="absolute top-0 left-0 right-0 h-0.5 rounded-b-full" style={{ backgroundColor: activeColor }} />
           )}
         </Link>
-      </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

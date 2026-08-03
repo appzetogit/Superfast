@@ -1103,13 +1103,8 @@ export const useDeliveryNotifications = () => {
       }
     });
 
-    socketRef.current.on('admin_notification', (payload) => {
-      debugLog('Admin broadcast received via socket', payload);
-      dispatchNotificationInboxRefresh();
-    });
-
+    // (admin_notification listener removed)
     socketRef.current.on('admin_status_update', async (data) => {
-      debugLog('?? Admin changed delivery partner status via socket:', data);
       if (data && data.status) {
          try {
              const { useDeliveryStore } = await import('@/modules/DeliveryV2/store/useDeliveryStore');

@@ -107,9 +107,11 @@ export default function BottomNavigation() {
   if (isKeyboardOpen) return null
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-      <div className="flex items-center justify-around pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] px-4">
-
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex w-full max-w-md items-end gap-2 mt-2">
+        <div className="flex-1 min-w-0">
+          <div className="relative overflow-visible rounded-[30px] bg-white py-2 pl-2 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.1)] border border-gray-100">
+            <div className="relative flex items-center justify-around gap-1">
         {/* Feed */}
         <button
           onClick={() => navigate("/delivery")}
@@ -162,6 +164,9 @@ export default function BottomNavigation() {
           )}
           {TabLabel(isActive("/delivery/profile"), "Profile")}
         </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
