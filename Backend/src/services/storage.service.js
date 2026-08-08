@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { config } from '../config/env.js';
 
@@ -40,21 +40,31 @@ const ensureDir = (dirPath) => {
 
 /**
  * Process and save an image buffer to storage.
- * ALL images are saved directly in the root upload folder without subdirectories.
+ * ALL images are saved directly in the root upload folder with readable category-timestamp filenames.
  *
  * @param {Buffer} buffer - The image buffer from Multer
- * @param {string} _folder - Ignored to enforce single flat upload folder
+ * @param {string} folder - Folder/Category name used as readable prefix (e.g. 'business/logos' -> 'business-logos')
  * @param {boolean} isRaw - If true, skips sharp processing and saves raw buffer
- * @returns {Promise<string>} The public relative URL of the saved image (e.g. 'upload/filename.webp')
+ * @returns {Promise<string>} The public relative URL of the saved image (e.g. 'upload/business-logos-1723123456-a1b2c3.webp')
  */
-export const processAndSaveImage = async (buffer, _folder = 'misc', isRaw = false) => {
+export const processAndSaveImage = async (buffer, folder = 'misc', isRaw = false) => {
     if (!buffer) throw new Error('File buffer is required');
 
     const targetDir = getUploadDir();
     ensureDir(targetDir);
 
-    // Save directly inside targetDir with NO subdirectories
-    const filename = `${uuidv4()}.webp`;
+    // Generate human-readable prefix based on folder/category
+    const prefix = String(folder || 'misc')
+        .replace(/[^a-zA-Z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .toLowerCase() || 'image';
+
+    const timestamp = Date.now();
+    const shortId = crypto.randomBytes(3).toString('hex'); // 6-character unique hash
+
+    const ext = isRaw ? 'bin' : 'webp';
+    const filename = `${prefix}-${timestamp}-${shortId}.${ext}`;
     const filePath = path.join(targetDir, filename);
 
     if (isRaw) {
