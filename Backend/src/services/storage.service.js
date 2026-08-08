@@ -14,15 +14,17 @@ const __dirname = path.dirname(__filename);
  * - Local development: backend/upload
  */
 export const getUploadDir = () => {
-    if (process.env.UPLOAD_DIR) return process.env.UPLOAD_DIR;
     if (process.env.VPS_STORAGE_PATH && path.isAbsolute(process.env.VPS_STORAGE_PATH)) {
         return process.env.VPS_STORAGE_PATH;
     }
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.UPLOAD_DIR && path.isAbsolute(process.env.UPLOAD_DIR)) {
+        return process.env.UPLOAD_DIR;
+    }
+    if (process.env.NODE_ENV === 'production' || fs.existsSync('/var/www/upload')) {
         return '/var/www/upload';
     }
-    if (fs.existsSync('/var/www/upload')) {
-        return '/var/www/upload';
+    if (process.env.UPLOAD_DIR) {
+        return path.join(process.cwd(), process.env.UPLOAD_DIR);
     }
     return path.join(process.cwd(), 'upload');
 };

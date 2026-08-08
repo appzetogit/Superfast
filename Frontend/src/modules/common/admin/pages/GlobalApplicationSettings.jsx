@@ -63,16 +63,36 @@ const InputField = ({ label, name, value, onChange, placeholder, info }) => {
   );
 };
 
+const extractPreviewUrl = (val) => {
+  if (!val) return null;
+  if (typeof val === 'string' && val.trim() && val !== '[object Object]') return val.trim();
+  if (typeof val === 'object' && val.url && typeof val.url === 'string' && val.url.trim()) return val.url.trim();
+  return null;
+};
+
 const ImageUploadBox = ({ title, size, preview, onUpload, onClear }) => {
   const fileInputRef = useRef(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [preview]);
+
+  const showPreview = preview && !imgError;
+
   return (
     <div className="space-y-3">
        <div className="flex items-center justify-between px-0.5">
           <label className="text-xs font-bold text-gray-500">{title}({size})</label>
        </div>
        <div className="aspect-[2/1] w-full rounded-xl border border-dashed border-gray-300 bg-gray-50/50 relative overflow-hidden group hover:border-indigo-300 transition-colors cursor-pointer flex items-center justify-center" onClick={() => fileInputRef.current?.click()}>
-          {preview ? (
-            <img src={preview} alt={title} className="w-full h-full object-contain p-6" />
+          {showPreview ? (
+            <img 
+              src={preview} 
+              alt={title} 
+              className="w-full h-full object-contain p-6" 
+              onError={() => setImgError(true)}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <p className="text-[11px] font-bold uppercase tracking-widest">Upload Image</p>
@@ -166,14 +186,14 @@ const GlobalApplicationSettings = () => {
           dynamicModuleThemes: settings.dynamicModuleThemes ?? true
         });
 
-        if (settings.logo?.url) setLogoPreview(settings.logo.url);
-        if (settings.favicon?.url) setFaviconPreview(settings.favicon.url);
-        if (settings.moduleThemes?.food?.logo?.url) setFoodLogoPreview(settings.moduleThemes.food.logo.url);
-        if (settings.moduleThemes?.quickCommerce?.logo?.url) setQcLogoPreview(settings.moduleThemes.quickCommerce.logo.url);
-        if (settings.portals?.delivery?.logo?.url) setDeliveryLogoPreview(settings.portals.delivery.logo.url);
-        if (settings.portals?.restaurant?.logo?.url) setRestaurantLogoPreview(settings.portals.restaurant.logo.url);
-        if (settings.portals?.user?.logo?.url) setUserLogoPreview(settings.portals.user.logo.url);
-        if (settings.portals?.seller?.logo?.url) setSellerLogoPreview(settings.portals.seller.logo.url);
+        if (extractPreviewUrl(settings.logo)) setLogoPreview(extractPreviewUrl(settings.logo));
+        if (extractPreviewUrl(settings.favicon)) setFaviconPreview(extractPreviewUrl(settings.favicon));
+        if (extractPreviewUrl(settings.moduleThemes?.food?.logo)) setFoodLogoPreview(extractPreviewUrl(settings.moduleThemes.food.logo));
+        if (extractPreviewUrl(settings.moduleThemes?.quickCommerce?.logo)) setQcLogoPreview(extractPreviewUrl(settings.moduleThemes.quickCommerce.logo));
+        if (extractPreviewUrl(settings.portals?.delivery?.logo)) setDeliveryLogoPreview(extractPreviewUrl(settings.portals.delivery.logo));
+        if (extractPreviewUrl(settings.portals?.restaurant?.logo)) setRestaurantLogoPreview(extractPreviewUrl(settings.portals.restaurant.logo));
+        if (extractPreviewUrl(settings.portals?.user?.logo)) setUserLogoPreview(extractPreviewUrl(settings.portals.user.logo));
+        if (extractPreviewUrl(settings.portals?.seller?.logo)) setSellerLogoPreview(extractPreviewUrl(settings.portals.seller.logo));
       }
     } catch (err) {
       console.error('Fetch error:', err);
