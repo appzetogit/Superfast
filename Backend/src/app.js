@@ -6,6 +6,7 @@ import mongoSanitize from 'mongo-sanitize';
 import xssClean from 'xss-clean';
 import routes from './routes/index.js';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import errorHandler from './middleware/errorHandler.js';
 import { apiRateLimiter } from './middleware/rateLimit.js';
