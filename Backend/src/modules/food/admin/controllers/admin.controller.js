@@ -1279,6 +1279,24 @@ export async function approveDeliveryPartner(req, res, next) {
                 message: 'Delivery partner not found'
             });
         }
+
+        try {
+            const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
+            await notifyOwnersSafely(
+                [{ ownerType: 'DELIVERY', ownerId: partner._id }],
+                {
+                    title: 'Account Approved! 🎉',
+                    body: 'Congratulations! Your delivery partner account has been approved by admin. You can now go online and start delivering orders!',
+                    data: {
+                        type: 'delivery_approved',
+                        partnerId: String(partner._id)
+                    }
+                }
+            );
+        } catch (e) {
+            console.error('Failed to send approval notification to delivery partner:', e);
+        }
+
         res.status(200).json({
             success: true,
             message: 'Delivery partner approved successfully',
@@ -1322,6 +1340,26 @@ export async function deleteDeliveryPartner(req, res, next) {
             success: true,
             message: 'Delivery partner deactivated successfully',
             data: partner
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function toggleDeliveryPartnerAccount(req, res, next) {
+    try {
+        const result = await adminService.toggleDeliveryPartnerAccount(req.params.id);
+        if (!result) {
+            return res.status(404).json({
+                success: false,
+                message: 'Delivery partner not found'
+            });
+        }
+        const isNowActive = result.status === 'approved';
+        res.status(200).json({
+            success: true,
+            message: isNowActive ? 'Delivery partner activated successfully' : 'Delivery partner deactivated successfully',
+            data: result
         });
     } catch (error) {
         next(error);

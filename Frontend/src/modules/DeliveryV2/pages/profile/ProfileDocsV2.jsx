@@ -74,9 +74,9 @@ export const ProfileDocsV2 = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-poppins pb-20">
-       <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm">
-          <button onClick={goBack}><ArrowLeft className="w-6 h-6 shadow-sm p-1 rounded-full bg-gray-50 bg-opacity-70" /></button>
-          <h1 className="text-xl font-black">Registration Docs</h1>
+       <div className="bg-[#121212] border-b border-white/10 px-4 py-3.5 flex items-center gap-4 fixed top-0 w-full z-50 backdrop-blur-xl">
+          <button onClick={goBack} className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-90"><ArrowLeft className="w-5 h-5" /></button>
+          <h1 className="text-lg font-black text-white uppercase tracking-tight">Registration Docs</h1>
        </div>
 
        <div className="pt-24 px-4 space-y-8">

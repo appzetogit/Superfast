@@ -113,7 +113,7 @@ export async function calculateOrderPricing(userId, dto) {
       if (userId && Number(offer.perUserLimit) > 0) {
         const usage = await FoodOfferUsage.findOne({
           offerId: offer._id,
-          userId,
+          userId: new mongoose.Types.ObjectId(userId),
         }).lean();
         if (usage && Number(usage.count) >= Number(offer.perUserLimit)) {
           perUserOk = false;
@@ -159,6 +159,12 @@ export async function calculateOrderPricing(userId, dto) {
         }
         const discountBearer = offer.restaurantId ? 'restaurant' : 'admin';
         appliedCoupon = { code: codeRaw, discount, discountBearer };
+      } else if (codeRaw) {
+        if (!perUserOk) throw new ValidationError("You have already used this coupon maximum allowed times.");
+        if (!usageOk) throw new ValidationError("This coupon usage limit has been reached.");
+        if (!firstOrderOk) throw new ValidationError("This coupon is only valid for first-time users.");
+        if (!minOk) throw new ValidationError(`Minimum order value of ₹${offer.minOrderValue} required for this coupon.`);
+        if (!statusOk || !startOk || !endOk) throw new ValidationError("This coupon code has expired or is inactive.");
       }
     }
   }

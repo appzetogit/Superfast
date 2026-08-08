@@ -1385,6 +1385,24 @@ export const updateSellerProfileController = async (req, res) => {
         "seller/shop-license",
       );
     }
+    if (files?.panImage?.[0]) {
+      seller.documents.panImage = await uploadImageBuffer(
+        files.panImage[0].buffer,
+        "seller/pan-image",
+      );
+    }
+    if (files?.gstCert?.[0]) {
+      seller.documents.gstCert = await uploadImageBuffer(
+        files.gstCert[0].buffer,
+        "seller/gst-cert",
+      );
+    }
+    if (files?.fssaiCert?.[0]) {
+      seller.documents.fssaiCert = await uploadImageBuffer(
+        files.fssaiCert[0].buffer,
+        "seller/fssai-cert",
+      );
+    }
     if (
       req.body?.shopLicenseExpiry !== undefined ||
       documentsBody.shopLicenseExpiry !== undefined
@@ -1473,6 +1491,23 @@ export const updateSellerProfileController = async (req, res) => {
       seller.approvalNotes = "";
       seller.approvedAt = null;
       seller.rejectedAt = null;
+
+      try {
+        const io = getIO();
+        if (io) {
+          io.to(rooms?.admin || "admin").emit("new_seller_request", {
+            sellerId: seller._id,
+            shopName: seller.shopName || seller.shopInfo?.shopName || seller.name || "Store",
+            ownerName: seller.name || seller.ownerName || "Seller",
+            email: seller.email,
+            phone: seller.phone,
+            message: "New seller joining application request received.",
+            timestamp: new Date(),
+          });
+        }
+      } catch (e) {
+        logger.error("Failed to emit admin socket event for seller onboarding:", e);
+      }
     }
 
     await seller.save();

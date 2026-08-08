@@ -1953,9 +1953,11 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
           debugWarn("Failed to use cached location:", cacheErr)
         }
 
-        toast.warning("Location request timed out. Please try again or check your GPS settings.", { id: "current-location" })
+        toast.warning("Location request timed out. Please check if Location/GPS is switched on on your phone.", { id: "current-location", duration: 5000 })
+      } else if (error.code === 1 || (error.message && error.message.includes("denied"))) {
+        toast.error("Location permission denied. Please allow location access in your device settings.", { id: "current-location", duration: 5000 })
       } else {
-        toast.error("Failed to get current location: " + (error.message || "Unknown error"), { id: "current-location" })
+        toast.error("Please switch on Location/GPS on your phone to detect location.", { id: "current-location", duration: 5000 })
       }
     }
   }
@@ -2014,22 +2016,10 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         longitude: mapPosition[1], // longitude from mapPosition[1]
       }
 
-      // Check if an address with the same label already exists
-      const existingAddressWithSameLabel = addresses.find(addr => addr.label === normalizedLabel)
-      const existingAddressId = existingAddressWithSameLabel?.id || existingAddressWithSameLabel?._id
-
-      let savedAddress = null
-      if (existingAddressWithSameLabel && existingAddressId) {
-        // Update existing address instead of creating a new one
-        debugLog("?? Updating existing address with label:", normalizedLabel)
-        savedAddress = await updateAddress(existingAddressId, addressToSave)
-        toast.success(`Address updated for ${normalizedLabel}!`)
-      } else {
-        // Create new address
-        debugLog("?? Saving new address:", addressToSave)
-        savedAddress = await addAddress(addressToSave)
-        toast.success(`Address saved as ${normalizedLabel}!`)
-      }
+      // Create new address
+      debugLog("?? Saving address:", addressToSave)
+      savedAddress = await addAddress(addressToSave)
+      toast.success(`Address saved as ${normalizedLabel}!`)
 
       const savedAddressId = getAddressId(savedAddress) || existingAddressId
       if (savedAddressId) {

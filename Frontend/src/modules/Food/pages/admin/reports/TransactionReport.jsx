@@ -51,16 +51,23 @@ export default function TransactionReport() {
   useEffect(() => {
     const fetchFilterData = async () => {
       try {
-        // Fetch zones
-        const zonesResponse = await adminAPI.getZones({ limit: 1000 })
-        if (zonesResponse?.data?.success && zonesResponse.data.data?.zones) {
-          setZones(zonesResponse.data.data.zones)
+        // Fetch zones safely
+        if (typeof adminAPI?.getZones === 'function') {
+          const zonesResponse = await adminAPI.getZones({ limit: 1000 })
+          const zoneList = zonesResponse?.data?.data?.zones || zonesResponse?.data?.zones || []
+          if (Array.isArray(zoneList)) {
+            setZones(zoneList)
+          }
         }
 
-        // Fetch restaurants
-        const restaurantsResponse = await adminAPI.getRestaurants({ limit: 1000 })
-        if (restaurantsResponse?.data?.success && restaurantsResponse.data.data?.restaurants) {
-          setRestaurants(restaurantsResponse.data.data.restaurants)
+        // Fetch restaurants safely
+        const fetchRests = adminAPI?.getApprovedRestaurants || adminAPI?.getRestaurants
+        if (typeof fetchRests === 'function') {
+          const restaurantsResponse = await fetchRests({ limit: 1000 })
+          const restList = restaurantsResponse?.data?.data?.restaurants || restaurantsResponse?.data?.restaurants || (Array.isArray(restaurantsResponse?.data?.data) ? restaurantsResponse.data.data : [])
+          if (Array.isArray(restList)) {
+            setRestaurants(restList)
+          }
         }
       } catch (error) {
         debugError("Error fetching filter data:", error)
@@ -69,8 +76,10 @@ export default function TransactionReport() {
     fetchFilterData()
   }, [])
 
-  // Fetch transaction report data
+  // Fetch transaction report data with debounce for search
   useEffect(() => {
+    let isMounted = true
+
     const fetchTransactionReport = async () => {
       try {
         setIsRefreshing(true)
@@ -104,32 +113,61 @@ export default function TransactionReport() {
 
         const response = await adminAPI.getTransactionReport(params)
 
-        if (response?.data?.success && response.data.data) {
-          setTransactions(response.data.data.transactions || [])
-          setSummary(response.data.data.summary || {
-            completedTransaction: 0,
-            refundedTransaction: 0,
-            adminEarning: 0,
-            restaurantEarning: 0,
-            deliverymanEarning: 0
-          })
-        } else {
-          setTransactions([])
-          if (response?.data?.message) {
-            toast.error(response.data.message)
-          }
+        if (!isMounted) return
+
+        const resData = response?.data?.data || response?.data || {}
+        const rawTransactions = Array.isArray(resData.transactions) 
+          ? resData.transactions 
+          : Array.isArray(resData.docs) 
+            ? resData.docs 
+            : Array.isArray(resData) 
+              ? resData 
+              : []
+
+        const rawSummary = resData.summary || {
+          completedTransaction: 0,
+          refundedTransaction: 0,
+          adminEarning: 0,
+          restaurantEarning: 0,
+          deliverymanEarning: 0
         }
+
+        const mappedTransactions = rawTransactions.map((tx, idx) => ({
+          ...tx,
+          id: tx.id || tx._id || tx.orderId || `tx-${idx}`,
+          orderId: tx.orderId || tx.orderReadableId || tx.id || "N/A",
+          restaurant: tx.restaurant || tx.restaurantName || tx.restaurantId?.restaurantName || "N/A",
+          customerName: tx.customerName || tx.userId?.name || "Guest",
+          adminEarning: Math.max(0, tx.adminEarning || 0)
+        }))
+
+        setTransactions(mappedTransactions)
+        setSummary({
+          ...rawSummary,
+          adminEarning: Math.max(0, rawSummary.adminEarning || 0)
+        })
       } catch (error) {
+        if (!isMounted) return
         debugError("Error fetching transaction report:", error)
-        toast.error("Failed to fetch transaction report")
-        setTransactions([])
+        if (error?.code !== "ERR_CANCELED" && error?.name !== "CanceledError") {
+          toast.error("Failed to fetch transaction report")
+        }
       } finally {
-        setIsRefreshing(false)
-        setLoading(false)
+        if (isMounted) {
+          setIsRefreshing(false)
+          setLoading(false)
+        }
       }
     }
 
-    fetchTransactionReport()
+    const timer = setTimeout(() => {
+      fetchTransactionReport()
+    }, 300)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
   }, [searchQuery, filters])
 
   useEffect(() => {
@@ -177,11 +215,13 @@ export default function TransactionReport() {
   }, [filteredTransactions, currentPage, itemsPerPage]);
 
   const formatCurrency = (amount) => {
-    return `\u20B9 ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const val = Number(amount || 0)
+    return `\u20B9 ${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const formatFullCurrency = (amount) => {
-    return `\u20B9 ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const val = Number(amount || 0)
+    return `\u20B9 ${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const getStatusBadgeClasses = (status) => {

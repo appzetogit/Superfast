@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { Search, Download, ChevronDown, Eye, User, Star, ChevronsUpDown, ChevronUp, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, Trash2, X } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, User, Star, ChevronsUpDown, ChevronUp, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, PowerOff, X } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
@@ -28,6 +28,7 @@ export default function DeliverymanList() {
   const [editingDeliveryId, setEditingDeliveryId] = useState(null)
   const [editValues, setEditValues] = useState({ pocketBalance: "", cashInHand: "" })
   const [deletingDeliveryId, setDeletingDeliveryId] = useState(null)
+  const [savingDeliveryId, setSavingDeliveryId] = useState(null)
   const [sortColumn, setSortColumn] = useState(null)
   const [sortDirection, setSortDirection] = useState("asc")
 
@@ -413,7 +414,7 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
     }
 
     const confirmed = window.confirm(
-      `Deactivate ${deliveryman?.name || "this delivery partner"}?\n\nThis will block the account and log them out, while preserving profile, wallet, and history.`,
+      `Deactivate account of ${deliveryman?.name || "this delivery partner"}?\n\nTheir account will be suspended and they will be logged out. Profile, wallet, and delivery history will be preserved.`,
     )
 
     if (!confirmed) {
@@ -787,12 +788,12 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                                 onClick={() => handleDelete(dm)}
                                 disabled={deletingDeliveryId === String(dm._id)}
                                 className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
-                                title="Delete Delivery Partner"
+                                title="Deactivate Account"
                               >
                                 {deletingDeliveryId === String(dm._id) ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <Trash2 className="w-4 h-4" />
+                                  <PowerOff className="w-4 h-4" />
                                 )}
                               </button>
                             </div>
@@ -871,16 +872,22 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
-                        viewDetails.status === 'pending' ? 'bg-blue-100 text-blue-700' :
-                        viewDetails.status === 'approved' || viewDetails.status === 'active' ? 'bg-green-100 text-green-700' :
-                        viewDetails.status === 'blocked' ? 'bg-red-100 text-red-700' :
-                        'bg-slate-100 text-slate-700'
-                      }`}>
-                        {viewDetails.status === 'blocked' ? 'Rejected' : (viewDetails.status?.charAt(0).toUpperCase() + viewDetails.status?.slice(1) || "N/A")}
-                      </span>
+                      {viewDetails.rejectionReason === 'Account deleted by owner' ? (
+                        <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold mt-1 bg-purple-100 text-purple-700 border border-purple-200">
+                          Account deleted by owner
+                        </span>
+                      ) : (
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                          viewDetails.status === 'pending' ? 'bg-blue-100 text-blue-700' :
+                          viewDetails.status === 'approved' || viewDetails.status === 'active' ? 'bg-green-100 text-green-700' :
+                          viewDetails.status === 'blocked' ? 'bg-red-100 text-red-700' :
+                          'bg-slate-100 text-slate-700'
+                        }`}>
+                          {viewDetails.status === 'blocked' ? 'Rejected' : (viewDetails.status?.charAt(0).toUpperCase() + viewDetails.status?.slice(1) || "N/A")}
+                        </span>
+                      )}
                     </div>
-                    {viewDetails.rejectionReason && (
+                    {viewDetails.rejectionReason && viewDetails.rejectionReason !== 'Account deleted by owner' && (
                       <div className="col-span-2">
                         <label className="text-xs font-semibold text-slate-500 uppercase text-red-600">Rejection Reason</label>
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-1">

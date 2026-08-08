@@ -190,7 +190,7 @@ export const openGallery = async ({ onSelectFile, fileNamePrefix = "gallery-phot
       })
 
       const isSuccess =
-        result?.success === true ||
+        Boolean(result?.success) ||
         Boolean(result?.base64 || result?.base64String || result?.data?.base64)
 
       if (result && isSuccess) {
@@ -213,16 +213,13 @@ export const openGallery = async ({ onSelectFile, fileNamePrefix = "gallery-phot
         if (selectedFile && String(selectedFile.type || "").startsWith("image/")) {
           const compressed = await compressImage(selectedFile)
           onSelectFile(compressed)
+          return
         }
-
-        // In Flutter app mode, do not fallback to browser picker.
-        // Browser picker can show camera/gallery chooser on some devices.
-        return
       }
 
-      // Handler responded but no valid image selected (cancel/fail).
-      // Keep strict gallery-only behavior by not opening browser chooser.
-      return
+      // Flutter bridge responded but no valid image — fall through to browser picker.
+      // This handles devices where the Flutter handler is registered but not fully
+      // implemented (returns empty/null result).
     }
 
     // Fallback: browser picker is generally reliable across Android/iOS/Web.

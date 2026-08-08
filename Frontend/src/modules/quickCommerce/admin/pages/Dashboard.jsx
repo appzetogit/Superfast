@@ -89,7 +89,8 @@ const AdminDashboard = () => {
             color: 'text-blue-600',
             bg: 'bg-blue-50',
             trend: usersGrowth,
-            description: 'Active this month'
+            description: 'Active this month',
+            path: '/admin/quick-commerce/customers'
         },
         {
             label: 'Active Sellers',
@@ -98,7 +99,8 @@ const AdminDashboard = () => {
             color: 'text-purple-600',
             bg: 'bg-purple-50',
             trend: sellersGrowth,
-            description: 'Verified stores'
+            description: 'Verified stores',
+            path: '/admin/quick-commerce/sellers/active'
         },
         {
             label: 'Total Orders',
@@ -107,7 +109,8 @@ const AdminDashboard = () => {
             color: 'text-[var(--primary-theme)]',
             bg: 'bg-orange-50',
             trend: ordersGrowth,
-            description: 'Last 30 days'
+            description: 'Last 30 days',
+            path: '/admin/quick-commerce/orders/all'
         },
         {
             label: 'Revenue',
@@ -116,7 +119,8 @@ const AdminDashboard = () => {
             color: 'text-emerald-600',
             bg: 'bg-emerald-50',
             trend: revenueGrowth,
-            description: 'Net earnings'
+            description: 'Net earnings',
+            path: '/admin/quick-commerce/transactions'
         },
     ];
 
@@ -142,13 +146,13 @@ const AdminDashboard = () => {
         rows.push(['Total Users', overview.totalUsers || 0]);
         rows.push(['Active Sellers', overview.activeSellers || 0]);
         rows.push(['Total Orders', overview.totalOrders || 0]);
-        rows.push(['Total Revenue (₹)', overview.totalRevenue || 0]);
+        rows.push(['Total Revenue', overview.totalRevenue || 0]);
         rows.push([]);
 
         // Recent Orders
         if (recentOrders.length > 0) {
             rows.push(['RECENT ORDERS']);
-            rows.push(['Order ID', 'Customer', 'Status', 'Amount (₹)', 'Time']);
+            rows.push(['Order ID', 'Customer', 'Status', 'Amount', 'Time']);
             recentOrders.forEach((order) => {
                 rows.push([
                     order.orderId || order.id || '',
@@ -164,7 +168,7 @@ const AdminDashboard = () => {
         // Revenue History
         if (chartData.length > 0) {
             rows.push(['MONTHLY REVENUE TRENDS']);
-            rows.push(['Month', 'Revenue (₹)']);
+            rows.push(['Month', 'Revenue']);
             chartData.forEach((item) => {
                 rows.push([item.month || item.name || '', item.revenue || item.value || 0]);
             });
@@ -184,7 +188,7 @@ const AdminDashboard = () => {
         // Top Products
         if (topProducts.length > 0) {
             rows.push(['TOP PRODUCTS']);
-            rows.push(['Product', 'Sales', 'Revenue (₹)']);
+            rows.push(['Product', 'Sales', 'Revenue']);
             topProducts.forEach((item) => {
                 rows.push([item.name || '', item.sales || 0, item.revenue || 0]);
             });
@@ -227,17 +231,22 @@ const AdminDashboard = () => {
             {/* Main Stats Grid */}
             <div className="ds-grid-stats">
                 {stats.map((stat) => (
-                    <StatCard
+                    <div
                         key={stat.label}
-                        label={stat.label}
-                        value={stat.value}
-                        icon={stat.icon}
-                        trend={stat.trend}
-                        description={stat.description}
-                        color={stat.color}
-                        bg={stat.bg}
-                        className={cn("ring-1 ring-gray-100", stat.bg + "/30")}
-                    />
+                        onClick={() => stat.path && navigate(stat.path)}
+                        className="cursor-pointer transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        <StatCard
+                            label={stat.label}
+                            value={stat.value}
+                            icon={stat.icon}
+                            trend={stat.trend}
+                            description={stat.description}
+                            color={stat.color}
+                            bg={stat.bg}
+                            className={cn("ring-1 ring-gray-100", stat.bg + "/30")}
+                        />
+                    </div>
                 ))}
             </div>
 

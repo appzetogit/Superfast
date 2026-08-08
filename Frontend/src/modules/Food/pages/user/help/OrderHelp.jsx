@@ -260,7 +260,7 @@ export default function OrderHelp() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
-                  <p className="font-semibold text-primary-orange text-xl">${order.total.toFixed(2)}</p>
+                  <p className="font-semibold text-primary-orange text-xl">₹{order.total.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Items</p>

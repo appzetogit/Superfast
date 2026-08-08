@@ -404,6 +404,7 @@ export const adminApi = {
   getExperienceSections: (params) => axiosInstance.get('/quick-commerce/admin/experience/sections', { params }),
   createExperienceSection: (payload) => axiosInstance.post('/quick-commerce/admin/experience/sections', payload),
   updateExperienceSection: (id, payload) => axiosInstance.put(`/quick-commerce/admin/experience/sections/${id}`, payload),
+  deleteExperienceSection: (id) => axiosInstance.delete(`/quick-commerce/admin/experience/sections/${id}`),
   reorderExperienceSections: (items) => axiosInstance.post('/quick-commerce/admin/experience/sections/reorder', items),
   uploadExperienceBanner: (formData) => adminApi.uploadSettingsImage(formData, 'experience'),
   getHeroConfig: (params) => axiosInstance.get('/quick-commerce/admin/experience/hero', { params }),

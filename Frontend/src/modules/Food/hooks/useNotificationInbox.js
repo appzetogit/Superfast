@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { notificationAPI } from "@food/api";
 
-const normalizeInboxItems = (rows = []) =>
-  (Array.isArray(rows) ? rows : []).map((item, index) => ({
-    id: String(item?._id || item?.id || `broadcast-${index}`),
-    source: "broadcast",
-    title: String(item?.title || "Notification").trim(),
-    message: String(item?.message || "").trim(),
-    link: String(item?.link || "").trim(),
-    read: Boolean(item?.isRead),
-    createdAt: item?.createdAt || item?.updatedAt || new Date().toISOString(),
-    category: String(item?.category || "broadcast"),
-  }));
+const normalizeInboxItems = (rows = []) => {
+  const list = Array.isArray(rows) ? rows : [];
+  const map = new Map();
+  list.forEach((item, index) => {
+    const id = String(item?._id || item?.id || `broadcast-${index}`);
+    if (!map.has(id)) {
+      map.set(id, {
+        id,
+        source: "broadcast",
+        title: String(item?.title || "Notification").trim(),
+        message: String(item?.message || "").trim(),
+        link: String(item?.link || "").trim(),
+        read: Boolean(item?.isRead),
+        createdAt: item?.createdAt || item?.updatedAt || new Date().toISOString(),
+        category: String(item?.category || "broadcast"),
+      });
+    }
+  });
+  return Array.from(map.values());
+};
 
 const REFRESH_EVENT = "foodNotificationInboxRefresh";
 

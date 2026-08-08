@@ -15,6 +15,7 @@ import {
 import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
 import { Eye, EyeOff } from "lucide-react"
+import SuperfastLogo from "@/assets/Logo.webp"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -140,22 +141,18 @@ export default function AdminLogin() {
         <Card className="w-full max-w-lg bg-white/90 backdrop-blur border-neutral-200 shadow-2xl">
           <CardHeader className="pb-4">
             <div className="flex w-full items-center gap-4 sm:gap-5">
-              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl bg-gray-900/5 ring-1 ring-neutral-200">
-                {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt={companyName || "Logo"}
-                    className="h-10 w-24 object-contain"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.style.display = 'none'
-                    }}
-                  />
-                ) : (
-                  <span className="text-xs font-bold text-gray-900 truncate px-2">
-                    {companyName || "SUPERFAST"}
-                  </span>
-                )}
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white p-1 shadow-sm border border-slate-200/80">
+                <img
+                  src={logoUrl || SuperfastLogo}
+                  alt={companyName || "Superfast Logo"}
+                  className="h-full w-full object-contain rounded-xl"
+                  loading="lazy"
+                  onError={(e) => {
+                    if (e.target.src !== SuperfastLogo) {
+                      e.target.src = SuperfastLogo;
+                    }
+                  }}
+                />
               </div>
               <div className="flex flex-col gap-1">
                 <CardTitle className="text-3xl leading-tight text-gray-900">Admin Login</CardTitle>

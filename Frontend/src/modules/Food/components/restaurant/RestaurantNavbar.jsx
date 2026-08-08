@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Search, Menu, ChevronRight, MapPin, X, Bell } from "lucide-react"
+import { Search, Menu, ChevronRight, MapPin, X, Bell, RefreshCw } from "lucide-react"
 import { restaurantAPI } from "@food/api"
-import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings"
+import { getCachedSettings, loadBusinessSettings, getDynamicLogoUrl } from "@common/utils/businessSettings"
 import useNotificationInbox from "@food/hooks/useNotificationInbox"
+
+import { getImageUrl } from "@food/utils/imageUtils"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -25,6 +27,7 @@ export default function RestaurantNavbar({
   showOfflineOnlineTag = true,
   showNotifications = true,
   onSearchChange,
+  onRefresh,
 }) {
   const navigate = useNavigate()
   const [isSearchActive, setIsSearchActive] = useState(false)
@@ -42,12 +45,14 @@ export default function RestaurantNavbar({
       const cached = getCachedSettings()
       if (cached) {
         if (cached.companyName) setCompanyName(cached.companyName)
-        if (cached.logo?.url) setLogoUrl(cached.logo.url)
+        const logo = getDynamicLogoUrl(cached, 'restaurant')
+        setLogoUrl(logo)
       } else {
         const settings = await loadBusinessSettings()
         if (settings) {
           if (settings.companyName) setCompanyName(settings.companyName)
-          if (settings.logo?.url) setLogoUrl(settings.logo.url)
+          const logo = getDynamicLogoUrl(settings, 'restaurant')
+          setLogoUrl(logo)
         }
       }
     }
@@ -57,7 +62,8 @@ export default function RestaurantNavbar({
       const cached = getCachedSettings()
       if (cached) {
         if (cached.companyName) setCompanyName(cached.companyName)
-        if (cached.logo?.url) setLogoUrl(cached.logo.url)
+        const logo = getDynamicLogoUrl(cached, 'restaurant')
+        setLogoUrl(logo)
       }
     }
     window.addEventListener('businessSettingsUpdated', handleSettingsUpdate)
@@ -162,6 +168,10 @@ export default function RestaurantNavbar({
 
   // Get restaurant name (use prop if provided, otherwise use fetched data)
   const restaurantName = propRestaurantName || restaurantData?.name || "Restaurant"
+
+  const displayLogo = restaurantData?.profileImage?.url || 
+                      (typeof restaurantData?.profileImage === 'string' ? restaurantData.profileImage : null) || 
+                      logoUrl;
 
   const [location, setLocation] = useState("")
 
@@ -334,8 +344,8 @@ export default function RestaurantNavbar({
     <div className="w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
       {/* Left Side - Restaurant Info */}
       <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
-        {logoUrl && (
-          <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded-lg" />
+        {displayLogo && (
+          <img src={getImageUrl(displayLogo)} alt="Logo" className="h-10 w-10 object-contain rounded-lg" />
         )}
         <div className="min-w-0">
           {/* Restaurant Name & Company */}
@@ -379,6 +389,17 @@ export default function RestaurantNavbar({
             <ChevronRight className={`w-4 h-4 ${
               status === "Online" ? "text-[#49AB14]" : "text-gray-700"
             }`} />
+          </button>
+        )}
+
+        {/* Refresh Icon */}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="p-2 ml-1 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Refresh orders"
+          >
+            <RefreshCw className="w-5 h-5 text-gray-700" />
           </button>
         )}
 

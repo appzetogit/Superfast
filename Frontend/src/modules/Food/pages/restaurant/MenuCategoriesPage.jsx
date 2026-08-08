@@ -100,6 +100,27 @@ export default function MenuCategoriesPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false)
   const fileInputRef = useRef(null)
+  const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await restaurantAPI.getCurrentRestaurant()
+        const data = res?.data?.data?.restaurant || res?.data?.restaurant || res?.data?.data || res?.data || {}
+        const isVeg = 
+          data.pureVegRestaurant === true || 
+          data.foodType === "Veg" || 
+          data.veg === true || 
+          data.pureVeg === true ||
+          data.isVeg === true
+          
+        if (isVeg) {
+          setIsPureVegRestaurant(true)
+        }
+      } catch (e) {}
+    }
+    fetchProfile()
+  }, [])
 
   useEffect(() => {
     fetchCategories()
@@ -122,8 +143,14 @@ export default function MenuCategoriesPage() {
   )
 
   const globalCategories = useMemo(
-    () => categories.filter((category) => !category.ownedByRestaurant),
-    [categories],
+    () => {
+      let filtered = categories.filter((category) => !category.ownedByRestaurant)
+      if (isPureVegRestaurant) {
+        filtered = filtered.filter((cat) => cat.foodTypeScope === "Veg")
+      }
+      return filtered
+    },
+    [categories, isPureVegRestaurant],
   )
 
   const fetchCategories = async () => {
@@ -481,8 +508,8 @@ export default function MenuCategoriesPage() {
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                   >
                     <option value="Veg">Veg</option>
-                    <option value="Non-Veg">Non-Veg</option>
-                    <option value="Both">Both</option>
+                    {!isPureVegRestaurant && <option value="Non-Veg">Non-Veg</option>}
+                    {!isPureVegRestaurant && <option value="Both">Both</option>}
                   </select>
                 </div>
 

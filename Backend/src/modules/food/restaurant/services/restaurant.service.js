@@ -1594,6 +1594,32 @@ export const listApprovedRestaurants = async (query = {}) => {
         }
     }
 
+    const foodItemsLookupFilter = [
+        {
+            $lookup: {
+                from: 'food_items',
+                let: { restaurant_id: '$_id' },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: { $eq: ['$restaurantId', '$$restaurant_id'] },
+                            approvalStatus: 'approved',
+                            isAvailable: true
+                        }
+                    },
+                    { $limit: 1 },
+                    { $project: { _id: 1 } }
+                ],
+                as: 'activeFoodItems'
+            }
+        },
+        {
+            $match: {
+                'activeFoodItems.0': { $exists: true }
+            }
+        }
+    ];
+
     // Use $geoNear only when geo is explicitly needed (radius filter or nearest sorting).
     // This avoids accidentally hiding restaurants that do not have coordinates yet.
     const wantsGeo = (radiusKm !== null) || sortBy === 'nearest';
@@ -1623,6 +1649,7 @@ export const listApprovedRestaurants = async (query = {}) => {
 
         const basePipeline = [
             geoNear,
+            ...foodItemsLookupFilter,
             {
                 $addFields: {
                     distanceInKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
@@ -1683,6 +1710,7 @@ export const listApprovedRestaurants = async (query = {}) => {
 
     const basePipeline = [
         { $match: filter },
+        ...foodItemsLookupFilter,
         {
             $addFields: {
                 effectivePriority: {

@@ -73,7 +73,29 @@ export async function getOutletTimingsForRestaurant(restaurantId) {
     }
     const targetObjId = new mongoose.Types.ObjectId(String(restaurantId));
     const doc = await FoodRestaurantOutletTimings.findOne({ restaurantId: targetObjId }).select('timings updatedAt').lean();
-    if (!doc) return { outletTimings: toClientShape({ timings: defaultTimings() }) };
+    if (!doc) {
+        // Inherit registration timings from the restaurant profile
+        const restaurant = await FoodRestaurant.findById(targetObjId).select('openingTime closingTime openDays').lean();
+        if (restaurant) {
+            const regOpeningTime = normalizeTime(restaurant.openingTime, '09:00');
+            const regClosingTime = normalizeTime(restaurant.closingTime, '22:00');
+            const regOpenDays = Array.isArray(restaurant.openDays) && restaurant.openDays.length > 0
+                ? restaurant.openDays.map((d) => normalizeDay(d)).filter(Boolean)
+                : DAY_NAMES;
+
+            const timings = DAY_NAMES.map((day) => {
+                const isOpen = regOpenDays.includes(day);
+                return {
+                    day,
+                    isOpen,
+                    openingTime: isOpen ? regOpeningTime : '09:00',
+                    closingTime: isOpen ? regClosingTime : '22:00'
+                };
+            });
+            return { outletTimings: toClientShape({ timings }) };
+        }
+        return { outletTimings: toClientShape({ timings: defaultTimings() }) };
+    }
     return { outletTimings: toClientShape(doc) };
 }
 

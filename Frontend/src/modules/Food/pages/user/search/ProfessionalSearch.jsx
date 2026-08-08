@@ -304,7 +304,7 @@ export default function ProfessionalSearch() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   {results.dishes.map((dish) => (
                     <Link
-                      to={`/user/restaurants/${dish.restaurantSlug || dish.restaurantId}?dish=${dish._id}`}
+                      to={`/food/user/restaurants/${dish.restaurantSlug || dish.restaurantId}?dish=${dish._id}`}
                       key={dish._id || dish.name}
                       className="flex gap-4 p-3.5 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 hover:shadow-md transition-shadow group"
                     >
@@ -348,7 +348,7 @@ export default function ProfessionalSearch() {
                 </div>
                 <div className="grid gap-6">
                   {results.restaurants.map((r) => (
-                    <Link to={`/user/restaurants/${r.slug || r._id}`} key={r._id} className="block group">
+                    <Link to={`/food/user/restaurants/${r.slug || r._id}`} key={r._id} className="block group">
                       <div className="relative rounded-3xl overflow-hidden aspect-[16/9] mb-3 bg-slate-200">
                          <img 
                           src={getMediaUrl(r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))} 

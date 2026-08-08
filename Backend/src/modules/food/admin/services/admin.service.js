@@ -223,15 +223,21 @@ export async function getRestaurantComplaints(query = {}) {
 }
 
 export async function globalSearch(query = '') {
-    const term = String(query).trim();
+    const term = String(query || '').trim();
     if (!term) return [];
+    
+    // Strip '#' prefix for order searches
+    const orderTerm = term.startsWith('#') ? term.substring(1) : term;
+    const escapedOrder = orderTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const orderRegex = { $regex: escapedOrder, $options: 'i' };
+
     const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = { $regex: escaped, $options: 'i' };
 
     const [orders, users, restaurants, items, categories, addons] = await Promise.all([
         FoodOrder.find({
             orderType: 'food',
-            $or: [{ orderId: regex }, { orderStatus: regex }]
+            $or: [{ orderId: orderRegex }, { orderStatus: regex }]
         })
             .limit(5)
             .select('orderId orderStatus createdAt')
@@ -259,9 +265,14 @@ export async function globalSearch(query = '') {
             .limit(3)
             .select('name image')
             .lean(),
-        FoodAddon.find({ name: regex })
+        FoodAddon.find({
+            $or: [
+                { 'draft.name': regex },
+                { 'published.name': regex }
+            ]
+        })
             .limit(3)
-            .select('name price')
+            .select('draft published')
             .lean()
     ]);
 
@@ -307,13 +318,17 @@ export async function globalSearch(query = '') {
         path: `/admin/food/categories`
     }));
 
-    addons.forEach(a => results.push({
-        id: a._id,
-        type: 'Addon',
-        title: a.name,
-        description: `Price: ₹${a.price}`,
-        path: `/admin/food/addons`
-    }));
+    addons.forEach(a => {
+        const name = a.published?.name || a.draft?.name || 'Addon';
+        const price = a.published?.price ?? a.draft?.price ?? 0;
+        results.push({
+            id: a._id,
+            type: 'Addon',
+            title: name,
+            description: `Price: ₹${price}`,
+            path: `/admin/food/addons`
+        });
+    });
 
     return results;
 }
@@ -353,7 +368,7 @@ export async function getRestaurants(query) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId priority')
+            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId priority pureVegRestaurant')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)
@@ -761,146 +776,199 @@ function formatTimeAgo(date) {
 
 
 export async function getTransactionReport(query = {}) {
-    const { fromDate, toDate, zone, restaurant, search } = query;
-    const match = { orderType: 'food' };
+    try {
+        const { fromDate, toDate, zone, restaurant, search } = query;
+        const match = {};
 
-    if (fromDate && toDate) {
-        match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
-    }
+        if (fromDate && toDate) {
+            match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+        }
 
-    if (search) {
-        const searchRegex = new RegExp(String(search).trim(), "i");
-        const matchingOrders = await FoodOrder.find({ orderId: { $regex: searchRegex }, orderType: 'food' })
-            .select('_id')
-            .lean();
+        if (search) {
+            const searchRegex = new RegExp(String(search).trim(), "i");
+            const matchingOrders = await FoodOrder.find({ orderId: { $regex: searchRegex } })
+                .select('_id')
+                .lean();
 
-        match.$or = [
-            { orderReadableId: { $regex: searchRegex } },
-            { orderId: { $in: matchingOrders.map((order) => order._id) } }
-        ];
-    }
+            match.$or = [
+                { orderReadableId: { $regex: searchRegex } },
+                { orderId: { $in: matchingOrders.map((order) => order._id) } }
+            ];
+        }
 
-    let restaurantIds = null;
-    if (zone || restaurant) {
-        const restFilter = {};
-        if (zone) {
-            if (mongoose.Types.ObjectId.isValid(zone)) {
-                restFilter.zoneId = new mongoose.Types.ObjectId(zone);
-            } else {
-                const matchedZone = await mongoose.model('FoodZone').findOne({
-                    $or: [{ name: zone }, { zoneName: zone }]
-                }).select('_id').lean();
-                if (matchedZone) {
-                    restFilter.zoneId = matchedZone._id;
+        let restaurantIds = null;
+        if (zone || restaurant) {
+            const restFilter = {};
+            if (zone && zone !== "All Zones") {
+                if (mongoose.Types.ObjectId.isValid(zone)) {
+                    restFilter.zoneId = new mongoose.Types.ObjectId(zone);
                 } else {
-                    return { transactions: [], summary: { completedTransaction: 0, refundedTransaction: 0, adminEarning: 0, restaurantEarning: 0, deliverymanEarning: 0 } };
+                    const matchedZone = await FoodZone.findOne({
+                        $or: [{ name: zone }, { zoneName: zone }]
+                    }).select('_id').lean();
+                    if (matchedZone) {
+                        restFilter.zoneId = matchedZone._id;
+                    } else {
+                        return { transactions: [], summary: { completedTransaction: 0, refundedTransaction: 0, adminEarning: 0, restaurantEarning: 0, deliverymanEarning: 0 } };
+                    }
                 }
             }
+            if (restaurant && restaurant !== 'All restaurants') {
+                const restDoc = await FoodRestaurant.findOne({ restaurantName: restaurant }).lean();
+                if (restDoc) restFilter._id = restDoc._id;
+            }
+
+            if (Object.keys(restFilter).length > 0) {
+                const restaurantsList = await FoodRestaurant.find(restFilter).select('_id').lean();
+                restaurantIds = restaurantsList.map(r => r._id);
+                match.restaurantId = { $in: restaurantIds };
+            }
         }
-        if (restaurant && restaurant !== 'All restaurants') {
-            const restDoc = await mongoose.model('FoodRestaurant').findOne({ restaurantName: restaurant }).lean();
-            if (restDoc) restFilter._id = restDoc._id;
+
+        let transactionRows = await FoodTransaction.find(match)
+            .populate('orderId')
+            .populate('userId', 'name')
+            .populate('restaurantId', 'restaurantName')
+            .populate('deliveryPartnerId', 'name')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Fallback: If FoodTransaction table has no rows for these filters, query FoodOrder directly
+        if (!transactionRows || transactionRows.length === 0) {
+            const orderMatch = {};
+            if (fromDate && toDate) {
+                orderMatch.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+            }
+            if (restaurantIds && restaurantIds.length > 0) {
+                orderMatch.restaurantId = { $in: restaurantIds };
+            }
+            if (search) {
+                const searchRegex = new RegExp(String(search).trim(), "i");
+                orderMatch.$or = [
+                    { orderId: { $regex: searchRegex } },
+                    { customerName: { $regex: searchRegex } }
+                ];
+            }
+
+            const ordersList = await FoodOrder.find(orderMatch)
+                .populate('userId', 'name')
+                .populate('restaurantId', 'restaurantName')
+                .populate({ path: 'dispatch.deliveryPartnerId', select: 'name' })
+                .sort({ createdAt: -1 })
+                .lean();
+
+            transactionRows = ordersList.map(o => ({
+                _id: o._id,
+                orderId: o,
+                orderReadableId: o.orderId,
+                userId: o.userId,
+                restaurantId: o.restaurantId,
+                deliveryPartnerId: o.dispatch?.deliveryPartnerId,
+                status: o.orderStatus === 'delivered' ? 'captured' : (o.orderStatus?.startsWith('cancelled') ? 'refunded' : 'pending'),
+                amounts: {
+                    totalCustomerPaid: o.pricing?.total || 0,
+                    restaurantShare: Math.max(0, (o.pricing?.subtotal || 0) - (o.pricing?.restaurantCommission || 0)),
+                    restaurantCommission: o.pricing?.restaurantCommission || 0,
+                    riderShare: o.riderEarning || 0,
+                    platformNetProfit: o.adminEarning || 0,
+                    taxAmount: o.pricing?.tax || 0
+                },
+                createdAt: o.createdAt
+            }));
         }
 
-        if (Object.keys(restFilter).length > 0) {
-            const restaurantsList = await mongoose.model('FoodRestaurant').find(restFilter).select('_id').lean();
-            restaurantIds = restaurantsList.map(r => r._id);
-            match.restaurantId = { $in: restaurantIds };
-        }
-    }
+        const transactions = transactionRows.map((tx) => {
+            const order = (typeof tx.orderId === 'object' && tx.orderId !== null) ? tx.orderId : {};
+            const pricing = order.pricing || {};
+            const subtotal = Number(pricing.subtotal || 0) || Number(tx.amounts?.totalCustomerPaid || 0);
+            const packagingFee = Number(pricing.packagingFee || 0) || 0;
+            const deliveryFee = Number(pricing.deliveryFee || 0) || 0;
+            const tax = Number(pricing.tax || 0) || Number(tx.amounts?.taxAmount || 0);
+            const discount = Number(pricing.discount || 0) || 0;
+            const total = Number(pricing.total || 0) || Number(tx.amounts?.totalCustomerPaid || 0);
 
-    // Include only resolved transactions for reports (or all to match orders)
-    // We will query the FoodTransaction table directly as it is the ledger
-    const transactionRows = await FoodTransaction.find(match)
-        .populate('orderId')
-        .populate('userId', 'name')
-        .populate('restaurantId', 'restaurantName')
-        .populate('deliveryPartnerId', 'name')
-        .sort({ createdAt: -1 })
-        .lean();
+            const platformFeeDerived = Math.max(
+                0,
+                total - subtotal - packagingFee - deliveryFee - tax + discount
+            );
+            const platformFee =
+                pricing.platformFee !== undefined && pricing.platformFee !== null
+                    ? Number(pricing.platformFee || 0) || 0
+                    : platformFeeDerived;
 
-    const transactions = transactionRows.map((tx) => {
-        const order = tx.orderId || {};
-        const pricing = order.pricing || {};
-        const subtotal = Number(pricing.subtotal || 0) || 0;
-        const packagingFee = Number(pricing.packagingFee || 0) || 0;
-        const deliveryFee = Number(pricing.deliveryFee || 0) || 0;
-        const tax = Number(pricing.tax || 0) || 0;
-        const discount = Number(pricing.discount || 0) || 0;
-        const total = Number(pricing.total || 0) || 0;
-
-        // "Platform fee" should come from pricing.platformFee when available.
-        // For older orders where pricing.platformFee isn't stored, derive it from the pricing equation:
-        // total = subtotal + packagingFee + deliveryFee + platformFee + tax - discount
-        const platformFeeDerived = Math.max(
-            0,
-            total - subtotal - packagingFee - deliveryFee - tax + discount
-        );
-        const platformFee =
-            pricing.platformFee !== undefined && pricing.platformFee !== null
-                ? Number(pricing.platformFee || 0) || 0
-                : platformFeeDerived;
-
-        const adminEarning = tx.amounts?.platformNetProfit !== undefined && tx.amounts?.platformNetProfit !== null
-            ? tx.amounts.platformNetProfit
-            : (platformFee + deliveryFee + (pricing.restaurantCommission || 0) - (tx.amounts?.riderShare || 0));
-        
-        const restaurantEarning = tx.amounts?.restaurantShare !== undefined && tx.amounts?.restaurantShare !== null
-            ? tx.amounts.restaurantShare
-            : Math.max(0, subtotal + packagingFee - (pricing.restaurantCommission || 0));
+            const rawAdminEarning = tx.amounts?.platformNetProfit !== undefined && tx.amounts?.platformNetProfit !== null
+                ? tx.amounts.platformNetProfit
+                : (platformFee + deliveryFee + (pricing.restaurantCommission || 0) - (tx.amounts?.riderShare || 0));
+            const adminEarning = Math.max(0, rawAdminEarning);
             
-        const deliverymanEarning = tx.amounts?.riderShare || order.riderEarning || 0;
+            const restaurantEarning = tx.amounts?.restaurantShare !== undefined && tx.amounts?.restaurantShare !== null
+                ? tx.amounts.restaurantShare
+                : Math.max(0, subtotal + packagingFee - (pricing.restaurantCommission || 0));
+                
+            const deliverymanEarning = tx.amounts?.riderShare || order.riderEarning || 0;
 
-        return {
-            id: tx._id,
-            orderId: tx.orderReadableId || order.orderId || 'N/A',
-            restaurant: tx.restaurantId?.restaurantName || 'N/A',
-            customerName: tx.userId?.name || 'Guest',
-            totalItemAmount: subtotal,
-            itemDiscount: discount,
-            couponDiscount: discount,
-            referralDiscount: 0,
-            discountedAmount: Math.max(0, subtotal - discount),
-            vatTax: tx.amounts?.taxAmount || pricing.tax || 0,
-            deliveryCharge: pricing.deliveryFee || 0,
-            platformFee,
-            orderAmount: tx.amounts?.totalCustomerPaid || pricing.total || 0,
+            return {
+                id: tx._id,
+                orderId: tx.orderReadableId || order.orderId || 'N/A',
+                restaurant: tx.restaurantId?.restaurantName || order.restaurantName || 'N/A',
+                customerName: tx.userId?.name || order.customerName || 'Guest',
+                totalItemAmount: subtotal,
+                itemDiscount: discount,
+                couponDiscount: discount,
+                referralDiscount: 0,
+                discountedAmount: Math.max(0, subtotal - discount),
+                vatTax: tx.amounts?.taxAmount || pricing.tax || 0,
+                deliveryCharge: pricing.deliveryFee || 0,
+                platformFee,
+                orderAmount: tx.amounts?.totalCustomerPaid || pricing.total || 0,
+                adminEarning,
+                restaurantEarning,
+                deliverymanEarning,
+                deliverymanName: tx.deliveryPartnerId?.name || 'N/A',
+                status: tx.status
+            };
+        });
+
+        let completedTransaction = 0;
+        let refundedTransaction = 0;
+        let adminEarning = 0;
+        let restaurantEarning = 0;
+        let deliverymanEarning = 0;
+
+        for (const tx of transactions) {
+            if (['captured', 'settled', 'delivered', 'paid', 'completed'].includes(String(tx.status).toLowerCase())) {
+                completedTransaction += tx.orderAmount || 0;
+                adminEarning += tx.adminEarning || 0;
+                restaurantEarning += tx.restaurantEarning || 0;
+                deliverymanEarning += tx.deliverymanEarning || 0;
+            }
+            if (['refunded', 'cancelled_by_admin', 'cancelled_by_user', 'cancelled_by_restaurant', 'failed'].includes(String(tx.status).toLowerCase())) {
+                refundedTransaction += tx.orderAmount || 0;
+            }
+        }
+
+        const summary = {
+            completedTransaction,
+            refundedTransaction,
             adminEarning,
             restaurantEarning,
             deliverymanEarning,
-            deliverymanName: tx.deliveryPartnerId?.name || 'N/A',
-            status: tx.status
         };
-    });
 
-    let completedTransaction = 0;
-    let refundedTransaction = 0;
-    let adminEarning = 0;
-    let restaurantEarning = 0;
-    let deliverymanEarning = 0;
-
-    for (const tx of transactions) {
-        // Calculate Summary using the mapped tx which has our robust fallbacks
-        if (tx.status === 'captured' || tx.status === 'settled' || tx.status === 'delivered') {
-            completedTransaction += tx.orderAmount || 0;
-            adminEarning += tx.adminEarning || 0;
-            restaurantEarning += tx.restaurantEarning || 0;
-            deliverymanEarning += tx.deliverymanEarning || 0;
-        }
-        if (tx.status === 'refunded' || tx.status === 'cancelled_by_admin') {
-            refundedTransaction += tx.orderAmount || 0;
-        }
+        return { transactions, summary };
+    } catch (err) {
+        console.error('getTransactionReport service error:', err);
+        return {
+            transactions: [],
+            summary: {
+                completedTransaction: 0,
+                refundedTransaction: 0,
+                adminEarning: 0,
+                restaurantEarning: 0,
+                deliverymanEarning: 0
+            }
+        };
     }
-
-    const summary = {
-        completedTransaction,
-        refundedTransaction, // Returning amount instead of count for consistency, frontend might expect count though
-        adminEarning,
-        restaurantEarning,
-        deliverymanEarning,
-    };
-
-    return { transactions, summary };
 }
 
 export async function getRestaurantReport(query = {}) {
@@ -1113,10 +1181,9 @@ export async function getRestaurantReport(query = {}) {
 }
 
 export async function getTaxReport(query = {}) {
-    const { fromDate, toDate, search } = query;
+    const { fromDate, toDate, search, calculateTax, taxRate } = query;
     const match = {
-        orderType: 'food',
-        orderStatus: 'delivered' // Typically tax is reported on delivered/completed orders
+        orderStatus: 'delivered'
     };
 
     if (fromDate && toDate) {
@@ -1124,19 +1191,23 @@ export async function getTaxReport(query = {}) {
     }
 
     if (search) {
-        // Search by order ID if provided
         match.orderId = { $regex: search, $options: 'i' };
     }
 
-    // Aggregate tax by income source (Restaurants, Delivery, Platform)
-    // For now, we'll group by Restaurant as the primary income source
+    const parsedTaxRate = taxRate && taxRate !== 'Select Tax Rate'
+        ? parseFloat(String(taxRate).replace('%', ''))
+        : null;
+
+    const taxMethod = calculateTax || 'Percentage';
+
     const taxData = await FoodOrder.aggregate([
         { $match: match },
         {
             $group: {
                 _id: '$restaurantId',
                 totalIncome: { $sum: { $ifNull: ['$pricing.total', 0] } },
-                totalTax: { $sum: { $ifNull: ['$pricing.tax', 0] } },
+                totalSubtotal: { $sum: { $ifNull: ['$pricing.subtotal', 0] } },
+                totalStoredTax: { $sum: { $ifNull: ['$pricing.tax', 0] } },
                 orderCount: { $sum: 1 }
             }
         },
@@ -1153,11 +1224,12 @@ export async function getTaxReport(query = {}) {
             $project: {
                 incomeSource: { $ifNull: ['$restaurant.restaurantName', 'Unknown Restaurant'] },
                 totalIncome: 1,
-                totalTax: 1,
+                totalSubtotal: 1,
+                totalStoredTax: 1,
                 orderCount: 1
             }
         },
-        { $sort: { totalTax: -1 } }
+        { $sort: { totalStoredTax: -1 } }
     ]);
 
     const stats = {
@@ -1166,14 +1238,34 @@ export async function getTaxReport(query = {}) {
     };
 
     const reports = taxData.map((item, index) => {
+        let computedTax = item.totalStoredTax;
+        const effectiveRate = parsedTaxRate !== null && parsedTaxRate > 0 ? parsedTaxRate : 18;
+
+        if (taxMethod === 'Percentage') {
+            if (parsedTaxRate !== null && parsedTaxRate > 0) {
+                computedTax = (item.totalSubtotal * parsedTaxRate) / 100;
+            }
+        } else if (taxMethod === 'Fixed Amount') {
+            const fixedPerOrder = parsedTaxRate !== null && parsedTaxRate > 0 ? parsedTaxRate : 50;
+            computedTax = fixedPerOrder * item.orderCount;
+        } else if (taxMethod === 'Tiered') {
+            if (item.totalSubtotal <= 1000) {
+                computedTax = (item.totalSubtotal * 5) / 100;
+            } else if (item.totalSubtotal <= 5000) {
+                computedTax = (1000 * 5 / 100) + ((item.totalSubtotal - 1000) * 10) / 100;
+            } else {
+                computedTax = (1000 * 5 / 100) + (4000 * 10 / 100) + ((item.totalSubtotal - 5000) * effectiveRate) / 100;
+            }
+        }
+
         stats.totalIncome += item.totalIncome;
-        stats.totalTax += item.totalTax;
+        stats.totalTax += computedTax;
         return {
             sl: index + 1,
             id: item._id,
             incomeSource: item.incomeSource,
             totalIncome: `\u20B9${item.totalIncome.toFixed(2)}`,
-            totalTax: `\u20B9${item.totalTax.toFixed(2)}`,
+            totalTax: `\u20B9${computedTax.toFixed(2)}`,
             orderCount: item.orderCount
         };
     });
@@ -3486,7 +3578,9 @@ export async function createRestaurantByAdmin(body) {
             }
             : undefined,
         status: 'approved',
-        approvedAt: new Date()
+        approvedAt: new Date(),
+        adminCommission: 10,
+        adminCommissionType: 'percent'
     };
 
     if (body.zoneId !== undefined) {
@@ -3539,7 +3633,9 @@ export async function approveRestaurant(id) {
                 isActive: true,
                 approvedAt: new Date(),
                 rejectedAt: undefined,
-                rejectionReason: undefined
+                rejectionReason: undefined,
+                adminCommission: 10,
+                adminCommissionType: 'percent'
             },
             $unset: { reVerification: "" }
         },
@@ -3614,6 +3710,54 @@ export async function getAllOffers(_query = {}) {
         .populate({ path: 'restaurantId', select: 'restaurantName' })
         .lean();
 
+    // 1. Fetch usage counts from FoodOfferUsage by offerId
+    const offerUsageByIdMap = new Map();
+    try {
+        const allUsages = await FoodOfferUsage.find({}).lean();
+        (allUsages || []).forEach(u => {
+            if (u.offerId) {
+                const key = String(u.offerId);
+                offerUsageByIdMap.set(key, (offerUsageByIdMap.get(key) || 0) + Number(u.count || 1));
+            }
+        });
+    } catch {
+        // Fallback gracefully
+    }
+
+    // 2. Scan all orders with coupon applied or discount > 0 from FoodOrder
+    const usageByCodeMap = new Map();
+    let totalDiscountedOrdersCount = 0;
+    try {
+        const couponOrders = await FoodOrder.find({
+            $or: [
+                { "pricing.couponCode": { $exists: true, $ne: null, $ne: "" } },
+                { "pricing.appliedCoupon.code": { $exists: true, $ne: null, $ne: "" } },
+                { "appliedCoupon.code": { $exists: true, $ne: null, $ne: "" } },
+                { "couponCode": { $exists: true, $ne: null, $ne: "" } },
+                { "pricing.couponDiscount": { $gt: 0 } },
+                { "pricing.discount": { $gt: 0 } },
+                { "couponDiscount": { $gt: 0 } }
+            ]
+        }).select("pricing appliedCoupon couponCode couponDiscount").lean();
+
+        (couponOrders || []).forEach(ord => {
+            totalDiscountedOrdersCount++;
+            const code = (
+                ord.pricing?.couponCode ||
+                ord.pricing?.appliedCoupon?.code ||
+                ord.appliedCoupon?.code ||
+                ord.couponCode ||
+                ""
+            ).trim().toUpperCase();
+
+            if (code) {
+                usageByCodeMap.set(code, (usageByCodeMap.get(code) || 0) + 1);
+            }
+        });
+    } catch {
+        // Fallback gracefully
+    }
+
     const offers = list.map((o, index) => {
         const now = Date.now();
         const startTs = o.startDate ? new Date(o.startDate).getTime() : null;
@@ -3636,6 +3780,21 @@ export async function getAllOffers(_query = {}) {
             status = 'scheduled';
         }
 
+        const offerIdStr = String(o._id);
+        const codeUpper = String(o.couponCode || "").trim().toUpperCase();
+        const usageFromOfferUsage = offerUsageByIdMap.get(offerIdStr) || 0;
+        const usageFromOrders = usageByCodeMap.get(codeUpper) || 0;
+
+        let totalUsedCount = Math.max(
+            Number(o.usedCount || 0),
+            usageFromOfferUsage,
+            usageFromOrders
+        );
+
+        if (totalUsedCount === 0 && totalDiscountedOrdersCount > 0) {
+            totalUsedCount = totalDiscountedOrdersCount;
+        }
+
         return {
             sl: index + 1,
             offerId: String(o._id),
@@ -3655,7 +3814,7 @@ export async function getAllOffers(_query = {}) {
             minOrderValue: o.minOrderValue ?? 0,
             maxDiscount: o.maxDiscount ?? null,
             usageLimit: o.usageLimit ?? null,
-            usedCount: o.usedCount ?? 0,
+            usedCount: totalUsedCount,
             restaurantScope: o.restaurantScope
         };
     });
@@ -4636,12 +4795,18 @@ export async function getDeliveryPartnerById(id) {
             ? { addressLine1: partner.address, city: partner.city, state: partner.state }
             : null,
         vehicle: (partner.vehicleType || partner.vehicleName || partner.vehicleNumber)
-            ? {
-                type: partner.vehicleType,
-                brand: partner.vehicleName,
-                model: partner.vehicleName,
-                number: partner.vehicleNumber
-            }
+            ? (() => {
+                const name = String(partner.vehicleName || '').trim();
+                const parts = name.split(/\s+/);
+                const brand = parts[0] || 'N/A';
+                const model = parts.length > 1 ? parts.slice(1).join(' ') : 'N/A';
+                return {
+                    type: partner.vehicleType || 'N/A',
+                    brand,
+                    model,
+                    number: partner.vehicleNumber || 'N/A'
+                };
+              })()
             : null
     };
 }
@@ -4733,6 +4898,48 @@ export async function approveDeliveryPartner(id) {
                 await mainPartner.save();
             }
         }
+
+        try {
+            const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
+            const { FoodNotification } = await import('../../../../core/notifications/models/notification.model.js');
+            const { getIO, rooms } = await import('../../../../socket.js');
+
+            const targetId = partner.deliveryPartnerId || partner._id;
+
+            await notifyOwnerSafely(
+                { ownerType: 'DELIVERY_PARTNER', ownerId: targetId },
+                {
+                    title: 'Vehicle Change Approved! 🚲',
+                    body: `Your request to change vehicle details has been approved.`,
+                    image: 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png',
+                    data: {
+                        type: 'vehicle_change_approved',
+                        partnerId: String(targetId)
+                    }
+                }
+            );
+
+            await FoodNotification.create({
+                ownerId: targetId,
+                ownerType: 'DELIVERY_PARTNER',
+                title: 'Vehicle Change Approved! 🚲',
+                message: 'Your request to change vehicle details has been approved.',
+                type: 'vehicle_change_approved',
+                isRead: false
+            });
+
+            const io = getIO();
+            if (io) {
+                io.to(rooms.delivery(String(targetId))).emit('application_status_changed', {
+                    status: 'approved',
+                    requestType: 'VEHICLE_CHANGE',
+                    message: 'Your vehicle change request has been approved!'
+                });
+            }
+        } catch (e) {
+            console.error('Failed to send vehicle change approval notification:', e);
+        }
+
         return partner.toObject();
     }
 
@@ -4893,6 +5100,47 @@ export async function deleteDeliveryPartner(id) {
     return partner;
 }
 
+export async function toggleDeliveryPartnerAccount(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const partner = await FoodDeliveryPartner.findById(id);
+    if (!partner) return null;
+
+    const isCurrentlyActive = partner.status === 'approved';
+    const newStatus = isCurrentlyActive ? 'suspended' : 'approved';
+    const newAvailability = isCurrentlyActive ? 'offline' : partner.availabilityStatus || 'offline';
+
+    partner.status = newStatus;
+    partner.availabilityStatus = newAvailability;
+    if (isCurrentlyActive) {
+        partner.isDeactivated = true;
+        partner.deactivatedAt = new Date();
+        partner.adminForceOffline = true;
+    } else {
+        partner.isDeactivated = false;
+        partner.deactivatedAt = undefined;
+        partner.adminForceOffline = false;
+    }
+    await partner.save();
+
+    // Notify partner via socket
+    try {
+        const { getIO, rooms } = await import('../../../../socket.js');
+        const io = getIO();
+        if (io) {
+            io.to(rooms.delivery(String(id))).emit('account_status_changed', {
+                status: newStatus,
+                message: isCurrentlyActive
+                    ? 'Your account has been deactivated by admin.'
+                    : 'Your account has been reactivated by admin.'
+            });
+        }
+    } catch (e) {
+        // non-critical
+    }
+
+    return { ...partner.toObject(), isActive: newStatus === 'approved' };
+}
+
 export async function updateDeliveryPartnerStatus(id, availabilityStatus) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const partner = await FoodDeliveryPartner.findById(id);
@@ -4900,13 +5148,23 @@ export async function updateDeliveryPartnerStatus(id, availabilityStatus) {
 
     if (availabilityStatus && ['online', 'offline'].includes(availabilityStatus)) {
         partner.availabilityStatus = availabilityStatus;
+        // When admin forces offline, set flag so driver app cannot auto-override.
+        // When admin sets back online, clear the flag.
+        partner.adminForceOffline = availabilityStatus === 'offline';
         await partner.save();
 
         try {
             const { getIO, rooms } = await import('../../../../config/socket.js');
             const io = getIO();
-            if (io && rooms && rooms.delivery) {
-                io.to(rooms.delivery(id)).emit('admin_status_update', {
+            if (io) {
+                if (rooms && rooms.delivery) {
+                    io.to(rooms.delivery(id)).emit('admin_status_update', {
+                        status: availabilityStatus,
+                        adminForceOffline: partner.adminForceOffline
+                    });
+                }
+                io.emit('driver_status_updated', {
+                    partnerId: String(id),
                     status: availabilityStatus
                 });
             }
@@ -5674,6 +5932,76 @@ export async function processRefund(orderId, refundAmount, refundTo) {
         });
     } catch (_err) {
         // Keep the refund completed even if finance history sync needs follow-up.
+    }
+
+    // Send user notification when refund is approved and initiated by admin
+    try {
+        const orderReadableId = order.orderId || String(order._id);
+        const refundMethodText = normalizedRefundMethod === 'wallet' ? 'Superfast Wallet' : 'Original Payment Method';
+        const notificationTitle = 'Refund Approved & Initiated 💰';
+        const notificationMessage = `Your refund of ₹${normalizedAmount.toFixed(2)} for Order #${orderReadableId} has been approved and initiated to your ${refundMethodText}.`;
+        const orderLink = `/food/user/orders/${order._id}`;
+
+        // 1. Send FCM Push Notification to User
+        if (order.userId) {
+            await sendNotificationToOwner({
+                ownerType: 'USER',
+                ownerId: String(order.userId),
+                payload: {
+                    title: notificationTitle,
+                    body: notificationMessage,
+                    data: {
+                        type: 'REFUND_APPROVED',
+                        orderId: String(order._id),
+                        orderReadableId,
+                        amount: String(normalizedAmount),
+                        refundMethod: normalizedRefundMethod,
+                        link: orderLink
+                    }
+                }
+            });
+
+            // 2. Save User Notification to Inbox
+            const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+            await createInboxNotifications({
+                notifications: [{
+                    ownerType: 'USER',
+                    ownerId: String(order.userId),
+                    title: notificationTitle,
+                    message: notificationMessage,
+                    link: orderLink,
+                    category: 'order',
+                    metadata: {
+                        type: 'REFUND_APPROVED',
+                        orderId: String(order._id),
+                        orderReadableId,
+                        amount: normalizedAmount,
+                        refundMethod: normalizedRefundMethod
+                    }
+                }]
+            });
+
+            // 3. Emit real-time socket event to user
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io && rooms?.user) {
+                io.to(rooms.user(order.userId)).emit('order_refund_approved', {
+                    orderId: String(order._id),
+                    orderReadableId,
+                    amount: normalizedAmount,
+                    refundMethod: normalizedRefundMethod,
+                    message: notificationMessage
+                });
+                io.to(rooms.user(order.userId)).emit('order_status_update', {
+                    orderId: String(order._id),
+                    orderReadableId,
+                    status: order.orderStatus,
+                    paymentStatus: 'refunded'
+                });
+            }
+        }
+    } catch (notifErr) {
+        console.error(`Failed to send refund notification for Order ${orderId}:`, notifErr);
     }
 
     return order.toObject();

@@ -60,22 +60,17 @@ export const toRelativeUrl = (filePath) => {
         trimmed = trimmed.slice(config.baseUrl.length);
     }
 
-    // Also check if an external domain URL contains our known storage directories `/uploads/` or `/images/` right after domain
-    if (/^https?:\/\/[^\/]+\/(uploads|images)\//i.test(trimmed)) {
-        const match = trimmed.match(/^https?:\/\/[^\/]+\/((?:uploads|images)\/.*)$/i);
+    // Also check if an external domain URL contains our known storage directories `/upload/`, `/uploads/` or `/images/` right after domain
+    if (/^https?:\/\/[^\/]+\/(upload|uploads|images)\//i.test(trimmed)) {
+        const match = trimmed.match(/^https?:\/\/[^\/]+\/((?:upload|uploads|images)\/.*)$/i);
         if (match && match[1]) {
             return match[1];
         }
     }
 
-    // Strip leading slashes so `/uploads/...` -> `uploads/...` and `/images/...` -> `images/...`
+    // Strip leading slashes so `/upload/...` -> `upload/...`
     if (trimmed.startsWith('/')) {
         trimmed = trimmed.replace(/^\/+/, '');
-    }
-
-    // Standardize: if legacy path starts with uploads/, normalize to images/ so only images/... is stored in MongoDB
-    if (trimmed.startsWith('uploads/')) {
-        trimmed = 'images/' + trimmed.slice('uploads/'.length);
     }
 
     return trimmed;
@@ -124,8 +119,8 @@ export const getImageUrl = (imagePath, req = null) => {
     }
 
     let normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-    if (!normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
-        normalizedPath = `/images${normalizedPath}`;
+    if (!normalizedPath.startsWith('/upload/') && !normalizedPath.startsWith('/uploads/') && !normalizedPath.startsWith('/images/') && !normalizedPath.startsWith('/api/')) {
+        normalizedPath = `/upload${normalizedPath}`;
     }
     return `${baseUrl}${normalizedPath}`;
 };

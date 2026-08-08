@@ -15,6 +15,7 @@ import {
 import customerPin from "@/assets/customer-pin.webp";
 import deliveryIcon from "@/assets/deliveryIcon.webp";
 import storePin from "@/assets/store-pin.webp";
+import { customerApi } from "../../services/customerApi";
 
 const libraries = ["geometry"];
 
@@ -52,6 +53,7 @@ const LiveTrackingMap = memo(({
   status = "out for delivery",
   eta = "8 mins",
   riderName = "Ramesh Kumar",
+  riderRating,
   riderLocation,
   sellerLocation,
   destinationLocation,
@@ -64,6 +66,17 @@ const LiveTrackingMap = memo(({
   const isSearching = SEARCHING_STATUSES.includes(status?.toLowerCase());
   const [progress, setProgress] = useState(0);
   const [dots, setDots] = useState("");
+  const [defaultRating, setDefaultRating] = useState("4.8");
+
+  // Fetch admin-configured default rating (used as fallback for rider rating too)
+  useEffect(() => {
+    customerApi.getBillingSettings().then((res) => {
+      const rating = res?.data?.result?.defaultRating ?? res?.data?.data?.feeSettings?.defaultRating;
+      if (rating != null && Number.isFinite(Number(rating))) {
+        setDefaultRating(Number(rating).toFixed(1));
+      }
+    }).catch(() => {});
+  }, []);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
@@ -459,7 +472,7 @@ const LiveTrackingMap = memo(({
                   />
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 bg-[#0c831f] text-white text-[7px] font-bold px-1 py-0.5 rounded-full flex items-center gap-0.5">
-                  4.8 <Star size={5} fill="white" />
+                  {riderRating != null ? Number(riderRating).toFixed(1) : defaultRating} <Star size={5} fill="white" />
                 </div>
               </div>
               <div className="flex-1 min-w-0">

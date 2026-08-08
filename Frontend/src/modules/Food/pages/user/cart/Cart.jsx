@@ -631,9 +631,20 @@ export default function Cart() {
         return
       }
 
-      // If we already have restaurantData, don't fetch again
+      // If we already have restaurantData, only skip fetch if it still matches the current cart restaurant
       if (restaurantData) {
-        return
+        const currentCartRestaurantId = cart[0]?.restaurantId
+        const dataMatchesCart =
+          !currentCartRestaurantId ||
+          restaurantData._id?.toString() === currentCartRestaurantId ||
+          restaurantData.restaurantId === currentCartRestaurantId
+
+        if (dataMatchesCart) {
+          return
+        }
+        // Cart changed to a different restaurant — clear stale data and re-fetch
+        debugLog("?? Cart restaurant changed, clearing stale restaurantData and re-fetching...")
+        setRestaurantData(null)
       }
 
       setLoadingRestaurant(true)
@@ -1308,13 +1319,28 @@ export default function Cart() {
   }
 
   const handleBack = () => {
-    // Priority: slug > restaurantId (both work for the restaurant details route)
+    // Priority 1: Navigate to restaurant if item/restaurant data is present
     const idOrSlug = restaurantData?.slug || restaurantId
     if (idOrSlug) {
       navigate(`/food/user/restaurants/${idOrSlug}`)
-    } else {
-      goBack()
+      return
     }
+
+    // Priority 2: Explicit back path from location state
+    const explicitFrom = location.state?.from || location.state?.backTo
+    if (explicitFrom && explicitFrom !== location.pathname) {
+      navigate(explicitFrom)
+      return
+    }
+
+    // Priority 3: Browser history step back if available
+    if (typeof window !== "undefined" && window.history.length > 1 && window.history.state?.idx > 0) {
+      navigate(-1)
+      return
+    }
+
+    // Fallback: Always return to Food Home
+    navigate("/food/user")
   }
 
   // Handler to select address by label (Home, Office, Other)
@@ -1797,6 +1823,7 @@ export default function Cart() {
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
         clearCart()
+        setRestaurantData(null)
         setNote("")
         setShowNoteInput(false)
         try {
@@ -1816,6 +1843,7 @@ export default function Cart() {
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
         clearCart()
+        setRestaurantData(null)
         setNote("")
         setShowNoteInput(false)
         try {
@@ -1916,6 +1944,7 @@ export default function Cart() {
               setShowOrderSuccess(true)
               window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
               clearCart()
+              setRestaurantData(null)
               setIsPlacingOrder(false)
             } else {
               throw new Error(verifyResponse.data.message || "Payment verification failed")
@@ -2293,7 +2322,7 @@ export default function Cart() {
                   className="flex-1 flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl text-sm md:text-base text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <FileText className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="truncate">{note || "Add a note for the delivery partner"}</span>
+                  <span className="truncate">{note || "Add restaurant instructions"}</span>
                 </button>
                 <button
                   onClick={() => setSendCutlery(!sendCutlery)}
@@ -2717,7 +2746,7 @@ export default function Cart() {
                       />
                     </div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      Agar aap kisi aur ke liye order kar rahe ho, to yahan uska naam aur phone save kar do.
+                      If you are ordering for someone else, enter their name and phone number here.
                     </p>
                   </div>
                 )}

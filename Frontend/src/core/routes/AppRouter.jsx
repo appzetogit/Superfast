@@ -12,6 +12,7 @@ import { CartAnimationProvider } from '../../modules/customer/context/CartAnimat
 import { ProductDetailProvider } from '../../modules/customer/context/ProductDetailContext';
 import { LocationProvider } from '../../modules/customer/context/LocationContext';
 import ScrollToTop from '../../modules/customer/components/shared/ScrollToTop';
+import GlobalScrollToTop from '../../shared/components/GlobalScrollToTop';
 
 // Public Pages
 import Auth from '../../modules/seller/pages/Auth';
@@ -58,7 +59,7 @@ const CustomerLayoutWrapper = () => (
                     <ProductDetailProvider>
                         <ScrollToTop />
                         <CustomerLayout>
-                            <Suspense fallback={<div className="flex h-screen items-center justify-center font-outfit">Loading...</div>}>
+                            <Suspense fallback={null}>
                                 <Outlet />
                             </Suspense>
                         </CustomerLayout>
@@ -95,7 +96,12 @@ const AppRouter = () => {
     const router = useMemo(() => createBrowserRouter([
         {
             path: '/',
-            element: <Outlet />,
+            element: (
+                <>
+                    <GlobalScrollToTop />
+                    <Outlet />
+                </>
+            ),
             errorElement: <RootErrorBoundary />,
             children: [
                 {

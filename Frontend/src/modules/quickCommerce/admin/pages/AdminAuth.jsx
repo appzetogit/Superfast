@@ -38,6 +38,9 @@ const AdminAuth = () => {
         if (name === 'password') {
             const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6);
             setFormData({ ...formData, [name]: cleaned });
+        } else if (name === 'name') {
+            const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
+            setFormData({ ...formData, [name]: cleaned });
         } else {
             setFormData({ ...formData, [name]: value });
         }

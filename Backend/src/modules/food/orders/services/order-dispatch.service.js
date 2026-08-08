@@ -441,12 +441,18 @@ export async function resendDeliveryNotificationRestaurant(
     );
   }
 
-  order.dispatch.status = "unassigned";
-  order.dispatch.deliveryPartnerId = null;
-  order.dispatch.offeredTo = [];
-  await order.save();
+  // Reset dispatch state — also clear any stale dispatchingAt lock so
+  // tryAutoAssign isn't silently blocked by a previous incomplete attempt.
+  await FoodOrder.findByIdAndUpdate(order._id, {
+    $set: {
+      "dispatch.status": "unassigned",
+      "dispatch.deliveryPartnerId": null,
+      "dispatch.offeredTo": [],
+    },
+    $unset: { "dispatch.dispatchingAt": "" },
+  });
 
-  const res = await tryAutoAssign(order._id, { attempt: 3 });
+  const res = await tryAutoAssign(order._id.toString(), { attempt: 3 });
   return {
     success: true,
     notifiedCount: res?.notifiedCount || 0,

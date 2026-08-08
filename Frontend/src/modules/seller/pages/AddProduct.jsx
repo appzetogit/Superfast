@@ -22,6 +22,25 @@ import { toast } from "sonner";
 import { sellerApi } from "../services/sellerApi";
 
 
+const DRAFT_KEY = "seller_add_product_draft";
+
+const base64ToFile = (base64String, filename = "image.jpg") => {
+  if (!base64String || typeof base64String !== "string" || !base64String.startsWith("data:")) return null;
+  try {
+    const arr = base64String.split(",");
+    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  } catch (e) {
+    return null;
+  }
+};
+
 const AddProduct = () => {
   const navigate = useNavigate();
   const [modalTab, setModalTab] = useState(() => {
@@ -37,13 +56,30 @@ const AddProduct = () => {
 
   const [formData, setFormData] = useState(() => {
     try {
-      const savedDraft = sessionStorage.getItem("addProductDraftData");
+      const savedDraft = localStorage.getItem(DRAFT_KEY) || sessionStorage.getItem("addProductDraftData");
       if (savedDraft) {
         const parsed = JSON.parse(savedDraft);
         return {
-          ...parsed,
-          mainImage: null,
-          galleryImages: [],
+          name: parsed.name || "",
+          slug: parsed.slug || "",
+          sku: parsed.sku || "",
+          description: parsed.description || "",
+          price: parsed.price || "",
+          salePrice: parsed.salePrice || "",
+          stock: parsed.stock || "",
+          lowStockAlert: parsed.lowStockAlert ?? 5,
+          category: parsed.category || "",
+          subcategory: parsed.subcategory || "",
+          header: parsed.header || "",
+          status: parsed.status || "active",
+          tags: parsed.tags || "",
+          weight: parsed.weight || "",
+          brand: parsed.brand || "",
+          mainImage: parsed.mainImage || null,
+          galleryImages: Array.isArray(parsed.galleryImages) ? parsed.galleryImages : [],
+          variants: Array.isArray(parsed.variants) && parsed.variants.length > 0
+            ? parsed.variants
+            : [{ id: Date.now(), name: "Default", price: "", salePrice: "", stock: "", sku: "" }],
         };
       }
     } catch (e) {}
@@ -80,6 +116,7 @@ const AddProduct = () => {
 
   React.useEffect(() => {
     try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
       const { mainImage, galleryImages, ...textFields } = formData;
       sessionStorage.setItem("addProductDraftData", JSON.stringify(textFields));
     } catch (e) {}
@@ -143,6 +180,11 @@ const AddProduct = () => {
       return;
     }
 
+    if (formData.salePrice && formData.price && Number(formData.salePrice) > Number(formData.price)) {
+      toast.error("Discounted price cannot be greater than actual price");
+      return;
+    }
+
     if (formData.stock && Number(formData.stock) < 1) {
       toast.error("Stock must be at least 1");
       return;
@@ -150,6 +192,11 @@ const AddProduct = () => {
 
     if (formData.variants.some((v) => v.salePrice && Number(v.salePrice) < 1)) {
       toast.error("Sale price must be at least 1");
+      return;
+    }
+
+    if (formData.variants.some((v) => v.salePrice && v.price && Number(v.salePrice) > Number(v.price))) {
+      toast.error("Variant discounted price cannot be greater than actual price");
       return;
     }
 
@@ -186,12 +233,17 @@ const AddProduct = () => {
       data.append("tags", formData.tags);
 
       // Images
-      if (formData.mainImageFile) {
-        data.append("mainImage", formData.mainImageFile);
+      const mainFile = formData.mainImageFile || base64ToFile(formData.mainImage, "cover-image.jpg");
+      if (mainFile) {
+        data.append("mainImage", mainFile);
       }
 
-      if (formData.galleryFiles && formData.galleryFiles.length > 0) {
-        formData.galleryFiles.forEach(file => {
+      const galleryFiles = (formData.galleryFiles && formData.galleryFiles.length > 0)
+        ? formData.galleryFiles
+        : (formData.galleryImages || []).map((img, i) => base64ToFile(img, `gallery-${i}.jpg`)).filter(Boolean);
+
+      if (galleryFiles.length > 0) {
+        galleryFiles.forEach(file => {
           data.append("galleryImages", file);
         });
       }
@@ -200,6 +252,7 @@ const AddProduct = () => {
       data.append("variants", JSON.stringify(formData.variants));
 
       await sellerApi.createProduct(data);
+      localStorage.removeItem(DRAFT_KEY);
       sessionStorage.removeItem("addProductDraftData");
       toast.success("Product saved successfully!");
       navigate("/seller/products");
@@ -376,9 +429,15 @@ const AddProduct = () => {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) >= 0) {
+                        setFormData({ ...formData, price: val.replace(/-/g, "") });
+                      }
+                    }}
                     placeholder="e.g. 500"
                     className="w-full px-4 py-3 bg-white shadow-sm ring-1 ring-slate-200 border-none rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-primary/10"
                   />
@@ -389,12 +448,25 @@ const AddProduct = () => {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                     value={formData.salePrice}
-                    onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) >= 0) {
+                        setFormData({ ...formData, salePrice: val.replace(/-/g, "") });
+                      }
+                    }}
                     placeholder="e.g. 450"
-                    className="w-full px-4 py-3 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-100 border-none rounded-xl text-lg font-bold text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-200"
+                    className={`w-full px-4 py-3 shadow-sm ring-1 border-none rounded-xl text-lg font-bold outline-none focus:ring-2 ${
+                      formData.salePrice && formData.price && Number(formData.salePrice) > Number(formData.price)
+                        ? "bg-red-50 ring-red-400 text-red-600 focus:ring-red-400"
+                        : "bg-emerald-50/50 ring-emerald-100 text-emerald-700 focus:ring-emerald-200"
+                    }`}
                   />
+                  {formData.salePrice && formData.price && Number(formData.salePrice) > Number(formData.price) && (
+                    <p className="text-[10px] font-bold text-red-500 ml-1">Discounted price cannot be greater than actual price (₹{formData.price})</p>
+                  )}
                 </div>
               </div>
 
@@ -405,9 +477,15 @@ const AddProduct = () => {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                     value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) >= 0) {
+                        setFormData({ ...formData, stock: val.replace(/-/g, "") });
+                      }
+                    }}
                     placeholder="e.g. 10"
                     className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-bold outline-none ring-primary/5 focus:ring-2"
                   />
@@ -418,9 +496,15 @@ const AddProduct = () => {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                     value={formData.lowStockAlert}
-                    onChange={(e) => setFormData({ ...formData, lowStockAlert: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) >= 0) {
+                        setFormData({ ...formData, lowStockAlert: val.replace(/-/g, "") });
+                      }
+                    }}
                     className="w-full px-4 py-2.5 bg-rose-50/30 border-none rounded-xl text-sm font-bold text-rose-600 outline-none ring-rose-100 focus:ring-2"
                   />
                 </div>
@@ -488,11 +572,16 @@ const AddProduct = () => {
                       </label>
                       <input
                         type="number"
+                        min="0"
+                        onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                         value={variant.price}
                         onChange={(e) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index].price = e.target.value;
-                          setFormData({ ...formData, variants: newVariants });
+                          const val = e.target.value;
+                          if (val === "" || Number(val) >= 0) {
+                            const newVariants = [...formData.variants];
+                            newVariants[index].price = val.replace(/-/g, "");
+                            setFormData({ ...formData, variants: newVariants });
+                          }
                         }}
                         placeholder="500"
                         className="w-full px-3 py-2 bg-white ring-1 ring-slate-200 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-primary/10"
@@ -504,12 +593,16 @@ const AddProduct = () => {
                       </label>
                       <input
                         type="number"
-                        min="1"
+                        min="0"
+                        onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                         value={variant.salePrice}
                         onChange={(e) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index].salePrice = e.target.value;
-                          setFormData({ ...formData, variants: newVariants });
+                          const val = e.target.value;
+                          if (val === "" || Number(val) >= 0) {
+                            const newVariants = [...formData.variants];
+                            newVariants[index].salePrice = val.replace(/-/g, "");
+                            setFormData({ ...formData, variants: newVariants });
+                          }
                         }}
                         placeholder="450"
                         className={`w-full px-3 py-2 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 ${variant.salePrice && Number(variant.salePrice) < 1 ? "bg-red-50 ring-1 ring-red-300 text-red-600 focus:ring-red-300" : "bg-emerald-50 ring-1 ring-emerald-100 text-emerald-700 focus:ring-emerald-200"}`}
@@ -524,12 +617,16 @@ const AddProduct = () => {
                       </label>
                       <input
                         type="number"
-                        min="1"
+                        min="0"
+                        onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                         value={variant.stock}
                         onChange={(e) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index].stock = e.target.value;
-                          setFormData({ ...formData, variants: newVariants });
+                          const val = e.target.value;
+                          if (val === "" || Number(val) >= 0) {
+                            const newVariants = [...formData.variants];
+                            newVariants[index].stock = val.replace(/-/g, "");
+                            setFormData({ ...formData, variants: newVariants });
+                          }
                         }}
                         placeholder="10"
                         className={`w-full px-3 py-2 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 ${variant.stock && Number(variant.stock) < 1 ? "bg-red-50 ring-1 ring-red-300 text-red-600 focus:ring-red-300" : "bg-white ring-1 ring-slate-200 focus:ring-primary/10"}`}
@@ -615,7 +712,7 @@ const AddProduct = () => {
               <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-1.5 flex flex-col">
                   <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
-                    Sub-Category <span className="text-rose-500">*</span>
+                    Sub-Category <span className="text-slate-400 font-normal">(Optional)</span>
                   </label>
                   <select
                     value={formData.subcategory}

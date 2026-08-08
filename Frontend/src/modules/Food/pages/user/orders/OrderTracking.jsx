@@ -22,8 +22,6 @@ import {
   Star,
   Sparkles
 } from "lucide-react"
-import { jsPDF } from "jspdf"
-import { NotoSansDevanagariBase64 } from "../../../../../utils/fonts/NotoSansDevanagari"
 import autoTable from "jspdf-autotable"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Card, CardContent } from "@food/components/ui/card"
@@ -297,8 +295,29 @@ const buildAddressFromPickupPoint = (point) => {
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
     }
+const extractPhoneFromEntity = (...candidates) => {
+  for (const item of candidates) {
+    if (!item) continue
+    if (typeof item === 'string' || typeof item === 'number') {
+      const clean = String(item).replace(/[^\d+]/g, '')
+      if (clean.length >= 5) return clean
+    }
+    if (typeof item === 'object') {
+      const phoneVal =
+        item.phone ||
+        item.mobile ||
+        item.ownerPhone ||
+        item.contactPhone ||
+        item.primaryContactPhone ||
+        item.phoneNo ||
+        item.contact ||
+        item.location?.phone
+      if (phoneVal) {
+        const clean = String(phoneVal).replace(/[^\d+]/g, '')
+        if (clean.length >= 5) return clean
+      }
+    }
   }
-
   return ""
 }
 
@@ -327,14 +346,13 @@ const buildPickupSources = (apiOrder, previousOrder = null, restaurantAddress = 
         address: buildAddressFromPickupPoint(point) || fallbackAddress || "Address not available",
         phone:
           pickupType === "food"
-            ? String(
-                apiOrder?.restaurantPhone ||
-                  apiOrder?.restaurantId?.phone ||
-                  apiOrder?.restaurant?.phone ||
-                  previousOrder?.restaurantPhone ||
-                  "",
-              ).trim()
-            : String(point?.phone || point?.contactPhone || "").trim(),
+            ? extractPhoneFromEntity(
+                apiOrder?.restaurantPhone,
+                apiOrder?.restaurantId,
+                apiOrder?.restaurant,
+                previousOrder?.restaurantPhone,
+              )
+            : extractPhoneFromEntity(point?.phone, point?.contactPhone, point),
       }
     })
     .filter((source) => source.name || source.address)
@@ -350,13 +368,12 @@ const buildPickupSources = (apiOrder, previousOrder = null, restaurantAddress = 
       label: "Restaurant",
       name: String(apiOrder?.restaurantName || previousOrder?.restaurant || "Restaurant").trim(),
       address: restaurantAddress || previousOrder?.restaurantAddress || "Restaurant location",
-      phone: String(
-        apiOrder?.restaurantPhone ||
-          apiOrder?.restaurantId?.phone ||
-          apiOrder?.restaurant?.phone ||
-          previousOrder?.restaurantPhone ||
-          "",
-      ).trim(),
+      phone: extractPhoneFromEntity(
+        apiOrder?.restaurantPhone,
+        apiOrder?.restaurantId,
+        apiOrder?.restaurant,
+        previousOrder?.restaurantPhone,
+      ),
     },
   ]
 }
@@ -860,6 +877,8 @@ export default function OrderTracking() {
   const [restaurantFeedbackText, setRestaurantFeedbackText] = useState("")
   const [deliveryFeedbackText, setDeliveryFeedbackText] = useState("")
   const [submittingRating, setSubmittingRating] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false)
   const [shownRatingForOrders, setShownRatingForOrders] = useState(() => {
     try {
       const stored = localStorage.getItem('shownRatingForOrders')
@@ -1164,90 +1183,68 @@ export default function OrderTracking() {
     return rawSources.filter((source) => source?.name || source?.address)
   }, [order?.pickupSources])
 
-  const handleCallRestaurant = (e) => {
-    // Prevent event bubbling if necessary
-    if (e && e.stopPropagation) e.stopPropagation();
+  const handleCallRestaurant = () => {
+    const cleanPhone = extractPhoneFromEntity(
+      order?.restaurantPhone,
+      order?.restaurantId,
+      order?.restaurant,
+      order?.storePhone,
+      order?.storeId,
+      order?.sellerPhone,
+      order?.vendorPhone,
+      order?.phone
+    )
 
-    const rawPhone =
-      order?.restaurantPhone ||
-      order?.restaurantId?.phone ||
-      order?.restaurantId?.ownerPhone ||
-      order?.restaurantId?.contact?.phone ||
-      order?.restaurant?.phone ||
-      order?.restaurant?.ownerPhone ||
-      order?.restaurantId?.location?.phone ||
-      '';
-
-    const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
-    
-    if (!cleanPhone || cleanPhone.length < 5) {
-      toast.error(`${isQuickOrder ? 'Store' : 'Restaurant'} phone number not available`);
+    if (!cleanPhone) {
+      toast.error(`${isQuickOrder ? 'Store' : 'Restaurant'} phone number not available`, { id: "call-err", duration: 4000 });
       return;
     }
 
-    debugLog(`?? Attempting to call ${isQuickOrder ? 'store' : 'restaurant'}:`, cleanPhone);
-    
-    // Most compatible way to trigger dialer on overall mobile/web environments:
-    // Create a temporary hidden anchor and programmatically click it.
     try {
-      const link = document.createElement('a');
-      link.href = `tel:${cleanPhone}`;
-      link.setAttribute('target', '_self');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      debugError('Call failed via link click:', err);
-      // Last-ditch fallback
-      window.location.assign(`tel:${cleanPhone}`);
+      window.location.href = `tel:${cleanPhone}`
+    } catch {
+      window.open(`tel:${cleanPhone}`, "_self")
     }
   };
 
   const handleCallPickupSource = (phone, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
 
-    const cleanPhone = String(phone || "").replace(/[^\d+]/g, "");
-    if (!cleanPhone || cleanPhone.length < 5) {
-      toast.error("Phone number not available");
+    const cleanPhone = extractPhoneFromEntity(phone);
+    if (!cleanPhone) {
+      toast.error("Phone number not available", { id: "pickup-call-err", duration: 4000 });
       return;
     }
 
     try {
-      const link = document.createElement('a');
-      link.href = `tel:${cleanPhone}`;
-      link.setAttribute('target', '_self');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      debugError('Call failed via pickup source link click:', err);
-      window.location.assign(`tel:${cleanPhone}`);
+      window.location.href = `tel:${cleanPhone}`
+    } catch {
+      window.open(`tel:${cleanPhone}`, "_self")
     }
   };
 
   const handleCallRider = (phone, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     
-    const rawPhone = phone || order?.deliveryPartner?.phone || '';
-    const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
+    const cleanPhone = extractPhoneFromEntity(
+      phone,
+      order?.deliveryPartner,
+      order?.deliveryPartnerId,
+      order?.deliveryPartnerPhone,
+      order?.riderPhone,
+      order?.driverPhone,
+      order?.dispatch?.deliveryPartnerId
+    )
 
-    if (!cleanPhone || cleanPhone.length < 5) {
-      toast.error('Rider phone number not available');
+    if (!cleanPhone) {
+      toast.error('Delivery partner phone number not available', { id: "rider-call-err", duration: 4000 });
       return;
     }
 
-    debugLog('?? Attempting to call rider:', cleanPhone);
-    
     try {
-      const link = document.createElement('a');
-      link.href = `tel:${cleanPhone}`;
-      link.setAttribute('target', '_self');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      debugError('Call failed via link click:', err);
-      window.location.assign(`tel:${cleanPhone}`);
+      window.location.href = `tel:${cleanPhone}`
+    } catch {
+      window.open(`tel:${cleanPhone}`, "_self")
     }
   };
 
@@ -1650,25 +1647,67 @@ export default function OrderTracking() {
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
+    setIsShareModalOpen(true)
+  }
+
+  const getShareData = () => {
+    const restaurantName = order?.restaurant || companyName || "Superfast"
+    const displayOrderId = order?.orderId || order?.id || orderId || ""
+    const shareUrl = window.location.href
+    const shareText = `Hey! Track my order from ${restaurantName} (Order #${displayOrderId}):`
+    return { restaurantName, displayOrderId, shareUrl, shareText }
+  }
+
+  const handleShareWhatsApp = () => {
+    const { shareText, shareUrl } = getShareData()
+    const fullText = `${shareText} ${shareUrl}`
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(fullText)}`, "_blank")
+    setIsShareModalOpen(false)
+  }
+
+  const handleShareTelegram = () => {
+    const { shareText, shareUrl } = getShareData()
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`, "_blank")
+    setIsShareModalOpen(false)
+  }
+
+  const handleShareSMS = () => {
+    const { shareText, shareUrl } = getShareData()
+    const fullText = `${shareText} ${shareUrl}`
+    window.open(`sms:?body=${encodeURIComponent(fullText)}`, "_self")
+    setIsShareModalOpen(false)
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      toast.success("Tracking link copied to clipboard!")
+    } catch {
+      toast.error("Failed to copy link")
+    }
+    setIsShareModalOpen(false)
+  }
+
+  const handleNativeShare = async () => {
+    const { shareText, shareUrl, restaurantName } = getShareData()
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Track my order from ${order?.restaurant || companyName}`,
-          text: `Hey! Track my order from ${order?.restaurant || companyName} with ID #${order?.orderId || order?.id}.`,
-          url: window.location.href,
-        });
+          title: `Track my order from ${restaurantName}`,
+          text: shareText,
+          url: shareUrl,
+        })
       } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Tracking link copied to clipboard!");
+        await handleCopyLink()
       }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        debugError('Error sharing:', error);
-        toast.error("Failed to share link");
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        toast.error("Failed to share link")
       }
     }
-  };
+    setIsShareModalOpen(false)
+  }
 
   const handleCloseRating = () => {
     setRatingModal({ open: false, order: null })
@@ -1793,10 +1832,6 @@ export default function OrderTracking() {
     try {
       const doc = new jsPDF({ unit: "pt", format: "a4" })
       
-      doc.addFileToVFS("NotoSansDevanagari.ttf", NotoSansDevanagariBase64);
-      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "normal");
-      doc.addFont("NotoSansDevanagari.ttf", "NotoSansDevanagari", "bold");
-      
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
       const margin = 40
@@ -1825,11 +1860,11 @@ export default function OrderTracking() {
       doc.setFillColor(18, 18, 18)
       doc.rect(0, 0, pageWidth, 116, "F")
       doc.setTextColor(255, 255, 255)
-      doc.setFont("NotoSansDevanagari", "bold")
+      doc.setFont("helvetica", "bold")
       doc.setFontSize(24)
       doc.text(INVOICE_BRAND_NAME, margin, 52)
       doc.setFontSize(11)
-      doc.setFont("NotoSansDevanagari", "normal")
+      doc.setFont("helvetica", "normal")
       doc.text("Tax Invoice", margin, 72)
       doc.text(`Order Invoice`, pageWidth - margin, 52, { align: "right" })
       doc.text(`Invoice Ref: INV-${order?.orderId || order?.id || "N/A"}`, pageWidth - margin, 72, { align: "right" })
@@ -1837,12 +1872,12 @@ export default function OrderTracking() {
 
       y = 148
       doc.setTextColor(17, 24, 39)
-      doc.setFont("NotoSansDevanagari", "bold")
+      doc.setFont("helvetica", "bold")
       doc.setFontSize(11)
       doc.text("Billed To", margin, y)
       doc.text("Order Snapshot", pageWidth / 2 + 10, y)
 
-      doc.setFont("NotoSansDevanagari", "normal")
+      doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       const billedToLines = [
         customerName,
@@ -1875,10 +1910,10 @@ export default function OrderTracking() {
       doc.line(margin, y, pageWidth - margin, y)
       y += 22
 
-      doc.setFont("NotoSansDevanagari", "bold")
+      doc.setFont("helvetica", "bold")
       doc.setFontSize(11)
       doc.text(order?.orderType === "mixed" ? "Pickup Points" : "Pickup Source", margin, y)
-      doc.setFont("NotoSansDevanagari", "normal")
+      doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       y += 16
 
@@ -1912,13 +1947,13 @@ export default function OrderTracking() {
           fillColor: [17, 24, 39],
           textColor: 255,
           fontStyle: "bold",
-          font: "NotoSansDevanagari",
+          font: "helvetica",
         },
         bodyStyles: {
-          font: "NotoSansDevanagari",
+          font: "helvetica",
         },
         styles: {
-          font: "NotoSansDevanagari",
+          font: "helvetica",
           fontSize: 9,
           cellPadding: 8,
           textColor: [31, 41, 55],
@@ -1948,7 +1983,7 @@ export default function OrderTracking() {
 
       doc.setFontSize(10)
       totals.forEach(([label, value]) => {
-        doc.setFont("NotoSansDevanagari", "normal")
+        doc.setFont("helvetica", "normal")
         doc.text(label, totalsXLabel, y)
         doc.text(value, totalsXValue, y, { align: "right" })
         y += 16
@@ -1957,7 +1992,7 @@ export default function OrderTracking() {
       doc.setDrawColor(17, 24, 39)
       doc.line(totalsXLabel, y + 2, totalsXValue, y + 2)
       y += 20
-      doc.setFont("NotoSansDevanagari", "bold")
+      doc.setFont("helvetica", "bold")
       doc.setFontSize(13)
       doc.text("Grand Total", totalsXLabel, y)
       doc.text(formatInvoiceCurrency(order?.totalAmount || order?.total || 0), totalsXValue, y, { align: "right" })
@@ -1965,14 +2000,14 @@ export default function OrderTracking() {
       const footerY = pageHeight - 72
       doc.setDrawColor(229, 231, 235)
       doc.line(margin, footerY - 18, pageWidth - margin, footerY - 18)
-      doc.setFont("NotoSansDevanagari", "normal")
+      doc.setFont("helvetica", "normal")
       doc.setFontSize(9)
       doc.setTextColor(107, 114, 128)
       doc.text(`${INVOICE_BRAND_NAME} order support invoice`, margin, footerY)
       doc.text("This is a system-generated invoice for your order.", pageWidth - margin, footerY, { align: "right" })
 
       doc.save(`${INVOICE_BRAND_NAME}_Invoice_${order?.orderId || order?.id || Date.now()}.pdf`)
-      toast.success("Invoice downloaded")
+      toast.success("Invoice downloaded successfully")
     } catch (error) {
       debugError("Error generating invoice PDF:", error)
       toast.error("Failed to download invoice")
@@ -2468,13 +2503,14 @@ export default function OrderTracking() {
         {/* Delivery Partner Safety */}
         {!isDeliveredOrder && (
           <motion.button
-            className="w-full bg-white dark:bg-neutral-800 rounded-xl p-4 shadow-sm flex items-center gap-3"
+            className="w-full bg-white dark:bg-neutral-800 rounded-xl p-4 shadow-sm flex items-center gap-3 cursor-pointer"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
             whileTap={{ scale: 0.99 }}
+            onClick={() => setIsSafetyModalOpen(true)}
           >
-            <Shield className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            <Shield className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             <span className="flex-1 text-left font-medium text-gray-900 dark:text-white">
               Learn about delivery partner safety
             </span>
@@ -3096,6 +3132,191 @@ export default function OrderTracking() {
                   <p className="text-[10px] text-center text-gray-400 dark:text-gray-500">Please select a rating to enable submission</p>
                 )}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Share Options Modal / Bottom Sheet */}
+      <AnimatePresence>
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-[220] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white dark:bg-neutral-900 p-6 shadow-2xl border-t sm:border border-gray-100 dark:border-neutral-800"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Share Order Tracking</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Share live tracking with friends or family</p>
+                </div>
+                <button
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-neutral-800 dark:hover:text-gray-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-4 gap-3 py-4">
+                {/* WhatsApp */}
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 transition-transform active:scale-95 cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-semibold">WhatsApp</span>
+                </button>
+
+                {/* Telegram */}
+                <button
+                  onClick={handleShareTelegram}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-400 transition-transform active:scale-95 cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-semibold">Telegram</span>
+                </button>
+
+                {/* SMS */}
+                <button
+                  onClick={handleShareSMS}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 transition-transform active:scale-95 cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-md">
+                    <Phone className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-semibold">SMS</span>
+                </button>
+
+                {/* Copy Link */}
+                <button
+                  onClick={handleCopyLink}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 transition-transform active:scale-95 cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md">
+                    <Receipt className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-semibold">Copy Link</span>
+                </button>
+              </div>
+
+              {navigator.share && (
+                <div className="pt-2">
+                  <button
+                    onClick={handleNativeShare}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-sm font-semibold text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    More Share Options
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delivery Partner Safety Modal */}
+      <AnimatePresence>
+        {isSafetyModalOpen && (
+          <div className="fixed inset-0 z-[230] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-neutral-900 p-6 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+            >
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsSafetyModalOpen(false)}
+                className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-neutral-800 dark:hover:text-gray-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-inner">
+                  <Shield className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                    Delivery Partner Safety
+                  </h3>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                    Our 5-Star Safety & Hygiene Commitment
+                  </p>
+                </div>
+              </div>
+
+              {/* Safety Features List */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-neutral-800/80 border border-gray-100 dark:border-neutral-800">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4 font-bold" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Background Verified</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      100% of delivery partners undergo police verification and identity checks before joining.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-neutral-800/80 border border-gray-100 dark:border-neutral-800">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4 font-bold" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Health & Hygiene Standards</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Mandatory sanitization protocols, clean thermal bags, and daily safety checkups.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-neutral-800/80 border border-gray-100 dark:border-neutral-800">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4 font-bold" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Contactless Delivery</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      You can instruct your delivery partner to leave your order safely at your doorstep or security gate.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-neutral-800/80 border border-gray-100 dark:border-neutral-800">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4 font-bold" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Real-Time Live GPS & Safety Support</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Every ride is continuously tracked live with 24x7 safety response team support.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                type="button"
+                onClick={() => setIsSafetyModalOpen(false)}
+                className="w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:from-emerald-700 hover:to-green-700 active:scale-[0.98] cursor-pointer"
+              >
+                Got it, thanks!
+              </button>
             </motion.div>
           </div>
         )}

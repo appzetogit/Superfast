@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import { FoodSupportTicket } from '../models/supportTicket.model.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
+import { sendNotificationToOwners } from '../../../../core/notifications/firebase.service.js';
+import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
+import { logger } from '../../../../utils/logger.js';
 
 export async function createSupportTicketController(req, res, next) {
     try {
@@ -39,6 +42,54 @@ export async function createSupportTicketController(req, res, next) {
             doc.restaurantId = new mongoose.Types.ObjectId(body.restaurantId);
         }
         const created = await FoodSupportTicket.create(doc);
+
+        // Notify the restaurant if this complaint is linked to one
+        if (doc.restaurantId) {
+            const notifTitle = `New Complaint: ${issueType}`;
+            const notifBody = description
+                ? `A customer filed a complaint: "${description.slice(0, 120)}${description.length > 120 ? '…' : ''}"`
+                : `A customer filed a complaint about your restaurant (${issueType}).`;
+            const link = `/restaurant/feedback?tab=complaints`;
+
+            try {
+                await sendNotificationToOwners(
+                    [{ ownerType: 'RESTAURANT', ownerId: doc.restaurantId }],
+                    {
+                        title: notifTitle,
+                        body: notifBody,
+                        data: {
+                            type: 'new_complaint',
+                            ticketId: String(created._id),
+                            issueType,
+                            link,
+                        },
+                    }
+                );
+            } catch (pushErr) {
+                logger.warn(`Failed to push complaint notification to restaurant: ${pushErr?.message || pushErr}`);
+            }
+
+            try {
+                await createInboxNotifications({
+                    notifications: [{
+                        ownerType: 'RESTAURANT',
+                        ownerId: String(doc.restaurantId),
+                        title: notifTitle,
+                        message: notifBody,
+                        link,
+                        category: 'complaint',
+                        metadata: {
+                            type: 'new_complaint',
+                            ticketId: String(created._id),
+                            issueType,
+                        },
+                    }],
+                });
+            } catch (inboxErr) {
+                logger.warn(`Failed to create restaurant inbox notification for complaint: ${inboxErr?.message || inboxErr}`);
+            }
+        }
+
         return sendResponse(res, 201, 'Ticket created', { ticket: created.toObject() });
     } catch (e) {
         next(e);

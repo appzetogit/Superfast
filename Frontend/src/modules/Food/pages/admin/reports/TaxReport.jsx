@@ -22,15 +22,15 @@ export default function TaxReport() {
     totalIncome: "₹0.00",
     totalTax: "₹0.00"
   })
-  const [loading, setLoading] = useState(true)
+  const [fetching, setFetching] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [reportDetail, setReportDetail] = useState(null)
 
-  const fetchTaxReport = async () => {
+  const fetchTaxReport = async (isManual = false) => {
     try {
-      setLoading(true)
+      setFetching(true)
       
       let fromDate = null
       let toDate = null
@@ -55,6 +55,8 @@ export default function TaxReport() {
       const params = {
         fromDate: fromDate ? fromDate.toISOString() : undefined,
         toDate: toDate ? toDate.toISOString() : undefined,
+        calculateTax: filters.calculateTax,
+        taxRate: filters.taxRate !== "Select Tax Rate" ? filters.taxRate : undefined,
         limit: 1000
       }
 
@@ -66,6 +68,9 @@ export default function TaxReport() {
           totalIncome: "₹0.00",
           totalTax: "₹0.00"
         })
+        if (isManual) {
+          toast.success("Tax report generated successfully")
+        }
       } else {
         setReports([])
         if (response?.data?.message) {
@@ -77,13 +82,13 @@ export default function TaxReport() {
       toast.error("Failed to fetch tax report")
       setReports([])
     } finally {
-      setLoading(false)
+      setFetching(false)
     }
   }
 
   useEffect(() => {
     fetchTaxReport()
-  }, [filters.dateRangeType])
+  }, [filters.dateRangeType, filters.calculateTax, filters.taxRate])
 
   const handleReset = () => {
     setFilters({
@@ -94,7 +99,7 @@ export default function TaxReport() {
   }
 
   const handleSubmit = () => {
-    fetchTaxReport()
+    fetchTaxReport(true)
   }
 
   const handleViewDetails = async (report) => {
@@ -157,17 +162,6 @@ export default function TaxReport() {
       case "pdf": exportReportsToPDF(reports, headers, "tax_report", "Tax Report"); break
       case "json": exportReportsToJSON(reports, "tax_report"); break
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="p-4 lg:p-6 bg-slate-50 min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-gray-600">Loading tax report...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -249,8 +243,10 @@ export default function TaxReport() {
             </button>
             <button
               onClick={handleSubmit}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all"
+              disabled={fetching}
+              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center gap-2 disabled:opacity-50"
             >
+              {fetching && <Loader2 className="w-4 h-4 animate-spin" />}
               Submit
             </button>
           </div>

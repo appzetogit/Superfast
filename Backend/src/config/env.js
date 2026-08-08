@@ -46,10 +46,10 @@ export const config = {
     bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
 
     // Uploads
-    uploadPath: process.env.UPLOAD_PATH || 'uploads/',
+    uploadPath: process.env.UPLOAD_DIR || process.env.UPLOAD_PATH || (process.env.NODE_ENV === 'production' ? '/var/www/upload' : 'upload'),
     requestBodyLimit: process.env.REQUEST_BODY_LIMIT || '2mb',
-    vpsStoragePath: process.env.VPS_STORAGE_PATH || (process.env.NODE_ENV === 'production' ? '/var/storage' : 'uploads'),
-    vpsImageUrl: process.env.VPS_IMAGE_URL || (process.env.NODE_ENV === 'production' ? `${process.env.BASE_URL || process.env.APP_URL || process.env.BACKEND_URL || 'http://localhost:5000'}/images` : `${process.env.BASE_URL || process.env.APP_URL || process.env.BACKEND_URL || 'http://localhost:5000'}/uploads`),
+    vpsStoragePath: process.env.UPLOAD_DIR || process.env.VPS_STORAGE_PATH || (process.env.NODE_ENV === 'production' ? '/var/www/upload' : 'upload'),
+    vpsImageUrl: process.env.VPS_IMAGE_URL || (process.env.NODE_ENV === 'production' ? `${process.env.BASE_URL || process.env.APP_URL || process.env.BACKEND_URL || 'http://localhost:5000'}/upload` : `${process.env.BASE_URL || process.env.APP_URL || process.env.BACKEND_URL || 'http://localhost:5000'}/upload`),
 
     // Redis
     redisEnabled: process.env.REDIS_ENABLED === 'true',

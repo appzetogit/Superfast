@@ -24,8 +24,10 @@ import {
   getRazorpayKeyId,
   isRazorpayConfigured,
   verifyPaymentSignature,
-  fetchRazorpayPayment
+  fetchRazorpayPayment,
+  initiateRazorpayRefund,
 } from '../../food/orders/helpers/razorpay.helper.js';
+import { refundWalletBalance } from '../../food/user/services/userWallet.service.js';
 
 const approvedProductFilter = {
   $or: [
@@ -842,8 +844,75 @@ export const cancelOrder = async (req, res) => {
       note: String(req.body?.reason || 'Quick commerce order cancelled by user').trim(),
     });
 
-    if (order.payment?.method === 'cash') {
+    const paymentMethod = String(order.payment?.method || '').trim().toLowerCase();
+    const isOnlinePaid =
+      ['razorpay', 'razorpay_qr'].includes(paymentMethod) &&
+      (order.payment?.status === 'paid' || order.payment?.status === 'refunded');
+    const isWalletPaid =
+      paymentMethod === 'wallet' &&
+      (order.payment?.status === 'paid' || order.payment?.status === 'refunded');
+
+    if (isWalletPaid) {
+      try {
+        await refundWalletBalance(
+          order.userId,
+          order.pricing?.total || 0,
+          'Quick order cancellation refund',
+          {
+            orderId: String(order._id),
+            orderReadableId: String(order.orderId || ''),
+            source: 'user_cancel_quick_order'
+          }
+        );
+        order.payment.status = 'refunded';
+        order.payment.refund = {
+          status: 'processed',
+          amount: order.pricing?.total || 0,
+          refundId: `wallet_refund_${Date.now()}`,
+          processedMethod: 'wallet',
+          processedAt: new Date()
+        };
+      } catch (err) {
+        logger.error(`Wallet refund failed for Quick Order ${order.orderId}: ${err.message}`);
+        order.payment.refund = { status: 'failed', amount: order.pricing?.total || 0 };
+      }
+    } else if (isOnlinePaid && order.payment?.razorpay?.paymentId) {
+      try {
+        const refundResult = await initiateRazorpayRefund(
+          order.payment.razorpay.paymentId,
+          order.pricing?.total || 0
+        );
+        if (refundResult.success) {
+          order.payment.status = 'refunded';
+          order.payment.refund = {
+            status: 'processed',
+            amount: order.pricing?.total || 0,
+            refundId: refundResult.refundId,
+            processedMethod: 'gateway',
+            processedAt: new Date()
+          };
+        } else {
+          order.payment.refund = { status: 'failed', amount: order.pricing?.total || 0 };
+        }
+      } catch (err) {
+        logger.error(`Automated refund failed for Quick Order ${order.orderId}: ${err.message}`);
+        order.payment.refund = { status: 'failed', amount: order.pricing?.total || 0 };
+      }
+    } else if (order.payment?.method === 'cash') {
       order.payment.status = 'failed';
+    }
+
+    try {
+      await foodTransactionService.updateTransactionStatus(
+        order._id,
+        'cancelled_by_user',
+        {
+          status: order.payment?.status === 'refunded' ? 'refunded' : 'failed',
+          note: `Quick order cancelled by user: ${req.body?.reason || 'No reason'}`
+        }
+      );
+    } catch (txErr) {
+      logger.error(`Failed to update transaction status: ${txErr.message}`);
     }
 
     await order.save();

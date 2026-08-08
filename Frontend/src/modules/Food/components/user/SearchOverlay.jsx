@@ -99,15 +99,20 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
   }
 
   const handleSuggestionClick = (suggestion) => {
-    onSearchChange(suggestion)
-    inputRef.current?.focus()
+    const term = String(suggestion || "").trim()
+    if (term) {
+      saveRecentSearch(term)
+      navigate(`/food/user/search?q=${encodeURIComponent(term)}`)
+      onClose()
+      onSearchChange("")
+    }
   }
 
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (searchValue.trim()) {
       saveRecentSearch(searchValue)
-      navigate(`/user/search?q=${encodeURIComponent(searchValue.trim())}`)
+      navigate(`/food/user/search?q=${encodeURIComponent(searchValue.trim())}`)
       onClose()
       onSearchChange("")
     }
@@ -115,21 +120,21 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
 
   const handleCategoryClick = (category) => {
     saveRecentSearch(category.name)
-    navigate(`/user/search?q=${encodeURIComponent(category.name)}&cat=${category._id}`)
+    navigate(`/food/user/search?q=${encodeURIComponent(category.name)}&cat=${category._id}`)
     onClose()
     onSearchChange("")
   }
 
   const handleDishClick = (dish) => {
     saveRecentSearch(dish.name)
-    navigate(`/user/restaurants/${dish.restaurantSlug || dish.restaurantId}?dish=${dish._id}`)
+    navigate(`/food/user/restaurants/${dish.restaurantSlug || dish.restaurantId}?dish=${dish._id}`)
     onClose()
     onSearchChange("")
   }
 
   const handleRestaurantClick = (restaurant) => {
-    saveRecentSearch(restaurant.restaurantName)
-    navigate(`/user/restaurants/${restaurant.slug || restaurant._id}`)
+    saveRecentSearch(restaurant.restaurantName || restaurant.name)
+    navigate(`/food/user/restaurants/${restaurant.slug || restaurant._id}`)
     onClose()
     onSearchChange("")
   }

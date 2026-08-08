@@ -23,9 +23,19 @@ export const getImageUrl = (path) => {
 
   // Derive backend origin from VITE_API_BASE_URL or current host
   const viteApiUrl = import.meta.env?.VITE_API_BASE_URL;
-  const backendOrigin = viteApiUrl
+  let backendOrigin = (viteApiUrl && String(viteApiUrl).startsWith('http'))
     ? String(viteApiUrl).replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')
-    : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+    : '';
+
+  if (!backendOrigin && typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    if (port === '5173' || port === '3000' || hostname === 'localhost' || hostname === '127.0.0.1') {
+      backendOrigin = `${protocol}//${hostname}:5000`;
+    } else {
+      backendOrigin = window.location.origin;
+    }
+  }
+  if (!backendOrigin) backendOrigin = 'http://localhost:5000';
 
   let resolvedUrl = trimmed;
 
@@ -73,7 +83,7 @@ export const getImageUrl = (path) => {
     let pathPart = normalized.startsWith('/') ? normalized : `/${normalized}`;
     
     if (!pathPart.startsWith('/uploads/') && !pathPart.startsWith('/images/') && !pathPart.startsWith('/api/')) {
-      pathPart = `/images${pathPart}`;
+      pathPart = `/uploads${pathPart}`;
     }
     
     resolvedUrl = `${backendOrigin}${pathPart}`;

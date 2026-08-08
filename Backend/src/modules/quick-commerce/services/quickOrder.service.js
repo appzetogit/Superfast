@@ -17,6 +17,7 @@ import {
 } from '../../food/orders/services/order.helpers.js';
 import { tryAutoAssign } from '../../food/orders/services/order-dispatch.service.js';
 import { initiateRazorpayRefund } from '../../food/orders/helpers/razorpay.helper.js';
+import { refundWalletBalance } from '../../food/user/services/userWallet.service.js';
 import * as foodTransactionService from '../../food/orders/services/foodTransaction.service.js';
 import { ValidationError, NotFoundError } from '../../../core/auth/errors.js';
 import { emitQuickCommerceStatusUpdate } from './quickStatusRealtime.service.js';
@@ -179,18 +180,66 @@ export const updateSellerOrderStatus = async (sellerOrderId, sellerId, nextStatu
       });
 
       // FCM Notification to User
+      let userNotifTitle = `Order Update`;
+      let userNotifBody = `Your order #${parentOrder.orderId} is now ${nextStatus.replace(/_/g, ' ')}.`;
+
+      if (nextStatus === 'confirmed') {
+        userNotifTitle = 'Order Confirmed! 🎉';
+        userNotifBody = `Your order #${parentOrder.orderId} has been confirmed by the store and is being prepared.`;
+      } else if (nextStatus === 'packed' || nextStatus === 'preparing') {
+        userNotifTitle = 'Order Being Packed 📦';
+        userNotifBody = `Your order #${parentOrder.orderId} is being packed and will be ready shortly.`;
+      } else if (nextStatus === 'ready_for_pickup') {
+        userNotifTitle = 'Order Ready for Pickup 🛍️';
+        userNotifBody = `Your order #${parentOrder.orderId} is packed and ready. Delivery partner is being assigned.`;
+      } else if (nextStatus === 'cancelled') {
+        const isOnlinePaid =
+          parentOrder.payment?.method === 'razorpay' &&
+          (parentOrder.payment?.status === 'paid' || parentOrder.payment?.status === 'refunded');
+        const refundDetail = isOnlinePaid
+          ? ` Your refund of ₹${parentOrder.pricing?.total || ''} is being processed and will be credited within 5-7 working days.`
+          : '';
+        userNotifTitle = 'Order Cancelled ❌';
+        userNotifBody = `Unfortunately, your order #${parentOrder.orderId} has been cancelled by the store.${refundDetail}`;
+      }
+
       await notifyOwnerSafely(
         { ownerType: 'USER', ownerId: parentOrder.userId },
         {
-          title: `Order Update: ${nextStatus.replace(/_/g, ' ')}`,
-          body: `Your order #${parentOrder.orderId} from ${sellerOrder.items?.[0]?.name || 'the store'} is now ${nextStatus.replace(/_/g, ' ')}.`,
+          title: userNotifTitle,
+          body: userNotifBody,
           data: {
             type: 'order_status_update',
             orderId: parentOrder.orderId,
             orderMongoId: parentOrder._id.toString(),
+            orderStatus: nextStatus === 'cancelled' ? 'cancelled_by_restaurant' : nextStatus,
+            link: `/food/user/orders/${parentOrder._id.toString()}`,
           }
         }
       );
+
+      // Save notification to User Inbox (so it appears in notification bell)
+      try {
+        const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+        await createInboxNotifications({
+          notifications: [{
+            ownerType: 'USER',
+            ownerId: String(parentOrder.userId),
+            title: userNotifTitle,
+            message: userNotifBody,
+            link: `/food/user/orders/${parentOrder._id.toString()}`,
+            category: 'order',
+            metadata: {
+              type: 'order_status_update',
+              orderId: String(parentOrder._id),
+              orderReadableId: parentOrder.orderId,
+              orderStatus: nextStatus === 'cancelled' ? 'cancelled_by_restaurant' : nextStatus,
+            }
+          }]
+        });
+      } catch (inboxErr) {
+        logger.warn(`[QuickOrder] Failed to save inbox notification: ${inboxErr?.message || inboxErr}`);
+      }
     }
   }
 
@@ -198,13 +247,42 @@ export const updateSellerOrderStatus = async (sellerOrderId, sellerId, nextStatu
 };
 
 const handleSellerOrderCancellation = async (parentOrder) => {
-  // Refund logic
-  if (
+  const paymentMethod = String(parentOrder.payment?.method || '').trim().toLowerCase();
+  const isOnlinePaid =
+    ['razorpay', 'razorpay_qr'].includes(paymentMethod) &&
     parentOrder.payment?.status === "paid" &&
-    parentOrder.payment?.method === "razorpay" &&
     parentOrder.payment?.razorpay?.paymentId &&
-    (!parentOrder.payment?.refund || parentOrder.payment?.refund?.status !== "processed")
-  ) {
+    (!parentOrder.payment?.refund || parentOrder.payment?.refund?.status !== "processed");
+  const isWalletPaid =
+    paymentMethod === "wallet" &&
+    parentOrder.payment?.status === "paid" &&
+    (!parentOrder.payment?.refund || parentOrder.payment?.refund?.status !== "processed");
+
+  if (isWalletPaid) {
+    try {
+      await refundWalletBalance(
+        parentOrder.userId,
+        parentOrder.pricing?.total || 0,
+        'Quick order cancellation refund (Store rejected)',
+        {
+          orderId: String(parentOrder._id),
+          orderReadableId: String(parentOrder.orderId || ''),
+          source: 'store_cancel_quick_order'
+        }
+      );
+      parentOrder.payment.status = "refunded";
+      parentOrder.payment.refund = {
+        status: "processed",
+        amount: parentOrder.pricing?.total || 0,
+        refundId: `wallet_refund_${Date.now()}`,
+        processedMethod: 'wallet',
+        processedAt: new Date()
+      };
+    } catch (err) {
+      logger.error(`Wallet refund failed for Quick Order ${parentOrder.orderId}:`, err);
+      parentOrder.payment.refund = { status: "failed", amount: parentOrder.pricing?.total || 0 };
+    }
+  } else if (isOnlinePaid) {
     try {
       const refundResult = await initiateRazorpayRefund(
         parentOrder.payment.razorpay.paymentId,
@@ -217,6 +295,7 @@ const handleSellerOrderCancellation = async (parentOrder) => {
           status: "processed",
           amount: parentOrder.pricing?.total || 0,
           refundId: refundResult.refundId,
+          processedMethod: 'gateway',
           processedAt: new Date()
         };
       } else {

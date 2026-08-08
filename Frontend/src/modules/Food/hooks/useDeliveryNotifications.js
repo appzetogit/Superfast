@@ -294,6 +294,12 @@ export const useDeliveryNotifications = () => {
       alertLoopTimerRef.current = null;
     }
     alertLoopStartedAtRef.current = 0;
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
+    }
   }, []);
 
   const startAlertLoop = useCallback((playSoundFn) => {
@@ -307,22 +313,17 @@ export const useDeliveryNotifications = () => {
         return;
       }
 
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        playSoundFn(activeOrderRef.current);
-      }
+      // Continuously trigger alert sound while order is pending accept/reject
+      playSoundFn(activeOrderRef.current);
     }, ALERT_LOOP_INTERVAL_MS);
   }, [stopAlertLoop]);
   
   const playNotificationSound = useCallback(async (orderData = {}) => {
     try {
-      const usedNativeBridge = await triggerWebViewNativeNotification(orderData);
+      triggerWebViewNativeNotification(orderData).catch(() => {});
 
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         navigator.vibrate([200, 100, 200, 100, 300]);
-      }
-
-      if (usedNativeBridge) {
-        return;
       }
 
       // Get current selected sound preference from localStorage
@@ -340,28 +341,31 @@ export const useDeliveryNotifications = () => {
           audioRef.current.pause();
           audioRef.current.src = newSrc;
           audioRef.current.load();
-          debugLog('?? Audio source updated to:', selectedSound === 'original' ? 'Original' : 'Zomato Tone');
+          debugLog('Audio source updated to:', selectedSound === 'original' ? 'Original' : 'Zomato Tone');
         }
       } else {
         // Initialize audio if not exists
         audioRef.current = new Audio();
         audioRef.current.src = soundFile;
         audioRef.current.preload = 'auto';
-        audioRef.current.volume = 0.9;
+        audioRef.current.volume = 1.0;
         audioRef.current.load();
-        debugLog('?? Audio initialized with:', selectedSound === 'original' ? 'Original' : 'Zomato Tone', 'Source:', soundFile);
+        debugLog('Audio initialized with:', selectedSound === 'original' ? 'Original' : 'Zomato Tone', 'Source:', soundFile);
       }
       
       if (audioRef.current) {
         audioRef.current.muted = false;
-        audioRef.current.volume = 0.9;
+        audioRef.current.volume = 1.0;
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(error => {
-          // On strict autoplay environments, we still keep vibration/native bridge path active.
-          if (!error.message?.includes('user didn\'t interact') && !error.name?.includes('NotAllowedError')) {
-            debugWarn('Error playing notification sound:', error);
-          }
-        });
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            // On strict autoplay environments, we still keep vibration/native bridge path active.
+            if (!error.message?.includes('user didn\'t interact') && !error.name?.includes('NotAllowedError')) {
+              debugWarn('Error playing notification sound:', error);
+            }
+          });
+        }
       }
     } catch (error) {
       // Don't log autoplay policy errors
@@ -993,6 +997,23 @@ export const useDeliveryNotifications = () => {
         showBackgroundOrderNotification(normalizedData);
       }
       handleIncomingOrderAlert(normalizedData);
+    });
+
+    socketRef.current.on('application_status_changed', (data) => {
+      debugLog('application_status_changed received via socket', data);
+      setOrderStatusUpdate({
+        type: 'application_status_changed',
+        status: data?.status || 'approved',
+        message: data?.message || 'Your application has been approved!',
+        timestamp: Date.now()
+      });
+
+      if (data?.status === 'approved') {
+        playNotificationSound();
+        try {
+          dispatchNotificationInboxRefresh();
+        } catch (e) {}
+      }
     });
 
     socketRef.current.on('order_ready', (orderData) => {

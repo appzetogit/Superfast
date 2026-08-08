@@ -94,6 +94,8 @@ export default function OutletInfo() {
   const [editNameValue, setEditNameValue] = useState("")
   const [showEditPhoneDialog, setShowEditPhoneDialog] = useState(false)
   const [editPhoneValue, setEditPhoneValue] = useState("")
+  const [showEditFoodTypeDialog, setShowEditFoodTypeDialog] = useState(false)
+  const [editFoodTypeValue, setEditFoodTypeValue] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
   const [restaurantMongoId, setRestaurantMongoId] = useState("")
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -517,6 +519,22 @@ export default function OutletInfo() {
     }
   }
 
+  const handleOpenFoodTypeDialog = () => {
+    setEditFoodTypeValue(isPureVeg)
+    setShowEditFoodTypeDialog(true)
+  }
+
+  const handleSaveFoodType = async (newValue) => {
+    try {
+      await restaurantAPI.updateProfile({ pureVegRestaurant: newValue })
+      setIsPureVeg(newValue)
+      setShowEditFoodTypeDialog(false)
+      toast.success("Food type updated successfully")
+    } catch (error) {
+      toast.error("Failed to update food type")
+    }
+  }
+
   const handleCustomOrderToggle = async (checked) => {
     try {
       // We always send a request to the admin, whether turning it ON or OFF.
@@ -703,6 +721,9 @@ export default function OutletInfo() {
                     <span className="text-sm font-semibold text-gray-800">{isPureVeg ? "Pure Veg" : "Veg & Non-Veg"}</span>
                   </div>
                 </div>
+                <button onClick={handleOpenFoodTypeDialog} className="p-2 hover:bg-gray-50 rounded-full transition-colors" title="Edit Food Type">
+                  <Pencil className="w-4 h-4 text-[#49AB14]" />
+                </button>
               </div>
             </div>
           </section>
@@ -726,12 +747,9 @@ export default function OutletInfo() {
 
               <div className="p-4 flex justify-between items-center">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-400 font-medium mb-1">Primary Phone</p>
+                  <p className="text-xs text-gray-400 font-medium mb-1">Primary Phone (OTP Verified)</p>
                   <p className="text-sm font-bold text-gray-800">{primaryPhone || "Not provided"}</p>
                 </div>
-                <button onClick={handleOpenPhoneDialog} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#49AB14]" />
-                </button>
               </div>
             </div>
           </section>
@@ -1024,6 +1042,56 @@ export default function OutletInfo() {
               Remind me later
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Food Type Modal */}
+      <Dialog open={showEditFoodTypeDialog} onOpenChange={setShowEditFoodTypeDialog}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900">Edit Restaurant Food Type</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Select whether your outlet serves exclusively Pure Veg food or both Veg & Non-Veg.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4">
+            <button
+              type="button"
+              onClick={() => handleSaveFoodType(true)}
+              className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${
+                isPureVeg
+                  ? "border-green-600 bg-green-50/50 font-bold text-green-900"
+                  : "border-gray-200 hover:border-gray-300 text-gray-800"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center p-0.5">
+                  <div className="w-full h-full rounded-full bg-green-600" />
+                </div>
+                <span>Pure Veg</span>
+              </div>
+              {isPureVeg && <span className="text-xs bg-green-600 text-white px-2.5 py-1 rounded-full font-bold">Active</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSaveFoodType(false)}
+              className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${
+                !isPureVeg
+                  ? "border-red-600 bg-red-50/50 font-bold text-red-900"
+                  : "border-gray-200 hover:border-gray-300 text-gray-800"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center p-0.5">
+                  <div className="w-full h-full rounded-full bg-red-600" />
+                </div>
+                <span>Veg & Non-Veg</span>
+              </div>
+              {!isPureVeg && <span className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-full font-bold">Active</span>}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

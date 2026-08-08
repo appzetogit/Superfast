@@ -438,8 +438,8 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
     }
   }
 
-  // Set default online on login
-  if (deliveryPartner.availabilityStatus !== 'online') {
+  // Set default online on login (only if admin hasn't force-offlined this partner)
+  if (deliveryPartner.availabilityStatus !== 'online' && !deliveryPartner.adminForceOffline) {
     deliveryPartner.availabilityStatus = 'online';
     await deliveryPartner.save();
   }

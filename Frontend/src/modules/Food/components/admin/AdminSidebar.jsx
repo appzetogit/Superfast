@@ -71,6 +71,7 @@ import {
 import { cn } from "@food/utils/utils"
 import { Input } from "@food/components/ui/input"
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings"
+import SuperfastLogo from "@/assets/Logo.webp"
 import { adminAPI } from "@food/api"
 
 const debugLog = (...args) => { }
@@ -488,15 +489,12 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
             }
           } else if (subItem.type === "expandable") {
             const matchesLabel = subItem.label.toLowerCase().includes(query)
-            const matchingSubItems = subItem.subItems?.filter(
+            const hasMatchingSubItems = subItem.subItems?.some(
               (si) => si.label.toLowerCase().includes(query)
-            ) || []
+            )
 
-            if (matchesLabel || matchingSubItems.length > 0) {
-              filteredItems.push({
-                ...subItem,
-                subItems: matchesLabel ? subItem.subItems : matchingSubItems,
-              })
+            if (matchesLabel || hasMatchingSubItems) {
+              filteredItems.push(subItem)
             }
           }
         })
@@ -851,43 +849,31 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
           <div className="flex items-center justify-between mb-3">
             {!isCollapsed && (
               <div className="flex items-center gap-2 animate-[slideIn_0.3s_ease-out]">
-                <div className="w-24 h-12 rounded-lg flex items-center justify-center shadow-black/5">
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt={companyName || "Company"}
-                      className="w-24 h-10 object-contain"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <span className="text-xs font-semibold text-neutral-800 px-2 truncate">
-                      {companyName || "SUPERFAST"}
-                    </span>
-                  )}
+                <div className="w-28 h-12 rounded-lg flex items-center justify-center shadow-black/5">
+                  <img
+                    src={logoUrl || SuperfastLogo}
+                    alt={companyName || "SUPERFAST"}
+                    className="w-28 h-10 object-contain"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = SuperfastLogo;
+                    }}
+                  />
                 </div>
               </div>
             )}
             {isCollapsed && (
               <div className="w-full flex items-center justify-center">
                 <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center shadow-md shadow-black/5 ring-1 ring-neutral-200">
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt={companyName || "Company"}
-                      className="w-10 h-10 object-contain"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <span className="text-[10px] font-bold text-neutral-800 uppercase">
-                      {(companyName || "A")[0]}
-                    </span>
-                  )}
+                  <img
+                    src={logoUrl || SuperfastLogo}
+                    alt={companyName || "SUPERFAST"}
+                    className="w-10 h-10 object-contain"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = SuperfastLogo;
+                    }}
+                  />
                 </div>
               </div>
             )}

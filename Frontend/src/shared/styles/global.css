@@ -312,3 +312,18 @@
   animation: pulse-highlight 2.5s ease-out forwards;
 }
 
+/* Disable focus outlines, tap highlights, and text selection on all graphs and charts */
+.recharts-responsive-container,
+.recharts-wrapper,
+.recharts-wrapper *,
+.ds-chart-container,
+.ds-chart-container *,
+svg,
+svg * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}

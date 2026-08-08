@@ -124,7 +124,7 @@ const OtpModal = ({ order, onVerified, onClose }) => {
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
-        className="w-full bg-white rounded-t-[2.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.3)] p-6 pb-12 pointer-events-auto max-w-lg">
+        className="w-full bg-white rounded-t-[2.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.3)] p-6 pb-[env(safe-area-inset-bottom,24px)] pointer-events-auto max-w-lg max-h-[85dvh] overflow-y-auto">
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
@@ -312,7 +312,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          className="w-full bg-white rounded-t-[2.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.3)] p-6 pb-12 pointer-events-auto max-w-lg">
+          className="w-full bg-white rounded-t-[2.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.3)] p-6 pb-[env(safe-area-inset-bottom,24px)] pointer-events-auto max-w-lg max-h-[85dvh] overflow-y-auto">
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">

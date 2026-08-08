@@ -44,6 +44,7 @@ import {
 import { adminAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings";
+import SuperfastLogo from "@/assets/Logo.webp";
 import useAdminNotifications from "@food/hooks/useAdminNotifications";
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
@@ -280,22 +281,16 @@ export default function AdminNavbar({ onMenuClick }) {
             </button>
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-24 h-12 rounded-lg bg-white flex items-center justify-center ring-neutral-200">
-                {businessSettings?.logo?.url ? (
-                  <img
-                    src={businessSettings.logo.url}
-                    alt={businessSettings.companyName || "Company"}
-                    className="w-24 h-10 object-contain"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <span className="text-sm font-semibold text-neutral-700 px-2 truncate">
-                    {businessSettings?.companyName || "SUPERFAST"}
-                  </span>
-                )}
+              <div className="w-28 h-12 rounded-lg bg-white flex items-center justify-center ring-neutral-200">
+                <img
+                  src={businessSettings?.logo?.url || SuperfastLogo}
+                  alt={businessSettings?.companyName || "SUPERFAST"}
+                  className="w-28 h-10 object-contain"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = SuperfastLogo;
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -307,7 +302,7 @@ export default function AdminNavbar({ onMenuClick }) {
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-100 text-neutral-600 cursor-pointer hover:bg-neutral-200 transition-colors w-full border border-neutral-200"
             >
               <Search className="w-4 h-4 text-neutral-700" />
-              <span className="text-sm flex-1 text-left text-neutral-700">Search</span>
+              <span className="text-sm flex-1 text-left text-neutral-700 truncate">Search orders, users, products...</span>
               <span className="text-xs px-2 py-0.5 rounded bg-white text-neutral-600 border border-neutral-200">
                 ⌘K
               </span>
@@ -499,7 +494,7 @@ export default function AdminNavbar({ onMenuClick }) {
 
       {/* Search Modal */}
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="max-w-2xl p-0 bg-white opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 ease-in-out data-[state=open]:scale-100 data-[state=closed]:scale-100 border border-neutral-200">
+        <DialogContent className="max-w-2xl p-0 bg-white border border-neutral-200">
           <DialogHeader className="p-6 pb-4 border-b border-neutral-200">
             <DialogTitle className="text-xl font-semibold text-neutral-900">
               Universal Search

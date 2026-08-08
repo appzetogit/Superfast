@@ -218,41 +218,18 @@ export default function RestaurantsList() {
   const formatRestaurantId = (id) => {
     if (!id) return "REST000000"
 
-    const idString = String(id)
-    // Extract last 6 digits from the ID
-    // Handle formats like "REST-1768045396242-2829" or "1768045396242-2829"
-    const parts = idString.split(/[-.]/)
-    let lastDigits = ""
+    const idString = String(id).trim()
+    if (idString.startsWith("REST")) return idString
 
-    // Get the last part and extract digits
-    if (parts.length > 0) {
-      const lastPart = parts[parts.length - 1]
-      // Extract only digits from the last part
-      const digits = lastPart.match(/\d+/g)
-      if (digits && digits.length > 0) {
-        // Get last 6 digits from all digits found
-        const allDigits = digits.join("")
-        lastDigits = allDigits.slice(-6).padStart(6, "0")
-      } else {
-        // If no digits in last part, look for digits in all parts
-        const allParts = parts.join("")
-        const allDigits = allParts.match(/\d+/g)
-        if (allDigits && allDigits.length > 0) {
-          const combinedDigits = allDigits.join("")
-          lastDigits = combinedDigits.slice(-6).padStart(6, "0")
-        }
-      }
+    // If it's a 24-character hex ID (Mongoose ObjectId)
+    if (idString.length === 24) {
+      return `REST${idString.slice(-6).toUpperCase()}`
     }
 
-    // If no digits found, use a hash of the ID
-    if (!lastDigits) {
-      const hash = idString.split("").reduce((acc, char) => {
-        return ((acc << 5) - acc) + char.charCodeAt(0) | 0
-      }, 0)
-      lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0")
-    }
-
-    return `REST${lastDigits}`
+    // Fallback: take last 6 alphanumeric characters and uppercase them
+    const cleaned = idString.replace(/[^a-zA-Z0-9]/g, "")
+    const last6 = cleaned.slice(-6).toUpperCase()
+    return `REST${last6.padStart(6, "0")}`
   }
 
   // Fetch restaurants from backend API
@@ -1197,10 +1174,6 @@ export default function RestaurantsList() {
           alert("Opening time and closing time cannot be same")
           return
         }
-        if (closingMinutes < openingMinutes) {
-          alert("Closing time cannot be less than opening time")
-          return
-        }
       }
 
       const payload = {
@@ -1821,7 +1794,7 @@ export default function RestaurantsList() {
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">Owner Name</label>
-                      <input type="text" value={detailsForm.ownerName} onChange={(e) => setDetailsForm((prev) => ({ ...prev, ownerName: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+                      <input type="text" value={detailsForm.ownerName} onChange={(e) => setDetailsForm((prev) => ({ ...prev, ownerName: e.target.value.replace(/[^a-zA-Z\s]/g, "").replace(/\s+/g, " ") }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">Owner Email</label>
@@ -1870,10 +1843,6 @@ export default function RestaurantsList() {
                 const hasFlatAddress = r?.addressLine1 || r?.area || r?.city || r?.state || r?.pincode
                 const flatAddress = [r?.addressLine1, r?.addressLine2, r?.area, r?.city, r?.state, r?.pincode, r?.landmark].filter(Boolean).join(", ")
                 const menuImages = Array.isArray(r?.menuImages) ? r.menuImages.map(normalizeImageUrl).filter(Boolean) : []
-                const cuisinesList =
-                  (Array.isArray(r?.cuisines) && r.cuisines.length ? r.cuisines : null) ||
-                  (Array.isArray(r?.onboarding?.step2?.cuisines) && r.onboarding.step2.cuisines.length ? r.onboarding.step2.cuisines : null) ||
-                  null
                 const openingTimeVal = r?.openingTime || r?.deliveryTimings?.openingTime || r?.onboarding?.step2?.deliveryTimings?.openingTime || ""
                 const closingTimeVal = r?.closingTime || r?.deliveryTimings?.closingTime || r?.onboarding?.step2?.deliveryTimings?.closingTime || ""
                 const openDaysVal =
@@ -2466,18 +2435,6 @@ export default function RestaurantsList() {
                     <div className="pt-6 border-t border-slate-200">
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Registration Step 2 Details</h4>
                       <div className="space-y-4">
-                        {r.onboarding.step2.cuisines && Array.isArray(r.onboarding.step2.cuisines) && r.onboarding.step2.cuisines.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-2">Cuisines (at registration)</p>
-                            <div className="flex flex-wrap gap-2">
-                              {r.onboarding.step2.cuisines.map((cuisine, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                                  {cuisine}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                         {r.onboarding.step2.deliveryTimings && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                             <div>

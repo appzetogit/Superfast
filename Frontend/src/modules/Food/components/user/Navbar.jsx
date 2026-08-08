@@ -13,6 +13,7 @@ import { useLocation } from "@food/hooks/useLocation"
 import { useCart } from "@food/context/CartContext"
 import { useLocationSelector } from "./UserLayout"
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings"
+import SuperfastLogo from "@/assets/Logo.webp"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -128,20 +129,14 @@ export default function Navbar() {
 
           {/* Company Logo or Name - Centered between sections */}
           <Link to="/food/user" className="flex items-center justify-center flex-shrink-0">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={companyName || "Logo"}
-                className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 object-contain"
-                onError={(e) => {
-                  e.target.style.display = 'none'
-                }}
-              />
-            ) : (
-              <span className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
-                {companyName || "SUPERFAST"}
-              </span>
-            )}
+            <img
+              src={logoUrl || SuperfastLogo}
+              alt={companyName || "Logo"}
+              className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 object-contain"
+              onError={(e) => {
+                e.target.src = SuperfastLogo
+              }}
+            />
           </Link>
 
           {/* Right Side Actions - Profile, Points, Cart */}

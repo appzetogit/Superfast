@@ -7,6 +7,7 @@ import { useCart } from "@food/context/CartContext"
 import { useLocationSelector } from "./UserLayout"
 import { FaLocationDot } from "react-icons/fa6"
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings"
+import SuperfastLogo from "@/assets/Logo.webp"
 
 
 export default function PageNavbar({
@@ -992,21 +993,15 @@ export default function PageNavbar({
         {/* Left: Company Logo */}
         {showLogo && (
           <Link to="/food/user" className="flex-shrink-0 mr-3 sm:mr-4">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={companyName || "Logo"}
-                className="h-10 w-auto sm:h-12 md:h-14 object-contain scale-[1.8] sm:scale-[2] origin-left"
-                crossOrigin="anonymous"
-                onError={(e) => {
-                  e.target.style.display = 'none'
-                }}
-              />
-            ) : (
-              <span className={`text-lg font-bold text-${textColor} scale-[1.8] sm:scale-[2] origin-left inline-block`}>
-                {companyName || "SUPERFAST"}
-              </span>
-            )}
+            <img
+              src={logoUrl || SuperfastLogo}
+              alt={companyName || "Logo"}
+              className="h-10 w-auto sm:h-12 md:h-14 object-contain scale-[1.8] sm:scale-[2] origin-left"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                e.currentTarget.src = SuperfastLogo
+              }}
+            />
           </Link>
         )}
 

@@ -522,9 +522,12 @@ const MainLocationHeader = ({
                   className="flex items-center gap-3 cursor-pointer group shrink-0">
                   <div className="group-hover:scale-110 transition-all duration-300 drop-shadow-[0_2px_8px_rgba(255,255,255,0.2)]">
                     <img
-                      src={logoUrl}
+                      src={logoUrl || LogoImage}
                       alt={`${appName} Logo`}
                       className="h-10 w-auto object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = LogoImage
+                      }}
                     />
                   </div>
                 </div>

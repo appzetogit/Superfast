@@ -365,8 +365,13 @@ export const ProfileDetailsV2 = () => {
 
       const holderName = String(accountHolderName || "").trim()
       const holderWords = holderName.split(/\s+/).filter(Boolean)
-      if (holderName && holderWords.length < 2) {
+      if (!holderName || holderWords.length < 2) {
+        setBankDetailsErrors(prev => ({ ...prev, accountHolderName: "Account Holder Name requires both first and last name" }))
         return toast.error("Account Holder Name requires both first and last name")
+      }
+      if (!/^[a-zA-Z\s]+$/.test(holderName)) {
+        setBankDetailsErrors(prev => ({ ...prev, accountHolderName: "Account Holder Name can contain letters and spaces only" }))
+        return toast.error("Account Holder Name can contain letters and spaces only")
       }
 
       if (bankName && /[^a-zA-Z\s]/.test(bankName)) {
@@ -384,6 +389,7 @@ export const ProfileDetailsV2 = () => {
 
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/
       if (panNumber && !panRegex.test(panNumber.trim().toUpperCase())) {
+        setBankDetailsErrors(prev => ({ ...prev, panNumber: "Invalid PAN format (e.g. ABCDE1234F)" }))
         return toast.error("Invalid PAN Card format (e.g. ABCDE1234F)")
       }
 
@@ -464,12 +470,12 @@ export const ProfileDetailsV2 = () => {
   return (
     <div className="min-h-screen bg-[#FDFEFE] font-poppins pb-24">
       {/* ─── HEADER ─── */}
-      <div className="fixed top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 px-4 flex items-center justify-between">
+      <div className="fixed top-0 inset-x-0 h-16 bg-[#121212] border-b border-white/10 z-50 px-4 flex items-center justify-between backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-xl transition-all active:scale-90">
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
+          <button onClick={goBack} className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all active:scale-90">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-black uppercase tracking-tight leading-none">Profile</h1>
+          <h1 className="text-lg font-black text-white uppercase tracking-tight leading-none">Profile Details</h1>
         </div>
         <div className="bg-[var(--primary-theme)] text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[var(--primary-theme)]/20">
           ID: {profile?.deliveryId || "..."}
@@ -861,39 +867,125 @@ export const ProfileDetailsV2 = () => {
         onClose={() => setShowBankDetailsPopup(false)} 
         title="Bank & Payments"
         maxHeight="85vh"
-        closeOnHandleClick={true}
         showCloseButton={false}
       >
         <div className="space-y-5 pb-10">
           <div className="grid gap-4">
              {[
-               { label: "Account Holder", key: "accountHolderName", icon: User, maxLength: 60, isAlphabetOnly: true },
-               { label: "Account Number", key: "accountNumber", icon: Banknote, maxLength: 18, isNumeric: true },
-               { label: "IFSC Code", key: "ifscCode", icon: Shield, format: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""), maxLength: 11 },
-               { label: "Bank Name", key: "bankName", icon: MapPin, maxLength: 60, isAlphabetOnly: true },
-               { label: "PAN Number", key: "panNumber", icon: FileText, format: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""), maxLength: 10 },
+               { 
+                 label: "Account Holder", 
+                 key: "accountHolderName", 
+                 icon: User, 
+                 maxLength: 60, 
+                 isAlphabetOnly: true,
+                 format: (v) => v.replace(/[^a-zA-Z\s]/g, "").replace(/\s{2,}/g, " "),
+                 validate: (v) => {
+                   const trimmed = String(v || "").trim();
+                   if (!trimmed) return "Account Holder Name is required (first and last name)";
+                   const words = trimmed.split(/\s+/).filter(Boolean);
+                   if (words.length < 2) return "Account Holder Name requires both first and last name";
+                   return /^[a-zA-Z\s]+$/.test(trimmed) ? "" : "Account Holder Name can contain letters only";
+                 }
+               },
+                { 
+                  label: "Account Number", 
+                  key: "accountNumber", 
+                  icon: Banknote, 
+                  maxLength: 18, 
+                  isNumeric: true,
+                  format: (v) => v.replace(/\D/g, ""),
+                  validate: (v) => {
+                    if (!v) return "";
+                    return /^\d{9,18}$/.test(v) ? "" : "Account Number must be 9 to 18 digits";
+                  }
+                },
+                { 
+                  label: "IFSC Code", 
+                  key: "ifscCode", 
+                  icon: Shield, 
+                  format: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""), 
+                  maxLength: 11,
+                  validate: (v) => {
+                    if (!v) return "";
+                    return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v) ? "" : "Invalid IFSC Code (e.g. SBIN0001234)";
+                  }
+                },
+               { 
+                 label: "Bank Name", 
+                 key: "bankName", 
+                 icon: MapPin, 
+                 maxLength: 60, 
+                 isAlphabetOnly: true,
+                 format: (v) => v.replace(/[^a-zA-Z\s]/g, "").replace(/\s{2,}/g, " "),
+                 validate: (v) => {
+                   if (!v) return "";
+                   return /^[a-zA-Z\s]+$/.test(v) ? "" : "Bank Name can contain letters only";
+                 }
+               },
+               { 
+                 label: "PAN Number", 
+                 key: "panNumber", 
+                 icon: FileText, 
+                 format: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""), 
+                 maxLength: 10,
+                 validate: (v) => {
+                   if (!v) return "";
+                   return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v) ? "" : "Invalid PAN format (e.g. ABCDE1234F)";
+                 }
+               },
                { label: "UPI ID", key: "upiId", icon: Smartphone, maxLength: 60 }
-             ].map((field) => (
-               <div key={field.key} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group focus-within:border-[var(--primary-theme)]/50 transition-all">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                     <field.icon className="w-3.5 h-3.5" /> {field.label}
-                  </label>
-                  <input 
-                    type="text" 
-                    value={bankDetails[field.key]} 
-                    onChange={(e) => {
-                        let val = e.target.value;
-                        if (field.isNumeric) val = val.replace(/\D/g, "");
-                        if (field.isAlphabetOnly) val = val.replace(/[^a-zA-Z\s]/g, "");
-                        if (field.maxLength && val.length > field.maxLength) return;
-                        if (field.format) val = field.format(val);
-                        setBankDetails({...bankDetails, [field.key]: val})
-                    }} 
-                    className="w-full bg-transparent text-sm font-bold text-gray-950 outline-none"
-                    placeholder={`Enter ${field.label.toLowerCase()}`}
-                  />
-               </div>
-             ))}
+             ].map((field) => {
+               const fieldError = bankDetailsErrors[field.key];
+               const isPan = field.key === "panNumber";
+               const isPanValid = isPan && bankDetails.panNumber && !fieldError;
+
+               return (
+                 <div key={field.key} className="space-y-1">
+                   <div className={`bg-gray-50/50 p-4 rounded-2xl border transition-all ${
+                     fieldError 
+                       ? "border-red-500 bg-red-50/20" 
+                       : isPanValid 
+                       ? "border-green-500 bg-green-50/20" 
+                       : "border-gray-100 group focus-within:border-[var(--primary-theme)]/50"
+                   }`}>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center justify-between mb-2">
+                         <span className="flex items-center gap-2">
+                           <field.icon className="w-3.5 h-3.5" /> {field.label}
+                         </span>
+                         {isPanValid && (
+                           <span className="text-green-600 text-[10px] font-bold">✓ Valid PAN</span>
+                         )}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={bankDetails[field.key]} 
+                        onChange={(e) => {
+                            let val = e.target.value;
+                            if (field.isNumeric) val = val.replace(/\D/g, "");
+                            if (field.isAlphabetOnly) val = val.replace(/[^a-zA-Z\s]/g, "");
+                            if (field.format) val = field.format(val);
+                            if (field.maxLength && val.length > field.maxLength) val = val.slice(0, field.maxLength);
+
+                            let errMsg = "";
+                            if (field.validate) {
+                              errMsg = field.validate(val);
+                            }
+
+                            setBankDetails(prev => ({ ...prev, [field.key]: val }));
+                            setBankDetailsErrors(prev => ({ ...prev, [field.key]: errMsg }));
+                        }} 
+                        className="w-full bg-transparent text-sm font-bold text-gray-950 outline-none uppercase"
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                      />
+                   </div>
+                   {fieldError && (
+                     <p className="text-xs text-red-500 font-semibold px-2 flex items-center gap-1">
+                       <span>⚠️</span> {fieldError}
+                     </p>
+                   )}
+                 </div>
+               );
+             })}
 
              {/* UPI Scanner Upload */}
              <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100 flex flex-col items-center gap-4 text-center">

@@ -145,7 +145,7 @@ export default function Preferences() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 p-0"
-              onClick={() => isEditMode ? navigate(-1) : navigate("/food/user")}
+              onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
             </Button>

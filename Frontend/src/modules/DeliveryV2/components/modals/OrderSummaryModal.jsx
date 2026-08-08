@@ -7,7 +7,22 @@ import { CheckCircle, ArrowRight, Wallet, History, Star } from 'lucide-react';
  * Post-delivery success screen.
  */
 export const OrderSummaryModal = ({ order, onDone }) => {
-  const earnings = order?.earnings || order?.riderEarning || (order?.orderAmount * 0.1) || 0;
+  const backendEarning = Number(
+    order?.deliveryEarning ||
+    order?.riderEarning ||
+    order?.earningAmount ||
+    order?.earnings ||
+    order?.pricing?.deliveryFee ||
+    order?.deliveryFee ||
+    0
+  );
+
+  const rawDist = Number(order?.distanceKm || order?.deliveryDistanceKm || order?.distance || order?.deliveryDistance || 0);
+  const calculatedEarning = rawDist > 0
+    ? (rawDist <= 3 ? 25 : Math.round((25 + (rawDist - 3) * 8) * 100) / 100)
+    : 25;
+
+  const earnings = backendEarning > 0 ? backendEarning : calculatedEarning;
 
   return (
     <div className="fixed inset-0 z-[160] bg-green-500 overflow-y-auto">

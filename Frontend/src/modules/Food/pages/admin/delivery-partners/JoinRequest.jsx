@@ -473,16 +473,22 @@ export default function JoinRequest() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block w-fit ${
-                              request.status === "Pending" || request.status === "pending"
-                                ? "bg-blue-100 text-blue-700"
-                                : request.status === "Denied" || request.status === "denied" || request.status === "blocked"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-green-100 text-green-700"
-                            }`}>
-                              {request.status === "blocked" || request.status === "Blocked" || request.status === "Denied" || request.status === "denied" ? "Rejected" : request.status}
-                            </span>
-                            {request.rejectionReason && (
+                            {request.rejectionReason === 'Account deleted by owner' ? (
+                              <span className="px-3 py-1 rounded-full text-xs font-semibold inline-block w-fit bg-purple-100 text-purple-700 border border-purple-200">
+                                Account deleted by owner
+                              </span>
+                            ) : (
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block w-fit ${
+                                request.status === "Pending" || request.status === "pending"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : request.status === "Denied" || request.status === "denied" || request.status === "blocked"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-green-100 text-green-700"
+                              }`}>
+                                {request.status === "blocked" || request.status === "Blocked" || request.status === "Denied" || request.status === "denied" ? "Rejected" : request.status}
+                              </span>
+                            )}
+                            {request.rejectionReason && request.rejectionReason !== 'Account deleted by owner' && (
                               <span className="text-xs text-red-600 italic max-w-[200px] truncate" title={request.rejectionReason}>
                                 {request.rejectionReason}
                               </span>
@@ -685,16 +691,22 @@ export default function JoinRequest() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
-                        viewDetails.status === 'pending' ? 'bg-blue-100 text-blue-700' :
-                        viewDetails.status === 'approved' || viewDetails.status === 'active' ? 'bg-green-100 text-green-700' :
-                        viewDetails.status === 'blocked' ? 'bg-red-100 text-red-700' :
-                        'bg-slate-100 text-slate-700'
-                      }`}>
-                        {viewDetails.status === 'blocked' ? 'Rejected' : (viewDetails.status?.charAt(0).toUpperCase() + viewDetails.status?.slice(1) || "N/A")}
-                      </span>
+                      {viewDetails.rejectionReason === 'Account deleted by owner' ? (
+                        <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold mt-1 bg-purple-100 text-purple-700 border border-purple-200">
+                          Account deleted by owner
+                        </span>
+                      ) : (
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                          viewDetails.status === 'pending' ? 'bg-blue-100 text-blue-700' :
+                          viewDetails.status === 'approved' || viewDetails.status === 'active' ? 'bg-green-100 text-green-700' :
+                          viewDetails.status === 'blocked' ? 'bg-red-100 text-red-700' :
+                          'bg-slate-100 text-slate-700'
+                        }`}>
+                          {viewDetails.status === 'blocked' ? 'Rejected' : (viewDetails.status?.charAt(0).toUpperCase() + viewDetails.status?.slice(1) || "N/A")}
+                        </span>
+                      )}
                     </div>
-                    {viewDetails.rejectionReason && (
+                    {viewDetails.rejectionReason && viewDetails.rejectionReason !== 'Account deleted by owner' && (
                       <div className="col-span-2">
                         <label className="text-xs font-semibold text-slate-500 uppercase text-red-600">Rejection Reason</label>
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-1">

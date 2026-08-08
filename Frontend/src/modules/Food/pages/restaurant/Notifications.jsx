@@ -89,7 +89,7 @@ export default function Notifications() {
         }
       })
       .filter((item) => item.id && !dismissedIds.includes(item.id))
-    const cleanText = (str) => String(str || "").replace(/\[shop\]/gi, "").replace(/\s+/g, " ").trim()
+    const cleanText = (str) => String(str || "").replace(/\[(user|shop|restaurant|seller|delivery)\]/gi, "").replace(/\s+/g, " ").trim()
     const broadcastRows = (broadcastNotifications || []).map((item) => ({
       id: item.id,
       message: cleanText(item.title) || "Broadcast notification",
@@ -108,7 +108,17 @@ export default function Notifications() {
         : "N/A",
     }))
 
-    return [...broadcastRows, ...orderNotifications].sort((a, b) => b.timeValue - a.timeValue)
+    const combined = [...broadcastRows, ...orderNotifications]
+    const seen = new Set()
+    const unique = []
+    for (const item of combined) {
+      const key = item.id || `${item.message}-${item.orderId || ""}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        unique.push(item)
+      }
+    }
+    return unique.sort((a, b) => b.timeValue - a.timeValue)
   }, [broadcastNotifications, dismissedIds, orders])
 
   const removeNotification = (id, source = "order") => {

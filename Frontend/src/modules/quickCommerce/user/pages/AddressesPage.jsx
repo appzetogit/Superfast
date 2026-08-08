@@ -358,36 +358,123 @@ const AddressesPage = () => {
 
             {/* Add Address Modal */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Add New Address</DialogTitle>
                         <DialogDescription>
-                            Enter your delivery details below.
+                            Pin your location on the map or enter your delivery details below.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label>Address Type</Label>
-                            <div className="flex gap-2">
-                                <Button type="button" variant="outline" className={`flex-1 ${addForm.type === 'home' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setAddForm(f => ({ ...f, type: 'home' }))}>Home</Button>
-                                <Button type="button" variant="outline" className={`flex-1 ${addForm.type === 'work' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setAddForm(f => ({ ...f, type: 'work' }))}>Work</Button>
-                                <Button type="button" variant="outline" className={`flex-1 ${addForm.type === 'other' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setAddForm(f => ({ ...f, type: 'other' }))}>Other</Button>
+
+                    {/* Interactive Map Pin Auto-fill Section */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <MapPin size={14} className="text-[#0c831f]" /> Pin Location on Map
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs bg-white border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                                onClick={async () => {
+                                    if (!navigator.geolocation) {
+                                        toast.error("Geolocation is not supported");
+                                        return;
+                                    }
+                                    toast.loading("Detecting current location...", { id: "gps-add" });
+                                    navigator.geolocation.getCurrentPosition(
+                                        async (pos) => {
+                                            const lat = pos.coords.latitude;
+                                            const lng = pos.coords.longitude;
+                                            toast.loading("Auto-filling address from location...", { id: "gps-add" });
+                                            try {
+                                                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+                                                const data = await res.json();
+                                                if (data && data.address) {
+                                                    const a = data.address;
+                                                    const street = [a.road, a.suburb, a.neighbourhood, a.house_number].filter(Boolean).join(", ") || data.display_name?.split(",")[0] || "";
+                                                    const city = a.city || a.town || a.village || a.county || "";
+                                                    const state = a.state || "";
+                                                    const pincode = a.postcode || "";
+                                                    const landmark = a.amenity || a.building || a.landmark || "";
+
+                                                    setAddForm(f => ({
+                                                        ...f,
+                                                        address: street || data.display_name || f.address,
+                                                        city: city || f.city,
+                                                        state: state || f.state,
+                                                        pincode: pincode || f.pincode,
+                                                        landmark: landmark || f.landmark
+                                                    }));
+                                                    toast.success("Address auto-filled from current location!", { id: "gps-add" });
+                                                } else {
+                                                    toast.dismiss("gps-add");
+                                                }
+                                            } catch {
+                                                toast.dismiss("gps-add");
+                                            }
+                                        },
+                                        (err) => {
+                                            if (err?.code === 1) {
+                                                toast.error("Location permission denied. Please allow in settings.", { id: "gps-add", duration: 5000 });
+                                            } else {
+                                                toast.error("Please switch on Location/GPS on your phone.", { id: "gps-add", duration: 5000 });
+                                            }
+                                        }
+                                    );
+                                }}
+                            >
+                                Locate Me
+                            </Button>
+                        </div>
+
+                        {/* Interactive Pin Map Preview Container */}
+                        <div className="relative h-40 w-full rounded-lg overflow-hidden border border-slate-300 bg-slate-200">
+                            <iframe
+                                title="Map Pin Location"
+                                className="w-full h-full border-0 pointer-events-none"
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                                    [addForm.address, addForm.city, addForm.state, addForm.pincode].filter(Boolean).join(", ") || "Indore, Madhya Pradesh"
+                                )}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="flex flex-col items-center animate-bounce-short">
+                                    <div className="h-8 w-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg border-2 border-white">
+                                        <MapPin size={18} />
+                                    </div>
+                                    <div className="h-2 w-2 rounded-full bg-black/30 blur-[1px]" />
+                                </div>
                             </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="name">Full Name</Label>
-                            <Input id="name" placeholder="" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+                        <p className="text-[11px] text-slate-500 italic text-center">
+                            Address fields auto-fill based on pinned map coordinates.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-3 py-2">
+                        <div className="grid gap-1.5">
+                            <Label className="text-xs font-semibold">Address Type</Label>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="outline" className={`flex-1 h-9 text-xs ${addForm.type === 'home' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setAddForm(f => ({ ...f, type: 'home' }))}>Home</Button>
+                                <Button type="button" variant="outline" className={`flex-1 h-9 text-xs ${addForm.type === 'work' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setAddForm(f => ({ ...f, type: 'work' }))}>Work</Button>
+                                <Button type="button" variant="outline" className={`flex-1 h-9 text-xs ${addForm.type === 'other' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setAddForm(f => ({ ...f, type: 'other' }))}>Other</Button>
+                            </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="phone">Phone Number</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="name" className="text-xs font-semibold">Full Name</Label>
+                            <Input id="name" placeholder="John Doe" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') }))} />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="phone" className="text-xs font-semibold">Phone Number</Label>
                             <Input id="phone" placeholder="+91 98765 43210" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="address">Address</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="address" className="text-xs font-semibold">Address / Street (Auto-filled from map)</Label>
                             <Textarea id="address" placeholder="Flat No, Building, Street" value={addForm.address} onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="landmark">Nearest Landmark (optional)</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="landmark" className="text-xs font-semibold">Nearest Landmark (optional)</Label>
                             <Input
                                 id="landmark"
                                 placeholder="Near City Mall, Opp. Temple"
@@ -395,19 +482,19 @@ const AddressesPage = () => {
                                 onChange={e => setAddForm(f => ({ ...f, landmark: e.target.value }))}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="city">City</Label>
-                                <Input id="city" placeholder="New Delhi" value={addForm.city} onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="city" className="text-xs font-semibold">City</Label>
+                                <Input id="city" placeholder="City" value={addForm.city} onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))} />
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="state">State</Label>
-                                <Input id="state" placeholder="Delhi" value={addForm.state} onChange={e => setAddForm(f => ({ ...f, state: e.target.value }))} />
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="state" className="text-xs font-semibold">State</Label>
+                                <Input id="state" placeholder="State" value={addForm.state} onChange={e => setAddForm(f => ({ ...f, state: e.target.value }))} />
                             </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="pincode">Pincode</Label>
-                            <Input id="pincode" placeholder="110075" value={addForm.pincode} onChange={e => setAddForm(f => ({ ...f, pincode: e.target.value }))} />
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="pincode" className="text-xs font-semibold">Pincode</Label>
+                            <Input id="pincode" placeholder="Pincode" value={addForm.pincode} onChange={e => setAddForm(f => ({ ...f, pincode: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
@@ -419,36 +506,120 @@ const AddressesPage = () => {
 
             {/* Edit Address Modal */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Address</DialogTitle>
                         <DialogDescription>
-                            Update your delivery details.
+                            Update your delivery details or pick location from map below.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label>Address Type</Label>
-                            <div className="flex gap-2">
-                                <Button type="button" variant="outline" className={`flex-1 ${editForm.type === 'home' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setEditForm(f => ({ ...f, type: 'home' }))}>Home</Button>
-                                <Button type="button" variant="outline" className={`flex-1 ${editForm.type === 'work' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setEditForm(f => ({ ...f, type: 'work' }))}>Work</Button>
-                                <Button type="button" variant="outline" className={`flex-1 ${editForm.type === 'other' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setEditForm(f => ({ ...f, type: 'other' }))}>Other</Button>
+
+                    {/* Interactive Map Pin Auto-fill Section */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <MapPin size={14} className="text-[#0c831f]" /> Pin Location on Map
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs bg-white border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                                onClick={async () => {
+                                    if (!navigator.geolocation) {
+                                        toast.error("Geolocation is not supported");
+                                        return;
+                                    }
+                                    toast.loading("Detecting current location...", { id: "gps-edit" });
+                                    navigator.geolocation.getCurrentPosition(
+                                        async (pos) => {
+                                            const lat = pos.coords.latitude;
+                                            const lng = pos.coords.longitude;
+                                            toast.loading("Auto-filling address from location...", { id: "gps-edit" });
+                                            try {
+                                                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+                                                const data = await res.json();
+                                                if (data && data.address) {
+                                                    const a = data.address;
+                                                    const street = [a.road, a.suburb, a.neighbourhood, a.house_number].filter(Boolean).join(", ") || data.display_name?.split(",")[0] || "";
+                                                    const city = a.city || a.town || a.village || a.county || "";
+                                                    const state = a.state || "";
+                                                    const pincode = a.postcode || "";
+                                                    const landmark = a.amenity || a.building || a.landmark || "";
+
+                                                    setEditForm(f => ({
+                                                        ...f,
+                                                        address: street || data.display_name || f.address,
+                                                        city: city || f.city,
+                                                        state: state || f.state,
+                                                        pincode: pincode || f.pincode,
+                                                        landmark: landmark || f.landmark
+                                                    }));
+                                                    toast.success("Address auto-filled from current location!", { id: "gps-edit" });
+                                                } else {
+                                                    toast.dismiss("gps-edit");
+                                                }
+                                            } catch {
+                                                toast.dismiss("gps-edit");
+                                            }
+                                        },
+                                        (err) => {
+                                            if (err?.code === 1) {
+                                                toast.error("Location permission denied. Please allow in settings.", { id: "gps-edit", duration: 5000 });
+                                            } else {
+                                                toast.error("Please switch on Location/GPS on your phone.", { id: "gps-edit", duration: 5000 });
+                                            }
+                                        }
+                                    );
+                                }}
+                            >
+                                Locate Me
+                            </Button>
+                        </div>
+
+                        {/* Interactive Pin Map Preview Container */}
+                        <div className="relative h-40 w-full rounded-lg overflow-hidden border border-slate-300 bg-slate-200">
+                            <iframe
+                                title="Map Pin Location"
+                                className="w-full h-full border-0 pointer-events-none"
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                                    [editForm.address, editForm.city, editForm.state, editForm.pincode].filter(Boolean).join(", ") || "Indore, Madhya Pradesh"
+                                )}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="flex flex-col items-center animate-bounce-short">
+                                    <div className="h-8 w-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg border-2 border-white">
+                                        <MapPin size={18} />
+                                    </div>
+                                    <div className="h-2 w-2 rounded-full bg-black/30 blur-[1px]" />
+                                </div>
                             </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-name">Full Name</Label>
-                            <Input id="edit-name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                    </div>
+
+                    <div className="grid gap-3 py-2">
+                        <div className="grid gap-1.5">
+                            <Label className="text-xs font-semibold">Address Type</Label>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="outline" className={`flex-1 h-9 text-xs ${editForm.type === 'home' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setEditForm(f => ({ ...f, type: 'home' }))}>Home</Button>
+                                <Button type="button" variant="outline" className={`flex-1 h-9 text-xs ${editForm.type === 'work' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setEditForm(f => ({ ...f, type: 'work' }))}>Work</Button>
+                                <Button type="button" variant="outline" className={`flex-1 h-9 text-xs ${editForm.type === 'other' ? 'border-[#0c831f] text-[#0c831f] bg-green-50' : ''}`} onClick={() => setEditForm(f => ({ ...f, type: 'other' }))}>Other</Button>
+                            </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-phone">Phone Number</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="edit-name" className="text-xs font-semibold">Full Name</Label>
+                            <Input id="edit-name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') }))} />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="edit-phone" className="text-xs font-semibold">Phone Number</Label>
                             <Input id="edit-phone" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-address">Address</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="edit-address" className="text-xs font-semibold">Address</Label>
                             <Textarea id="edit-address" value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-landmark">Nearest Landmark (optional)</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="edit-landmark" className="text-xs font-semibold">Nearest Landmark (optional)</Label>
                             <Input
                                 id="edit-landmark"
                                 placeholder="Near City Mall, Opp. Temple"
@@ -456,18 +627,18 @@ const AddressesPage = () => {
                                 onChange={e => setEditForm(f => ({ ...f, landmark: e.target.value }))}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="edit-city">City</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="edit-city" className="text-xs font-semibold">City</Label>
                                 <Input id="edit-city" placeholder="New Delhi" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} />
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="edit-state">State</Label>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="edit-state" className="text-xs font-semibold">State</Label>
                                 <Input id="edit-state" placeholder="Delhi" value={editForm.state} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))} />
                             </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-pincode">Pincode</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="edit-pincode" className="text-xs font-semibold">Pincode</Label>
                             <Input id="edit-pincode" placeholder="110075" value={editForm.pincode} onChange={e => setEditForm(f => ({ ...f, pincode: e.target.value }))} />
                         </div>
                     </div>

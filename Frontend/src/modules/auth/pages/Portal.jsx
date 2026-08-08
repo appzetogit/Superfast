@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
 import { UtensilsCrossed, ShoppingBasket, ShieldCheck, User } from "lucide-react"
 import { cn } from "@food/utils/utils"
+import SuperfastLogo from "@/assets/Logo.webp"
 
 const SERVICES = [
   {
@@ -157,11 +158,14 @@ export default function SuperAppPortal() {
           className="bg-white border border-gray-200 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg shadow-gray-200/40 max-w-full"
         >
             <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-[#CB202D] text-[9px] font-black italic">{companyName?.charAt(0) || "O"}</span>
-              )}
+              <img
+                src={logoUrl || SuperfastLogo}
+                alt="Logo"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = SuperfastLogo
+                }}
+              />
             </div>
           <span className="text-[9px] sm:text-[10px] font-black tracking-[0.18em] text-[#BABCBD] uppercase whitespace-nowrap overflow-hidden text-ellipsis">
             Everything you need, delivered

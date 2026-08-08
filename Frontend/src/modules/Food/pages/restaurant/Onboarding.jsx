@@ -1075,9 +1075,6 @@ export default function RestaurantOnboarding() {
     if (!step1.restaurantName?.trim()) {
       errors.push("Restaurant name is required")
     }
-    if (!step1.businessType?.trim()) {
-      errors.push("Business type is required")
-    }
     if (typeof step1.pureVegRestaurant !== "boolean") {
       errors.push("Please select whether your restaurant is pure veg")
     }
@@ -1288,8 +1285,8 @@ export default function RestaurantOnboarding() {
 
     if (!step3.accountNumber?.trim()) {
       errors.push("Account number is required")
-    } else if (!BANK_ACCOUNT_NUMBER_REGEX.test(step3.accountNumber.trim())) {
-      errors.push("Account number must contain 9 to 18 digits only")
+    } else if (!BANK_ACCOUNT_NUMBER_REGEX.test(step3.accountNumber.trim()) || /^0+$/.test(step3.accountNumber.trim())) {
+      errors.push("Account number must contain 9 to 18 digits (cannot be all zeros)")
     }
     if (!step3.confirmAccountNumber?.trim()) {
       errors.push("Please confirm your account number")
@@ -2553,14 +2550,15 @@ export default function RestaurantOnboarding() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             value={step3.ifscCode || ""}
+            maxLength={11}
             onChange={(e) =>
               setStep3({
                 ...step3,
                 ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11),
               })
             }
-            className="bg-white text-sm"
-            placeholder="IFSC code"
+            className={`bg-white text-sm uppercase ${step3.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(step3.ifscCode) ? "border-red-400 bg-red-50" : ""}`}
+            placeholder="IFSC code (e.g. SBIN0018764)"
           />
           <Select
             value={step3.accountType || ""}
@@ -2575,17 +2573,22 @@ export default function RestaurantOnboarding() {
             </SelectContent>
           </Select>
         </div>
-        <Input
-          value={step3.accountHolderName || ""}
-          onChange={(e) =>
-            setStep3({
-              ...step3,
-              accountHolderName: e.target.value.replace(/[^A-Za-z ]/g, ""),
-            })
-          }
-          className="bg-white text-sm"
-          placeholder="Account holder name"
-        />
+        <div className="space-y-1">
+          <Input
+            value={step3.accountHolderName || ""}
+            onChange={(e) =>
+              setStep3({
+                ...step3,
+                accountHolderName: e.target.value.replace(/[^A-Za-z ]/g, ""),
+              })
+            }
+            className={`bg-white text-sm ${step3.accountHolderName && (step3.accountHolderName || "").trim().split(/\s+/).filter(Boolean).length < 2 ? "border-red-400 bg-red-50" : ""}`}
+            placeholder="Account holder name (First & Last Name)"
+          />
+          {step3.accountHolderName && (step3.accountHolderName || "").trim().split(/\s+/).filter(Boolean).length < 2 && (
+            <p className="text-xs text-red-500 font-medium px-1">Account holder name must include both first and last name (e.g. John Doe)</p>
+          )}
+        </div>
       </section>
     </div>
   )

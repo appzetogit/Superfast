@@ -568,7 +568,8 @@ export default function OTP() {
                   type="text"
                   value={name}
                   onChange={(e) => {
-                    setName(e.target.value)
+                    const cleaned = e.target.value.replace(/[^A-Za-z\s]/g, "")
+                    setName(cleaned)
                     if (nameError) setNameError("")
                   }}
                   disabled={isLoading}

@@ -30,13 +30,10 @@ function UserPathRedirect() {
   return <Navigate to={newPath} replace />
 }
 
-// Scroll to top on route change
+import GlobalScrollToTop, { scrollToAllTops } from "@shared/components/GlobalScrollToTop"
+
 function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-  return null;
+  return <GlobalScrollToTop />
 }
 
 import GlobalNewOrderPopup from "@food/components/restaurant/GlobalNewOrderPopup"
@@ -84,7 +81,7 @@ export default function App() {
       <ScrollToTop />
       <RestaurantGlobalNotificationListener />
       <PushSoundEnableButton />
-      <Suspense fallback={<Loader />}>
+      <Suspense fallback={null}>
         <Routes>
           {/* User Module - Explicitly mapped to /user */}
           <Route

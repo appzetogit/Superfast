@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Flame } from "lucide-react";
+import { Flame, Timer } from "lucide-react";
 import { API_BASE_URL } from "@food/api/config";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
@@ -59,15 +59,28 @@ const RecommendedSection = memo(({ recommendedForYouRestaurants }) => {
                   <div className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-md ${isNew ? "bg-white/90 dark:bg-neutral-800/90 text-slate-500 dark:text-slate-300 border border-gray-100 dark:border-neutral-700" : "bg-black/80 dark:bg-white/80 text-white dark:text-black"}`}>
                     {isNew ? "NEW" : Number(restaurant.rating).toFixed(1)}
                   </div>
+                  {availabilityStatus.isOpen && availabilityStatus.closingCountdownLabel && (
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[9px] font-bold shadow-md bg-amber-500 text-white flex items-center gap-1 backdrop-blur-md">
+                      <Timer className="w-2.5 h-2.5" strokeWidth={2.5} />
+                      <span className="truncate">{availabilityStatus.closingCountdownLabel}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3">
                   <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
                     {restaurant.name}
                   </p>
-                  <p className="text-[10px] text-[var(--primary-theme)] font-extrabold mt-1.5 flex items-center gap-1 uppercase tracking-wider">
-                    <Flame className="w-3.5 h-3.5 fill-[var(--primary-theme)]" />
-                    NEAR & FAST
-                  </p>
+                  {availabilityStatus.isOpen && availabilityStatus.closingCountdownLabel ? (
+                    <p className="text-[10px] text-amber-700 dark:text-amber-400 font-extrabold mt-1.5 flex items-center gap-1 uppercase tracking-wider">
+                      <Timer className="w-3.5 h-3.5 text-amber-600" />
+                      {availabilityStatus.closingCountdownLabel}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-[var(--primary-theme)] font-extrabold mt-1.5 flex items-center gap-1 uppercase tracking-wider">
+                      <Flame className="w-3.5 h-3.5 fill-[var(--primary-theme)]" />
+                      NEAR & FAST
+                    </p>
+                  )}
                 </div>
               </Link>
             </motion.div>

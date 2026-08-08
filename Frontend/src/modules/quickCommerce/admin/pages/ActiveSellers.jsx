@@ -20,10 +20,13 @@ const formatDate = (value) => {
   if (!value) return 'N/A';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'N/A';
-  return date.toLocaleDateString('en-IN', {
+  return date.toLocaleString('en-IN', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
   });
 };
 
@@ -188,7 +191,7 @@ const ActiveSellers = () => {
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900">{seller.shopName || 'Store'}</p>
-                          <p className="text-[10px] font-bold text-slate-400">{seller.ownerName || 'Seller'}</p>
+                          <p className="text-[10px] font-bold text-slate-400">{seller.ownerName || seller.name || seller.shopInfo?.ownerName || 'Seller'}</p>
                           <p className="mt-1 text-[11px] font-medium text-slate-500">
                             {seller.location || 'Location not added yet'}
                           </p>

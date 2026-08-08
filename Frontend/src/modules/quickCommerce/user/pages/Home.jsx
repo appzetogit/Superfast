@@ -788,9 +788,12 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                           </div>
                           <div className="absolute right-[-10px] bottom-0 top-0 w-2/5 flex items-center justify-center">
                             <img
-                              src=""
+                              src={CardBanner}
                               alt="Promo"
                               className="w-full h-full object-contain rotate-3 scale-110"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
                             />
                           </div>
                           <div className="absolute top-0 right-0 w-24 h-24 bg-[#0c831f]/5 rounded-full blur-2xl -mt-12 -mr-12" />
@@ -976,6 +979,10 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                                 src={categoryImage}
                                 alt={cat.name}
                                 className="h-full w-full object-cover object-center group-hover/item:scale-110 transition-transform duration-500"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "https://cdn-icons-png.flaticon.com/128/2321/2321831.png";
+                                }}
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-2xl font-black uppercase text-slate-400">

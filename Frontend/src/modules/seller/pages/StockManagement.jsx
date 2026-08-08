@@ -492,8 +492,10 @@ const StockManagement = () => {
                                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-600">#</div>
                                             <input
                                                 type="number"
+                                                min="0"
+                                                onKeyDown={(e) => ["-", "e", "E", "+"].includes(e.key) && e.preventDefault()}
                                                 value={adjustValue}
-                                                onChange={(e) => setAdjustValue(e.target.value)}
+                                                onChange={(e) => setAdjustValue(e.target.value.replace(/-/g, ""))}
                                                 className="w-full pl-10 pr-4 py-4 bg-slate-50 border-none rounded-2xl text-2xl font-black text-slate-900 focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                                                 placeholder="0"
                                             />

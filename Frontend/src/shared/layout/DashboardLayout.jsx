@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import BottomNav from './BottomNav';
+import GlobalScrollToTop from '../components/GlobalScrollToTop';
 import { sellerApi } from '@/modules/seller/services/sellerApi';
 import { useAuth } from '@/core/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -396,6 +397,7 @@ const DashboardLayout = ({ children, navItems, title }) => {
 
     return (
         <div className="min-h-screen mesh-gradient-light relative overflow-x-hidden">
+            <GlobalScrollToTop />
             {/* Background Blobs for depth */}
             <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none"></div>
             <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
@@ -408,7 +410,7 @@ const DashboardLayout = ({ children, navItems, title }) => {
             />
             <div className={cn("transition-all duration-300", (role === "admin" || role === "seller") ? "pl-0 md:pl-80" : "pl-80")}>
                 <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
-                <main className={cn("min-h-screen", (role === "admin" || role === "seller") ? "pt-20 md:pt-6 pb-24 md:pb-8" : "pt-20")}>
+                <main className="min-h-screen pt-4 pb-24 md:pb-8">
                     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12">
                         <SellerOrdersContext.Provider
                             value={{
@@ -448,14 +450,31 @@ const DashboardLayout = ({ children, navItems, title }) => {
                             </button>
 
                             <div className="flex flex-col items-center text-center">
-                                <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 animate-bounce">
-                                    <BellRing className="h-10 w-10 text-primary" />
+                                <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
+                                    <BellRing className="h-8 w-8 text-primary" />
                                 </div>
 
-                                <h2 className="text-2xl font-black text-slate-900 mb-2">New Order Received!</h2>
-                                <p className="text-slate-600 font-medium mb-6">
-                                    You have a new order <span className="text-primary font-bold">#{newOrderAlert.orderId}</span> for <span className="text-slate-900 font-bold">Rs {resolveSellerReceivable(newOrderAlert).toFixed(2)}</span>
+                                <h2 className="text-xl font-black text-slate-900 mb-1">New Order Received!</h2>
+                                <p className="text-slate-600 text-xs font-medium mb-4">
+                                    Order <span className="text-primary font-bold">#{newOrderAlert.orderId}</span> • <span className="text-slate-900 font-bold">Rs {resolveSellerReceivable(newOrderAlert).toFixed(2)}</span>
                                 </p>
+
+                                {/* Product Items List */}
+                                {Array.isArray(newOrderAlert.items) && newOrderAlert.items.length > 0 && (
+                                    <div className="w-full bg-slate-50 rounded-2xl p-3.5 mb-5 border border-slate-100 text-left max-h-36 overflow-y-auto space-y-1.5 custom-scrollbar">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ordered Items</p>
+                                        {newOrderAlert.items.map((item, idx) => {
+                                            const productName = item.name || item.productName || item.title || item.product?.name || item.productId?.name || 'Product Item';
+                                            const qty = item.quantity || item.qty || 1;
+                                            return (
+                                                <div key={idx} className="flex justify-between items-center text-xs font-bold text-slate-800">
+                                                    <span className="truncate pr-2">{productName}</span>
+                                                    <span className="text-slate-500 font-semibold shrink-0">x{qty}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
                                 {/* Timer Bar — width from real server deadline */}
                                 <div className="w-full bg-slate-100 h-2 rounded-full mb-8 overflow-hidden">

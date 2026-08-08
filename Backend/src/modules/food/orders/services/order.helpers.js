@@ -190,7 +190,7 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
         : (Number.isFinite(restaurantLocation?.latitude) && Number.isFinite(restaurantLocation?.longitude)
             ? { type: "Point", coordinates: [restaurantLocation.longitude, restaurantLocation.latitude] }
             : undefined),
-      phone: restaurant.phone || "",
+      phone: restaurant.phone || restaurant.primaryContactNumber || restaurant.ownerPhone || "",
     }];
   }
 
@@ -203,6 +203,14 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
   ]
     .map((v) => String(v || '').trim())
     .filter(Boolean);
+
+  const phone =
+    restaurant?.phone ||
+    restaurant?.primaryContactNumber ||
+    restaurant?.ownerPhone ||
+    order?.restaurantPhone ||
+    order?.restaurant_phone ||
+    "";
 
   return {
     orderMongoId:
@@ -227,7 +235,7 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
       restaurantLocation?.formattedAddress ||
       restaurant?.addressLine1 ||
       "",
-    restaurantPhone: restaurant?.phone || "",
+    restaurantPhone: phone,
     restaurantLocation: {
       latitude:
         restaurantLocation?.latitude ||

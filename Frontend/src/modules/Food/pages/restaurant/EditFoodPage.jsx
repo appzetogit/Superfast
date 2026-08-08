@@ -322,7 +322,12 @@ export default function EditFoodPage() {
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false)
   const categoryOptions = (() => {
     const currentCategory = String(formData.category || "").trim()
-    const source = availableCategories.length > 0 ? availableCategories : fallbackCategoryOptions
+    let source = availableCategories.length > 0 ? availableCategories : fallbackCategoryOptions
+    
+    if (isPureVegRestaurant || formData.foodType === "Veg") {
+      source = source.filter(category => category.foodTypeScope === "Veg")
+    }
+
     if (!currentCategory) return source
 
     const alreadyPresent = source.some(
@@ -364,11 +369,7 @@ export default function EditFoodPage() {
   }
 
   const handleImageClick = () => {
-    if (isFlutterBridgeAvailable()) {
-      setIsPhotoPickerOpen(true)
-    } else {
-      fileInputRef.current?.click()
-    }
+    setIsPhotoPickerOpen(true)
   }
 
   const handleSubmit = async (e) => {

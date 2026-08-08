@@ -52,7 +52,7 @@ export default function SplashScreen({ onComplete }) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
       style={{ backgroundColor: "#FDF4EC" }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden select-none"
+      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden select-none"
     >
       {/* Outer corner route paths only - staying far away from the center logo background */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.05] stroke-[#334155] fill-none" strokeWidth="2.5" strokeDasharray="6 6">

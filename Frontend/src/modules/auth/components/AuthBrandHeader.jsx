@@ -37,12 +37,12 @@ const PORTAL_THEMES = {
     defaultSubtitle: "Restaurant Partner Portal",
   },
   delivery: {
-    bg: "linear-gradient(135deg, #005b96 0%, #004b7c 50%, #00365a 100%)",
-    accent1: "#0074bf",
-    accent2: "#00365a",
-    waveStop1: "#3385c6",
-    waveStop2: "#005b96",
-    waveStop3: "#004b7c",
+    bg: "linear-gradient(135deg, #00B761 0%, #009e53 50%, #008746 100%)",
+    accent1: "#22c55e",
+    accent2: "#008746",
+    waveStop1: "#4ade80",
+    waveStop2: "#00B761",
+    waveStop3: "#009e53",
     title: "SUPER FAST",
     defaultSubtitle: "Delivery Partner Portal",
   },
@@ -133,6 +133,9 @@ export default function AuthBrandHeader({
               src={logoUrl || SuperfastLogo}
               alt="Superfast"
               className="w-full h-full object-contain drop-shadow-md rounded-2xl"
+              onError={(e) => {
+                e.currentTarget.src = SuperfastLogo
+              }}
             />
           </motion.div>
 

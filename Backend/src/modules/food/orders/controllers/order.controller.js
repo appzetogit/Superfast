@@ -168,14 +168,12 @@ export async function getOrderByIdRestaurantController(req, res, next) {
 
 export async function updateOrderStatusRestaurantController(req, res, next) {
     try {
-        console.log('updateOrderStatusRestaurantController CALLED:', req.body);
-        const restaurantId = req.user?.userId;
+        const restaurantId = req.user?.restaurantId || req.user?.userId;
         const orderId = req.params.orderId;
         const dto = validateOrderStatusDto(req.body);
         const order = await orderService.updateOrderStatusRestaurant(orderId, restaurantId, dto.orderStatus);
         return sendResponse(res, 200, 'Order status updated', { order });
     } catch (err) {
-        console.log('updateOrderStatusRestaurantController ERROR:', err.message, err.stack);
         next(err);
     }
 }

@@ -71,6 +71,7 @@ const feeSettingsUpsertSchema = z.object({
   platformFee: z.number().min(0).nullable().optional(),
   gstRate: z.number().min(0).max(100).nullable().optional(),
   returnDeliveryCommission: z.number().min(0).nullable().optional(),
+  defaultRating: z.number().min(0).max(5).nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -112,6 +113,12 @@ export const validateFeeSettingsUpsertDto = (body) => {
         ? null
         : body?.returnDeliveryCommission !== undefined
           ? Number(body.returnDeliveryCommission)
+          : undefined,
+    defaultRating:
+      body?.defaultRating === null
+        ? null
+        : body?.defaultRating !== undefined
+          ? Number(body.defaultRating)
           : undefined,
     isActive: body?.isActive !== undefined ? Boolean(body.isActive) : undefined,
   };

@@ -12,6 +12,7 @@ const initialFeeSettings = {
   platformFee: '',
   gstRate: '',
   returnDeliveryCommission: '',
+  defaultRating: '',
 };
 
 const initialRuleForm = {
@@ -73,6 +74,7 @@ export default function BillingCharges() {
         platformFee: toInputValue(settings.platformFee),
         gstRate: toInputValue(settings.gstRate),
         returnDeliveryCommission: toInputValue(settings.returnDeliveryCommission),
+        defaultRating: toInputValue(settings.defaultRating),
       });
     } catch (error) {
       console.error('Failed to load quick fee settings', error);
@@ -109,6 +111,7 @@ export default function BillingCharges() {
         platformFee: toNullableNumber(feeSettings.platformFee),
         gstRate: toNullableNumber(feeSettings.gstRate),
         returnDeliveryCommission: toNullableNumber(feeSettings.returnDeliveryCommission) ?? 0,
+        defaultRating: toNullableNumber(feeSettings.defaultRating) ?? 4.8,
         isActive: true,
       };
       const response = await adminApi.createOrUpdateFeeSettings(payload);
@@ -121,6 +124,7 @@ export default function BillingCharges() {
           platformFee: toInputValue(saved.platformFee),
           gstRate: toInputValue(saved.gstRate),
           returnDeliveryCommission: toInputValue(saved.returnDeliveryCommission),
+          defaultRating: toInputValue(saved.defaultRating),
         });
       }
       showToast('Quick fee settings saved successfully', 'success');
@@ -357,6 +361,26 @@ export default function BillingCharges() {
                   setFeeSettings((prev) => ({
                     ...prev,
                     returnDeliveryCommission: e.target.value,
+                  }))
+                }
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+              />
+            </label>
+
+            <label className="block max-w-sm space-y-2">
+              <span className="text-sm font-semibold text-slate-700">Default Product Rating (fallback when no reviews)</span>
+              <p className="text-xs text-slate-400">Shown on product cards &amp; detail pages when the product has no reviews yet. Range: 0–5.</p>
+              <input
+                type="number"
+                min="0"
+                max="5"
+                step="0.1"
+                placeholder="e.g. 4.5"
+                value={feeSettings.defaultRating}
+                onChange={(e) =>
+                  setFeeSettings((prev) => ({
+                    ...prev,
+                    defaultRating: e.target.value,
                   }))
                 }
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-emerald-500"

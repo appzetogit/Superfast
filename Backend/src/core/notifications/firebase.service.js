@@ -26,7 +26,7 @@ const OWNER_TOKEN_FIELDS = {
 };
 const OWNER_APP_PREFIXES = {
     USER: '👤',
-    RESTAURANT: '🏪',
+    RESTAURANT: '',
     SELLER: '🏪',
     DELIVERY_PARTNER: '🛵',
     ADMIN: '🛡️'
@@ -190,7 +190,7 @@ const buildMessagePayload = (payload = {}, token) => {
     }
 
     message.android = {
-        priority: 'high',
+        priority: 'HIGH',
         notification: {
             title,
             body,
@@ -203,6 +203,10 @@ const buildMessagePayload = (payload = {}, token) => {
     };
 
     message.apns = {
+        headers: {
+            'apns-priority': '10',
+            'apns-push-type': 'alert'
+        },
         payload: {
             aps: {
                 alert: { title, body },

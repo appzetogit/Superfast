@@ -251,13 +251,13 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
  */
 export const isPartnerEligibleForCodOrder = async (deliveryPartnerId) => {
   try {
-    const snapshot = await getDeliveryPartnerFinancialSnapshot(deliveryPartnerId);
-    if (!snapshot) return false;
-    if (snapshot.totalCashLimit <= 0) return false;
-    if (snapshot.availableCashLimit <= 0) return false;
+    const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
+    if (!wallet) return false;
+    if (wallet.totalCashLimit <= 0) return false;
+    if (wallet.availableCashLimit <= 0) return false;
     return true;
   } catch (err) {
-    return true; // Fallback gracefully if error
+    return false; // Safely exclude from COD if check fails
   }
 };
 

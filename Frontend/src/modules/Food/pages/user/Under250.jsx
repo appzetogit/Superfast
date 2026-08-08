@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
-import { Star, Clock, MapPin, ArrowDownUp, Timer, ArrowRight, ChevronDown, Bookmark, Share2, Plus, Minus, X } from "lucide-react"
+import { Star, Clock, MapPin, ArrowDownUp, Timer, ArrowRight, ChevronDown, Bookmark, Share2, Plus, Minus, X, Search } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import AnimatedPage from "@food/components/user/AnimatedPage"
@@ -33,6 +33,7 @@ const readUnder250Filters = () => {
       selectedSort: null,
       activeCategory: null,
       under30MinsFilter: false,
+      pureVegFilter: false,
     }
   }
 
@@ -43,6 +44,7 @@ const readUnder250Filters = () => {
         selectedSort: null,
         activeCategory: null,
         under30MinsFilter: false,
+        pureVegFilter: false,
       }
     }
 
@@ -51,12 +53,14 @@ const readUnder250Filters = () => {
       selectedSort: typeof parsed?.selectedSort === "string" ? parsed.selectedSort : null,
       activeCategory: typeof parsed?.activeCategory === "string" ? parsed.activeCategory : null,
       under30MinsFilter: parsed?.under30MinsFilter === true,
+      pureVegFilter: parsed?.pureVegFilter === true,
     }
   } catch {
     return {
       selectedSort: null,
       activeCategory: null,
       under30MinsFilter: false,
+      pureVegFilter: false,
     }
   }
 }
@@ -74,6 +78,9 @@ export default function Under250() {
   const [selectedSort, setSelectedSort] = useState(initialFiltersRef.current.selectedSort)
   const [draftSelectedSort, setDraftSelectedSort] = useState(initialFiltersRef.current.selectedSort)
   const [under30MinsFilter, setUnder30MinsFilter] = useState(initialFiltersRef.current.under30MinsFilter)
+  const [pureVegFilter, setPureVegFilter] = useState(initialFiltersRef.current.pureVegFilter)
+  const isPureVegActive = Boolean(vegMode || pureVegFilter)
+  const [searchQuery, setSearchQuery] = useState("")
   const [showItemDetail, setShowItemDetail] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   const [itemDetailQuantity, setItemDetailQuantity] = useState(1)
@@ -115,6 +122,7 @@ export default function Under250() {
     setSelectedSort(null)
     setDraftSelectedSort(null)
     setUnder30MinsFilter(false)
+    setPureVegFilter(false)
     setActiveCategory(null)
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(UNDER_250_FILTERS_STORAGE_KEY)
@@ -161,6 +169,17 @@ export default function Under250() {
   const sortedAndFilteredRestaurants = useMemo(() => {
     let filtered = under250Restaurants.map(r => ({ ...r, menuItems: [...(r.menuItems || [])] }))
 
+    // Apply Pure Veg filter
+    if (isPureVegActive) {
+      filtered = filtered
+        .map(restaurant => {
+          const vegItems = restaurant.menuItems.filter(item => item.isVeg === true)
+          if (vegItems.length === 0) return null
+          return { ...restaurant, menuItems: vegItems }
+        })
+        .filter(Boolean)
+    }
+
     // Apply category filter
     if (activeCategory) {
       const selectedCat = categories.find(cat => cat.id === activeCategory)
@@ -186,6 +205,25 @@ export default function Under250() {
         const deliveryTime = parseDeliveryTime(restaurant.deliveryTime)
         return deliveryTime <= 30
       })
+    }
+
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase()
+      filtered = filtered.map(restaurant => {
+        const matchesRestName = (restaurant.name || "").toLowerCase().includes(query)
+        const matchingItems = (restaurant.menuItems || []).filter(item =>
+          (item.name || item.foodName || "").toLowerCase().includes(query) ||
+          (item.category || "").toLowerCase().includes(query)
+        )
+        if (matchesRestName || matchingItems.length > 0) {
+          return {
+            ...restaurant,
+            menuItems: matchesRestName ? restaurant.menuItems : matchingItems
+          }
+        }
+        return null
+      }).filter(Boolean)
     }
 
     // Apply sorting
@@ -236,7 +274,7 @@ export default function Under250() {
     });
 
     return filtered
-  }, [under250Restaurants, selectedSort, under30MinsFilter, activeCategory, categories])
+  }, [under250Restaurants, selectedSort, under30MinsFilter, pureVegFilter, vegMode, isPureVegActive, activeCategory, categories, searchQuery])
 
   // Fetch under-250 banner from public API
   useEffect(() => {
@@ -367,8 +405,12 @@ export default function Under250() {
               const menuItems = flattenMenuItems(menu)
                 .filter((item) => Number(item?.price || 0) <= 250 && item?.isAvailable !== false)
                 .map((item) => {
-                  const foodType = String(item?.foodType || "").toLowerCase()
-                  const isVeg = foodType.includes("veg") && !foodType.includes("non")
+                  const foodTypeStr = String(item?.foodType || item?.vegType || item?.itemType || item?.vegNonVeg || item?.type || "").toLowerCase()
+                  const isVegExplicit = typeof item?.isVeg === "boolean" ? item.isVeg : (typeof item?.veg === "boolean" ? item.veg : null)
+                  const isVeg = isVegExplicit !== null 
+                    ? isVegExplicit 
+                    : (foodTypeStr.includes("non") ? false : (foodTypeStr.includes("veg") || foodTypeStr.includes("pure")))
+
                   return {
                     ...item,
                     id: String(item?.id || item?._id || `${restaurantId}-${item?.name || "dish"}`),
@@ -549,7 +591,7 @@ export default function Under250() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    if (!selectedSort && !activeCategory && !under30MinsFilter) {
+    if (!selectedSort && !activeCategory && !under30MinsFilter && !pureVegFilter) {
       window.localStorage.removeItem(UNDER_250_FILTERS_STORAGE_KEY)
       return
     }
@@ -560,9 +602,10 @@ export default function Under250() {
         selectedSort,
         activeCategory,
         under30MinsFilter,
+        pureVegFilter,
       })
     )
-  }, [selectedSort, activeCategory, under30MinsFilter])
+  }, [selectedSort, activeCategory, under30MinsFilter, pureVegFilter])
 
   // Scroll detection for view cart button positioning
   useEffect(() => {
@@ -843,7 +886,7 @@ export default function Under250() {
 
   return (
 
-    <div className={`relative min-h-screen bg-white dark:bg-[#0a0a0a] ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>
+    <div className={`relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-36 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>
       <div
         ref={stickyHeaderRef}
         className={`fixed top-0 left-0 right-0 z-40 w-full md:hidden transition-all duration-300 ${hasScrolledPastBanner
@@ -915,7 +958,7 @@ export default function Under250() {
       </div>
 
       {/* Content Section */}
-      <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 space-y-0 pt-2 sm:pt-3 md:pt-4 lg:pt-6 pb-6 md:pb-8 lg:pb-10">
+      <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 space-y-0 pt-2 sm:pt-3 md:pt-4 lg:pt-6 pb-48 md:pb-52 lg:pb-56">
 
         <section className="space-y-1 sm:space-y-1.5">
           <div
@@ -980,8 +1023,29 @@ export default function Under250() {
           </div>
         </section>
 
-        <section className="py-2 sm:py-3 md:py-4">
-          <div className="flex items-center gap-2 md:gap-3">
+        <section className="py-2 sm:py-3 md:py-4 space-y-3">
+          {/* Search Bar */}
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder={`Search dishes or restaurants under ${RUPEE_SYMBOL}250...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] shadow-xs"
+            />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-1 no-scrollbar">
             <Button
               variant="outline"
               onClick={() => setShowSortPopup(true)}
@@ -992,6 +1056,19 @@ export default function Under250() {
                 {selectedSort ? sortOptions.find(opt => opt.id === selectedSort)?.label : 'Sort'}
               </span>
               <ChevronDown className="h-3 w-3 md:h-4 md:w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPureVegFilter(!pureVegFilter)}
+              className={`h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-5 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 font-medium transition-all text-sm md:text-base ${isPureVegActive
+                ? 'bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700'
+                : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'
+                }`}
+            >
+              <div className={`w-3.5 h-3.5 border-2 flex items-center justify-center p-[1px] rounded-xs shrink-0 ${isPureVegActive ? 'border-white bg-white' : 'border-emerald-600 bg-white'}`}>
+                <div className="w-full h-full rounded-full bg-emerald-600" />
+              </div>
+              <span className="text-xs sm:text-sm md:text-base font-medium">Pure Veg</span>
             </Button>
             <Button
               variant="outline"
@@ -1063,7 +1140,7 @@ export default function Under250() {
                         overflowY: "hidden",
                       }}
                     >
-                      {restaurant.menuItems.filter(item => !vegMode || item.isVeg === true || item.vegType === 'veg' || item.foodType === 'veg').map((item, itemIndex) => {
+                      {restaurant.menuItems.filter(item => !isPureVegActive || item.isVeg === true).map((item, itemIndex) => {
                         const quantity = quantities[item.id] || 0
                         return (
                           <motion.div
@@ -1105,26 +1182,22 @@ export default function Under250() {
                                 whileHover={{ opacity: 1 }}
                                 transition={{ duration: 0.3 }}
                               />
-                              {/* Veg Indicator */}
-                              {item.isVeg && (
-                                <motion.div
-                                  className="absolute top-2 left-2 md:top-3 md:left-3 h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 rounded border-2 border-green-600 bg-white flex items-center justify-center z-10"
-                                  whileHover={{ scale: 1.2, rotate: 5 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  <div className="h-2 w-2 md:h-2.5 md:w-2.5 lg:h-3 lg:w-3 rounded-full bg-green-600" />
-                                </motion.div>
-                              )}
+                              {/* Veg / Non-Veg Indicator */}
+                              <motion.div
+                                className={`absolute top-2 left-2 md:top-3 md:left-3 h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 rounded border-2 ${item.isVeg ? 'border-green-600' : 'border-red-600'} bg-white flex items-center justify-center z-10`}
+                                whileHover={{ scale: 1.2, rotate: 5 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <div className={`h-2 w-2 md:h-2.5 md:w-2.5 lg:h-3 lg:w-3 rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+                              </motion.div>
                             </div>
 
                             {/* Item Details */}
                             <div className="p-3 md:p-4 lg:p-5">
                               <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2 lg:mb-3">
-                                {item.isVeg && (
-                                  <div className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 rounded border border-green-600 bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-                                    <div className="h-1.5 w-1.5 md:h-2 md:w-2 lg:h-2.5 lg:w-2.5 rounded-full bg-green-600" />
-                                  </div>
-                                )}
+                                <div className={`h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 rounded border ${item.isVeg ? 'border-green-600 bg-green-50 dark:bg-green-900/20' : 'border-red-600 bg-red-50 dark:bg-red-900/20'} flex items-center justify-center shrink-0`}>
+                                  <div className={`h-1.5 w-1.5 md:h-2 md:w-2 lg:h-2.5 lg:w-2.5 rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+                                </div>
                                 <span className="text-sm md:text-base lg:text-lg font-semibold text-gray-900 dark:text-white">
                                   1 x {item.name}
                                 </span>
@@ -1360,11 +1433,9 @@ export default function Under250() {
                 {/* Item Name and Indicator */}
                 <div className="flex items-start justify-between mb-3 md:mb-4 lg:mb-6">
                   <div className="flex items-center gap-2 md:gap-3 flex-1">
-                    {selectedItem.isVeg && (
-                      <div className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 rounded border-2 border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
-                        <div className="h-2.5 w-2.5 md:h-3 md:w-3 lg:h-3.5 lg:w-3.5 rounded-full bg-green-600 dark:bg-green-500" />
-                      </div>
-                    )}
+                    <div className={`h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 rounded border-2 ${selectedItem.isVeg ? 'border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-red-600 dark:border-red-500 bg-red-50 dark:bg-red-900/20'} flex items-center justify-center flex-shrink-0`}>
+                      <div className={`h-2.5 w-2.5 md:h-3 md:w-3 lg:h-3.5 lg:w-3.5 rounded-full ${selectedItem.isVeg ? 'bg-green-600 dark:bg-green-500' : 'bg-red-600 dark:bg-red-500'}`} />
+                    </div>
                     <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">
                       {selectedItem.name}
                     </h2>

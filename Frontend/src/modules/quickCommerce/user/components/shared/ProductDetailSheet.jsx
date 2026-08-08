@@ -35,6 +35,17 @@ const ProductDetailSheet = () => {
     const [reviewLoading, setReviewLoading] = useState(true);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+    const [defaultRating, setDefaultRating] = useState('4.8');
+
+    // Fetch admin-configured default rating from billing settings (run once)
+    useEffect(() => {
+        customerApi.getBillingSettings().then((res) => {
+            const rating = res?.data?.result?.defaultRating ?? res?.data?.data?.feeSettings?.defaultRating;
+            if (rating != null && Number.isFinite(Number(rating))) {
+                setDefaultRating(Number(rating).toFixed(1));
+            }
+        }).catch(() => {});
+    }, []);
 
     const scrollRef = useRef(null);
 
@@ -377,7 +388,7 @@ const ProductDetailSheet = () => {
                                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-[var(--primary-theme)] dark:text-orange-400 rounded-lg text-[10px] font-[700] border border-orange-100/50 dark:border-orange-900/30"
                                             >
                                                 <Star size={10} fill="currentColor" />
-                                                {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
+                                                {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : defaultRating}
                                                 <span className="text-orange-400 dark:text-[var(--primary-theme)] font-medium">({reviews.length > 0 ? reviews.length : '120+'})</span>
                                             </motion.div>
                                         </div>
@@ -619,7 +630,7 @@ const ProductDetailSheet = () => {
                                                 </span>
                                                 <div className="flex items-center gap-1 px-2.5 py-1 bg-orange-50 dark:bg-orange-950/30 text-[var(--primary-theme)] dark:text-orange-400 rounded-lg text-[10px] font-[700] border border-orange-100/50 dark:border-orange-900/30">
                                                     <Star size={10} fill="currentColor" />
-                                                    {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
+                                                    {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : defaultRating}
                                                     <span className="text-orange-400 dark:text-[var(--primary-theme)] font-[500] text-[9px]">({reviews.length > 0 ? reviews.length : '120+'} reviews)</span>
                                                 </div>
                                             </h3>
@@ -894,7 +905,7 @@ const ProductDetailSheet = () => {
                                         Customer Reviews
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-[var(--primary-theme)] rounded-lg text-xs font-bold">
                                             <Star size={14} fill="currentColor" />
-                                            {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
+                                            {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : defaultRating}
                                         </div>
                                     </h3>
 

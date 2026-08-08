@@ -72,6 +72,16 @@ export const exportTransactionsToExcel = (transactions, headers, filename = "tra
   URL.revokeObjectURL(url);
 };
 
+const sanitizePdfValue = (val) => {
+  if (val === null || val === undefined) return ""
+  let str = typeof val === "object" ? JSON.stringify(val) : String(val)
+  return str
+    .replace(/[\u20B9₹â‚¹¹]+/g, "Rs. ")
+    .replace(/Rs\.\s*Rs\./g, "Rs.")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 export const exportTransactionsToPDF = async (transactions, headers, filename = "transactions", title = "Transaction Report") => {
   // Instant PDF download using jsPDF + autoTable (no print dialog)
   const { default: jsPDF } = await import('jspdf')
@@ -102,7 +112,7 @@ export const exportTransactionsToPDF = async (transactions, headers, filename = 
   const body = transactions.map(row =>
     headers.map(h => {
       const v = row[h.key]
-      return v === null || v === undefined ? '' : String(v)
+      return sanitizePdfValue(v)
     })
   )
 

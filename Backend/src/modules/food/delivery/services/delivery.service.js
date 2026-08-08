@@ -428,6 +428,11 @@ export const updateDeliveryAvailability = async (userId, payload) => {
     if (status === 'online' || status === true) validStatus = 'online';
     else if (status === 'offline' || status === false) validStatus = 'offline';
 
+    // If admin has force-offlined this partner, block going online
+    if (validStatus === 'online' && partner.adminForceOffline) {
+        throw new ValidationError('Your account has been set offline by admin. Please contact support.');
+    }
+
     partner.availabilityStatus = validStatus;
     if (typeof latitude === 'number' && typeof longitude === 'number') {
         partner.lastLocation = {

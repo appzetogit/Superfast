@@ -23,8 +23,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle } from "lucide-react"
+import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle, Download } from "lucide-react"
 import { adminAPI } from "@food/api"
+import { toast } from "sonner"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+
 const debugLog = () => {}
 const debugError = () => {}
 
@@ -34,6 +38,12 @@ function formatCurrency(amount, options = {}) {
   const numericAmount = Number(amount || 0)
   const formattedAmount = numericAmount.toLocaleString("en-IN", options)
   return `${INR_SYMBOL}${formattedAmount}`
+}
+
+function formatPdfCurrency(amount, options = {}) {
+  const numericAmount = Number(amount || 0)
+  const formattedAmount = numericAmount.toLocaleString("en-IN", options)
+  return `Rs. ${formattedAmount}`
 }
 
 
@@ -46,6 +56,9 @@ export default function AdminHome() {
   const [isLoading, setIsLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState(null)
   const [zones, setZones] = useState([])
+  const [lastUpdatedTime, setLastUpdatedTime] = useState(() => {
+    return `Today, ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+  })
 
   // Fetch zone list for filter
   useEffect(() => {
@@ -94,6 +107,7 @@ export default function AdminHome() {
         const response = await adminAPI.getDashboardStats(params)
         if (response.data?.success && response.data?.data) {
           setDashboardData(response.data.data)
+          setLastUpdatedTime(`Today, ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`)
           debugLog("Dashboard stats fetched:", response.data.data)
         } else {
           setDashboardData(null)
@@ -192,6 +206,53 @@ export default function AdminHome() {
     `GST: ${formatCurrency(gstTotal)}`,
   ].join(" + ")
 
+  const handleDownloadReport = () => {
+    try {
+      const doc = new jsPDF()
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(18)
+      doc.text("Superfast Food Admin - Operations Command Report", 14, 20)
+
+      doc.setFontSize(10)
+      doc.setFont("helvetica", "normal")
+      doc.text(`Generated on: ${new Date().toLocaleString("en-IN")}`, 14, 28)
+      doc.text(`Filter Period: ${periodLabel}`, 14, 34)
+
+      const tableData = [
+        ["Gross Revenue", formatPdfCurrency(revenueTotal)],
+        ["Commission Earned", formatPdfCurrency(commissionTotal)],
+        ["Active Processing Orders", activeOrdersTotal.toLocaleString("en-IN")],
+        ["Platform Fee", formatPdfCurrency(platformFeeTotal)],
+        ["Delivery Fee", formatPdfCurrency(deliveryFeeTotal)],
+        ["GST (Tax)", formatPdfCurrency(gstTotal)],
+        ["Total Platform Earnings", formatPdfCurrency(totalAdminEarnings)],
+        ["Total Approved Restaurants", totalRestaurants.toLocaleString("en-IN")],
+        ["Pending Restaurant Requests", pendingRestaurantRequests.toLocaleString("en-IN")],
+        ["Total Delivery Partners", totalDeliveryBoys.toLocaleString("en-IN")],
+        ["Pending Delivery Partner Requests", pendingDeliveryBoyRequests.toLocaleString("en-IN")],
+        ["Total Menu Items (Foods)", totalFoods.toLocaleString("en-IN")],
+        ["Total Registered Customers", totalCustomers.toLocaleString("en-IN")],
+        ["Completed Orders", completedOrders.toLocaleString("en-IN")],
+        ["Pending Orders", pendingOrders.toLocaleString("en-IN")]
+      ]
+
+      autoTable(doc, {
+        startY: 42,
+        head: [["Metric Name", "Value"]],
+        body: tableData,
+        theme: "striped",
+        headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: "bold" },
+        styles: { fontSize: 10, cellPadding: 4 }
+      })
+
+      doc.save(`Food_Admin_Dashboard_Report_${new Date().toISOString().split("T")[0]}.pdf`)
+      toast.success("Dashboard report downloaded successfully")
+    } catch (err) {
+      console.error("Error downloading dashboard report:", err)
+      toast.error("Failed to download report")
+    }
+  }
+
   return (
     <div className="px-4 pb-10 lg:px-6 pt-4">
       <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_30px_120px_-60px_rgba(0,0,0,0.28)]">
@@ -199,7 +260,7 @@ export default function AdminHome() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 animate-pulse z-20" />
         )}
 
-        <div className="flex flex-col gap-5 border-b border-neutral-200 bg-linear-to-br from-white via-neutral-50 to-neutral-100 px-6 py-5 min-h-[96px]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-neutral-200 bg-linear-to-br from-white via-neutral-50 to-neutral-100 px-6 py-5 min-h-[96px]">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Admin Overview</p>
             <h1 className="text-2xl font-semibold text-neutral-900 flex items-center gap-2">
@@ -213,7 +274,7 @@ export default function AdminHome() {
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 w-full md:w-auto">
               <Select value={selectedZone} onValueChange={setSelectedZone}>
                 <SelectTrigger className="min-w-[160px] border-neutral-300 bg-white text-neutral-900">
                   <SelectValue placeholder="All zones" />
@@ -259,6 +320,21 @@ export default function AdminHome() {
                   onChange={(e) => setEndDate(e.target.value)}
                   className="rounded-xl border border-neutral-300 bg-white px-3 h-[40px] text-sm text-neutral-900 focus:border-neutral-400 focus:outline-hidden"
                 />
+              </div>
+
+              {/* Last Update Badge & Download Report Button */}
+              <div className="flex items-center gap-2 ml-auto md:ml-2">
+                <span className="inline-flex items-center rounded-xl border border-neutral-200 bg-white px-3.5 h-[40px] text-xs font-semibold text-neutral-600 shadow-xs whitespace-nowrap">
+                  Last Update: {lastUpdatedTime}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDownloadReport}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] text-white px-4 h-[40px] text-sm font-semibold shadow-sm active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Report
+                </button>
               </div>
             </div>
         </div>

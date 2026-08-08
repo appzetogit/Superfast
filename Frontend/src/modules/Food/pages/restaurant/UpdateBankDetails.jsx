@@ -57,7 +57,13 @@ export default function UpdateBankDetails() {
     const anyBankField = Boolean(accountHolderName || accountNumber || ifscCode)
 
     if (anyBankField) {
-      if (!accountHolderName) nextErrors.accountHolderName = "Account holder name is required"
+      if (!accountHolderName) {
+        nextErrors.accountHolderName = "Account holder name is required"
+      } else if (!/^[a-zA-Z\s]+$/.test(accountHolderName)) {
+        nextErrors.accountHolderName = "Account holder name must contain letters and spaces only"
+      } else if (accountHolderName.split(/\s+/).filter(Boolean).length < 2) {
+        nextErrors.accountHolderName = "Account holder name must include both first name and last name"
+      }
       if (!accountNumber) {
         nextErrors.accountNumber = "Account number is required"
       } else if (!/^\d{9,18}$/.test(accountNumber)) {

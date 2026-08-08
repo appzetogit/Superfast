@@ -127,23 +127,21 @@ const formatTimeLabel = (timeValue) => {
 const formatClosingCountdown = (minutesUntilClose, closingTime) => {
   if (minutesUntilClose === null || minutesUntilClose === undefined) return null
 
+  // Display closing countdown badge ONLY if 60 minutes (1 hour) or less are remaining for closing
+  if (minutesUntilClose > 60) {
+    return null
+  }
+
   if (minutesUntilClose <= 0) {
     const closingLabel = formatTimeLabel(closingTime)
     return closingLabel ? `Closes at ${closingLabel}` : null
   }
 
-  if (minutesUntilClose < 60) {
-    return `Closes in ${minutesUntilClose} min`
+  if (minutesUntilClose === 60) {
+    return `Closes in 1h`
   }
 
-  const hours = Math.floor(minutesUntilClose / 60)
-  const minutes = minutesUntilClose % 60
-
-  if (minutes === 0) {
-    return `Closes in ${hours}h`
-  }
-
-  return `Closes in ${hours}h ${minutes}m`
+  return `Closes in ${minutesUntilClose} min`
 }
 
 export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), options = {}) => {
@@ -158,28 +156,18 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
   }
 
   const ignoreOperationalStatus = options?.ignoreOperationalStatus === true
-  const isActive = restaurant.isActive !== false
-  const manualOffline = restaurant.manualOffline === true
-  const isAcceptingOrders = restaurant.isAcceptingOrders !== false
+  const rawStatus = String(restaurant.status || "").toLowerCase()
+  const isActive = restaurant.isActive !== false && rawStatus !== "inactive"
+  const manualOffline = restaurant.manualOffline === true || restaurant.isAcceptingOrders === false || restaurant.isOpen === false || rawStatus === "closed" || rawStatus === "offline"
+  const isAcceptingOrders = !manualOffline
 
-  if (!ignoreOperationalStatus && !isActive) {
-    return {
-      isOpen: false,
-      isActive,
-      isAcceptingOrders,
-      isWithinTimings: false,
-      reason: "inactive",
-    }
-  }
-
-  // Only force offline if vendor manually toggled manualOffline: true
-  if (!ignoreOperationalStatus && manualOffline) {
+  if (!ignoreOperationalStatus && (!isActive || manualOffline)) {
     return {
       isOpen: false,
       isActive,
       isAcceptingOrders: false,
       isWithinTimings: false,
-      reason: "not-accepting-orders",
+      reason: !isActive ? "inactive" : "not-accepting-orders",
     }
   }
 

@@ -133,7 +133,7 @@ export const normalizePickupPoints = (order) => {
   const fallbackPhone = String(
     fallbackPickupType === "quick"
       ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || ""
-      : order?.restaurantPhone || order?.restaurantId?.phone || ""
+      : order?.restaurantPhone || order?.restaurantId?.phone || order?.restaurantId?.ownerPhone || order?.restaurantId?.primaryContactNumber || order?.ownerPhone || ""
   ).trim();
 
   return [

@@ -169,6 +169,9 @@ export default function SellerOnboarding() {
   const [form, setForm] = useState(initialState);
   const [qrFile, setQrFile] = useState(null);
   const [licenseFile, setLicenseFile] = useState(null);
+  const [panFile, setPanFile] = useState(null);
+  const [gstFile, setGstFile] = useState(null);
+  const [fssaiFile, setFssaiFile] = useState(null);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [zones, setZones] = useState([]);
@@ -410,6 +413,11 @@ export default function SellerOnboarding() {
       return;
     }
 
+    if (!form.zoneId || !form.zoneId.trim()) {
+      toast.error("Please select a service zone before submitting");
+      return;
+    }
+
     if (form.email && !/^(?!.*\.comm+$)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/i.test(form.email)) {
       toast.error("Enter a valid email address (e.g. name@gmail.com)");
       return;
@@ -516,6 +524,9 @@ export default function SellerOnboarding() {
       payload.append("submitForApproval", "true");
       if (qrFile) payload.append("upiQrImage", qrFile);
       if (licenseFile) payload.append("shopLicenseImage", licenseFile);
+      if (panFile) payload.append("panImage", panFile);
+      if (gstFile) payload.append("gstCert", gstFile);
+      if (fssaiFile) payload.append("fssaiCert", fssaiFile);
 
       await sellerApi.updateProfile(payload);
       await refreshUser();
@@ -703,6 +714,8 @@ export default function SellerOnboarding() {
                     type="tel"
                     inputMode="numeric"
                     pattern="[0-9]*"
+                    maxLength={10}
+                    autoComplete="tel"
                     className={`w-full rounded-2xl border px-4 py-3 font-semibold outline-none focus:border-slate-900 ${form.alternatePhone && form.alternatePhone === form.phone ? "border-red-400 bg-red-50" : "border-slate-200"}`}
                     placeholder="Alternate phone"
                     value={form.alternatePhone}
@@ -835,8 +848,12 @@ export default function SellerOnboarding() {
                   <select
                     required
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none focus:border-slate-900"
-                    value={`${form.zoneSource}:${form.zoneId}`}
+                    value={form.zoneId ? `${form.zoneSource}:${form.zoneId}` : ""}
                     onChange={(e) => {
+                      if (!e.target.value) {
+                        setForm((prev) => ({ ...prev, zoneSource: "", zoneId: "" }));
+                        return;
+                      }
                       const [zoneSource, zoneId] = e.target.value.split(":");
                       setForm((prev) => ({
                         ...prev,
@@ -846,7 +863,7 @@ export default function SellerOnboarding() {
                     }}
                     disabled={zonesLoading}
                   >
-                    <option value=":">
+                    <option value="">
                       {zonesLoading ? "Loading zones..." : "Select a service zone"}
                     </option>
                     {zones.map((zone) => {
@@ -882,12 +899,24 @@ export default function SellerOnboarding() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-500">Account holder name <span className="text-red-500">*</span></label>
-                  <input required className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none focus:border-slate-900" placeholder="Account holder name" value={form.accountHolderName} onChange={(e) => updateField("accountHolderName", e.target.value.replace(/[^a-zA-Z\s]/g, ""))} />
+                  <input
+                    required
+                    className={`w-full rounded-2xl border px-4 py-3 font-semibold outline-none focus:border-slate-900 ${form.accountHolderName && String(form.accountHolderName).trim().split(/\s+/).filter(Boolean).length < 2 ? "border-red-400 bg-red-50" : "border-slate-200"}`}
+                    placeholder="Account holder name (e.g. John Doe)"
+                    value={form.accountHolderName}
+                    onChange={(e) => updateField("accountHolderName", e.target.value.replace(/[^a-zA-Z\s]/g, ""))}
+                  />
+                  {form.accountHolderName && String(form.accountHolderName).trim().split(/\s+/).filter(Boolean).length < 2 && (
+                    <p className="text-xs font-semibold text-red-500 px-1">Account holder name must include both first and last name (e.g. John Doe)</p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-500">Account number <span className="text-red-500">*</span></label>
                   <input
                     required
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className={`w-full rounded-2xl border px-4 py-3 font-semibold outline-none focus:border-slate-900 ${form.accountNumber && !/^\d{9,18}$/.test(form.accountNumber) ? "border-red-400 bg-red-50" : "border-slate-200"}`}
                     placeholder="Account number (9–18 digits)"
                     value={form.accountNumber}
@@ -946,16 +975,47 @@ export default function SellerOnboarding() {
                 </div>
                 <div className="flex flex-col gap-1 md:col-span-2">
                   <label className="text-xs font-bold text-slate-500">UPI QR image <span className="text-red-500">*</span></label>
-                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <span className="truncate max-w-[150px] sm:max-w-xs" title={qrFile?.name || "Upload UPI QR image"}>
-                      {qrFile?.name || "Upload UPI QR image"}
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white shrink-0">
-                      <Upload className="h-3.5 w-3.5" />
-                      Choose
-                    </span>
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setQrFile(e.target.files?.[0] || null)} />
-                  </label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:border-slate-400">
+                      <span className="truncate max-w-[150px] sm:max-w-xs" title={qrFile?.name || "Upload or take photo of UPI QR"}>
+                        {qrFile?.name || "Upload or take photo of UPI QR"}
+                      </span>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white shrink-0">
+                        <Upload className="h-3.5 w-3.5" />
+                        Choose / Camera
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,image/heic,image/heif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setQrFile(file);
+                        }}
+                      />
+                    </label>
+                    {qrFile && (
+                      <div className="relative flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-2 pr-4">
+                        <img
+                          src={URL.createObjectURL(qrFile)}
+                          alt="UPI QR Preview"
+                          className="h-12 w-12 rounded-xl object-cover border border-emerald-200"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-xs font-bold text-emerald-900">{qrFile.name}</p>
+                          <p className="text-[10px] font-medium text-emerald-600">{(qrFile.size / (1024 * 1024)).toFixed(2)} MB • Photo Attached</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setQrFile(null)}
+                          className="rounded-full bg-emerald-100 p-1 text-emerald-700 hover:bg-emerald-200 text-xs font-bold"
+                          title="Remove image"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
@@ -978,6 +1038,47 @@ export default function SellerOnboarding() {
                   {form.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(form.panNumber) && (
                     <p className="text-xs font-semibold text-red-500 px-1">Invalid PAN format. Must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)</p>
                   )}
+                  <div className="mt-1 flex flex-col gap-2">
+                    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:border-slate-400">
+                      <span className="truncate max-w-[150px] sm:max-w-xs" title={panFile?.name || "Upload PAN card document"}>
+                        {panFile?.name || "Upload PAN card photo/doc"}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-[9px] uppercase tracking-[0.2em] text-white shrink-0">
+                        <Upload className="h-3 w-3" />
+                        Choose / Camera
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf,image/heic,image/heif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setPanFile(file);
+                        }}
+                      />
+                    </label>
+                    {panFile && (
+                      <div className="relative flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-2 pr-4">
+                        <img
+                          src={URL.createObjectURL(panFile)}
+                          alt="PAN Preview"
+                          className="h-10 w-10 rounded-xl object-cover border border-blue-200"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-xs font-bold text-blue-900">{panFile.name}</p>
+                          <p className="text-[10px] font-medium text-blue-600">{(panFile.size / (1024 * 1024)).toFixed(2)} MB • Document Attached</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPanFile(null)}
+                          className="rounded-full bg-blue-100 p-1 text-blue-700 hover:bg-blue-200 text-xs font-bold"
+                          title="Remove file"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-700">
                   <input
@@ -1007,6 +1108,49 @@ export default function SellerOnboarding() {
                   {form.gstRegistered && form.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.gstNumber) && (
                     <p className="text-xs font-semibold text-red-500 px-1">Invalid GST format. Must be 15 chars: 2 digits + PAN (10) + entity + Z + check (e.g. 22ABCDE1234F1Z5)</p>
                   )}
+                  {form.gstRegistered && (
+                    <div className="mt-1 flex flex-col gap-2">
+                      <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:border-slate-400">
+                        <span className="truncate max-w-[150px] sm:max-w-xs" title={gstFile?.name || "Upload GST certificate document"}>
+                          {gstFile?.name || "Upload GST cert photo/doc"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-[9px] uppercase tracking-[0.2em] text-white shrink-0">
+                          <Upload className="h-3 w-3" />
+                          Choose / Camera
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf,image/heic,image/heif"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) setGstFile(file);
+                          }}
+                        />
+                      </label>
+                      {gstFile && (
+                        <div className="relative flex items-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-2 pr-4">
+                          <img
+                            src={URL.createObjectURL(gstFile)}
+                            alt="GST Preview"
+                            className="h-10 w-10 rounded-xl object-cover border border-indigo-200"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-xs font-bold text-indigo-900">{gstFile.name}</p>
+                            <p className="text-[10px] font-medium text-indigo-600">{(gstFile.size / (1024 * 1024)).toFixed(2)} MB • Document Attached</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setGstFile(null)}
+                            className="rounded-full bg-indigo-100 p-1 text-indigo-700 hover:bg-indigo-200 text-xs font-bold"
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-500">GST legal name {form.gstRegistered && <span className="text-red-500">*</span>}</label>
@@ -1016,6 +1160,9 @@ export default function SellerOnboarding() {
                   <label className="text-xs font-bold text-slate-500">FSSAI number <span className="text-red-500">*</span></label>
                   <input
                     required
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className={`w-full rounded-2xl border px-4 py-3 font-semibold outline-none focus:border-slate-900 ${form.fssaiNumber && !/^\d{14}$/.test(form.fssaiNumber) ? "border-red-400 bg-red-50" : "border-slate-200"}`}
                     placeholder="FSSAI number (14 digits)"
                     value={form.fssaiNumber}
@@ -1025,6 +1172,47 @@ export default function SellerOnboarding() {
                   {form.fssaiNumber && !/^\d{14}$/.test(form.fssaiNumber) && (
                     <p className="text-xs font-semibold text-red-500 px-1">FSSAI number must be exactly 14 digits (numbers only)</p>
                   )}
+                  <div className="mt-1 flex flex-col gap-2">
+                    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:border-slate-400">
+                      <span className="truncate max-w-[150px] sm:max-w-xs" title={fssaiFile?.name || "Upload FSSAI certificate document"}>
+                        {fssaiFile?.name || "Upload FSSAI cert photo/doc"}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-[9px] uppercase tracking-[0.2em] text-white shrink-0">
+                        <Upload className="h-3 w-3" />
+                        Choose / Camera
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf,image/heic,image/heif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setFssaiFile(file);
+                        }}
+                      />
+                    </label>
+                    {fssaiFile && (
+                      <div className="relative flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-2 pr-4">
+                        <img
+                          src={URL.createObjectURL(fssaiFile)}
+                          alt="FSSAI Preview"
+                          className="h-10 w-10 rounded-xl object-cover border border-emerald-200"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-xs font-bold text-emerald-900">{fssaiFile.name}</p>
+                          <p className="text-[10px] font-medium text-emerald-600">{(fssaiFile.size / (1024 * 1024)).toFixed(2)} MB • Document Attached</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFssaiFile(null)}
+                          className="rounded-full bg-emerald-100 p-1 text-emerald-700 hover:bg-emerald-200 text-xs font-bold"
+                          title="Remove file"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-500">FSSAI expiry date <span className="text-red-500">*</span></label>
@@ -1102,16 +1290,47 @@ export default function SellerOnboarding() {
                 </div>
                 <div className="flex flex-col gap-1 md:col-span-2">
                   <label className="text-xs font-bold text-slate-500">Shop license image <span className="text-red-500">*</span></label>
-                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <span className="truncate max-w-[150px] sm:max-w-xs" title={licenseFile?.name || "Upload shop license image"}>
-                      {licenseFile?.name || "Upload shop license image"}
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white shrink-0">
-                      <Upload className="h-3.5 w-3.5" />
-                      Choose
-                    </span>
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setLicenseFile(e.target.files?.[0] || null)} />
-                  </label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:border-slate-400">
+                      <span className="truncate max-w-[150px] sm:max-w-xs" title={licenseFile?.name || "Upload or take photo of shop license"}>
+                        {licenseFile?.name || "Upload or take photo of shop license"}
+                      </span>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white shrink-0">
+                        <Upload className="h-3.5 w-3.5" />
+                        Choose / Camera
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,image/heic,image/heif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setLicenseFile(file);
+                        }}
+                      />
+                    </label>
+                    {licenseFile && (
+                      <div className="relative flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-2 pr-4">
+                        <img
+                          src={URL.createObjectURL(licenseFile)}
+                          alt="License Preview"
+                          className="h-12 w-12 rounded-xl object-cover border border-amber-200"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-xs font-bold text-amber-900">{licenseFile.name}</p>
+                          <p className="text-[10px] font-medium text-amber-600">{(licenseFile.size / (1024 * 1024)).toFixed(2)} MB • Photo Attached</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLicenseFile(null)}
+                          className="rounded-full bg-amber-100 p-1 text-amber-700 hover:bg-amber-200 text-xs font-bold"
+                          title="Remove image"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>

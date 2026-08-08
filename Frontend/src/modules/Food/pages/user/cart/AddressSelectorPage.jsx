@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation as useRouteLocation } from "react-router-dom"
 import { ChevronLeft, ChevronRight, Plus, MapPin, MoreHorizontal, Navigation, Home, Building2, Briefcase, Phone, X, Crosshair, Search, Edit2, Trash2 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
@@ -99,6 +99,7 @@ const persistSelectedLocation = (locationData) => {
 
 export default function AddressSelectorPage() {
   const navigate = useNavigate()
+  const routeLocation = useRouteLocation()
   const goBack = useAppBackNavigation()
   const { location, loading, requestLocation } = useGeoLocation()
   const { addresses = [], addAddress, updateAddress, deleteAddress, setDefaultAddress, userProfile } = useProfile()
@@ -143,7 +144,16 @@ export default function AddressSelectorPage() {
   const getAddressId = (address) => address?.id || address?._id || null
 
   const handleBack = () => {
-    goBack()
+    const explicitFrom = routeLocation.state?.from || routeLocation.state?.backTo
+    if (explicitFrom && explicitFrom !== routeLocation.pathname) {
+      navigate(explicitFrom, { replace: true })
+      return
+    }
+    if (typeof window !== "undefined" && window.history.length > 1 && (window.history.state?.idx > 0 || document.referrer)) {
+      navigate(-1)
+      return
+    }
+    navigate("/food/user/profile", { replace: true })
   }
 
   const addressAutocompleteSuggestions = useMemo(() => {
@@ -398,14 +408,15 @@ export default function AddressSelectorPage() {
           toast.success("Location updated", { id: "geo" })
           // Redirect if they are on the main selection page
           setTimeout(() => {
-            navigate("/food/user")
-          }, 800)
+            const from = routeLocation?.state?.from || routeLocation?.state?.backTo || "/food/user/profile"
+            navigate(from, { replace: true })
+          }, 500)
         }
       } else {
-        toast.error("Could not determine location", { id: "geo" })
+        toast.error("Please switch on Location/GPS on your phone to detect location.", { id: "geo", duration: 5000 })
       }
     } catch (e) {
-      toast.error("Failed to get location", { id: "geo" })
+      toast.error("Please switch on Location/GPS on your phone to detect location.", { id: "geo", duration: 5000 })
     }
   }
 
@@ -420,8 +431,8 @@ export default function AddressSelectorPage() {
       } catch {}
       toast.success("Address selected")
       
-      // Use "from" state if available, otherwise default to home page
-      const from = location?.state?.from || "/food/user"
+      // Use "from" state if available, otherwise default to profile page
+      const from = routeLocation?.state?.from || routeLocation?.state?.backTo || "/food/user/profile"
       setTimeout(() => {
         navigate(from, { replace: true })
       }, 500)
@@ -521,7 +532,52 @@ export default function AddressSelectorPage() {
     manualFieldRefs.current._lastCoords = coordKey
 
     try {
-      // Use Nominatim for free reverse geocoding on the client side
+      // 1. Try Google Maps Geocoder first if available
+      if (typeof window !== "undefined" && window.google?.maps?.Geocoder) {
+        const geocoder = new window.google.maps.Geocoder()
+        const response = await new Promise((resolve) => {
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === "OK" && results?.[0]) resolve(results[0])
+            else resolve(null)
+          })
+        })
+
+        if (response) {
+          const formatted = response.formatted_address || ""
+          let street = ""
+          let city = ""
+          let state = ""
+          let postcode = ""
+          let landmark = ""
+
+          response.address_components?.forEach((comp) => {
+            const types = comp.types || []
+            if (types.includes("route") || types.includes("street_number") || types.includes("sublocality") || types.includes("neighborhood")) {
+              street = street ? `${comp.long_name}, ${street}` : comp.long_name
+            }
+            if (types.includes("locality")) city = comp.long_name
+            if (!city && types.includes("administrative_area_level_2")) city = comp.long_name
+            if (types.includes("administrative_area_level_1")) state = comp.long_name
+            if (types.includes("postal_code")) postcode = comp.long_name
+            if (types.includes("point_of_interest") || types.includes("establishment") || types.includes("premise")) {
+              landmark = comp.long_name
+            }
+          })
+
+          setCurrentAddress(formatted)
+          setAddressFormData(prev => ({
+            ...prev,
+            street: street || formatted.split(",")[0] || prev.street,
+            city: city || prev.city,
+            state: state || prev.state,
+            zipCode: postcode || prev.zipCode,
+            additionalDetails: landmark || prev.additionalDetails
+          }))
+          return
+        }
+      }
+
+      // 2. Fallback to Nominatim Reverse Geocoding
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
       const response = await fetch(url, { 
         headers: { 
@@ -535,7 +591,6 @@ export default function AddressSelectorPage() {
         const addr = json.address
         const formatted = json.display_name
         
-        // Extract meaningful street/area info
         const street = [
           addr.road,
           addr.suburb,
@@ -547,20 +602,14 @@ export default function AddressSelectorPage() {
         const state = addr.state || ""
         const postcode = addr.postcode || ""
 
-        // Update state ONLY if values changed significantly
         setCurrentAddress(prev => prev === formatted ? prev : formatted)
-        setAddressFormData(prev => {
-          if (prev.street === street && prev.city === city && prev.state === state && prev.zipCode === postcode) {
-            return prev
-          }
-          return {
-            ...prev,
-            street: street || formatted.split(",")[0] || prev.street,
-            city: city || prev.city,
-            state: state || prev.state,
-            zipCode: postcode || prev.zipCode,
-          }
-        })
+        setAddressFormData(prev => ({
+          ...prev,
+          street: street || formatted.split(",")[0] || prev.street,
+          city: city || prev.city,
+          state: state || prev.state,
+          zipCode: postcode || prev.zipCode,
+        }))
       }
     } catch (e) {
       debugError("Reverse geocode error:", e)
@@ -602,13 +651,9 @@ export default function AddressSelectorPage() {
         setAddressAutocompleteValue("")
         setKeywordAddressSuggestions([])
         
-        const from = location?.state?.from || (window.history.length > 1 ? -1 : "/food/user/profile")
+        const from = routeLocation?.state?.from || routeLocation?.state?.backTo || "/food/user/profile"
         setTimeout(() => {
-          if (typeof from === "number") {
-            navigate(-1)
-          } else {
-            navigate(from, { replace: true })
-          }
+          navigate(from, { replace: true })
         }, 500)
       }
     } catch (error) {

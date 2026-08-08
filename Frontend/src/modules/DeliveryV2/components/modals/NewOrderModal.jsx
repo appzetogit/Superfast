@@ -50,14 +50,30 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
     updateTimer();
     const interval = setInterval(updateTimer, 500);
 
+    // Pause timer while page is hidden (e.g. tel: call, navigation app)
+    // so that a phone call doesn't eat into the countdown window.
+    let hiddenAt = null;
     const handleVisibility = () => {
-      if (!document.hidden) updateTimer();
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else {
+        if (hiddenAt !== null) {
+          // Extend expiry by however long the page was hidden
+          const hiddenMs = Date.now() - hiddenAt;
+          expiresAtRef.current = {
+            ...expiresAtRef.current,
+            endTime: expiresAtRef.current.endTime + hiddenMs,
+          };
+          hiddenAt = null;
+        }
+        updateTimer();
+      }
     };
-    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [orderId, onReject]);
 
@@ -204,10 +220,10 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
       : null;
 
   const restaurantPhone = isQuickOrder
-    ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || ''
-    : order?.restaurantPhone || order?.restaurant_phone || order?.restaurantId?.phone || '';
+    ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || order?.seller?.ownerPhone || order?.seller?.primaryContactNumber || order?.seller?.contactNumber || order?.seller?.mobile || ''
+    : order?.restaurantPhone || order?.restaurant_phone || order?.restaurantId?.phone || order?.restaurantId?.ownerPhone || order?.restaurantId?.primaryContactNumber || order?.restaurantId?.contactNumber || order?.restaurantId?.mobile || order?.restaurant?.phone || order?.restaurant?.ownerPhone || order?.restaurant?.primaryContactNumber || order?.restaurant?.contactNumber || order?.phone || '';
 
-  const customerPhone = order?.customerPhone || order?.customer_phone || order?.deliveryAddress?.phone || order?.user?.phone || '';
+  const customerPhone = order?.customerPhone || order?.customer_phone || order?.deliveryAddress?.phone || order?.user?.phone || order?.customer?.phone || order?.customer?.mobile || '';
 
   const pickupStops = isReturnPickup
     ? [

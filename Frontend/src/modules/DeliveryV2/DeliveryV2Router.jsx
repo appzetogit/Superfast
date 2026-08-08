@@ -40,7 +40,7 @@ const ReturnPickupHistory = lazy(() => import('../quickCommerce/delivery/pages/R
 const DeliveryV2Router = () => {
   const location = useLocation();
   return (
-    <Suspense fallback={<Loader />}>
+    <Suspense fallback={null}>
       <Routes>
         {/* Auth routes */}
         <Route path="welcome" element={<Welcome />} />

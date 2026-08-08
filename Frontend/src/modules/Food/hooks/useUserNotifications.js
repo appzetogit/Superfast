@@ -93,6 +93,11 @@ export const useUserNotifications = () => {
           description: message,
           duration: 5000
         });
+
+        // Refresh notification inbox so bell count updates live
+        import('@food/hooks/useNotificationInbox').then(({ dispatchNotificationInboxRefresh }) => {
+          dispatchNotificationInboxRefresh();
+        }).catch(() => {});
       }
 
       // Dispatch custom event for OrderTrackingCard and other listeners

@@ -4,6 +4,7 @@ import AdminSidebar from "./AdminSidebar"
 import AdminNavbar from "./AdminNavbar"
 import { API_BASE_URL } from "@food/api/config"
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
+import GlobalScrollToTop from "@/shared/components/GlobalScrollToTop"
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
@@ -101,6 +102,7 @@ export default function AdminLayout() {
 
         {/* Page Content */}
         <main className="flex-1 min-h-0 w-full max-w-full overflow-x-hidden overflow-y-auto bg-[#F4F7F6]">
+          <GlobalScrollToTop />
           <div style={{ marginLeft: '20px', padding: '20px 20px 48px 0px' }}>
             <Outlet />
           </div>

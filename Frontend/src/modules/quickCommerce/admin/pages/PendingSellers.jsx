@@ -194,7 +194,7 @@ const PendingSellers = () => {
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900">{seller.shopName || seller.shopInfo?.shopName || seller.name || 'Store'}</p>
-                          <p className="text-[10px] font-bold text-slate-400">{seller.ownerName || seller.name || seller.shopInfo?.ownerName || 'Seller'}</p>
+                          <p className="text-[10px] font-bold text-slate-400">{seller.ownerName || seller.name || seller.shopInfo?.ownerName || (seller.email ? seller.email : seller.phone ? `Phone: ${seller.phone}` : 'Seller')}</p>
                         </div>
                       </div>
                     </td>
@@ -284,7 +284,7 @@ const PendingSellers = () => {
                           <h5 className="text-xs font-black uppercase tracking-[0.22em] text-primary mb-3">Store Identity</h5>
                           <div className="grid gap-3 md:grid-cols-2">
                             {[
-                              ['Owner name', viewingSeller.ownerName],
+                              ['Owner name', viewingSeller.ownerName || viewingSeller.name || viewingSeller.shopInfo?.ownerName],
                               ['Business type', viewingSeller.shopInfo?.businessType],
                               ['Alternate phone', viewingSeller.shopInfo?.alternatePhone],
                               ['Support email', viewingSeller.shopInfo?.supportEmail],

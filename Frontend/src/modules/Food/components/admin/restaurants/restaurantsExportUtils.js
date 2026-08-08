@@ -3,36 +3,18 @@
 export const formatRestaurantId = (id) => {
   if (!id) return "REST000000"
 
-  const idString = String(id)
+  const idString = String(id).trim()
   if (idString.startsWith("REST")) return idString
 
-  const parts = idString.split(/[-.]/)
-  let lastDigits = ""
-
-  if (parts.length > 0) {
-    const lastPart = parts[parts.length - 1]
-    const digits = lastPart.match(/\d+/g)
-    if (digits && digits.length > 0) {
-      const allDigits = digits.join("")
-      lastDigits = allDigits.slice(-6).padStart(6, "0")
-    } else {
-      const allParts = parts.join("")
-      const allDigits = allParts.match(/\d+/g)
-      if (allDigits && allDigits.length > 0) {
-        const combinedDigits = allDigits.join("")
-        lastDigits = combinedDigits.slice(-6).padStart(6, "0")
-      }
-    }
+  // If it's a 24-character hex ID (Mongoose ObjectId)
+  if (idString.length === 24) {
+    return `REST${idString.slice(-6).toUpperCase()}`
   }
 
-  if (!lastDigits) {
-    const hash = idString.split("").reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0) | 0
-    }, 0)
-    lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0")
-  }
-
-  return `REST${lastDigits}`
+  // Fallback: take last 6 alphanumeric characters and uppercase them
+  const cleaned = idString.replace(/[^a-zA-Z0-9]/g, "")
+  const last6 = cleaned.slice(-6).toUpperCase()
+  return `REST${last6.padStart(6, "0")}`
 }
 
 const getRestaurantStatuses = (restaurant) => {

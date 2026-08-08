@@ -104,6 +104,14 @@ const resolveBackPath = ({ pathname, search, state }) => {
   }
 
   if (
+    normalizedPath === "/cart" ||
+    normalizedPath === "/user/cart" ||
+    normalizedPath === "/food/user/cart"
+  ) {
+    return explicitBackPath || "/food/user"
+  }
+
+  if (
     normalizedPath === "/cart/checkout" ||
     normalizedPath === "/cart/select-address" ||
     normalizedPath === "/cart/address-selector" ||
@@ -111,7 +119,7 @@ const resolveBackPath = ({ pathname, search, state }) => {
     normalizedPath === "/user/cart/select-address" ||
     normalizedPath === "/user/cart/address-selector"
   ) {
-    return "/cart"
+    return explicitBackPath || "/cart"
   }
 
   if (normalizedPath === "/user/address-selector") {
@@ -158,6 +166,11 @@ export default function useAppBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
+    const explicitBackPath = toFoodPath(location.state?.backTo) || toFoodPath(location.state?.from)
+    if (explicitBackPath && explicitBackPath !== location.pathname) {
+      navigate(explicitBackPath, { replace: true })
+      return
+    }
     if (typeof window !== "undefined" && window.history.length > 1 && (window.history.state?.idx > 0 || document.referrer)) {
       navigate(-1)
       return

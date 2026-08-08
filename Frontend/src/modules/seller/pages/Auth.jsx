@@ -223,6 +223,7 @@ export default function SellerAuth() {
                       type="tel"
                       maxLength={10}
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       placeholder="Enter phone number"
                       value={phone}
                       onChange={(e) => {
@@ -254,6 +255,21 @@ export default function SellerAuth() {
                     </>
                   )}
                 </Button>
+
+                <p className="text-slate-500 text-[11px] font-medium text-center pt-2 leading-relaxed">
+                  By continuing, you agree to our{" "}
+                  <a href="/seller/terms" className="text-[#16a34a] font-bold hover:underline">
+                    Terms &amp; Conditions
+                  </a>
+                  ,{" "}
+                  <a href="/seller/privacy" className="text-[#16a34a] font-bold hover:underline">
+                    Privacy Policy
+                  </a>
+                  {" "}and{" "}
+                  <a href="/seller/support" className="text-[#16a34a] font-bold hover:underline">
+                    Support
+                  </a>
+                </p>
               </div>
             </>
           ) : (
@@ -343,32 +359,28 @@ export default function SellerAuth() {
                     </>
                   )}
                 </Button>
+
+                <p className="text-slate-500 text-[11px] font-medium text-center pt-1 leading-relaxed">
+                  By continuing, you agree to our{" "}
+                  <a href="/seller/terms" className="text-[#16a34a] font-bold hover:underline">
+                    Terms &amp; Conditions
+                  </a>
+                  ,{" "}
+                  <a href="/seller/privacy" className="text-[#16a34a] font-bold hover:underline">
+                    Privacy Policy
+                  </a>
+                  {" "}and{" "}
+                  <a href="/seller/support" className="text-[#16a34a] font-bold hover:underline">
+                    Support
+                  </a>
+                </p>
               </div>
             </>
           )}
         </div>
       </div>
 
-      {step === "phone" && (
-        <div className="text-center pt-4 pb-2">
-          <p className="text-slate-400 text-xs font-medium">
-            By continuing, you agree to our <br />
-            <a href="/seller/terms" className="text-[#16a34a] font-bold hover:underline">
-              Terms &amp; Conditions
-            </a>
-            ,{" "}
-            <a href="/seller/privacy" className="text-[#16a34a] font-bold hover:underline">
-              Privacy Policy
-            </a>
-            {" "}and{" "}
-            <a href="/seller/support" className="text-[#16a34a] font-bold hover:underline">
-              Support
-            </a>
-          </p>
-        </div>
-      )}
-
-      <div className="pb-8 text-center mt-auto">
+      <div className="pb-4 text-center shrink-0 z-20 hidden sm:block">
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
             &copy; {new Date().getFullYear()} {companyName.toUpperCase()} SELLER PORTAL
           </p>

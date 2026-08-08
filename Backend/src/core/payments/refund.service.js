@@ -56,6 +56,22 @@ export async function initiateRefund({ paymentId, orderId, userId, amount, reaso
             await payment.save();
 
             logger.info(`Refund processed (wallet): ${refund._id} amount=${refund.amount}`);
+            try {
+                const { notifyOwnersSafely } = await import('../../core/notifications/firebase.service.js');
+                await notifyOwnersSafely(
+                    [{ ownerType: 'USER', ownerId: String(userId || payment.userId) }],
+                    {
+                        title: 'Refund Approved & Initiated! 💰',
+                        body: `Your refund of ₹${refund.amount} has been credited to your wallet.`,
+                        image: 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png',
+                        data: {
+                            type: 'refund_processed',
+                            refundId: String(refund._id),
+                            amount: String(refund.amount)
+                        }
+                    }
+                );
+            } catch (notifyErr) {}
         } catch (err) {
             refund.status = 'failed';
             refund.metadata = { error: err.message };

@@ -37,7 +37,8 @@ const sanitizePan = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, ""
 const sanitizeFssai = (value = "") => value.replace(/\D/g, "").slice(0, 14)
 const sanitizeIfsc = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11)
 const sanitizeGst = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15)
-const normalizeName = (value = "") => value.replace(/\s+/g, " ").trimStart()
+const sanitizeLettersOnly = (value = "") => value.replace(/[^a-zA-Z\s]/g, "").replace(/\s+/g, " ").trimStart()
+const normalizeName = (value = "") => sanitizeLettersOnly(value)
 const hasLetters = (value = "") => /[A-Za-z]/.test(value)
 const getTodayLocalYMD = () => new Date().toISOString().split("T")[0]
 const timeStringToMinutes = (value = "") => {
@@ -187,6 +188,17 @@ export default function AddRestaurant() {
     },
   })
 
+  const step1Ref = useRef(step1)
+  const zonesRef = useRef(zones)
+
+  useEffect(() => {
+    step1Ref.current = step1
+  }, [step1])
+
+  useEffect(() => {
+    zonesRef.current = zones
+  }, [zones])
+
   // Step 2: Images & Operational
   const [step2, setStep2] = useState({
     menuImages: [],
@@ -240,50 +252,18 @@ export default function AddRestaurant() {
   useEffect(() => {
     let cancelled = false
 
-    const restoreFormData = async () => {
+    const clearAndHydrate = async () => {
       try {
-        const storedRaw = localStorage.getItem(ADMIN_ADD_STORAGE_KEY)
-        if (storedRaw) {
-          const parsed = JSON.parse(storedRaw)
-          const safeStep = Math.min(Math.max(Number(parsed?.step) || 1, 1), 3)
-          if (!cancelled) setStep(safeStep)
-          if (parsed?.step1 && !cancelled) {
-            setStep1((prev) => ({ ...prev, ...parsed.step1, location: { ...prev.location, ...(parsed.step1.location || {}) } }))
-          }
-          if (parsed?.step2 && !cancelled) {
-            setStep2((prev) => ({ ...prev, ...parsed.step2 }))
-          }
-          if (parsed?.step3 && !cancelled) {
-            setStep3((prev) => ({ ...prev, ...parsed.step3 }))
-          }
-        }
-
-        const [profileImage, panImage, gstImage, fssaiImage] = await Promise.all([
-          getFileFromDB("profileImage"),
-          getFileFromDB("panImage"),
-          getFileFromDB("gstImage"),
-          getFileFromDB("fssaiImage"),
-        ])
-        const menuFilePromises = Array.from({ length: MAX_MENU_FILES }, (_, i) => getFileFromDB(`menuImage_${i}`))
-        const menuFilesFromDB = (await Promise.all(menuFilePromises)).filter(Boolean)
-
-        if (!cancelled) {
-          if (profileImage) setStep2((prev) => ({ ...prev, profileImage }))
-          if (menuFilesFromDB.length) {
-            setStep2((prev) => ({ ...prev, menuImages: [...(prev.menuImages || []), ...menuFilesFromDB] }))
-          }
-          if (panImage) setStep3((prev) => ({ ...prev, panImage }))
-          if (gstImage) setStep3((prev) => ({ ...prev, gstImage }))
-          if (fssaiImage) setStep3((prev) => ({ ...prev, fssaiImage }))
-        }
+        localStorage.removeItem(ADMIN_ADD_STORAGE_KEY)
+        await clearAllFilesFromDB()
       } catch (err) {
-        debugError("Failed to restore admin add form data:", err)
+        debugError("Failed to clear form data on mount:", err)
       } finally {
         if (!cancelled) setIsHydrated(true)
       }
     }
 
-    restoreFormData()
+    clearAndHydrate()
 
     return () => {
       cancelled = true
@@ -386,14 +366,35 @@ export default function AddRestaurant() {
     }
   }, [isHydrated, step3.fssaiImage])
 
-  // Keep UX consistent: each step opens from top after Next/Back.
-  useEffect(() => {
-    const contentEl = mainContentRef.current
-    if (contentEl?.scrollTo) contentEl.scrollTo({ top: 0, behavior: "auto" })
-    if (typeof window !== "undefined" && window.scrollTo) window.scrollTo({ top: 0, behavior: "auto" })
+  const scrollToTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" })
+      window.scrollTo(0, 0)
+    }
     if (typeof document !== "undefined") {
-      if (document.documentElement) document.documentElement.scrollTop = 0
-      if (document.body) document.body.scrollTop = 0
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+
+      const scrollContainers = document.querySelectorAll("main, .overflow-y-auto, [data-scroll-container]")
+      scrollContainers.forEach((el) => {
+        if (el && typeof el.scrollTop === "number") {
+          el.scrollTop = 0
+        }
+      })
+    }
+    if (mainContentRef.current && typeof mainContentRef.current.scrollTop === "number") {
+      mainContentRef.current.scrollTop = 0
+    }
+  }
+
+  // Keep UX consistent: each step and page load opens from top.
+  useEffect(() => {
+    scrollToTop()
+    const timer = setTimeout(scrollToTop, 50)
+    const timer2 = setTimeout(scrollToTop, 150)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(timer2)
     }
   }, [step])
 
@@ -411,6 +412,42 @@ export default function AddRestaurant() {
   }
 
   // Validation functions
+const isPointInPolygon = (lat, lng, polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = Number(polygon[i].longitude ?? polygon[i].lng ?? polygon[i]?.[0])
+    const yi = Number(polygon[i].latitude ?? polygon[i].lat ?? polygon[i]?.[1])
+    const xj = Number(polygon[j].longitude ?? polygon[j].lng ?? polygon[j]?.[0])
+    const yj = Number(polygon[j].latitude ?? polygon[j].lat ?? polygon[j]?.[1])
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 0.0) + xi
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+const checkLocationInZone = (lat, lng, zoneId, zonesList) => {
+  if (!zoneId || !Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) {
+    return { valid: true }
+  }
+  const selectedZone = (zonesList || []).find((z) => String(z._id || z.id) === String(zoneId))
+  if (!selectedZone) return { valid: true }
+
+  const coords = selectedZone.coordinates || selectedZone.boundary?.coordinates?.[0]
+  if (!Array.isArray(coords) || coords.length < 3) return { valid: true }
+
+  const isInside = isPointInPolygon(Number(lat), Number(lng), coords)
+  const zoneName = selectedZone.name || selectedZone.zoneName || selectedZone.serviceLocation || "selected zone"
+
+  return {
+    valid: isInside,
+    zoneName,
+    selectedZone,
+  }
+}
+
   const validateStep1 = () => {
     const errors = []
     if (!step1.restaurantName?.trim()) errors.push("Restaurant name is required")
@@ -428,6 +465,21 @@ export default function AddRestaurant() {
     if (!step1.zoneId?.trim()) errors.push("Service zone is required")
     if (!step1.location?.area?.trim()) errors.push("Area/Sector/Locality is required")
     if (!step1.location?.city?.trim()) errors.push("City is required")
+
+    if (step1.zoneId && step1.location?.latitude && step1.location?.longitude) {
+      const selectedZone = zones.find((z) => String(z._id || z.id) === step1.zoneId)
+      if (selectedZone && Array.isArray(selectedZone.coordinates) && selectedZone.coordinates.length >= 3) {
+        const isInside = isPointInPolygon(
+          Number(step1.location.latitude),
+          Number(step1.location.longitude),
+          selectedZone.coordinates,
+        )
+        if (!isInside) {
+          errors.push("Selected address location is outside the selected service zone")
+        }
+      }
+    }
+
     return errors
   }
 
@@ -519,6 +571,7 @@ export default function AddRestaurant() {
 
     if (step < 3) {
       setStep(step + 1)
+      scrollToTop()
     } else {
       handleSubmit()
     }
@@ -776,8 +829,21 @@ export default function AddRestaurant() {
         autocomplete.addListener("place_changed", () => {
           const place = autocomplete.getPlace()
           if (!place?.geometry) return
-          
+
           const parsed = parsePlace(place)
+          const currentStep1 = step1Ref.current
+          const currentZones = zonesRef.current
+
+          if (currentStep1?.zoneId && parsed.latitude !== "" && parsed.longitude !== "") {
+            const check = checkLocationInZone(parsed.latitude, parsed.longitude, currentStep1.zoneId, currentZones)
+            if (!check.valid) {
+              toast.error(`Selected location is outside the service zone "${check.zoneName}". Please select a location inside this zone.`)
+              setLocationSearchValue("")
+              if (inputElement) inputElement.value = ""
+              return
+            }
+          }
+
           setStep1((prev) => ({
             ...prev,
             location: {
@@ -792,7 +858,7 @@ export default function AddRestaurant() {
               longitude: parsed.longitude !== "" ? parsed.longitude : prev.location.longitude,
             },
           }))
-          
+
           setLocationSearchValue(parsed.formattedAddress)
           inputElement.blur()
         })
@@ -838,6 +904,10 @@ export default function AddRestaurant() {
   // Hybrid Search Fallback (Nominatim)
   useEffect(() => {
     if (step !== 1) return
+    if (window.google?.maps?.places) {
+      setLocationSuggestions([])
+      return
+    }
     const q = String(locationSearchValue || "").trim()
     if (q.length < 3) {
       setLocationSuggestions([])
@@ -982,6 +1052,17 @@ export default function AddRestaurant() {
                   onMouseDown={(e) => {
                     e.preventDefault()
                     const { lat, lng, display, addr } = s
+
+                    if (step1.zoneId && lat && lng) {
+                      const check = checkLocationInZone(lat, lng, step1.zoneId, zones)
+                      if (!check.valid) {
+                        toast.error(`Selected location is outside the service zone "${check.zoneName}". Please select a location inside this zone.`)
+                        setLocationSearchValue("")
+                        setLocationSuggestions([])
+                        return
+                      }
+                    }
+
                     const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || ""
                     const city = addr.city || addr.town || addr.village || ""
                     const state = addr.state || ""
@@ -1020,7 +1101,34 @@ export default function AddRestaurant() {
           <Label className="text-xs text-gray-700">Service zone*</Label>
           <select
             value={step1.zoneId || ""}
-            onChange={(e) => setStep1({ ...step1, zoneId: e.target.value })}
+            onChange={(e) => {
+              const newZoneId = e.target.value
+              if (newZoneId && step1.location?.latitude && step1.location?.longitude) {
+                const check = checkLocationInZone(step1.location.latitude, step1.location.longitude, newZoneId, zones)
+                if (!check.valid) {
+                  toast.error(`Current location is outside "${check.zoneName}". Location has been reset. Please search a location inside this zone.`)
+                  setStep1({
+                    ...step1,
+                    zoneId: newZoneId,
+                    location: {
+                      addressLine1: "",
+                      addressLine2: "",
+                      area: "",
+                      city: "",
+                      state: "",
+                      pincode: "",
+                      landmark: "",
+                      formattedAddress: "",
+                      latitude: "",
+                      longitude: "",
+                    },
+                  })
+                  setLocationSearchValue("")
+                  return
+                }
+              }
+              setStep1({ ...step1, zoneId: newZoneId })
+            }}
             className="mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm"
             disabled={zonesLoading}
           >
@@ -1185,32 +1293,6 @@ export default function AddRestaurant() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
-        <div>
-          <Label className="text-xs text-gray-700">Select cuisines (up to 3)*</Label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {cuisinesOptions.map((cuisine) => {
-              const active = step2.cuisines.includes(cuisine)
-              return (
-                <button
-                  key={cuisine}
-                  type="button"
-                  onClick={() => {
-                    setStep2((prev) => {
-                      const exists = prev.cuisines.includes(cuisine)
-                      if (exists) return { ...prev, cuisines: prev.cuisines.filter((c) => c !== cuisine) }
-                      if (prev.cuisines.length >= 3) return prev
-                      return { ...prev, cuisines: [...prev.cuisines, cuisine] }
-                    })
-                  }}
-                  className={`px-3 py-1.5 text-xs rounded-full ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`}
-                >
-                  {cuisine}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         <div className="space-y-3">
           <Label className="text-xs text-gray-700">Outlet timings*</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1226,10 +1308,6 @@ export default function AddRestaurant() {
                   if (openingMinutes !== null && closingMinutes !== null) {
                     if (openingMinutes === closingMinutes) {
                       toast.error("Opening time and closing time cannot be same")
-                      return
-                    }
-                    if (closingMinutes < openingMinutes) {
-                      toast.error("Closing time cannot be less than opening time")
                       return
                     }
                   }
@@ -1251,10 +1329,6 @@ export default function AddRestaurant() {
                   if (openingMinutes !== null && closingMinutes !== null) {
                     if (openingMinutes === closingMinutes) {
                       toast.error("Opening time and closing time cannot be same")
-                      return
-                    }
-                    if (closingMinutes < openingMinutes) {
-                      toast.error("Closing time cannot be less than opening time")
                       return
                     }
                   }
@@ -1372,19 +1446,33 @@ export default function AddRestaurant() {
           </button>
         </div>
         {step3.gstRegistered && (
-          <div className="space-y-3">
-            <Input value={step3.gstNumber || ""} onChange={(e) => setStep3({ ...step3, gstNumber: sanitizeGst(e.target.value) })} className="bg-white text-sm" placeholder="GST number*" maxLength={15} />
-            <Input value={step3.gstLegalName || ""} onChange={(e) => setStep3({ ...step3, gstLegalName: normalizeName(e.target.value) })} className="bg-white text-sm" placeholder="Legal name*" />
-            <Input value={step3.gstAddress || ""} onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })} className="bg-white text-sm" placeholder="Registered address*" />
-            <Input type="file" accept="image/*" onChange={(e) => setStep3({ ...step3, gstImage: e.target.files?.[0] || null })} className="bg-white text-sm" />
-            {step3.gstImage && (
-              <div className="flex items-center gap-3">
-                <div className="h-14 w-14 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-                  <img src={getStoredImageSrc(step3.gstImage)} alt="GST document" className="h-full w-full object-cover" />
-                </div>
-                <p className="text-xs text-gray-600">Selected: {getStoredFileLabel(step3.gstImage)}</p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-gray-700">GST number*</Label>
+                <Input value={step3.gstNumber || ""} onChange={(e) => setStep3({ ...step3, gstNumber: sanitizeGst(e.target.value) })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="15-character GST number*" maxLength={15} />
               </div>
-            )}
+              <div>
+                <Label className="text-xs text-gray-700">Legal name*</Label>
+                <Input value={step3.gstLegalName || ""} onChange={(e) => setStep3({ ...step3, gstLegalName: normalizeName(e.target.value) })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="Legal registered name*" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-700">Registered address*</Label>
+              <Input value={step3.gstAddress || ""} onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="Registered GST address*" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-700">GST document image*</Label>
+              <Input type="file" accept="image/*" onChange={(e) => setStep3({ ...step3, gstImage: e.target.files?.[0] || null })} className="mt-1 bg-white text-sm text-black placeholder-black" />
+              {step3.gstImage && (
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="h-14 w-14 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                    <img src={getStoredImageSrc(step3.gstImage)} alt="GST document" className="h-full w-full object-cover" />
+                  </div>
+                  <p className="text-xs text-gray-600">Selected: {getStoredFileLabel(step3.gstImage)}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -1393,47 +1481,77 @@ export default function AddRestaurant() {
         <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700 mb-1 block">FSSAI number*</Label>
-            <Input value={step3.fssaiNumber || ""} onChange={(e) => setStep3({ ...step3, fssaiNumber: sanitizeFssai(e.target.value) })} className="bg-white text-sm" placeholder="14-digit FSSAI number*" inputMode="numeric" maxLength={14} />
+            <Label className="text-xs text-gray-700">FSSAI number*</Label>
+            <Input
+              value={step3.fssaiNumber || ""}
+              onChange={(e) => setStep3({ ...step3, fssaiNumber: sanitizeFssai(e.target.value) })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="14-digit FSSAI number*"
+              inputMode="numeric"
+              maxLength={14}
+            />
           </div>
           <div>
-            <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date*</Label>
+            <Label className="text-xs text-gray-700">FSSAI expiry date*</Label>
             <Input
               type="date"
               value={step3.fssaiExpiry || ""}
               onChange={(e) => setStep3({ ...step3, fssaiExpiry: e.target.value })}
               min={getTodayLocalYMD()}
               autoComplete="off"
-              className="bg-white text-sm"
+              className="mt-1 bg-white text-sm text-black placeholder-black"
             />
           </div>
         </div>
-        <Input type="file" accept="image/*" onChange={(e) => setStep3({ ...step3, fssaiImage: e.target.files?.[0] || null })} className="bg-white text-sm" />
-        {step3.fssaiImage && (
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-14 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-              <img src={getStoredImageSrc(step3.fssaiImage)} alt="FSSAI document" className="h-full w-full object-cover" />
+        <div>
+          <Label className="text-xs text-gray-700">FSSAI document image*</Label>
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setStep3({ ...step3, fssaiImage: e.target.files?.[0] || null })}
+            className="mt-1 bg-white text-sm text-black placeholder-black"
+          />
+          {step3.fssaiImage && (
+            <div className="mt-2 flex items-center gap-3">
+              <div className="h-14 w-14 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                <img src={getStoredImageSrc(step3.fssaiImage)} alt="FSSAI document" className="h-full w-full object-cover" />
+              </div>
+              <p className="text-xs text-gray-600">Selected: {getStoredFileLabel(step3.fssaiImage)}</p>
             </div>
-            <p className="text-xs text-gray-600">Selected: {getStoredFileLabel(step3.fssaiImage)}</p>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">Bank account details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input value={step3.accountNumber || ""} onChange={(e) => setStep3({ ...step3, accountNumber: sanitizeDigits(e.target.value).slice(0, 18) })} className="bg-white text-sm" placeholder="Account number*" inputMode="numeric" maxLength={18} />
-          <Input value={step3.confirmAccountNumber || ""} onChange={(e) => setStep3({ ...step3, confirmAccountNumber: sanitizeDigits(e.target.value).slice(0, 18) })} className="bg-white text-sm" placeholder="Re-enter account number*" inputMode="numeric" maxLength={18} />
+          <div>
+            <Label className="text-xs text-gray-700">Account number*</Label>
+            <Input value={step3.accountNumber || ""} onChange={(e) => setStep3({ ...step3, accountNumber: sanitizeDigits(e.target.value).slice(0, 18) })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="9-18 digit account number*" inputMode="numeric" maxLength={18} />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700">Re-enter account number*</Label>
+            <Input value={step3.confirmAccountNumber || ""} onChange={(e) => setStep3({ ...step3, confirmAccountNumber: sanitizeDigits(e.target.value).slice(0, 18) })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="Re-enter account number*" inputMode="numeric" maxLength={18} />
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input value={step3.ifscCode || ""} onChange={(e) => setStep3({ ...step3, ifscCode: sanitizeIfsc(e.target.value) })} className="bg-white text-sm" placeholder="IFSC code*" maxLength={11} />
-          <select value={step3.accountType || ""} onChange={(e) => setStep3({ ...step3, accountType: e.target.value })} className="bg-white text-sm border border-input rounded-md h-10 px-3">
-            <option value="">Select account type</option>
-            <option value="Saving">Saving</option>
-            <option value="Current">Current</option>
-          </select>
+          <div>
+            <Label className="text-xs text-gray-700">IFSC code*</Label>
+            <Input value={step3.ifscCode || ""} onChange={(e) => setStep3({ ...step3, ifscCode: sanitizeIfsc(e.target.value) })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="11-character IFSC code*" maxLength={11} />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700">Account type*</Label>
+            <select value={step3.accountType || ""} onChange={(e) => setStep3({ ...step3, accountType: e.target.value })} className="mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm text-black">
+              <option value="">Select account type</option>
+              <option value="Saving">Saving</option>
+              <option value="Current">Current</option>
+            </select>
+          </div>
         </div>
-        <Input value={step3.accountHolderName || ""} onChange={(e) => setStep3({ ...step3, accountHolderName: normalizeName(e.target.value) })} className="bg-white text-sm" placeholder="Account holder name*" />
+        <div>
+          <Label className="text-xs text-gray-700">Account holder name*</Label>
+          <Input value={step3.accountHolderName || ""} onChange={(e) => setStep3({ ...step3, accountHolderName: normalizeName(e.target.value) })} className="mt-1 bg-white text-sm text-black placeholder-black" placeholder="First and last name as per bank account*" />
+        </div>
       </section>
     </div>
   )
@@ -1467,7 +1585,10 @@ export default function AddRestaurant() {
           <Button
             variant="ghost"
             disabled={step === 1 || isSubmitting}
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
+            onClick={() => {
+              setStep((s) => Math.max(1, s - 1))
+              scrollToTop()
+            }}
             className="text-sm text-gray-700 bg-transparent"
           >
             Back

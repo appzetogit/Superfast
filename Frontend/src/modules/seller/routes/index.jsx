@@ -170,7 +170,7 @@ const SellerAccessRouter = () => {
 };
 
 const SellerRoutes = () => (
-  <Suspense fallback={<Loader />}>
+  <Suspense fallback={null}>
     <SellerAccessRouter />
   </Suspense>
 );

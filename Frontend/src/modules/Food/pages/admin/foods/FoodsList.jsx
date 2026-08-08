@@ -95,10 +95,11 @@ export default function FoodsList() {
         params.restaurantId = selectedRestaurant
       }
 
+      const shouldFetchRestaurants = restaurantsForFilter.length === 0 || restaurantsForFilter.some(r => r.pureVegRestaurant === undefined)
       const [foodsRes, activeRestaurantsResponse, inactiveRestaurantsResponse] = await Promise.all([
         adminAPI.getFoods(params),
-        restaurantsForFilter.length === 0 ? adminAPI.getRestaurants({ limit: 1000 }) : Promise.resolve(null),
-        restaurantsForFilter.length === 0 ? adminAPI.getRestaurants({ limit: 1000, status: "inactive" }) : Promise.resolve(null),
+        shouldFetchRestaurants ? adminAPI.getRestaurants({ limit: 1000 }) : Promise.resolve(null),
+        shouldFetchRestaurants ? adminAPI.getRestaurants({ limit: 1000, status: "inactive" }) : Promise.resolve(null),
       ])
 
       if (activeRestaurantsResponse || inactiveRestaurantsResponse) {
@@ -118,6 +119,13 @@ export default function FoodsList() {
             .map((restaurant) => ({
               id: String(restaurant?._id || restaurant?.id || ""),
               name: restaurant?.name || restaurant?.restaurantName || "Unknown Restaurant",
+              pureVegRestaurant: Boolean(
+                restaurant?.pureVegRestaurant === true ||
+                restaurant?.isVeg === true ||
+                restaurant?.veg === true ||
+                restaurant?.restaurantType === 'veg' ||
+                restaurant?.vegType === 'veg'
+              ),
             }))
             .filter((restaurant) => restaurant.id)
             .sort((a, b) => a.name.localeCompare(b.name))
@@ -222,9 +230,18 @@ export default function FoodsList() {
   const openAddFoodModal = () => {
     setFoodFormMode("add")
     setEditingFood(null)
+    const initialRestId = selectedRestaurant !== "all" ? selectedRestaurant : ""
+    const selectedRest = restaurantOptions.find((r) => String(r.id || r._id || '') === String(initialRestId))
+    const isPureVeg = Boolean(
+      selectedRest?.pureVegRestaurant === true ||
+      selectedRest?.pureVegRestaurant === "true" ||
+      selectedRest?.isVeg === true ||
+      selectedRest?.veg === true
+    )
     setFoodForm({
       ...createFoodForm(),
-      restaurantId: selectedRestaurant !== "all" ? selectedRestaurant : "",
+      restaurantId: initialRestId,
+      foodType: isPureVeg ? "Veg" : "Non-Veg",
     })
     setSelectedImageFile(null)
     setImagePreviewUrl("")
@@ -380,7 +397,7 @@ export default function FoodsList() {
         })),
         description: foodForm.description.trim(),
         image: imageUrl,
-        foodType: foodForm.foodType === "Veg" ? "Veg" : "Non-Veg",
+        foodType: (restaurantOptions.find(r => r.id === foodForm.restaurantId)?.pureVegRestaurant || foodForm.foodType === "Veg") ? "Veg" : "Non-Veg",
         isAvailable: foodForm.isAvailable !== false,
         preparationTime: String(foodForm.preparationTime || "").trim(),
       }
@@ -471,7 +488,7 @@ export default function FoodsList() {
             <div className="relative flex-1 sm:flex-initial min-w-[200px]">
               <input
                 type="text"
-                placeholder="Ex : Foods"
+                placeholder="Search food items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
@@ -704,7 +721,23 @@ export default function FoodsList() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Restaurant</label>
                 <select
                   value={foodForm.restaurantId}
-                  onChange={(e) => setFoodForm((prev) => ({ ...prev, restaurantId: e.target.value, categoryId: "", categoryName: "" }))}
+                  onChange={(e) => {
+                    const selectedId = e.target.value
+                    const selectedRest = restaurantOptions.find((r) => String(r.id || r._id || '') === String(selectedId))
+                    const isPureVeg = Boolean(
+                      selectedRest?.pureVegRestaurant === true ||
+                      selectedRest?.pureVegRestaurant === "true" ||
+                      selectedRest?.isVeg === true ||
+                      selectedRest?.veg === true
+                    )
+                    setFoodForm((prev) => ({
+                      ...prev,
+                      restaurantId: selectedId,
+                      categoryId: "",
+                      categoryName: "",
+                      foodType: isPureVeg ? "Veg" : prev.foodType === "Veg" ? "Veg" : "Non-Veg",
+                    }))
+                  }}
                   disabled={foodFormMode === "edit"}
                   className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white disabled:bg-slate-100"
                 >
@@ -794,14 +827,38 @@ export default function FoodsList() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Food Type</label>
-                <select
-                  value={foodForm.foodType}
-                  onChange={(e) => setFoodForm((prev) => ({ ...prev, foodType: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white"
-                >
-                  <option value="Veg">Veg</option>
-                  <option value="Non-Veg">Non-Veg</option>
-                </select>
+                {(() => {
+                  const selectedRest = restaurantOptions.find((r) => String(r.id || r._id || '') === String(foodForm.restaurantId))
+                  const isPureVegStore = Boolean(
+                    selectedRest?.pureVegRestaurant === true ||
+                    selectedRest?.pureVegRestaurant === "true" ||
+                    selectedRest?.isVeg === true ||
+                    selectedRest?.veg === true
+                  )
+
+                  if (isPureVegStore) {
+                    return (
+                      <div>
+                        <div className="w-full px-3 py-2.5 border border-emerald-300 rounded-lg text-sm bg-emerald-50 text-emerald-800 font-semibold flex items-center justify-between">
+                          <span>Veg</span>
+                          <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">Pure Veg Restaurant</span>
+                        </div>
+                        <p className="mt-1 text-xs text-emerald-600 font-medium">This restaurant is Pure Veg. Non-Veg option is not available.</p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <select
+                      value={foodForm.foodType}
+                      onChange={(e) => setFoodForm((prev) => ({ ...prev, foodType: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white"
+                    >
+                      <option value="Veg">Veg</option>
+                      <option value="Non-Veg">Non-Veg</option>
+                    </select>
+                  )
+                })()}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Upload Image</label>

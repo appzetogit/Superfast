@@ -366,15 +366,17 @@ export default function OrdersPage({ statusKey = "all" }) {
         setOrders(nextOrders)
       } else {
         debugError("Failed to fetch orders:", response.data)
-        if (!silent) toast.error("Failed to fetch orders")
-        setOrders([])
+        if (!silent) {
+          toast.error("Failed to fetch orders")
+          setOrders([])
+        }
       }
     } catch (error) {
       debugError("Error fetching orders:", error)
       if (!silent) {
         toast.error(error.response?.data?.message || "Failed to fetch orders")
+        setOrders([])
       }
-      setOrders([])
     } finally {
       if (!silent) setIsLoading(false)
     }

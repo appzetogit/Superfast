@@ -90,7 +90,7 @@ const SubmitComplaint = lazy(() => import("@food/pages/user/complaints/SubmitCom
 export default function UserRouter() {
   const location = useLocation()
   return (
-    <Suspense fallback={<Loader />}>
+    <Suspense fallback={null}>
       <Routes>
         <Route element={<UserLayout />}>
           {/* Home & Discovery */}

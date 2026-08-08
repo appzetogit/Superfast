@@ -42,23 +42,30 @@ const PendingDeliveryBoys = () => {
             const payload = response.data.result || {};
             const list = Array.isArray(payload.items) ? payload.items : (response.data.results || []);
 
+            const getPicUrl = (img) => {
+                if (!img) return null;
+                if (typeof img === 'string') return img;
+                return img?.url || null;
+            };
+
             // Map backend data to frontend format
             const mappedRiders = list.map(r => ({
                 id: r._id,
                 name: r.name,
                 phone: r.phone,
                 email: r.email,
-                profilePic: r.profileImage || r.profilePic || r.documents?.profilePic || r.image || null,
+                profilePic: getPicUrl(r.profileImage) || getPicUrl(r.profilePic) || getPicUrl(r.documents?.profilePic) || getPicUrl(r.documents?.profileImage) || getPicUrl(r.avatar) || getPicUrl(r.image) || null,
                 appliedDate: new Date(r.createdAt).toLocaleDateString(),
                 location: r.currentArea || r.city || 'Unknown',
                 vehicle: r.vehicleType || 'N/A',
                 vehicleBrand: r.vehicleBrand || r.vehicleDetails?.brand || r.brand || 'N/A',
-                vehicleModel: r.vehicleModel || r.vehicleDetails?.model || r.model || 'N/A',
+                vehicleModel: r.vehicleModel || r.vehicleDetails?.model || (r.model && r.model !== r.brand ? r.model : '') || 'Standard Model',
                 documents: Object.keys(r.documents || {}).filter(key => r.documents[key]),
                 status: r.isVerified ? 'approved' : 'pending_review',
                 experience: r.experience || 'Not Specified',
                 preferredArea: r.currentArea || r.preferredZone || 'Not Specified',
-                deletionSource: (r.deletedByOwner === true || r.deletedBy === 'user') ? 'Account deleted by owner' : 'Admin action'
+                isDeletedByOwner: r.deletedByOwner === true || r.deletedBy === 'user' || r.status === 'deleted_by_user',
+                deletionSource: (r.deletedByOwner === true || r.deletedBy === 'user' || r.status === 'deleted_by_user') ? 'Account deleted by owner' : 'Admin action'
             }));
 
             setPendingRiders(mappedRiders);
@@ -319,6 +326,13 @@ const PendingDeliveryBoys = () => {
                                         </div>
                                     )}
                                     <h3 className="ds-h2">{viewingRider.name}</h3>
+                                    {viewingRider.isDeletedByOwner && (
+                                        <div className="mt-2">
+                                            <span className="px-2.5 py-1 bg-rose-100 text-rose-700 font-bold text-[9px] uppercase tracking-wider rounded-md border border-rose-200">
+                                                Account deleted by owner
+                                            </span>
+                                        </div>
+                                    )}
                                     <p className="ds-label text-primary mt-1">Applicant Node</p>
                                 </div>
 

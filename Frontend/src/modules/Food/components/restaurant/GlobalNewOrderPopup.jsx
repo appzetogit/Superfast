@@ -435,7 +435,7 @@ export default function GlobalNewOrderPopup() {
     if (!acceptSwipeActiveRef.current || isAcceptingOrder) return;
     acceptSwipeActiveRef.current = false;
 
-    if (acceptSwipeProgress >= 0.45) {
+    if (acceptSwipeProgress >= 0.25) {
       triggerSwipeAccept();
       return;
     }
@@ -582,11 +582,7 @@ export default function GlobalNewOrderPopup() {
 
   const handleRejectCancel = () => {
     setShowRejectPopup(false);
-    setShowNewOrderPopup(false);
-    setPopupOrder(null);
-    clearNewOrder();
     setRejectReason("");
-    setCountdown(240);
   };
 
   // Toggle mute
@@ -778,8 +774,8 @@ export default function GlobalNewOrderPopup() {
       doc.setFont("helvetica", "normal");
       doc.text(
         orderToPrint.sendCutlery === false
-          ? "? Don't send cutlery"
-          : "? Send cutlery requested",
+          ? "Don't send cutlery"
+          : "Send cutlery requested",
         20,
         yPos,
       );
@@ -1090,51 +1086,54 @@ export default function GlobalNewOrderPopup() {
                   <div className="space-y-3">
                     <div
                       ref={acceptSliderRef}
-                      className="relative h-14 rounded-2xl bg-gray-900 overflow-hidden select-none touch-pan-y">
+                      onClick={() => {
+                        if (!isAcceptingOrder) {
+                          handleAcceptOrder();
+                        }
+                      }}
+                      className="relative h-14 rounded-2xl bg-blue-600 overflow-hidden select-none cursor-pointer flex items-center justify-between px-3 shadow-lg hover:bg-blue-700 transition-colors">
                       <motion.div
-                        className="absolute inset-y-0 left-0 bg-blue-600"
+                        className="absolute inset-y-0 left-0 bg-blue-700"
                         initial={{ width: "100%" }}
                         animate={{ width: `${(countdown / 240) * 100}%` }}
                         transition={{ duration: 1, ease: "linear" }}
                       />
-                      <div className="absolute inset-0 flex items-center justify-center px-16">
-                        <span className="relative z-10 text-sm font-semibold text-white text-center">
+                      <div className="absolute inset-0 flex items-center justify-center px-14 pointer-events-none">
+                        <span className="relative z-10 text-sm font-bold text-white text-center tracking-wide">
                           {isAcceptingOrder
                             ? "Accepting order..."
-                            : `Slide to accept (${formatTime(countdown)})`}
+                            : `Slide or Tap to accept (${formatTime(countdown)})`}
                         </span>
                       </div>
                       <motion.button
                         type="button"
-                        className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-white text-gray-900 shadow-md disabled:cursor-not-allowed"
+                        className="relative z-20 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-md hover:scale-105 active:scale-95 transition-transform"
                         style={{
                           x: (() => {
                             const sliderWidth =
                               acceptSliderRef.current?.offsetWidth || 320;
                             const handleWidth = 40;
                             const maxTravel = Math.max(
-                              sliderWidth - handleWidth - 16,
+                              sliderWidth - handleWidth - 24,
                               0,
                             );
                             return acceptSwipeProgress * maxTravel;
                           })(),
                         }}
-                        onMouseDown={(e) => handleAcceptSwipeStart(e.clientX)}
-                        onTouchStart={(e) =>
-                          handleAcceptSwipeStart(e.touches[0].clientX)
-                        }
-                        onMouseMove={(e) => {
-                          if (acceptSwipeActiveRef.current)
-                            handleAcceptSwipeMove(e.clientX);
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          handleAcceptSwipeStart(e.clientX);
                         }}
-                        onTouchMove={(e) =>
-                          handleAcceptSwipeMove(e.touches[0].clientX)
-                        }
-                        onMouseUp={handleAcceptSwipeEnd}
-                        onTouchEnd={handleAcceptSwipeEnd}
-                        onTouchCancel={handleAcceptSwipeEnd}
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                          handleAcceptSwipeStart(e.touches[0].clientX);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAcceptOrder();
+                        }}
                         disabled={isAcceptingOrder}>
-                        <span className="text-lg font-bold">›</span>
+                        <span className="text-xl font-black">›</span>
                       </motion.button>
                     </div>
 
@@ -1160,8 +1159,7 @@ export default function GlobalNewOrderPopup() {
               className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleRejectCancel}>
+              exit={{ opacity: 0 }}>
               <motion.div
                 className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
                 initial={{ scale: 0.9, opacity: 0 }}

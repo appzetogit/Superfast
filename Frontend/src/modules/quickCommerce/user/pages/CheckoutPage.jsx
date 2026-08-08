@@ -2165,7 +2165,11 @@ const CheckoutPage = () => {
                     <h4 className="font-bold text-slate-800 dark:text-white mb-1">
                       {item.name}
                     </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">75 g</p>
+                    {(item.weight || item.unit || item.variantSku) && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                        {item.weight || item.unit || item.variantSku}
+                      </p>
+                    )}
                     <button
                       onClick={() => handleMoveToWishlist(item)}
                       className="text-xs text-slate-500 dark:text-slate-400 underline hover:text-[#0c831f] dark:hover:text-emerald-400 transition-colors">

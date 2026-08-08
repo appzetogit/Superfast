@@ -377,8 +377,9 @@ export default function UnifiedOTPFastLogin() {
                     required
                     value={name}
                     onChange={(e) => {
-                      setName(e.target.value)
-                      if (nameError) setNameError("")
+                      const val = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                      setName(val);
+                      if (nameError) setNameError("");
                     }}
                     className="w-full bg-transparent pl-2 pr-2 py-1.5 text-sm text-gray-900 font-semibold outline-none placeholder:text-gray-400 placeholder:font-normal"
                     placeholder="Enter your full name"
@@ -517,20 +518,20 @@ export default function UnifiedOTPFastLogin() {
           </div>
         </div>
         )}
-
-        {step === 1 && (
-          <div className="text-center space-y-1 shrink-0 mt-auto pt-4 mb-2">
-            <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
-            <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">
-              <Link to="/food/user/profile/terms" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
-              <span className="text-gray-400">•</span>
-              <Link to="/food/user/profile/privacy" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
-              <span className="text-gray-400">•</span>
-              <Link to="/food/user/profile/support" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
-            </div>
-          </div>
-        )}
       </div>
+
+      {step === 1 && (
+        <div className="text-center space-y-1 shrink-0 z-20 pt-2 pb-3 bg-transparent">
+          <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
+          <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">
+            <Link to="/food/user/profile/terms" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
+            <span className="text-gray-400">•</span>
+            <Link to="/food/user/profile/privacy" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
+            <span className="text-gray-400">•</span>
+            <Link to="/food/user/profile/support" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

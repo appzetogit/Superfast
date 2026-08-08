@@ -18,7 +18,9 @@ const EditProfilePage = () => {
     });
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        const updatedValue = name === 'name' ? value.replace(/[^a-zA-Z\s]/g, '') : value;
+        setFormData({ ...formData, [name]: updatedValue });
     };
 
     const handleSubmit = async (e) => {

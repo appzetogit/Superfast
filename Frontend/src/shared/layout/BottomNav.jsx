@@ -32,25 +32,25 @@ const BottomNav = ({ navItems }) => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="mx-auto flex w-full max-w-md items-end gap-2 mt-2">
                 <div className="flex-1 min-w-0">
-                    <div className="relative overflow-visible rounded-[30px] bg-[#0a0c10] py-2 pl-2 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.4)] border border-white/5">
+                    <div className="relative overflow-visible rounded-[26px] bg-white/95 backdrop-blur-xl py-2 px-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-slate-200/80">
                         <div className="relative flex items-center justify-around gap-1 min-h-[3rem]">
-            {primaryItems.map((item) => (
-                <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.end}
-                    className={({ isActive }) => cn(
-                        "flex flex-col items-center justify-center space-y-1 w-16 transition-all duration-300",
-                        isActive ? "text-primary" : "text-gray-500 hover:text-gray-300"
-                    )}
-                >
-                    <item.icon className="h-5 w-5" />
-                    <span className="text-[10px] font-bold uppercase tracking-tight">{item.label}</span>
-                </NavLink>
-            ))}
+                            {primaryItems.map((item) => (
+                                <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    end={item.end}
+                                    className={({ isActive }) => cn(
+                                        "flex flex-col items-center justify-center space-y-1 w-16 transition-all duration-300",
+                                        isActive ? "text-primary font-black scale-105" : "text-slate-600 hover:text-slate-900 font-semibold"
+                                    )}
+                                >
+                                    <item.icon className="h-5 w-5" />
+                                    <span className="text-[10px] uppercase tracking-tight">{item.label}</span>
+                                </NavLink>
+                            ))}
                         </div>
                     </div>
                 </div>

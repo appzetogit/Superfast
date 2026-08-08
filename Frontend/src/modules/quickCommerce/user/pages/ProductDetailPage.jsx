@@ -136,6 +136,17 @@ const ProductDetailPage = () => {
   const [reviewLoading, setReviewLoading] = useState(true);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+  const [defaultRating, setDefaultRating] = useState("4.8");
+
+  // Fetch admin-configured default rating from billing settings
+  useEffect(() => {
+    customerApi.getBillingSettings().then((res) => {
+      const rating = res?.data?.result?.defaultRating ?? res?.data?.data?.feeSettings?.defaultRating;
+      if (rating != null && Number.isFinite(Number(rating))) {
+        setDefaultRating(Number(rating).toFixed(1));
+      }
+    }).catch(() => {});
+  }, []);
 
   const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
   const { toggleWishlist: toggleWishlistGlobal, isInWishlist } = useWishlist();
@@ -254,10 +265,10 @@ const ProductDetailPage = () => {
   }, [resolvedProductId]);
 
   const averageRating = useMemo(() => {
-    if (!reviews.length) return "4.8";
+    if (!reviews.length) return defaultRating;
     const total = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
     return (total / reviews.length).toFixed(1);
-  }, [reviews]);
+  }, [reviews, defaultRating]);
 
   const handleToggleWishlist = () => {
     if (!product) return;

@@ -55,7 +55,7 @@ const RouteAwarePageLoader = () => {
     return <ContentPageSkeleton hero={false} />
   }
 
-  return <Loader />
+  return null
 }
 /**
  * FoodAppWrapper — Quick-spicy App. को /food prefix के साथ render करता है.

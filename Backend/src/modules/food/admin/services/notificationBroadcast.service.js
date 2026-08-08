@@ -229,8 +229,8 @@ const paginationMeta = ({ page = 1, limit = 10 } = {}) => {
 };
 
 export const createBroadcastNotification = async ({ body = {}, adminId } = {}) => {
-    const title = normalizeText(body?.title, 'title');
-    const message = normalizeText(body?.message, 'message');
+    const title = normalizeText(body?.title, 'title').replace(/\[shop\]/gi, '').replace(/\[user\]/gi, '').trim();
+    const message = normalizeText(body?.message, 'message').replace(/\[shop\]/gi, '').replace(/\[user\]/gi, '').trim();
     const link = normalizeText(body?.link, 'link', false);
     const targetType = normalizeTargetType(body?.targetType);
     let resolvedTargets = await resolveTargets({

@@ -30,11 +30,18 @@ const Topbar = ({ onMenuClick }) => {
     const handleSearchSubmit = (e) => {
         e?.preventDefault();
         const q = (searchQuery || '').trim();
-        if (!q) return;
         if (isSeller) {
-            navigate(`/seller/products?q=${encodeURIComponent(q)}`);
+            navigate(q ? `/seller/products?q=${encodeURIComponent(q)}` : '/seller/products');
         }
     };
+
+    React.useEffect(() => {
+        if (isSeller) {
+            const params = new URLSearchParams(location.search);
+            const q = params.get('q') || '';
+            setSearchQuery(q);
+        }
+    }, [location.search, isSeller]);
 
     const fetchNotifications = async () => {
         try {
@@ -93,12 +100,7 @@ const Topbar = ({ onMenuClick }) => {
     };
 
     return (
-        <header className={cn(
-            "bg-white/70 backdrop-blur-xl border-b border-gray-100/50 flex items-center justify-between shadow-[0_4px_30px_rgba(0,0,0,0.02)] transition-all duration-300",
-            (role === 'admin' || role === 'seller')
-                ? "fixed top-0 left-0 right-0 z-50 h-14 px-4 md:static md:h-16 md:px-6"
-                : "fixed top-0 left-56 right-0 h-16 px-6 z-40"
-        )}>
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between shadow-sm transition-all duration-300 h-14 md:h-16 px-4 md:px-6">
             <div className="flex items-center flex-1 mr-4 overflow-hidden">
                 <button
                     onClick={onMenuClick}
@@ -108,14 +110,14 @@ const Topbar = ({ onMenuClick }) => {
                 </button>
 
                 <form onSubmit={handleSearchSubmit} className="relative w-full md:w-[400px] group">
-                    <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-all duration-300" />
+                    <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-slate-900 transition-all duration-300 pointer-events-none" />
                     <input
                         type="text"
                         placeholder={isSeller ? "Search products by name or SKU..." : "Search anything..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
-                        className="w-full pl-10 pr-4 py-2 bg-gray-100/50 border border-transparent rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all duration-500 outline-none"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-500 placeholder:font-medium focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all duration-300 outline-none shadow-inner"
                     />
                 </form>
             </div>

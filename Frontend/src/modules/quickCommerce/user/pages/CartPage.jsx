@@ -214,11 +214,16 @@ const CartPage = () => {
   };
 
   const handleBack = () => {
+    const explicitFrom = location?.state?.from || location?.state?.backTo;
+    if (explicitFrom && explicitFrom !== window.location.pathname) {
+      navigate(explicitFrom);
+      return;
+    }
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1);
       return;
     }
-    navigate(categoriesPath);
+    navigate(categoriesPath || "/quick");
   };
 
   useEffect(() => {

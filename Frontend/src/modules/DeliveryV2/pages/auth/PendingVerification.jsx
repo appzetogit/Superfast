@@ -1,13 +1,49 @@
-import { ShieldCheck, Clock3 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ShieldCheck, Clock3, CheckCircle2 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
+import { deliveryAPI } from "@food/api"
+import { toast } from "sonner"
 
 export default function PendingVerification() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [checking, setChecking] = useState(false)
   const phone =
     location.state?.phone ||
     sessionStorage.getItem("deliveryPendingPhone") ||
     ""
+
+  useEffect(() => {
+    let timer = null
+    const checkApprovalStatus = async () => {
+      try {
+        setChecking(true)
+        const response = await deliveryAPI.getProfile()
+        if (response?.data?.success && response?.data?.data?.profile) {
+          const profile = response.data.data.profile
+          const status = String(profile.status || "").toLowerCase()
+          if (["approved", "active"].includes(status)) {
+            toast.success("🎉 Application Approved!", {
+              description: "Your delivery partner profile has been activated! Welcome aboard.",
+              duration: 6000
+            })
+            navigate("/food/delivery/welcome", { replace: true })
+          }
+        }
+      } catch (err) {
+        // Silently ignore polling errors
+      } finally {
+        setChecking(false)
+      }
+    }
+
+    checkApprovalStatus()
+    timer = setInterval(checkApprovalStatus, 5000)
+
+    return () => {
+      if (timer) clearInterval(timer)
+    }
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-[#f8faf8] px-6 py-10">
@@ -51,7 +87,7 @@ export default function PendingVerification() {
             </button>
 
             <p className="text-center text-xs leading-5 text-slate-500">
-              You can sign in later to check your approval status.
+              Auto-checking approval status... You will be redirected automatically upon approval.
             </p>
           </div>
         </div>

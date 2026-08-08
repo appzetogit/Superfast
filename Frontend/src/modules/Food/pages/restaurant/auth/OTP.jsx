@@ -258,6 +258,12 @@ export default function RestaurantOTP() {
                   return
                 }
               }
+              const restStatus = String(restaurant?.status || restaurant?.approvalStatus || restaurant?.onboarding?.status || "").toLowerCase()
+              const isApproved = restaurant?.isApproved === true || restStatus === "approved" || restStatus === "active"
+              if (!isApproved) {
+                navigate("/food/restaurant/pending-verification", { replace: true })
+                return
+              }
               navigate("/food/restaurant", { replace: true })
             } catch (err) {
               navigate("/food/restaurant", { replace: true })
@@ -461,12 +467,10 @@ export default function RestaurantOTP() {
         </div>
       </div>
       {/* Footer */}
-      <div>
-        <div className="pb-8 text-center mt-auto">
-            <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
-              SECURE VERIFICATION SYSTEM &bull; {companyName.toUpperCase()}
-            </p>
-        </div>
+      <div className="shrink-0 z-20 bg-[#fafafa] py-4 text-center border-t border-gray-100">
+        <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] uppercase">
+          SECURE VERIFICATION SYSTEM &bull; {companyName.toUpperCase()}
+        </p>
       </div>
     </div>
   )

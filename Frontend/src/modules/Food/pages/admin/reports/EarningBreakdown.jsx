@@ -22,9 +22,17 @@ export default function EarningBreakdown() {
         setLoading(true)
         const response = await adminAPI.getTransactionReport({ limit: 1000 })
         if (response?.data?.data?.transactions) {
-          setTransactions(response.data.data.transactions)
+          const raw = response.data.data.transactions || []
+          setTransactions(raw.map(tx => ({
+            ...tx,
+            adminEarning: Math.max(0, tx.adminEarning || 0)
+          })))
         } else if (response?.data?.transactions) {
-          setTransactions(response.data.transactions)
+          const raw = response.data.transactions || []
+          setTransactions(raw.map(tx => ({
+            ...tx,
+            adminEarning: Math.max(0, tx.adminEarning || 0)
+          })))
         }
       } catch (error) {
         toast.error("Failed to fetch earning breakdown data")

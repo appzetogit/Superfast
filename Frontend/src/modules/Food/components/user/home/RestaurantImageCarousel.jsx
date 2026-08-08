@@ -140,27 +140,15 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
               {/* Subtle top gradient for better text readability */}
               <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
 
-              {/* Top-left Badge */}
-              <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-[11px] sm:text-xs font-medium px-2 py-1.5 rounded-md flex items-center gap-1.5 shadow-sm">
-                <div className={`flex items-center justify-center w-3 h-3 border ${isVeg ? 'border-green-600' : 'border-red-600'} bg-white rounded-[2px]`}>
+              {/* Top-left Dish Name & Price Badge */}
+              <div className="absolute top-2 left-2 max-w-[70%] z-10 bg-black/75 backdrop-blur-sm text-white text-[11px] sm:text-xs font-medium px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm truncate pointer-events-none">
+                <div className={`flex items-center justify-center w-3 h-3 border shrink-0 ${isVeg ? 'border-green-600' : 'border-red-600'} bg-white rounded-[2px]`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
                 </div>
-                <span>{item.name}</span>
-                <span className="opacity-70 mx-0.5">•</span>
-                <span className="flex items-center font-semibold"><IndianRupee className="w-2.5 h-2.5" />{item.price}</span>
+                <span className="truncate">{item.name}</span>
+                <span className="opacity-70 mx-0.5 shrink-0">•</span>
+                <span className="flex items-center font-semibold shrink-0"><IndianRupee className="w-2.5 h-2.5" />{item.price}</span>
               </div>
-              
-              {/* Top-right Bookmark */}
-              <button 
-                className="absolute top-2 right-2 text-white drop-shadow-md z-10"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Bookmark action could go here
-                }}
-              >
-                <Bookmark className="w-5 h-5 stroke-[2.5px] hover:fill-white/30 transition-colors" />
-              </button>
             </div>
           );
         })}

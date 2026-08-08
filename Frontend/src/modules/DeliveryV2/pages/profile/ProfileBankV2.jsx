@@ -41,6 +41,10 @@ export const ProfileBankV2 = () => {
   }, []);
 
   const handleSave = async () => {
+     const holderName = String(form.accountHolderName || "").trim();
+     const holderWords = holderName.split(/\s+/).filter(Boolean);
+     if (holderName && holderWords.length < 2) return toast.error("Account Holder Name requires both first and last name");
+     if (holderName && !/^[a-zA-Z\s]+$/.test(holderName)) return toast.error("Account Holder Name can contain letters and spaces only");
      if (!form.accountNumber || !form.ifscCode) return toast.error("Missing mandatory fields");
      setIsSaving(true);
      try {
@@ -95,6 +99,14 @@ export const ProfileBankV2 = () => {
                              let value = e.target.value;
                              if (key === 'accountNumber') {
                                 value = value.replace(/\D/g, '').slice(0, 18);
+                             } else if (key === 'ifscCode') {
+                                value = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+                             } else if (key === 'bankName') {
+                                value = value.replace(/[^a-zA-Z\s]/g, '');
+                             } else if (key === 'panNumber') {
+                                value = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                             } else if (key === 'accountHolderName') {
+                                value = value.replace(/[^a-zA-Z\s]/g, '');
                              }
                              setForm({...form, [key]: value});
                           }}

@@ -270,7 +270,18 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         update.categoryName = categoryName || '';
     }
 
-    const shouldResubmitForApproval = Object.keys(update).length > 0;
+    const approvalTriggeringKeys = [
+        'name',
+        'description',
+        'image',
+        'price',
+        'variants',
+        'foodType',
+        'categoryId',
+        'categoryName',
+        'preparationTime'
+    ];
+    const shouldResubmitForApproval = Object.keys(update).some(key => approvalTriggeringKeys.includes(key));
 
     if (shouldResubmitForApproval) {
         update.approvalStatus = 'pending';

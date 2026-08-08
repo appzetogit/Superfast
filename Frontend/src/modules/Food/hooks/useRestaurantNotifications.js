@@ -265,6 +265,16 @@ export const useRestaurantNotifications = () => {
         if (confirmed.length > 0) {
           // Trigger alerts for newest confirmed orders (dedupe prevents spam).
           confirmed.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
+
+          // Also trigger the popup for the most recent confirmed order if not already shown.
+          // This ensures orders arrive even when socket didn't fire (page navigation, etc.)
+          const newest = confirmed[0];
+          const newestKey = String(
+            newest?.orderMongoId || newest?.order_mongo_id || newest?._id || newest?.orderId || newest?.order_id || ''
+          ).trim();
+          if (newestKey && !activeOrderRef.current) {
+            setNewOrder(newest);
+          }
         }
       } catch (error) {
         // Non-blocking: keep polling.

@@ -733,6 +733,24 @@ function SimpleCalendar({ selectedDate, onDateSelect, isOpen, onClose }) {
   )
 }
 
+const getItemDisplayPrice = (item) => {
+  if (Array.isArray(item?.variants) && item.variants.length > 0) {
+    const validPrices = item.variants
+      .map((v) => Number(v.price ?? v.variantPrice))
+      .filter((p) => Number.isFinite(p) && p >= 0)
+    if (validPrices.length > 0) {
+      const min = Math.min(...validPrices)
+      const max = Math.max(...validPrices)
+      return min === max ? `₹${min}` : `₹${min} - ₹${max}`
+    }
+  }
+  const numericPrice = Number(item?.price)
+  if (Number.isFinite(numericPrice) && numericPrice >= 0) {
+    return `₹${numericPrice}`
+  }
+  return ""
+}
+
 export default function Inventory() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState(() => {
@@ -1130,8 +1148,8 @@ export default function Inventory() {
       return
     }
     const parsedPrice = parseFloat(addonPrice)
-    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      toast.error("Please enter a valid price")
+    if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      toast.error("Price is required and cannot be 0")
       return
     }
     setSavingAddon(true)
@@ -2078,8 +2096,18 @@ export default function Inventory() {
 
             <div
               ref={filterChipsRef}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
+              onTouchStart={(e) => {
+                e.stopPropagation()
+                blockTabSwipeRef.current = true
+              }}
+              onTouchMove={(e) => {
+                e.stopPropagation()
+                blockTabSwipeRef.current = true
+              }}
+              onTouchEnd={(e) => {
+                e.stopPropagation()
+                blockTabSwipeRef.current = true
+              }}
               style={{ touchAction: "pan-x" }}
               className="inventory-filter-scroll mt-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide pb-1 touch-pan-x"
             >
@@ -2634,7 +2662,14 @@ export default function Inventory() {
                                     />
                                   ) : null}
                                   <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-bold text-slate-950 mb-1.5">{item.name}</p>
+                                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                                      <p className="truncate text-sm font-bold text-slate-950">{item.name}</p>
+                                      {getItemDisplayPrice(item) ? (
+                                        <span className="text-xs font-extrabold text-emerald-700 whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shrink-0">
+                                          {getItemDisplayPrice(item)}
+                                        </span>
+                                      ) : null}
+                                    </div>
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold flex items-center gap-1 ${item.isVeg
                                           ? "bg-emerald-50 text-emerald-700 border border-emerald-100"

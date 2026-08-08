@@ -27,9 +27,33 @@ export const PickupActionModal = ({
 }) => {
   const [showItems, setShowItems] = useState(false);
   const [isUploadingBill, setIsUploadingBill] = useState(false);
-  const [billImageUploaded, setBillImageUploaded] = useState(false);
-  const [billImageUrl, setBillImageUrl] = useState(null);
   const cameraInputRef = useRef(null);
+
+  // Persist bill image state across remounts (e.g. returning from navigation app)
+  const orderId = order?.orderId || order?._id || 'unknown';
+  const storageKey = `bill_image_${orderId}`;
+
+  const [billImageUrl, setBillImageUrl] = useState(() => {
+    try { return sessionStorage.getItem(`${storageKey}_url`) || null; } catch { return null; }
+  });
+  const [billImageUploaded, setBillImageUploaded] = useState(() => {
+    try { return sessionStorage.getItem(`${storageKey}_uploaded`) === 'true'; } catch { return false; }
+  });
+
+  const persistBillImage = (url) => {
+    try {
+      sessionStorage.setItem(`${storageKey}_url`, url || '');
+      sessionStorage.setItem(`${storageKey}_uploaded`, 'true');
+    } catch {}
+  };
+
+  const clearBillImage = () => {
+    try {
+      sessionStorage.removeItem(`${storageKey}_url`);
+      sessionStorage.removeItem(`${storageKey}_uploaded`);
+    } catch {}
+  };
+
 
   if (!order) return null;
 
@@ -56,8 +80,10 @@ export const PickupActionModal = ({
 
       const res = await uploadAPI.uploadMedia(finalFile, { folder: 'superfast/delivery/bills' });
       if (res?.data?.success && res?.data?.data) {
-        setBillImageUrl(res.data.data.url || res.data.data.secure_url);
+        const url = res.data.data.url || res.data.data.secure_url;
+        setBillImageUrl(url);
         setBillImageUploaded(true);
+        persistBillImage(url);
         // toast.success('Bill image uploaded!');
       } else {
         throw new Error('Upload failed');
@@ -94,8 +120,8 @@ export const PickupActionModal = ({
     ? order?.storeAddress || order?.sellerAddress || order?.seller?.location?.address || order?.seller?.location?.formattedAddress || 'Address not available'
     : order?.restaurantAddress || order?.restaurant_address || order?.restaurantLocation?.address || 'Address not available';
   const restaurantPhone = isQuickOrder
-    ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || ''
-    : order?.restaurantPhone || order?.restaurant_phone || order?.restaurantId?.phone || '';
+    ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || order?.seller?.ownerPhone || order?.seller?.primaryContactNumber || order?.seller?.contactNumber || order?.seller?.mobile || ''
+    : order?.restaurantPhone || order?.restaurant_phone || order?.restaurantId?.phone || order?.restaurantId?.ownerPhone || order?.restaurantId?.primaryContactNumber || order?.restaurantId?.contactNumber || order?.restaurantId?.mobile || order?.restaurant?.phone || order?.restaurant?.ownerPhone || order?.restaurant?.primaryContactNumber || order?.restaurant?.contactNumber || order?.phone || '';
   const items = order.items || [];
   const restaurantLogo = isQuickOrder
     ? order?.storeImage || order?.seller?.logo || order?.seller?.image || order?.seller?.profileImage || 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png'
@@ -156,7 +182,7 @@ export const PickupActionModal = ({
               )}
               <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 mt-1.5">
                 {isAtPickup ? (
-                  <span className="text-green-600">Reached Location √</span>
+                  <span className="text-green-600">Reached Location</span>
                 ) : (
                   <span className="text-[var(--primary-theme)]">
                     {(distanceToTarget / 1000).toFixed(1)} km • {eta || '--'} min to {primaryDestinationLabel}
@@ -192,7 +218,7 @@ export const PickupActionModal = ({
               ? 'text-[var(--primary-theme)] bg-orange-50 border-orange-100'
               : 'text-green-600 bg-green-50 border-green-100';
 
-            const pickupPhone = pickup.phone || pickup.phoneNumber || pickup.contactNumber || primaryPhone || order?.restaurantPhone || order?.sellerPhone || order?.restaurant?.phone || order?.seller?.phone || ""
+            const pickupPhone = pickup.phone || pickup.phoneNumber || pickup.contactNumber || pickup.ownerPhone || pickup.primaryContactNumber || primaryPhone || restaurantPhone || order?.restaurantPhone || order?.sellerPhone || order?.restaurant?.phone || order?.restaurant?.ownerPhone || order?.restaurant?.primaryContactNumber || order?.seller?.phone || "";
             return (
               <div
                 key={pickup.id || `${pickup.pickupType}-${index}`}
@@ -296,7 +322,7 @@ export const PickupActionModal = ({
                   label="Slide to Pick Up" 
                   successLabel="Picked Up!"
                   disabled={!billImageUploaded}
-                  onConfirm={() => onPickedUp(billImageUrl)}
+                  onConfirm={() => { clearBillImage(); return onPickedUp(billImageUrl); }}
                   color="bg-[var(--primary-theme)]"
                 />
               </div>

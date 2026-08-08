@@ -241,11 +241,11 @@ export const useFoodHomeData = ({
             featuredPrice: restaurant.featuredPrice || (restaurant.restaurantName === "Sayaji" ? "249" : "199"),
             image: allImages[0] || "",
             images: allImages,
-            pureVegRestaurant: restaurant.pureVegRestaurant === true,
+            pureVegRestaurant: Boolean(restaurant.pureVegRestaurant === true || restaurant.foodType === 'Veg' || restaurant.veg === true || restaurant.isPureVeg === true),
             location: restaurant.location,
             offer: restaurant.offer,
             slug: restaurant.slug,
-            // Timing fields for availability status
+            // Timing & status fields for availability status
             openingTime: restaurant.openingTime,
             closingTime: restaurant.closingTime,
             outletTimings: restaurant.outletTimings,
@@ -253,6 +253,9 @@ export const useFoodHomeData = ({
             openDays: restaurant.openDays,
             isActive: restaurant.isActive,
             isAcceptingOrders: restaurant.isAcceptingOrders,
+            manualOffline: restaurant.manualOffline,
+            status: restaurant.status,
+            isOpen: restaurant.isOpen,
             coverImages: restaurant.coverImages,
             recommendedItems: restaurant.recommendedItems || [],
           };
@@ -330,10 +333,41 @@ export const useFoodHomeData = ({
 
   // --- Memoized Derived Data ---
   const filteredRestaurants = useMemo(() => {
-    // If vegMode is 'pure', only show 100% vegetarian restaurants.
-    // If vegMode is 'all' or false, show all restaurants (dish level filtering handles 'all' mode).
-    let filtered = [...deferredRestaurants].filter(r => (vegMode !== "pure" || r.pureVegRestaurant) && (r.itemsCount === undefined || r.itemsCount > 0));
+    // If vegMode is active (boolean true / 'pure'), only show 100% vegetarian restaurants.
+    let filtered = [...deferredRestaurants].filter(r => (!vegMode || r.pureVegRestaurant) && r.hasFood !== false && (r.itemsCount === undefined || r.itemsCount > 0) && (!Array.isArray(r.items) || r.items.length > 0));
     
+    // Apply active filters (Under 30/45 mins, Under 1km/2km)
+    if (activeFilters && activeFilters.size > 0) {
+      filtered = filtered.filter(r => {
+        let deliveryTimeNum = Infinity;
+        if (r.deliveryTime) {
+          const match = String(r.deliveryTime).match(/\d+/);
+          if (match) deliveryTimeNum = parseInt(match[0], 10);
+        }
+
+        let distanceNum = Infinity;
+        if (r.distance) {
+          const match = String(r.distance).match(/[\d.]+/);
+          if (match) distanceNum = parseFloat(match[0]);
+        }
+
+        let matches = true;
+        if (activeFilters.has("delivery-under-30") && deliveryTimeNum > 30) {
+          matches = false;
+        }
+        if (activeFilters.has("delivery-under-45") && deliveryTimeNum > 45) {
+          matches = false;
+        }
+        if (activeFilters.has("distance-under-1km") && distanceNum > 1.0) {
+          matches = false;
+        }
+        if (activeFilters.has("distance-under-2km") && distanceNum > 2.0) {
+          matches = false;
+        }
+        return matches;
+      });
+    }
+
     // Compute availability status for sorting rather than strictly filtering out closed ones
     filtered = filtered.map(r => {
       const status = getRestaurantAvailabilityStatus(r, new Date(availabilityTick), { ignoreOperationalStatus: false });
@@ -352,7 +386,7 @@ export const useFoodHomeData = ({
       return b.rating - a.rating;
     });
     return filtered;
-  }, [deferredRestaurants, vegMode, sortBy, availabilityTick]);
+  }, [deferredRestaurants, vegMode, sortBy, activeFilters, availabilityTick]);
 
   const visibleRestaurants = useMemo(() => 
     filteredRestaurants.slice(0, visibleRestaurantCount), [filteredRestaurants, visibleRestaurantCount]);
@@ -371,7 +405,7 @@ export const useFoodHomeData = ({
     return recommendedRestaurantsFromSettings
       .map(r => fetchedByMongoId.get(String(r._id || r.restaurantId)))
       .filter(Boolean)
-      .filter(r => (vegMode !== "pure" || r.pureVegRestaurant) && (r.itemsCount === undefined || r.itemsCount > 0))
+      .filter(r => (!vegMode || r.pureVegRestaurant) && (r.itemsCount === undefined || r.itemsCount > 0))
       .slice(0, 12);
   }, [restaurantsData, recommendedRestaurantsFromSettings, vegMode]);
 

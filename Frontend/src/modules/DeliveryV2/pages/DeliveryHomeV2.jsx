@@ -539,7 +539,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
   useEffect(() => {
     if (!isOnline) return;
-    if (currentTab !== 'feed') return;
     if (activeOrder) return;
 
     let cancelled = false;
@@ -893,7 +892,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       </div>
 
       {/* OVERLAYS (Persistent if active) - Outside flex container to avoid clipping and z-index issues */}
-      {(currentTab === 'feed' || activeOrder) && (
+      {(currentTab === 'feed' || activeOrder || incomingOrder) && (
         <AnimatePresence>
           {!isModalMinimized && (
             <motion.div

@@ -35,31 +35,40 @@ export const updateThemeColor = (color) => {
   document.documentElement.style.setProperty('--sidebar-theme', color);
 };
 
+const extractUrl = (val) => {
+  if (!val) return null;
+  if (typeof val === 'string' && val.trim() && val !== '[object Object]') return val.trim();
+  if (typeof val === 'object' && val.url && typeof val.url === 'string' && val.url.trim()) return val.url.trim();
+  return null;
+};
+
 export const getDynamicFaviconUrl = (settings) => {
-  if (typeof window === 'undefined' || !settings) return settings?.favicon?.url;
+  if (typeof window === 'undefined' || !settings) return '/favicon.png';
   
   const path = window.location.pathname.toLowerCase();
+  let candidates = [];
   
   if (path.includes('/delivery')) {
-    return settings.portals?.delivery?.logo?.url || settings.favicon?.url || settings.logo?.url;
+    candidates = [settings.portals?.delivery?.logo, settings.favicon, settings.logo];
+  } else if (path.includes('/restaurant')) {
+    candidates = [settings.portals?.restaurant?.logo, settings.favicon, settings.logo];
+  } else if (path.includes('/admin')) {
+    candidates = [settings.favicon, settings.logo];
+  } else if (path.includes('/seller')) {
+    candidates = [settings.portals?.seller?.logo, settings.favicon, settings.logo];
+  } else if (path.includes('/food')) {
+    candidates = [settings.moduleThemes?.food?.logo, settings.favicon, settings.logo];
+  } else if (path.includes('/qc') || path.includes('/quick-commerce')) {
+    candidates = [settings.moduleThemes?.quickCommerce?.logo, settings.favicon, settings.logo];
+  } else {
+    candidates = [settings.portals?.user?.logo, settings.favicon, settings.logo];
   }
-  if (path.includes('/restaurant')) {
-    return settings.portals?.restaurant?.logo?.url || settings.favicon?.url || settings.logo?.url;
+
+  for (const c of candidates) {
+    const url = extractUrl(c);
+    if (url) return url;
   }
-  if (path.includes('/admin')) {
-    return settings.favicon?.url || settings.logo?.url;
-  }
-  if (path.includes('/seller')) {
-    return settings.portals?.seller?.logo?.url || settings.favicon?.url || settings.logo?.url;
-  }
-  if (path.includes('/food')) {
-    return settings.moduleThemes?.food?.logo?.url || settings.favicon?.url || settings.logo?.url;
-  }
-  if (path.includes('/qc') || path.includes('/quick-commerce')) {
-    return settings.moduleThemes?.quickCommerce?.logo?.url || settings.favicon?.url || settings.logo?.url;
-  }
-  
-  return settings.portals?.user?.logo?.url || settings.favicon?.url || settings.logo?.url;
+  return '/favicon.png';
 };
 
 export const getDynamicLogoUrl = (settings, portalOverride = null) => {
@@ -67,27 +76,29 @@ export const getDynamicLogoUrl = (settings, portalOverride = null) => {
   
   const portal = String(portalOverride || '').toLowerCase();
   const path = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
+  let candidates = [];
   
   if (portal === 'delivery' || path.includes('/delivery')) {
-    return settings.portals?.delivery?.logo?.url || settings.logo?.url;
+    candidates = [settings.portals?.delivery?.logo, settings.logo];
+  } else if (portal === 'restaurant' || path.includes('/restaurant')) {
+    candidates = [settings.portals?.restaurant?.logo, settings.logo];
+  } else if (portal === 'seller' || portal === 'vendor' || path.includes('/seller')) {
+    candidates = [settings.portals?.seller?.logo, settings.logo];
+  } else if (portal === 'admin' || path.includes('/admin')) {
+    candidates = [settings.logo];
+  } else if (portal === 'food' || path.includes('/food')) {
+    candidates = [settings.moduleThemes?.food?.logo, settings.logo];
+  } else if (portal === 'qc' || path.includes('/qc') || path.includes('/quick-commerce')) {
+    candidates = [settings.moduleThemes?.quickCommerce?.logo, settings.logo];
+  } else {
+    candidates = [settings.portals?.user?.logo, settings.logo];
   }
-  if (portal === 'restaurant' || path.includes('/restaurant')) {
-    return settings.portals?.restaurant?.logo?.url || settings.logo?.url;
+
+  for (const c of candidates) {
+    const url = extractUrl(c);
+    if (url) return url;
   }
-  if (portal === 'seller' || portal === 'vendor' || path.includes('/seller')) {
-    return settings.portals?.seller?.logo?.url || settings.logo?.url;
-  }
-  if (portal === 'admin' || path.includes('/admin')) {
-    return settings.logo?.url;
-  }
-  if (portal === 'food' || path.includes('/food')) {
-    return settings.moduleThemes?.food?.logo?.url || settings.logo?.url;
-  }
-  if (portal === 'qc' || path.includes('/qc') || path.includes('/quick-commerce')) {
-    return settings.moduleThemes?.quickCommerce?.logo?.url || settings.logo?.url;
-  }
-  
-  return settings.portals?.user?.logo?.url || settings.logo?.url;
+  return null;
 };
 
 // Apply cached settings immediately on module load if they exist
@@ -147,19 +158,21 @@ export const loadBusinessSettings = async (force = false) => {
  */
 export const updateFavicon = (url) => {
   if (typeof document === 'undefined') return;
-  const targetUrl = url || '/favicon.png';
-  let link = document.getElementById("dynamic-favicon");
-  if (!link) {
-    link = document.querySelector("link[rel*='icon']");
-  }
-  if (!link) {
-    link = document.createElement("link");
-    link.id = "dynamic-favicon";
-    link.rel = "icon";
-    link.type = "image/png";
-    document.head.appendChild(link);
-  }
-  link.href = targetUrl;
+  const rawUrl = (url && typeof url === 'string' && url.trim() && url !== '[object Object]') ? url.trim() : '/favicon.png';
+  const targetUrl = rawUrl.startsWith('/') ? `${rawUrl.split('?')[0]}?v=3` : rawUrl;
+  
+  const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
+  rels.forEach((rel) => {
+    let link = document.querySelector(`link[rel="${rel}"]`);
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = rel;
+      document.head.appendChild(link);
+    }
+    link.id = 'dynamic-favicon';
+    link.type = 'image/png';
+    link.href = targetUrl;
+  });
 };
 
 /**

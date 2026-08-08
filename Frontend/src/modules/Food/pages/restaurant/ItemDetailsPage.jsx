@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate, useParams, useLocation } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -111,6 +111,14 @@ export default function ItemDetailsPage() {
   const [keyboardInset, setKeyboardInset] = useState(0)
   const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
   const [loadingItem, setLoadingItem] = useState(false)
+
+  const displayedCategories = useMemo(() => {
+    let filtered = categories
+    if (foodType === "Veg") {
+      filtered = filtered.filter(cat => cat.foodTypeScope === "Veg")
+    }
+    return filtered
+  }, [categories, foodType])
 
   // Restore draft if exists
   useEffect(() => {
@@ -523,11 +531,7 @@ export default function ItemDetailsPage() {
   }
 
   const handleCameraClick = () => {
-    if (isFlutterBridgeAvailable()) {
-      setIsPhotoPickerOpen(true)
-    } else {
-      fileInputRef.current?.click()
-    }
+    setIsPhotoPickerOpen(true)
   }
 
   const handleImageDelete = (index) => {
@@ -782,8 +786,8 @@ export default function ItemDetailsPage() {
 
       const hasVariants = normalizedVariants.length > 0
       const parsedBasePrice = Number(basePrice)
-      if (!hasVariants && (!Number.isFinite(parsedBasePrice) || parsedBasePrice < 0)) {
-        toast.error("Please enter a valid base price")
+      if (!hasVariants && (!basePrice || !Number.isFinite(parsedBasePrice) || parsedBasePrice <= 0)) {
+        toast.error("Please enter a valid base price greater than 0")
         setUploadingImages(false)
         return
       }
@@ -1401,7 +1405,7 @@ export default function ItemDetailsPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {categories.map((cat) => (
+                    {displayedCategories.map((cat) => (
                       <button
                         key={cat.id}
                         onClick={() => handleCategorySelect(cat.id, cat.name)}

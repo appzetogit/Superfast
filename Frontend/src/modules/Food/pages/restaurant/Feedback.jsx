@@ -391,7 +391,6 @@ export default function Feedback() {
       <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] tracking-wider text-gray-500 uppercase">Showing data for</p>
             <p className="text-md font-bold text-gray-900">{restaurantData?.name || "Restaurant"}</p>
           </div>
           <div className="flex items-center gap-2">

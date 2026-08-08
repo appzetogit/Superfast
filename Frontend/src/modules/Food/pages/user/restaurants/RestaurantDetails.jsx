@@ -1234,9 +1234,10 @@ function RestaurantDetailsContent() {
 
         // If incrementing quantity, trigger add animation with sourcePosition
         if (newQuantity > existingCartItem.quantity && sourcePosition) {
-          const result = addToCart(cartItem, sourcePosition)
           if (result?.ok === false) {
-            toast.error(result.error || 'Cannot add item from different restaurant. Please clear cart first.')
+            if (result?.code !== 'RESTAURANT_MISMATCH' && result?.code !== 'STORE_MISMATCH') {
+              toast.error(result.error || 'Cannot add item. Please check your cart.')
+            }
             return
           }
           if (newQuantity > existingCartItem.quantity + 1) {
@@ -1256,7 +1257,9 @@ function RestaurantDetailsContent() {
         // Pass sourcePosition when adding a new item
         const result = addToCart(cartItem, sourcePosition)
         if (result?.ok === false) {
-          toast.error(result.error || 'Cannot add item from different restaurant. Please clear cart first.')
+          if (result?.code !== 'RESTAURANT_MISMATCH' && result?.code !== 'STORE_MISMATCH') {
+            toast.error(result.error || 'Cannot add item. Please check your cart.')
+          }
           return
         }
         if (newQuantity > 1) {
@@ -1355,7 +1358,7 @@ function RestaurantDetailsContent() {
   const getActiveFilterCount = () => {
     let count = 0
     if (filters.sortBy) count++
-    if (filters.vegNonVeg) count++
+    if (filters.vegNonVeg && !(isPureVegRestaurant || vegMode)) count++
     if (filters.highlyReordered) count++
     if (filters.spicy) count++
     return count
@@ -1985,11 +1988,24 @@ function RestaurantDetailsContent() {
   const availabilityStatus = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick))
   const isRestaurantOffline = !availabilityStatus.isOpen
   const shouldShowGrayscale = isOutOfService || isRestaurantOffline
+  const isPureVegRestaurant = Boolean(
+    restaurant?.pureVegRestaurant === true ||
+    restaurant?.isVeg === true ||
+    restaurant?.veg === true ||
+    restaurant?.restaurantType === 'veg' ||
+    restaurant?.vegType === 'veg'
+  )
+
+  useEffect(() => {
+    if ((isPureVegRestaurant || vegMode) && filters.vegNonVeg === "non-veg") {
+      setFilters((prev) => ({ ...prev, vegNonVeg: null }))
+    }
+  }, [isPureVegRestaurant, vegMode, filters.vegNonVeg])
 
   return (
     <AnimatedPage
       id="scrollingelement"
-      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col transition-all duration-300 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
+      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pb-36 transition-all duration-300 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
         }`}
     >
       {/* Header - Back, Search, Menu */}
@@ -2078,16 +2094,14 @@ function RestaurantDetailsContent() {
           </div>
 
           {/* Middle Row: Location & Open Status */}
-          <div className="flex items-center justify-between gap-4">
-            <div 
-              className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 flex-1 min-w-0"
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+            <div
+              className="flex items-start gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 flex-1 min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
-                <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                <span className="truncate">
-                  {restaurant?.distance || "1.2 km"} | {restaurant?.location || "Location"}
-                </span>
-              </div>
+              <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+              <span className="break-words">
+                {restaurant?.distance || "1.2 km"} | {restaurant?.location || "Location"}
+              </span>
             </div>
 
             <div className="flex-shrink-0">
@@ -2149,24 +2163,26 @@ function RestaurantDetailsContent() {
                     <X className="h-3 w-3 text-gray-600" />
                   )}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 bg-white rounded-full ${filters.vegNonVeg === "non-veg" ? "border-red-600 bg-red-50 text-red-700 font-bold" : ""
-                    }`}
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
-                    }))
-                  }
-                >
-                  <div className="h-3 w-3 rounded-full bg-red-600" />
-                  Non-veg
-                  {filters.vegNonVeg === "non-veg" && (
-                    <X className="h-3 w-3 text-gray-600" />
-                  )}
-                </Button>
+                {!isPureVegRestaurant && !vegMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 bg-white rounded-full ${filters.vegNonVeg === "non-veg" ? "border-red-600 bg-red-50 text-red-700 font-bold" : ""
+                      }`}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
+                      }))
+                    }
+                  >
+                    <div className="h-3 w-3 rounded-full bg-red-600" />
+                    Non-veg
+                    {filters.vegNonVeg === "non-veg" && (
+                      <X className="h-3 w-3 text-gray-600" />
+                    )}
+                  </Button>
+                )}
               </div>
 
               {menuCategories.length > 0 && (
@@ -2982,21 +2998,23 @@ function RestaurantDetailsContent() {
                           <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-500" />
                           <span className="font-medium">Veg</span>
                         </button>
-                        <button
-                          onClick={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
-                            }))
-                          }
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all flex-1 ${filters.vegNonVeg === "non-veg"
-                            ? "border-amber-700 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                            }`}
-                        >
-                          <div className="h-4 w-4 rounded-full bg-amber-700 dark:bg-amber-600" />
-                          <span className="font-medium">Non-veg</span>
-                        </button>
+                        {!isPureVegRestaurant && !vegMode && (
+                          <button
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
+                              }))
+                            }
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all flex-1 ${filters.vegNonVeg === "non-veg"
+                              ? "border-amber-700 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                              }`}
+                          >
+                            <div className="h-4 w-4 rounded-full bg-amber-700 dark:bg-amber-600" />
+                            <span className="font-medium">Non-veg</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -3316,7 +3334,13 @@ function RestaurantDetailsContent() {
                             }`}
                         />
                       </button>
-                      <button className="h-10 w-10 rounded-full border border-white dark:border-gray-800 bg-white/90 dark:bg-[#1a1a1a]/90 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#2a2a2a] flex items-center justify-center transition-colors">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleShareClick(selectedItem)
+                        }}
+                        className="h-10 w-10 rounded-full border border-white dark:border-gray-800 bg-white/90 dark:bg-[#1a1a1a]/90 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#2a2a2a] flex items-center justify-center transition-colors"
+                      >
                         <Share2 className="h-5 w-5" />
                       </button>
                     </div>

@@ -27,9 +27,14 @@ app.use(requestIdMiddleware);
 // Serve static uploads folder & VPS images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const storageDir = path.isAbsolute(config.vpsStoragePath)
-    ? config.vpsStoragePath
-    : path.join(__dirname, '..', config.vpsStoragePath);
+const uploadDir = process.env.UPLOAD_DIR || process.env.VPS_STORAGE_PATH || (
+    process.env.NODE_ENV === 'production' || fs.existsSync('/var/www/upload')
+        ? '/var/www/upload'
+        : path.join(__dirname, '..', 'upload')
+);
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
 const localUploadsDir = path.join(__dirname, '..', 'uploads');
 
 const staticOptions = {
@@ -40,8 +45,9 @@ const staticOptions = {
     }
 };
 
-app.use('/images', express.static(storageDir, staticOptions), express.static(localUploadsDir, staticOptions));
-app.use('/uploads', express.static(storageDir, staticOptions), express.static(localUploadsDir, staticOptions));
+app.use('/upload', express.static(uploadDir, staticOptions));
+app.use('/uploads', express.static(uploadDir, staticOptions), express.static(localUploadsDir, staticOptions));
+app.use('/images', express.static(uploadDir, staticOptions), express.static(localUploadsDir, staticOptions));
 
 // Health endpoints (no rate limit, minimal JSON, no secrets)
 app.get('/health', async (_req, res) => {

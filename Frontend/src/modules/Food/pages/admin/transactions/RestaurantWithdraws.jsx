@@ -196,7 +196,7 @@ export default function RestaurantWithdraws() {
     ]
     const exportData = filteredWithdraws.map((w, index) => ({
       sl: index + 1,
-      amount: `₹${Math.abs(Number(w.amount) || 0).toLocaleString('en-IN')}`,
+      amount: `Rs. ${Math.abs(Number(w.amount) || 0).toLocaleString('en-IN')}`,
       restaurantName: w.restaurantName || 'N/A',
       restaurantIdString: w.restaurantIdString || 'N/A',
       requestTime: formatDate(w.requestedAt || w.createdAt),

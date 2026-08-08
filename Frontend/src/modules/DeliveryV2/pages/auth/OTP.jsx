@@ -599,19 +599,19 @@ export default function DeliveryOTP() {
               <div className="text-center mb-5">
                 <div className="flex items-center justify-center gap-3 mb-1.5">
                    <div className="relative w-5 h-5">
-                     <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#005b96] transform rotate-45" />
-                     <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#005b96]" />
-                     <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#005b96] transform -rotate-45" />
+                     <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
+                     <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#00B761]" />
+                     <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
                    </div>
                    <h2 className="text-2xl font-black text-[#1c1c1c]">Full Name</h2>
                    <div className="relative w-5 h-5">
-                     <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#005b96] transform -rotate-45" />
-                     <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#005b96]" />
-                     <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#005b96] transform rotate-45" />
+                     <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
+                     <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#00B761]" />
+                     <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
                    </div>
                 </div>
                 <p className="text-sm text-gray-500 font-medium">Please enter your name to complete registration</p>
-                <div className="h-1 w-8 bg-[#005b96] mx-auto mt-2 rounded-full" />
+                <div className="h-1 w-8 bg-[#00B761] mx-auto mt-2 rounded-full" />
               </div>
 
               <div className="space-y-4">
@@ -643,7 +643,7 @@ export default function DeliveryOTP() {
                   disabled={isLoading || !name.trim()}
                   className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
                     !isLoading && name.trim()
-                    ? "bg-[#005b96] hover:bg-[#004b7c] text-white shadow-lg shadow-[#005b96]/30 active:scale-[0.98]"
+                    ? "bg-[#00B761] hover:bg-[#009e53] text-white shadow-lg shadow-[#00B761]/30 active:scale-[0.98]"
                     : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
                   }`}
                 >
@@ -657,30 +657,36 @@ export default function DeliveryOTP() {
               <div className="text-center mb-5">
                 <div className="flex items-center justify-center gap-3 mb-1.5">
                    <div className="relative w-5 h-5">
-                     <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#005b96] transform rotate-45" />
-                     <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#005b96]" />
-                     <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#005b96] transform -rotate-45" />
+                     <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
+                     <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#00B761]" />
+                     <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
                    </div>
                    <h2 className="text-2xl font-black text-[#1c1c1c]">Verify OTP</h2>
                    <div className="relative w-5 h-5">
-                     <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#005b96] transform -rotate-45" />
-                     <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#005b96]" />
-                     <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#005b96] transform rotate-45" />
+                     <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
+                     <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#00B761]" />
+                     <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
                    </div>
                 </div>
                 <p className="text-sm text-gray-500 font-medium flex items-center justify-center gap-1.5 flex-wrap">
-                  <span>Sent to <span className="text-[#005b96] font-bold">{getPhoneNumber()}</span></span>
+                  <span>Sent to <span className="text-[#00B761] font-bold">{getPhoneNumber()}</span></span>
                   <button
                     type="button"
-                    onClick={() => navigate("/food/delivery/login", { replace: true })}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-[#005b96] hover:underline bg-[#005b96]/10 px-2 py-0.5 rounded-full transition-all"
+                    onClick={() => {
+                      const rawPhone = (authData?.phone || "").replace(/\D/g, "").slice(-10)
+                      if (rawPhone) {
+                        sessionStorage.setItem("deliverySignInPhone", rawPhone)
+                      }
+                      navigate("/food/delivery/login", { replace: true })
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#00B761] hover:underline bg-[#00B761]/10 px-2 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer"
                     title="Edit phone number"
                   >
                     <Pencil className="w-3 h-3" />
                     <span>Edit</span>
                   </button>
                 </p>
-                <div className="h-1 w-8 bg-[#005b96] mx-auto mt-2 rounded-full" />
+                <div className="h-1 w-8 bg-[#00B761] mx-auto mt-2 rounded-full" />
               </div>
 
               <div className="space-y-6">
@@ -698,7 +704,7 @@ export default function DeliveryOTP() {
                       onPaste={index === 0 ? handlePaste : undefined}
                       disabled={isLoading}
                       autoComplete="off"
-                      className={`w-12 h-14 sm:w-14 sm:h-16 bg-slate-50 border-2 rounded-2xl text-center text-2xl font-bold text-slate-900 focus:outline-none transition-all duration-300 border-gray-200`}
+                      className={`w-12 h-14 sm:w-14 sm:h-16 bg-slate-50 border-2 rounded-2xl text-center text-2xl font-bold text-slate-900 focus:outline-none transition-all duration-300 border-gray-200 focus:border-[#00B761]`}
                     />
                   ))}
                 </div>
@@ -716,7 +722,7 @@ export default function DeliveryOTP() {
                     disabled={isLoading || otp.some(d => !d)}
                     className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
                       !isLoading && otp.every(d => d)
-                        ? "bg-[#005b96] hover:bg-[#004b7c] text-white shadow-lg shadow-[#005b96]/30 active:scale-[0.98]"
+                        ? "bg-[#00B761] hover:bg-[#009e53] text-white shadow-lg shadow-[#00B761]/30 active:scale-[0.98]"
                         : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
                     }`}
                   >
@@ -743,7 +749,7 @@ export default function DeliveryOTP() {
                         type="button"
                         onClick={handleResend}
                         disabled={isLoading}
-                        className="text-xs text-[#005b96] font-bold tracking-wider uppercase hover:underline disabled:opacity-50"
+                        className="text-xs text-[#00B761] font-bold tracking-wider uppercase hover:underline disabled:opacity-50"
                       >
                         Resend SMS
                       </button>
@@ -757,7 +763,7 @@ export default function DeliveryOTP() {
       </div>
 
       {/* Footer */}
-      <div>
+      <div className="mt-auto shrink-0 z-20 bg-white pt-3 pb-4 text-center border-t border-gray-100/80 shadow-sm">
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
             &copy; {new Date().getFullYear()} {companyName.toUpperCase()} DELIVERY PARTNER
           </p>

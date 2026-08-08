@@ -173,9 +173,12 @@ const ContentManager = () => {
             displayType,
             title: title || '',
             status: status || 'active',
-            bannerItems: config.banners?.items?.length
-                ? config.banners.items.map(b => ({ ...b, isUploading: false }))
-                : [{ imageUrl: '', title: '', subtitle: '', linkType: 'none', linkValue: '', isUploading: false }],
+            bannerItems: (() => {
+                const legacyItems = config.banners?.items || config.items || [];
+                return legacyItems.length
+                    ? legacyItems.map(b => ({ ...b, isUploading: false }))
+                    : [{ imageUrl: '', title: '', subtitle: '', linkType: 'none', linkValue: '', isUploading: false }];
+            })(),
             maxCategories: config.categories?.maxItems || 4,
             categoryIds: config.categories?.categoryIds || [],
             categoryRows: config.categories?.rows || 1,
@@ -237,14 +240,16 @@ const ContentManager = () => {
                 return;
             }
             config = {
-                items: items.map(b => ({
-                    imageUrl: b.imageUrl,
-                    title: b.title,
-                    subtitle: b.subtitle,
-                    linkType: b.linkType || 'none',
-                    linkValue: b.linkValue || '',
-                    status: b.status || 'active',
-                })),
+                banners: {
+                    items: items.map(b => ({
+                        imageUrl: b.imageUrl,
+                        title: b.title,
+                        subtitle: b.subtitle,
+                        linkType: b.linkType || 'none',
+                        linkValue: b.linkValue || '',
+                        status: b.status || 'active',
+                    })),
+                },
             };
         } else if (displayType === 'categories') {
             if (!formData.categoryIds?.length) {
@@ -485,7 +490,7 @@ const ContentManager = () => {
                                                     {section.title || '(No heading)'}
                                                 </h4>
                                                 <p className="text-[11px] text-slate-500">
-                                                    {section.displayType === 'banners' && `${section.config?.banners?.items?.length || 0} banners configured`}
+                                                    {section.displayType === 'banners' && `${(section.config?.banners?.items || section.config?.items || []).length} banners configured`}
                                                     {section.displayType === 'categories' && `${section.config?.categories?.categoryIds?.length || 0} categories • ${section.config?.categories?.rows || 1} rows`}
                                                     {section.displayType === 'subcategories' && `${section.config?.subcategories?.subcategoryIds?.length || 0} subcategories • ${section.config?.subcategories?.rows || 1} rows`}
                                                     {section.displayType === 'products' && `${section.config?.products?.productIds?.length || 0} products • ${section.config?.products?.rows || 1}x${section.config?.products?.columns || 2}${section.config?.products?.singleRowScrollable ? ' • Single row scroll' : ''}`}
@@ -558,14 +563,20 @@ const ContentManager = () => {
                                 {sections.find(s => s.displayType === 'banners') ? (
                                     <div className="h-40 rounded-xl overflow-hidden shadow-lg relative">
                                         <img
-                                            src={sections.find(s => s.displayType === 'banners')?.config?.banners?.items?.[0]?.imageUrl}
+                                            src={(() => {
+                                                const bannerSection = sections.find(s => s.displayType === 'banners');
+                                                return bannerSection?.config?.banners?.items?.[0]?.imageUrl || bannerSection?.config?.items?.[0]?.imageUrl;
+                                            })()}
                                             alt=""
                                             className="h-full w-full object-cover"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
                                             <h4 className="text-white font-black text-sm">
                                                 {sections.find(s => s.displayType === 'banners')?.title ||
-                                                    sections.find(s => s.displayType === 'banners')?.config?.banners?.items?.[0]?.title}
+                                                    (() => {
+                                                        const bs = sections.find(s => s.displayType === 'banners');
+                                                        return bs?.config?.banners?.items?.[0]?.title || bs?.config?.items?.[0]?.title;
+                                                    })()}
                                             </h4>
                                         </div>
                                     </div>

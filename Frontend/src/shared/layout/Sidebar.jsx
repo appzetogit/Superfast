@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { HiChevronDown } from "react-icons/hi2";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import SuperfastLogo from "@/assets/Logo.webp";
 import AdminModuleSwitcher from "@/shared/components/AdminModuleSwitcher";
 
 const colorMap = {
@@ -205,15 +206,17 @@ const SidebarContent = ({ items, title, onClose, openMenu, handleToggle, hovered
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-shrink-0 flex h-16 items-center justify-between px-5 border-b border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent z-10">
-        <div className="flex items-center space-x-2.5">
-          <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30 transform -rotate-6 hover:rotate-0 transition-all duration-500 ease-out">
-            <span className="text-lg font-black italic">{appName.charAt(0)}</span>
-          </div>
+        <div className="flex items-center space-x-3">
+          <img
+            src={settings?.logoUrl || settings?.logo?.url || SuperfastLogo}
+            alt={appName || "Superfast"}
+            className="h-10 w-auto max-w-[130px] object-contain drop-shadow"
+            onError={(e) => {
+              e.currentTarget.src = SuperfastLogo;
+            }}
+          />
           <div>
-            <h1 className="text-base font-black tracking-tight text-white leading-none">
-              Superfast Vendor
-            </h1>
-            <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-1 block">
+            <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] block">
               {title}
             </span>
           </div>

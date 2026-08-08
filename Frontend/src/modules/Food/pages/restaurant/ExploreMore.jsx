@@ -658,10 +658,16 @@ export default function ExploreMore() {
     }
   }
 
-  const handleDeleteSchedule = () => {
+  const handleDeleteSchedule = async () => {
     localStorage.removeItem(STORAGE_KEY)
     setExistingSchedule(null)
     setExistingScheduleOpen(false)
+    try {
+      await restaurantAPI.updateAcceptingOrders(true)
+      toast.success("Restaurant marked online at backend")
+    } catch (e) {
+      toast.error("Failed to update backend status")
+    }
   }
 
   const handleReasonSelect = (reason) => {
@@ -692,10 +698,29 @@ export default function ExploreMore() {
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
-  const handleSubmitScheduleOff = () => {
+  const handleSubmitScheduleOff = async () => {
     if (!startDate || !endDate) {
       alert("Please select start and end dates")
       return
+    }
+    const newSchedule = {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      startTime,
+      endTime,
+      reason: selectedReason
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSchedule))
+    setExistingSchedule({
+      ...newSchedule,
+      startDate: new Date(newSchedule.startDate),
+      endDate: new Date(newSchedule.endDate)
+    })
+    try {
+      await restaurantAPI.updateAcceptingOrders(false)
+      toast.success("Restaurant marked offline at backend")
+    } catch (e) {
+      toast.error("Failed to update backend status")
     }
     setDateTimePickerOpen(false)
     setSuccessPopupOpen(true)
@@ -743,6 +768,7 @@ export default function ExploreMore() {
   const settingsItems = [
     { id: 3, label: "Delivery settings", icon: Truck, route: "/restaurant/delivery-settings" },
     { id: 4, label: "Zone Setup", icon: MapPin, route: "/restaurant/zone-setup" },
+    { id: 5, label: "Schedule off", icon: Calendar },
   ]
 
   const ordersItems = [

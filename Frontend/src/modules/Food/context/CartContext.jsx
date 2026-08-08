@@ -1,6 +1,8 @@
 // src/context/cart-context.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import { buildCartLineId } from "@food/utils/foodVariants"
+import ReplaceCartModal from "@food/components/user/ReplaceCartModal"
+import { toast } from "sonner"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -178,6 +180,15 @@ export function CartProvider({ children }) {
   // Track last remove event for animation
   const [lastRemoveEvent, setLastRemoveEvent] = useState(null)
 
+  // Replace cart modal state for different restaurant prompt
+  const [replaceCartModal, setReplaceCartModal] = useState({
+    isOpen: false,
+    pendingItem: null,
+    pendingSourcePosition: null,
+    existingRestaurantName: "",
+    newRestaurantName: "",
+  })
+
   // Persist to localStorage whenever cart changes
   useEffect(() => {
     try {
@@ -233,8 +244,23 @@ export function CartProvider({ children }) {
             String(firstItemRestaurantId) !== String(newItemRestaurantId)
 
           if (hasNameMismatch || hasIdMismatch) {
-            const message = `Cart already contains items from "${firstItemRestaurantName || 'another restaurant'}". Please clear food cart first.`
-            return { ok: false, error: message, code: 'RESTAURANT_MISMATCH' }
+            const existingName = firstItemRestaurantName || 'another restaurant'
+            const newName = newItemRestaurantName || item?.restaurant || 'this restaurant'
+            setReplaceCartModal({
+              isOpen: true,
+              pendingItem: item,
+              pendingSourcePosition: sourcePosition,
+              existingRestaurantName: existingName,
+              newRestaurantName: newName,
+            })
+            const message = `Cart contains items from "${existingName}". Replace with items from "${newName}"?`
+            return {
+              ok: false,
+              error: message,
+              code: 'RESTAURANT_MISMATCH',
+              existingRestaurantName: existingName,
+              newRestaurantName: newName
+            }
           }
         }
       } else if (nextOrderType === "quick") {
@@ -246,8 +272,23 @@ export function CartProvider({ children }) {
           const newItemStoreName = item?.quickStoreName || item?.storeName || item?.sellerName || item?.sourceName || "another store";
 
           if (firstItemStoreId && newItemStoreId && String(firstItemStoreId) !== String(newItemStoreId)) {
-            const message = `Cart already contains items from "${firstItemStoreName || 'another store'}". Please clear your cart first.`;
-            return { ok: false, error: message, code: 'STORE_MISMATCH' };
+            const existingName = firstItemStoreName || 'another store'
+            const newName = newItemStoreName || 'this store'
+            setReplaceCartModal({
+              isOpen: true,
+              pendingItem: item,
+              pendingSourcePosition: sourcePosition,
+              existingRestaurantName: existingName,
+              newRestaurantName: newName,
+            })
+            const message = `Cart contains items from "${existingName}". Replace with items from "${newName}"?`;
+            return {
+              ok: false,
+              error: message,
+              code: 'STORE_MISMATCH',
+              existingRestaurantName: existingName,
+              newRestaurantName: newName
+            };
           }
         }
       }
@@ -290,6 +331,33 @@ export function CartProvider({ children }) {
       return [...safePrev, newItem]
     })
 
+    return { ok: true }
+  }
+
+  const replaceCartWithItem = (item, sourcePosition = null) => {
+    const nextOrderType = getItemOrderType(item)
+    const baseItemId = item.itemId || item.productId || item.foodId || item.id || item._id || "item"
+    const variantId = item.variantId || item.variant?._id || item.variant?.id || ""
+    const lineItemId = item.lineItemId || item.cartLineId || buildCartLineId(baseItemId, variantId)
+    const normalizedItem = {
+      ...item,
+      id: lineItemId,
+      lineItemId,
+      itemId: String(baseItemId),
+      productId: String(baseItemId),
+      variantId: variantId ? String(variantId) : "",
+      quantity: 1,
+      orderType: nextOrderType,
+      type: nextOrderType,
+    }
+    setCart([normalizedItem])
+    if (sourcePosition) {
+      setLastAddEvent({
+        product: { id: item.id, name: item.name, imageUrl: item.image || item.imageUrl },
+        sourcePosition,
+      })
+      setTimeout(() => setLastAddEvent(null), 1500)
+    }
     return { ok: true }
   }
 
@@ -427,11 +495,47 @@ export function CartProvider({ children }) {
       clearCart,
       cleanCartForRestaurant,
       replaceCart,
+      replaceCartWithItem,
     }),
     [cart, foodItems, quickItems, foodCount, quickCount, foodTotal, quickTotal, lastAddEvent, lastRemoveEvent]
   )
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+  const handleConfirmReplaceCart = () => {
+    if (replaceCartModal.pendingItem) {
+      replaceCartWithItem(replaceCartModal.pendingItem, replaceCartModal.pendingSourcePosition)
+      toast.success(`Cart updated with item from "${replaceCartModal.newRestaurantName}"!`)
+    }
+    setReplaceCartModal({
+      isOpen: false,
+      pendingItem: null,
+      pendingSourcePosition: null,
+      existingRestaurantName: "",
+      newRestaurantName: "",
+    })
+  }
+
+  const handleCancelReplaceCart = () => {
+    setReplaceCartModal({
+      isOpen: false,
+      pendingItem: null,
+      pendingSourcePosition: null,
+      existingRestaurantName: "",
+      newRestaurantName: "",
+    })
+  }
+
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      <ReplaceCartModal
+        isOpen={replaceCartModal.isOpen}
+        existingRestaurantName={replaceCartModal.existingRestaurantName}
+        newRestaurantName={replaceCartModal.newRestaurantName}
+        onConfirm={handleConfirmReplaceCart}
+        onCancel={handleCancelReplaceCart}
+      />
+    </CartContext.Provider>
+  )
 }
 
 export function useCart() {

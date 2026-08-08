@@ -240,6 +240,11 @@ const ProductManagement = () => {
         return;
       }
 
+      if (formData.salePrice && formData.price && Number(formData.salePrice) > Number(formData.price)) {
+        toast.error("Discounted price cannot be greater than actual price");
+        return;
+      }
+
       if (Number(formData.stock) < 0) {
         toast.error("Stock cannot be a negative number");
         return;

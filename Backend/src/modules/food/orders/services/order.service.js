@@ -1876,7 +1876,7 @@ export async function calculateOrder(userId, dto) {
       if (userId && Number(offer.perUserLimit) > 0) {
         const usage = await FoodOfferUsage.findOne({
           offerId: offer._id,
-          userId,
+          userId: new mongoose.Types.ObjectId(userId),
         }).lean();
         if (usage && Number(usage.count) >= Number(offer.perUserLimit))
           perUserOk = false;
@@ -1917,6 +1917,12 @@ export async function calculateOrder(userId, dto) {
           );
         }
         appliedCoupon = { code: codeRaw, discount };
+      } else if (codeRaw) {
+        if (!perUserOk) throw new ValidationError("You have already used this coupon maximum allowed times.");
+        if (!usageOk) throw new ValidationError("This coupon usage limit has been reached.");
+        if (!firstOrderOk) throw new ValidationError("This coupon is only valid for first-time users.");
+        if (!minOk) throw new ValidationError(`Minimum order value of ₹${offer.minOrderValue} required for this coupon.`);
+        if (!statusOk || !startOk || !endOk) throw new ValidationError("This coupon code has expired or is inactive.");
       }
     }
   }
@@ -2419,11 +2425,12 @@ export async function createOrder(userId, dto) {
   } catch {
     // Don't block order placement on socket failures.
   }
-  const couponCode = dto.pricing?.couponCode
-    ? String(dto.pricing.couponCode).trim().toUpperCase()
+  const couponCode = (dto.couponCode || dto.appliedCoupon?.code || order?.pricing?.couponCode || order?.pricing?.appliedCoupon?.code)
+    ? String(dto.couponCode || dto.appliedCoupon?.code || order?.pricing?.couponCode || order?.pricing?.appliedCoupon?.code).trim().toUpperCase()
     : "";
-  if ((orderType === "food" || orderType === "mixed") && couponCode) {
-    const offer = await FoodOffer.findOne({ couponCode }).lean();
+  if (couponCode) {
+    const safeRegex = couponCode.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    const offer = await FoodOffer.findOne({ couponCode: new RegExp(`^${safeRegex}$`, "i") }).lean();
     if (offer) {
       await FoodOffer.updateOne({ _id: offer._id }, { $inc: { usedCount: 1 } });
       if (userId) {
@@ -3017,6 +3024,50 @@ export async function submitOrderRatings(orderId, userId, dto) {
   ]);
 
   await order.save();
+  const reviewTitle = `New Rating: ${dto.restaurantRating} ⭐`;
+  const reviewBody = dto.restaurantComment
+    ? `Customer review: "${dto.restaurantComment}"`
+    : `Order #${order.orderId || order._id} received a rating of ${dto.restaurantRating}/5 stars.`;
+  const reviewLink = `/restaurant/feedback?tab=reviews`;
+
+  try {
+    await notifyOwnersSafely(
+      [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
+      {
+        title: reviewTitle,
+        body: reviewBody,
+        data: {
+          type: "RESTAURANT_REVIEW",
+          orderId: String(order.orderId || order._id || ""),
+          link: reviewLink,
+        },
+      }
+    );
+  } catch (pushErr) {
+    console.error("Failed to notify restaurant owner of rating:", pushErr);
+  }
+
+  try {
+    const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+    await createInboxNotifications({
+      notifications: [{
+        ownerType: "RESTAURANT",
+        ownerId: String(order.restaurantId),
+        title: reviewTitle,
+        message: reviewBody,
+        link: reviewLink,
+        category: "review",
+        metadata: {
+          type: "RESTAURANT_REVIEW",
+          orderId: String(order.orderId || order._id || ""),
+          rating: dto.restaurantRating,
+        },
+      }],
+    });
+  } catch (inboxErr) {
+    logger.warn(`Failed to create restaurant inbox notification for review: ${inboxErr?.message || inboxErr}`);
+  }
+
   enqueueOrderEvent('order_ratings_submitted', {
     orderMongoId: order._id?.toString?.(),
     orderId: order.orderId,
@@ -3053,29 +3104,67 @@ export async function updateOrderStatusRestaurant(
   restaurantId,
   orderStatus,
 ) {
-  if (!mongoose.Types.ObjectId.isValid(orderId)) {
-    throw new ValidationError("Invalid order id");
+  if (!orderId) {
+    throw new ValidationError("Order id is required");
   }
-  if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
-    throw new ValidationError("Invalid restaurant id");
+
+  let orderQuery = {};
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    orderQuery = {
+      $or: [
+        { _id: new mongoose.Types.ObjectId(orderId) },
+        { orderId: String(orderId) }
+      ]
+    };
+  } else {
+    orderQuery = { orderId: String(orderId) };
   }
-  let order = await FoodOrder.findOne({
-    _id: new mongoose.Types.ObjectId(orderId),
-    restaurantId: new mongoose.Types.ObjectId(restaurantId),
-  });
+
+  let order = await FoodOrder.findOne(orderQuery);
   if (!order) throw new NotFoundError("Order not found");
-  const from = order.orderStatus;
 
-  if (!isStatusAdvance(from, orderStatus)) {
-    throw new ValidationError(`Current order status '${from}' is further ahead than '${orderStatus}'. Order cannot be moved backwards or updated after cancellation.`);
+  const from = order.orderStatus;
+  const targetStatus = String(orderStatus || "").trim().toLowerCase();
+
+  // Normalize target status
+  let finalStatus = orderStatus;
+  if (targetStatus === "preparing" || targetStatus === "confirmed" || targetStatus === "accepted") {
+    finalStatus = "preparing";
+  } else if (targetStatus === "ready" || targetStatus === "ready_for_pickup") {
+    finalStatus = "ready_for_pickup";
   }
 
-  order.orderStatus = orderStatus;
+  if (from !== finalStatus && !isStatusAdvance(from, finalStatus)) {
+    // If order is in 'placed', 'created', or 'confirmed', accepting it to 'preparing' should always be allowed
+    if (["placed", "created", "confirmed"].includes(from) && finalStatus === "preparing") {
+      // Allow transition
+    } else {
+      throw new ValidationError(`Current order status '${from}' is further ahead than '${finalStatus}'. Order cannot be moved backwards or updated after cancellation.`);
+    }
+  }
+
+  order.orderStatus = finalStatus;
+
+  // Set tracking timestamps
+  if (finalStatus === "preparing") {
+    if (!order.tracking) order.tracking = {};
+    if (!order.tracking.preparing) order.tracking.preparing = {};
+    if (!order.tracking.preparing.timestamp) {
+      order.tracking.preparing.timestamp = new Date();
+    }
+  } else if (finalStatus === "ready_for_pickup") {
+    if (!order.tracking) order.tracking = {};
+    if (!order.tracking.readyForPickup) order.tracking.readyForPickup = {};
+    if (!order.tracking.readyForPickup.timestamp) {
+      order.tracking.readyForPickup.timestamp = new Date();
+    }
+  }
+
   pushStatusHistory(order, {
     byRole: "RESTAURANT",
     byId: restaurantId,
     from,
-    to: orderStatus,
+    to: finalStatus,
   });
   await order.save();
 
@@ -3124,8 +3213,8 @@ export async function updateOrderStatusRestaurant(
       title = "Order Cancelled ❌";
       body = `Unfortunately, your order has been cancelled by the restaurant.${refundDetail}`;
 
-      // Update payment status for cancellation
       if (!isOnlinePaid) {
+        order.payment = order.payment || {};
         order.payment.status = "cancelled";
       }
 
@@ -3151,6 +3240,29 @@ export async function updateOrderStatusRestaurant(
         },
       },
     );
+
+    // Save notification in User Inbox
+    try {
+      const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+      await createInboxNotifications({
+        notifications: [{
+          ownerType: "USER",
+          ownerId: String(order.userId),
+          title: title,
+          message: body,
+          link: `/food/user/orders/${order._id?.toString?.() || ""}`,
+          category: "order",
+          metadata: {
+            type: "order_status_update",
+            orderId: String(order._id),
+            orderReadableId: order.orderId,
+            orderStatus: String(orderStatus || "")
+          }
+        }]
+      });
+    } catch (inboxErr) {
+      logger.warn(`Failed to create user inbox notification: ${inboxErr?.message || inboxErr}`);
+    }
 
     await notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: restaurantId }],
@@ -3429,13 +3541,15 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
     throw new ValidationError('A delivery partner has already accepted this order.');
   }
 
-  // Reset dispatch state to unassigned to allow tryAutoAssign to start fresh
-  order.dispatch.status = 'unassigned';
-  order.dispatch.deliveryPartnerId = null;
-  // Clear previously offered partners to give everyone a fresh chance when resending manually.
-  order.dispatch.offeredTo = [];
-
-  await order.save();
+  // Reset dispatch state to unassigned to allow tryAutoAssign to start fresh, and clear lock
+  await FoodOrder.findByIdAndUpdate(order._id, {
+    $set: {
+      'dispatch.status': 'unassigned',
+      'dispatch.deliveryPartnerId': null,
+      'dispatch.offeredTo': []
+    },
+    $unset: { 'dispatch.dispatchingAt': '' }
+  });
 
   if (isSplitDispatchOrder(order)) {
     await notifySplitDispatchOffers(order);
@@ -4635,13 +4749,7 @@ export async function getPaymentStatus(orderId, deliveryPartnerId) {
 // ----- Admin -----
 export async function listOrdersAdmin(query) {
   const { page, limit, skip } = buildPaginationOptions(query);
-  const filter = {
-    orderType: { $in: ["food", "mixed"] },
-    $or: [
-      { "payment.method": { $in: ["cash", "cod", "wallet"] } },
-      { "payment.status": { $in: ["paid", "authorized", "captured", "settled", "refunded"] } },
-    ],
-  };
+  const filter = {};
 
   // Extract raw query params
   const rawStatus = typeof query.status === "string" ? query.status.trim().toLowerCase() : "";
@@ -4807,6 +4915,9 @@ export async function assignDeliveryPartnerAdmin(
   if (!identity) throw new ValidationError("Order id required");
   const order = await FoodOrder.findOne(identity);
   if (!order) throw new NotFoundError("Order not found");
+  if (['delivered', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'].includes(String(order.orderStatus || '').toLowerCase())) {
+    throw new ValidationError("Cannot assign a delivered or cancelled order to a delivery partner");
+  }
   if (order.dispatch.status === "accepted")
     throw new ValidationError("Order already accepted by partner");
 

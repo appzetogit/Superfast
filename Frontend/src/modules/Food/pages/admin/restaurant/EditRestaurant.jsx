@@ -9,6 +9,22 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 
 const debugError = (..._args) => {}
 
+const isPointInPolygon = (lat, lng, polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = Number(polygon[i].longitude ?? polygon[i].lng ?? polygon[i]?.[0])
+    const yi = Number(polygon[i].latitude ?? polygon[i].lat ?? polygon[i]?.[1])
+    const xj = Number(polygon[j].longitude ?? polygon[j].lng ?? polygon[j]?.[0])
+    const yj = Number(polygon[j].latitude ?? polygon[j].lat ?? polygon[j]?.[1])
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 0.0) + xi
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
 const toNumberOrEmpty = (value) => {
   const n = Number(value)
   return Number.isFinite(n) ? n : ""
@@ -295,11 +311,6 @@ export default function EditRestaurant() {
     try {
       setSavingDetails(true)
 
-      const cuisines = String(detailsForm.cuisinesText || "")
-        .split(",")
-        .map((c) => c.trim())
-        .filter(Boolean)
-
       const payload = {
         name: detailsForm.name,
         pureVegRestaurant: detailsForm.pureVegRestaurant === true,
@@ -308,7 +319,6 @@ export default function EditRestaurant() {
         ownerPhone: detailsForm.ownerPhone,
         primaryContactNumber: detailsForm.primaryContactNumber,
         email: detailsForm.email,
-        cuisines,
         estimatedDeliveryTimeMinutes:
           detailsForm.estimatedDeliveryTimeMinutes === ""
             ? undefined
@@ -342,9 +352,16 @@ export default function EditRestaurant() {
       alert("Please select a zone")
       return
     }
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !locationForm.formattedAddress) {
-      alert("Please select a location from dropdown")
-      return
+    const selectedZone = zones.find((z) => String(z._id || z.id) === String(locationForm.zoneId))
+    if (selectedZone) {
+      const coords = selectedZone.coordinates || selectedZone.boundary?.coordinates?.[0]
+      if (Array.isArray(coords) && coords.length >= 3) {
+        const isInside = isPointInPolygon(latitude, longitude, coords)
+        if (!isInside) {
+          alert(`Selected location is outside the service zone "${selectedZone.name || selectedZone.zoneName || 'Selected Zone'}". Please select a location inside this zone.`)
+          return
+        }
+      }
     }
 
     try {
@@ -465,7 +482,7 @@ export default function EditRestaurant() {
                 </div>
                 <div>
                   <Label>Owner Name</Label>
-                  <Input value={detailsForm.ownerName} onChange={(e) => setDetailsForm((p) => ({ ...p, ownerName: e.target.value }))} />
+                  <Input value={detailsForm.ownerName} onChange={(e) => setDetailsForm((p) => ({ ...p, ownerName: e.target.value.replace(/[^a-zA-Z\s]/g, "").replace(/\s+/g, " ") }))} />
                 </div>
                 <div>
                   <Label>Owner Email</Label>
@@ -478,10 +495,6 @@ export default function EditRestaurant() {
                 <div>
                   <Label>Primary Contact Number</Label>
                   <Input value={detailsForm.primaryContactNumber} onChange={(e) => setDetailsForm((p) => ({ ...p, primaryContactNumber: e.target.value }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <Label>Cuisines (comma separated)</Label>
-                  <Input value={detailsForm.cuisinesText} onChange={(e) => setDetailsForm((p) => ({ ...p, cuisinesText: e.target.value }))} />
                 </div>
                 <div>
                   <Label>Estimated Delivery Time (minutes)</Label>

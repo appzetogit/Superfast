@@ -11,6 +11,7 @@ const DEFAULT_QUICK_FEE_SETTINGS = {
   platformFee: 0,
   gstRate: 0,
   returnDeliveryCommission: 0,
+  defaultRating: 4.8,
   isActive: true,
 };
 
@@ -179,6 +180,9 @@ export async function upsertFeeSettings(body) {
     else if (body.returnDeliveryCommission !== undefined) {
       $set.returnDeliveryCommission = body.returnDeliveryCommission;
     }
+
+    if (body.defaultRating === null) $unset.defaultRating = 1;
+    else if (body.defaultRating !== undefined) $set.defaultRating = body.defaultRating;
 
     if (body.isActive !== undefined) $set.isActive = body.isActive;
 

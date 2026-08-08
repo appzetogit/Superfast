@@ -35,6 +35,7 @@ import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotificatio
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton";
+import { getImageUrl } from "@food/utils/imageUtils";
 const debugLog = (...args) => {};
 const debugWarn = (...args) => {};
 const debugError = (...args) => {};
@@ -89,7 +90,7 @@ const buildOrderItemsSummary = (items = []) =>
 const getOrderPreviewItem = (items = []) =>
   getRestaurantVisibleItems(items)[0] || null;
 
-const transformOrderForList = (order) => ({
+const transformOrderForList = (order, defaultETA = 30) => ({
   orderId: order.orderId || order._id,
   mongoId: order._id,
   status: order.status || "pending",
@@ -115,7 +116,7 @@ const transformOrderForList = (order) => ({
   preparingTimestamp: order.tracking?.preparing?.timestamp
     ? new Date(order.tracking.preparing.timestamp)
     : new Date(order.createdAt || Date.now()),
-  initialETA: order.estimatedDeliveryTime || 30,
+  initialETA: order.estimatedDeliveryTime || defaultETA,
   sortTimestamp: new Date(getAllOrdersTimestamp(order)).getTime(),
 });
 
@@ -260,7 +261,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 , searchTerm = "" }) 
                   <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
                     {order.photoUrl ? (
                       <img
-                        src={order.photoUrl}
+                        src={getImageUrl(order.photoUrl)}
                         alt={order.photoAlt}
                         className="h-full w-full object-cover"
                       />
@@ -480,7 +481,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 , searchTerm = "" }) 
                   <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
                     {order.photoUrl ? (
                       <img
-                        src={order.photoUrl}
+                        src={getImageUrl(order.photoUrl)}
                         alt={order.photoAlt}
                         className="h-full w-full object-cover"
                       />
@@ -744,13 +745,26 @@ function AllOrders({ onSelectOrder, onCancel , searchTerm = "" }) {
 
     const fetchOrders = async () => {
       try {
+        let restDeliveryTime = 30;
+        try {
+          const restRes = await restaurantAPI.getCurrentRestaurant();
+          const restData = restRes?.data?.data?.restaurant || restRes?.data?.restaurant || restRes?.data?.data || {};
+          if (restData.estimatedDeliveryTimeMinutes) {
+            restDeliveryTime = Number(restData.estimatedDeliveryTimeMinutes);
+          } else if (restData.estimatedDeliveryTime) {
+            restDeliveryTime = parseInt(restData.estimatedDeliveryTime) || 30;
+          }
+        } catch (err) {
+          debugWarn("Failed to fetch restaurant profile for ETA", err);
+        }
+
         const response = await restaurantAPI.getOrders();
 
         if (!isMounted) return;
 
         if (response.data?.success && response.data.data?.orders) {
           const transformedOrders = response.data.data.orders
-            .map(transformOrderForList)
+            .map((o) => transformOrderForList(o, restDeliveryTime))
             .sort((a, b) => {
               const priorityDiff =
                 (allOrdersStatusPriority[a.status] ?? 999) -
@@ -935,6 +949,10 @@ export default function OrdersMain() {
 
   const [ordersRefreshToken, setOrdersRefreshToken] = useState(0);
   const requestOrdersRefresh = () => setOrdersRefreshToken((prev) => prev + 1);
+  const handleManualRefresh = () => {
+    requestOrdersRefresh();
+    toast.success("Orders list refreshed");
+  };
   const [restaurantStatus, setRestaurantStatus] = useState({
     isActive: null,
     rejectionReason: null,
@@ -1308,7 +1326,7 @@ export default function OrdersMain() {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Restaurant Navbar - Sticky at top */}
       <div className="sticky top-0 z-50 bg-white">
-        <RestaurantNavbar showNotifications={true} onSearchChange={setSearchTerm} />
+        <RestaurantNavbar showNotifications={true} onSearchChange={setSearchTerm} onRefresh={handleManualRefresh} />
       </div>
 
       {/* Top Filter Bar - Sticky below navbar */}
@@ -1827,7 +1845,7 @@ function OrderCard({
         <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
           {photoUrl ? (
             <img
-              src={photoUrl}
+              src={getImageUrl(photoUrl)}
               alt={photoAlt}
               className="h-full w-full object-cover"
             />

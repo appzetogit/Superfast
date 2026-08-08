@@ -274,7 +274,17 @@ export default function HomeHeader({
         })
         : "Just now",
     }));
-    return [...remoteItems, ...localItems].sort(
+    const combined = [...remoteItems, ...localItems];
+    const seen = new Set();
+    const unique = [];
+    for (const item of combined) {
+      const key = item.id || `${item.title}-${item.message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
+    }
+    return unique.sort(
       (a, b) =>
         new Date(b.createdAt || b.timestamp || 0).getTime() -
         new Date(a.createdAt || a.timestamp || 0).getTime(),

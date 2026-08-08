@@ -106,7 +106,7 @@ export default function Notifications() {
     }
   }, [])
   
-  const cleanText = (str) => String(str || "").replace(/\[user\]/gi, "").replace(/\s+/g, " ").trim()
+  const cleanText = (str) => String(str || "").replace(/\[(user|shop|restaurant|seller|delivery)\]/gi, "").replace(/\s+/g, " ").trim()
 
   const mergedNotifications = useMemo(() => {
     const localItems = (notificationsList || []).map((item) => ({
@@ -135,7 +135,18 @@ export default function Notifications() {
       iconColor: "text-blue-600",
     }))
 
-    return [...broadcastItems, ...localItems].sort(
+    const combined = [...broadcastItems, ...localItems]
+    const seen = new Set()
+    const unique = []
+    for (const item of combined) {
+      const key = item.id || `${item.title}-${item.message}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        unique.push(item)
+      }
+    }
+
+    return unique.sort(
       (a, b) =>
         new Date(b.timestamp || b.createdAt || 0).getTime() -
         new Date(a.timestamp || a.createdAt || 0).getTime()

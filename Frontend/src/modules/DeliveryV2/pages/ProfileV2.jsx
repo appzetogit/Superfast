@@ -122,13 +122,13 @@ export const ProfileV2 = () => {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 font-poppins pb-24">
       {/* 0. Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-[100] safe-top">
+      <div className="bg-[#121212] border-b border-white/10 px-6 py-3 flex items-center justify-between sticky top-0 z-[100] safe-top backdrop-blur-2xl">
          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10">
                <User className="w-5 h-5" />
             </div>
             <div>
-               <h1 className="text-xl font-black text-gray-950 uppercase tracking-tighter">My Profile</h1>
+               <h1 className="text-xl font-black text-white uppercase tracking-tighter">My Profile</h1>
                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Account & Settings</p>
             </div>
          </div>
