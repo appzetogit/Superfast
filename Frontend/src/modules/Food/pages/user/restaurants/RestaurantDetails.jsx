@@ -1933,6 +1933,20 @@ function RestaurantDetailsContent() {
     return () => clearInterval(interval)
   }, [highlightOffers.length])
 
+  const isPureVegRestaurant = Boolean(
+    restaurant?.pureVegRestaurant === true ||
+    restaurant?.isVeg === true ||
+    restaurant?.veg === true ||
+    restaurant?.restaurantType === 'veg' ||
+    restaurant?.vegType === 'veg'
+  )
+
+  useEffect(() => {
+    if ((isPureVegRestaurant || vegMode) && filters.vegNonVeg === "non-veg") {
+      setFilters((prev) => ({ ...prev, vegNonVeg: null }))
+    }
+  }, [isPureVegRestaurant, vegMode, filters.vegNonVeg])
+
   // Show loading state
   if (loadingRestaurant) {
     return <RestaurantDetailSkeleton />
@@ -1988,19 +2002,6 @@ function RestaurantDetailsContent() {
   const availabilityStatus = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick))
   const isRestaurantOffline = !availabilityStatus.isOpen
   const shouldShowGrayscale = isOutOfService || isRestaurantOffline
-  const isPureVegRestaurant = Boolean(
-    restaurant?.pureVegRestaurant === true ||
-    restaurant?.isVeg === true ||
-    restaurant?.veg === true ||
-    restaurant?.restaurantType === 'veg' ||
-    restaurant?.vegType === 'veg'
-  )
-
-  useEffect(() => {
-    if ((isPureVegRestaurant || vegMode) && filters.vegNonVeg === "non-veg") {
-      setFilters((prev) => ({ ...prev, vegNonVeg: null }))
-    }
-  }, [isPureVegRestaurant, vegMode, filters.vegNonVeg])
 
   return (
     <AnimatedPage
