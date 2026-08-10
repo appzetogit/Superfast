@@ -295,6 +295,11 @@ const buildAddressFromPickupPoint = (point) => {
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
     }
+  }
+
+  return ""
+}
+
 const extractPhoneFromEntity = (...candidates) => {
   for (const item of candidates) {
     if (!item) continue
