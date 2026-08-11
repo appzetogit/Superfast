@@ -108,6 +108,8 @@ function LocationSelectorProvider({ children }) {
   )
 }
 
+import { getCachedSettings, updateThemeColor } from "@/modules/common/utils/businessSettings"
+
 export default function UserLayout({ children }) {
   const location = useLocation()
 
@@ -127,18 +129,16 @@ export default function UserLayout({ children }) {
   }
 
   useEffect(() => {
-    import('@/modules/common/utils/businessSettings').then(({ getCachedSettings, updateThemeColor }) => {
-      const settings = getCachedSettings();
-      if (settings && settings.moduleThemes) {
-        if (activeTab === 'food' && settings.moduleThemes.food?.themeColor) {
-          updateThemeColor(settings.moduleThemes.food.themeColor);
-        } else if (activeTab === 'quickCommerce' && settings.moduleThemes.quickCommerce?.themeColor) {
-          updateThemeColor(settings.moduleThemes.quickCommerce.themeColor);
-        } else if (settings.themeColor) {
-          updateThemeColor(settings.themeColor);
-        }
+    const settings = getCachedSettings();
+    if (settings && settings.moduleThemes) {
+      if (activeTab === 'food' && settings.moduleThemes.food?.themeColor) {
+        updateThemeColor(settings.moduleThemes.food.themeColor);
+      } else if (activeTab === 'quickCommerce' && settings.moduleThemes.quickCommerce?.themeColor) {
+        updateThemeColor(settings.moduleThemes.quickCommerce.themeColor);
+      } else if (settings.themeColor) {
+        updateThemeColor(settings.themeColor);
       }
-    });
+    }
   }, [activeTab]);
 
   // Note: Authentication checks and redirects are handled by ProtectedRoute components

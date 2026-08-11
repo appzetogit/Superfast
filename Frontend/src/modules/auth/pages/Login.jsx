@@ -26,6 +26,7 @@ export default function UnifiedOTPFastLogin() {
   const searchParams = new URLSearchParams(location.search)
   const referralCode = searchParams.get("ref") || ""
   const [keyboardInset, setKeyboardInset] = useState(0)
+  const [isInputFocused, setIsInputFocused] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return undefined
@@ -351,6 +352,8 @@ export default function UnifiedOTPFastLogin() {
                       setPhoneNumber(val);
                       sessionStorage.setItem("userLoginPhone", val);
                     }}
+                    onFocus={() => setIsInputFocused(true)}
+                    onBlur={() => setIsInputFocused(false)}
                     maxLength={10}
                     className="w-full bg-transparent pl-2 pr-2 py-1.5 text-sm text-gray-900 font-semibold outline-none placeholder:text-gray-400 placeholder:font-normal"
                     placeholder="Enter phone number"
@@ -493,7 +496,7 @@ export default function UnifiedOTPFastLogin() {
         </div>
 
         {/* Features Row */}
-        {step === 1 && (
+        {step === 1 && keyboardInset === 0 && !isInputFocused && (
         <div className="grid grid-cols-3 gap-1 shrink-0 mt-2">
           <div className="flex flex-col items-center text-center">
             <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
@@ -520,7 +523,7 @@ export default function UnifiedOTPFastLogin() {
         )}
       </div>
 
-      {step === 1 && (
+      {step === 1 && keyboardInset === 0 && !isInputFocused && (
         <div className="text-center space-y-1 shrink-0 z-20 pt-2 pb-3 bg-transparent">
           <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
           <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">

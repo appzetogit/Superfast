@@ -257,7 +257,19 @@ export const buildZoneRestaurantFilter = async (zoneIdRaw) => {
     const zoneDoc = await FoodZone.findOne({ _id: trimmedZoneId, isActive: true }).lean();
     const polygon = zoneToPolygon(zoneDoc);
     if (polygon) {
-        zoneClauses.push({ location: { $geoWithin: { $geometry: polygon } } });
+        return {
+            $and: [
+                { $or: zoneClauses },
+                {
+                    $or: [
+                        { location: { $geoWithin: { $geometry: polygon } } },
+                        { 'location.coordinates': { $exists: false } },
+                        { 'location.coordinates': null },
+                        { 'location.coordinates': [] }
+                    ]
+                }
+            ]
+        };
     }
 
     return { $or: zoneClauses };
@@ -1515,8 +1527,8 @@ export const listApprovedRestaurants = async (query = {}) => {
 
     const lat = toFiniteNumber(query.lat);
     const lng = toFiniteNumber(query.lng);
-    // Accept both radiusKm (preferred) and maxDistance (legacy frontend param).
-    const radiusKm = toFiniteNumber(query.radiusKm) ?? toFiniteNumber(query.maxDistance);
+    // Accept both radiusKm (preferred) and maxDistance (legacy frontend param), default to 25km if lat & lng provided
+    const radiusKm = toFiniteNumber(query.radiusKm) ?? toFiniteNumber(query.maxDistance) ?? (lat !== null && lng !== null ? 25 : null);
     const sortBy = parseSortBy(query.sortBy);
 
     const projection = {

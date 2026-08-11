@@ -112,10 +112,16 @@ export const useFoodHomeData = ({
           }));
         })(),
         publicGetOnce("/food/explore-icons/public"),
-        publicGetOnce(zoneId
-          ? `/food/landing/settings/public?zoneId=${encodeURIComponent(String(zoneId))}`
-          : "/food/landing/settings/public"
-        ),
+        (() => {
+          const params = new URLSearchParams();
+          if (zoneId) params.set("zoneId", String(zoneId));
+          if (location?.latitude && location?.longitude) {
+            params.set("lat", String(location.latitude));
+            params.set("lng", String(location.longitude));
+          }
+          const qs = params.toString();
+          return publicGetOnce(qs ? `/food/landing/settings/public?${qs}` : "/food/landing/settings/public");
+        })(),
       ]);
 
       if (cancelled) return;

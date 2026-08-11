@@ -272,6 +272,33 @@ export default function RestaurantNavbar({
     // Load initial status
     updateStatus()
 
+    // #76 Fix: Explicitly fetch outlet timings on mount to verify today's closed status
+    // This prevents stale localStorage from showing "Online" on closed/offline days
+    const checkTodayTiming = async () => {
+      try {
+        const res = await restaurantAPI.getOutletTimings()
+        const timings = res?.data?.data?.outletTimings || res?.data?.outletTimings || res?.data?.data || null
+        if (timings && typeof timings === 'object') {
+          const todayFull = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+          const dayData = timings[todayFull] ||
+            Object.entries(timings).find(([k]) => k.toLowerCase() === todayFull.toLowerCase())?.[1]
+          
+          if (dayData && dayData.isOpen === false) {
+            // Today is a closed day — force offline
+            setStatus("Offline")
+            try {
+              localStorage.setItem('restaurant_online_status', JSON.stringify(false))
+            } catch {}
+            window.dispatchEvent(new CustomEvent('restaurantStatusChanged', { detail: { isOnline: false } }))
+          }
+        }
+      } catch (e) {
+        // Non-critical: ignore timing fetch errors in navbar
+        debugError("Navbar: error checking today's timing:", e)
+      }
+    }
+    checkTodayTiming()
+
     // Listen for status changes from RestaurantStatus page
   const handleStatusChange = (event) => {
       const isOnline = event.detail?.isOnline || false

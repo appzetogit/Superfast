@@ -6,6 +6,7 @@ import { FoodDiningBanner } from '../models/diningBanner.model.js';
 import { FoodExploreIcon } from '../models/exploreIcon.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { buildZoneRestaurantFilter } from '../../restaurant/services/restaurant.service.js';
+import { haversineKm } from '../../orders/services/order.helpers.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { transformImageFields, toFullUrl } from '../../../../utils/urlHelper.js';
 
@@ -144,6 +145,18 @@ export const getPublicLandingSettingsController = async (req, res, next) => {
                 .sort({ rating: -1, totalRatings: -1 })
                 .limit(12)
                 .lean();
+        }
+
+        const userLat = Number(req.query.lat);
+        const userLng = Number(req.query.lng);
+        if (Number.isFinite(userLat) && Number.isFinite(userLng) && Array.isArray(recommendedRestaurants)) {
+            recommendedRestaurants = recommendedRestaurants.filter(r => {
+                const rLat = r.location?.coordinates?.[1] ?? r.location?.latitude;
+                const rLng = r.location?.coordinates?.[0] ?? r.location?.longitude;
+                if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) return true;
+                const d = haversineKm(rLat, rLng, userLat, userLng);
+                return d <= 25;
+            });
         }
 
         const payload = {

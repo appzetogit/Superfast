@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { ArrowLeft, Loader2, AlertCircle, Smartphone, Pencil } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Input } from "@food/components/ui/input"
@@ -607,6 +607,18 @@ export default function OTP() {
           )}
           </div>
         </div>
+      </div>
+
+      {/* Footer — T&C / Privacy / Support */}
+      <div className="shrink-0 text-center pt-3 pb-5 px-4">
+        <p className="text-slate-400 text-xs font-medium">
+          By continuing, you agree to our{" "}
+          <Link to="/profile/terms" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
+          ,{" "}
+          <Link to="/profile/privacy" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
+          {" "}and{" "}
+          <Link to="/profile/support" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
+        </p>
       </div>
     </AnimatedPage>
   )

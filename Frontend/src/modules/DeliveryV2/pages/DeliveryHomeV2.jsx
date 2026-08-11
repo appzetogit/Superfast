@@ -76,6 +76,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
     const [incomingOrder, setIncomingOrder] = useState(null);
     const [currentTab, setCurrentTab] = useState(tab);
+    const [codLimitReached, setCodLimitReached] = useState(false);
   
   // Track URL changes (Prop changes) to update sub-page content
   useEffect(() => {
@@ -236,8 +237,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   useEffect(() => {
     let interval;
     if (isSimMode && simPath.length > 1 && simIndex < simPath.length - 1) {
-      console.log('[SimAuto] Glide Active √');
-      
       interval = setInterval(() => {
         setSimProgress(prev => {
           const nextProgress = prev + 0.08; // 8% movement per tick
@@ -320,7 +319,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     // from the beginning of the simulated route.
     useEffect(() => {
       if (isSimMode) {
-        console.log('[SimAuto] Resetting simulation playhead...');
         setSimIndex(0);
         setSimProgress(0);
       }
@@ -648,6 +646,34 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     };
   }, [activeOrder, currentTab, isOnline, isSocketConnected, setActiveOrder]);
 
+  // Poll COD cash limit status — lightweight wallet check
+  useEffect(() => {
+    let cancelled = false;
+    const checkCodLimit = async () => {
+      try {
+        const walletRes = await deliveryAPI.getWallet();
+        let wallet = {};
+        if (walletRes?.data?.success && walletRes?.data?.data?.wallet) wallet = walletRes.data.data.wallet;
+        else if (walletRes?.data?.wallet) wallet = walletRes.data.wallet;
+        else if (walletRes?.data?.data) wallet = walletRes.data.data;
+        else if (walletRes?.data) wallet = walletRes.data;
+        const cashInHand = Number(wallet.cashInHand ?? wallet.cash_in_hand ?? 0);
+        const totalCashLimit = Number(wallet.totalCashLimit ?? 0);
+        const availableCashLimit = Number(wallet.availableCashLimit ?? 0);
+        if (!cancelled) {
+          setCodLimitReached(totalCashLimit > 0 && (availableCashLimit <= 0 || cashInHand >= totalCashLimit));
+        }
+      } catch (e) {
+        // silently ignore
+      }
+    };
+    if (isOnline) {
+      checkCodLimit();
+      const interval = setInterval(checkCodLimit, 60000);
+      return () => { cancelled = true; clearInterval(interval); };
+    }
+  }, [isOnline]);
+
   useEffect(() => {
     if (orderStatusUpdate) {
       if (orderStatusUpdate.status === 'cancelled') {
@@ -779,16 +805,41 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             </motion.div>
           )}
         </AnimatePresence>
+        {/* ─── COD LIMIT WARNING BANNER (inside header) ─── */}
+        {codLimitReached && (
+          <div
+            onClick={() => navigate('/food/delivery/pocket')}
+            className="mx-3 mt-1 mb-1 rounded-xl overflow-hidden cursor-pointer active:opacity-90 transition-all border border-orange-400/30"
+            style={{ background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)' }}
+          >
+            <div className="px-3 py-2.5 flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center border border-white/30">
+                  <AlertTriangle className="w-4 h-4 text-white" />
+                </div>
+                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-yellow-300 rounded-full border-2 border-red-600 animate-pulse" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[12px] font-black text-white uppercase tracking-wide leading-tight">COD Limit Reached!</p>
+                <p className="text-[10.5px] font-semibold text-white/85 leading-snug">Deposit cash to receive COD orders again</p>
+              </div>
+              <div className="shrink-0 bg-white text-red-600 px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wide shadow">
+                Deposit
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       )}
+
 
       {/* ─── 2. MAIN CONTENT ─── */}
       <div 
         ref={scrollContainerRef}
-        className={`flex-1 relative overflow-y-auto ${currentTab === 'feed' ? 'pt-[120px]' : 'pt-0'} no-scrollbar`}
+        className={`flex-1 relative overflow-y-auto ${currentTab === 'feed' ? (codLimitReached ? 'pt-[178px]' : 'pt-[120px]') : 'pt-0'} no-scrollbar`}
       >
          {currentTab === 'feed' ? (
-           <div className="absolute inset-0 top-[-120px]">
+           <div className={`absolute inset-0 ${codLimitReached ? 'top-[-178px]' : 'top-[-120px]'}`}>
                <LiveMap 
                  onMapLoad={(m) => mapRef.current = m}
                  onMapClick={handleMapClick}
@@ -803,7 +854,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
              
              {/* SIMULATION INDICATOR */}
              {isSimMode && (
-               <div className="absolute top-[180px] left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl">
+               <div className={`absolute ${codLimitReached ? 'top-[240px]' : 'top-[180px]'} left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl`}>
                   <div className="flex items-center gap-4">
                      <div className="w-8 h-8 bg-[var(--primary-theme)] rounded-lg flex items-center justify-center animate-pulse">
                         <Play className="w-4 h-4 text-white fill-current" />

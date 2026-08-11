@@ -9,10 +9,10 @@ const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
 // ─── Quick-spicy Food Module Initialization ───────────────────────────────────
 
+import { loadBusinessSettings } from '@common/utils/businessSettings'
+
 // Load global business settings (favicon, title) — non-critical
-import('@common/utils/businessSettings')
-  .then(({ loadBusinessSettings }) => loadBusinessSettings())
-  .catch(() => { /* Silently fail — settings load when admin authenticates */ })
+loadBusinessSettings().catch(() => { /* Silently fail — settings load when admin authenticates */ })
 
 // Apply saved theme
 const savedTheme = localStorage.getItem('appTheme') || 'light'

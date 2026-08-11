@@ -28,8 +28,11 @@ const CATEGORY_EMOJIS = {
   kebabs: "🍢",
 };
 
+import { useLocation } from "@food/hooks/useLocation";
+
 const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
   const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+  const { location } = useLocation();
   const [data, setData] = useState({ favouriteCategories: [], recommendedRestaurants: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState("all");
@@ -37,7 +40,13 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
-        const res = await preferencesAPI.getRecommendations(zoneId ? { zoneId } : {});
+        const params = {};
+        if (zoneId) params.zoneId = zoneId;
+        if (location?.latitude && location?.longitude) {
+          params.lat = location.latitude;
+          params.lng = location.longitude;
+        }
+        const res = await preferencesAPI.getRecommendations(params);
         setData(res?.data?.data || res?.data || { favouriteCategories: [], recommendedRestaurants: [] });
       } catch (err) {
         console.error("Failed to load recommendations:", err);
@@ -46,7 +55,7 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
       }
     };
     fetchRecommendations();
-  }, [zoneId]);
+  }, [zoneId, location?.latitude, location?.longitude]);
 
   if (isLoading) {
     return (

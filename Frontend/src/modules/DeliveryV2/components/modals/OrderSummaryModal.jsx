@@ -7,22 +7,24 @@ import { CheckCircle, ArrowRight, Wallet, History, Star } from 'lucide-react';
  * Post-delivery success screen.
  */
 export const OrderSummaryModal = ({ order, onDone }) => {
+  const delFee = Number(order?.pricing?.deliveryFee || order?.deliveryFee || order?.delivery_fee || 30);
   const backendEarning = Number(
-    order?.deliveryEarning ||
     order?.riderEarning ||
-    order?.earningAmount ||
     order?.earnings ||
-    order?.pricing?.deliveryFee ||
-    order?.deliveryFee ||
+    order?.deliveryEarning ||
+    order?.earningAmount ||
     0
   );
 
   const rawDist = Number(order?.distanceKm || order?.deliveryDistanceKm || order?.distance || order?.deliveryDistance || 0);
   const calculatedEarning = rawDist > 0
-    ? (rawDist <= 3 ? 25 : Math.round((25 + (rawDist - 3) * 8) * 100) / 100)
-    : 25;
+    ? (rawDist <= 3 ? Math.max(30, delFee) : Math.max(Math.round((30 + (rawDist - 3) * 8) * 100) / 100, delFee))
+    : Math.max(30, delFee);
 
-  const earnings = backendEarning > 0 ? backendEarning : calculatedEarning;
+  // Avoid old static 40 fallback, ensure dynamic distance payout (e.g. 30 for 2.5km)
+  const earnings = (backendEarning > 0 && backendEarning !== 40)
+    ? backendEarning
+    : Math.max(calculatedEarning, delFee, 30);
 
   return (
     <div className="fixed inset-0 z-[160] bg-green-500 overflow-y-auto">

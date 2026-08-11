@@ -11,6 +11,7 @@ import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
+import { isPointInPolygon } from '../../../../utils/geo.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../../../core/auth/errors.js';
 import { buildPaginationOptions, buildPaginatedResult } from '../../../../utils/helpers.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
@@ -1784,6 +1785,36 @@ export async function calculateOrder(userId, dto) {
   if (primaryRestaurant.isAcceptingOrders === false)
     throw new ValidationError("Restaurant is currently offline and not accepting orders");
 
+  // Geofencing & Distance Validation for Delivery Address
+  if (dto.address) {
+    const custLat = dto.address.latitude ?? dto.address.location?.coordinates?.[1] ?? dto.address.lat;
+    const custLng = dto.address.longitude ?? dto.address.location?.coordinates?.[0] ?? dto.address.lng;
+    if (Number.isFinite(custLat) && Number.isFinite(custLng)) {
+      const restLat = primaryRestaurant.location?.coordinates?.[1] ?? primaryRestaurant.location?.latitude ?? primaryRestaurant.latitude;
+      const restLng = primaryRestaurant.location?.coordinates?.[0] ?? primaryRestaurant.location?.longitude ?? primaryRestaurant.longitude;
+      if (Number.isFinite(restLat) && Number.isFinite(restLng)) {
+        const distKm = haversineKm(restLat, restLng, custLat, custLng);
+        if (distKm > 25) {
+          throw new ValidationError(
+            `Delivery location is too far (${Math.round(distKm)} km away) from ${primaryRestaurant.restaurantName || 'this restaurant'}. Maximum delivery radius is 25 km.`
+          );
+        }
+      }
+
+      if (primaryRestaurant.zoneId) {
+        const zone = await FoodZone.findById(primaryRestaurant.zoneId).lean();
+        if (zone && Array.isArray(zone.coordinates) && zone.coordinates.length >= 3) {
+          const isInsideZone = isPointInPolygon(custLat, custLng, zone.coordinates);
+          if (!isInsideZone) {
+            throw new ValidationError(
+              `Selected delivery address is outside ${primaryRestaurant.restaurantName || 'the restaurant'}'s active service zone.`
+            );
+          }
+        }
+      }
+    }
+  }
+
   const inactiveQuickSource = [...sourceMap.values()].find(
     (source) =>
       source.type === "quick" &&
@@ -2052,6 +2083,36 @@ export async function createOrder(userId, dto) {
       throw new ValidationError("Restaurant not accepting orders");
     if (primaryRestaurant.isAcceptingOrders === false)
       throw new ValidationError("Restaurant is currently offline and not accepting orders");
+
+    // Geofencing & Distance Validation for Delivery Address
+    if (dto.address) {
+      const custLat = dto.address.latitude ?? dto.address.location?.coordinates?.[1] ?? dto.address.lat;
+      const custLng = dto.address.longitude ?? dto.address.location?.coordinates?.[0] ?? dto.address.lng;
+      if (Number.isFinite(custLat) && Number.isFinite(custLng)) {
+        const restLat = primaryRestaurant.location?.coordinates?.[1] ?? primaryRestaurant.location?.latitude ?? primaryRestaurant.latitude;
+        const restLng = primaryRestaurant.location?.coordinates?.[0] ?? primaryRestaurant.location?.longitude ?? primaryRestaurant.longitude;
+        if (Number.isFinite(restLat) && Number.isFinite(restLng)) {
+          const distKm = haversineKm(restLat, restLng, custLat, custLng);
+          if (distKm > 25) {
+            throw new ValidationError(
+              `Delivery location is too far (${Math.round(distKm)} km away) from ${primaryRestaurant.restaurantName || 'this restaurant'}. Maximum delivery radius is 25 km.`
+            );
+          }
+        }
+
+        if (primaryRestaurant.zoneId) {
+          const zone = await FoodZone.findById(primaryRestaurant.zoneId).lean();
+          if (zone && Array.isArray(zone.coordinates) && zone.coordinates.length >= 3) {
+            const isInsideZone = isPointInPolygon(custLat, custLng, zone.coordinates);
+            if (!isInsideZone) {
+              throw new ValidationError(
+                `Selected delivery address is outside ${primaryRestaurant.restaurantName || 'the restaurant'}'s active service zone.`
+              );
+            }
+          }
+        }
+      }
+    }
   }
   const inactiveQuickSource = [...sourceMap.values()].find(
     (source) =>
@@ -2176,7 +2237,7 @@ export async function createOrder(userId, dto) {
 
   const baseRiderEarning =
     orderType === "food" || orderType === "quick" || orderType === "mixed"
-      ? await foodTransactionService.getRiderEarning(distanceKm)
+      ? await foodTransactionService.getRiderEarning(distanceKm, normalizedPricing.deliveryFee)
       : 0;
 
   const activeFeeSettings = await FoodFeeSettings.findOne({ isActive: true })

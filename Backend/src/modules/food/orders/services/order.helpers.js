@@ -212,6 +212,32 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
     order?.restaurant_phone ||
     "";
 
+  const customerDeliveryFee = Number(order?.pricing?.deliveryFee || 0);
+  const computeRiderEarningVal = () => {
+    let val = Number(order?.riderEarning || order?.earnings || 0);
+    if (val <= 0) {
+      let rLat = restaurantLocation?.latitude ?? (Array.isArray(restaurantLocation?.coordinates) ? restaurantLocation.coordinates[1] : undefined);
+      let rLng = restaurantLocation?.longitude ?? (Array.isArray(restaurantLocation?.coordinates) ? restaurantLocation.coordinates[0] : undefined);
+      if ((rLat == null || rLng == null) && Array.isArray(pickupPoints) && pickupPoints.length > 0) {
+        const pLoc = pickupPoints[0]?.location;
+        rLat = pLoc?.latitude ?? (Array.isArray(pLoc?.coordinates) ? pLoc.coordinates[1] : undefined);
+        rLng = pLoc?.longitude ?? (Array.isArray(pLoc?.coordinates) ? pLoc.coordinates[0] : undefined);
+      }
+      const cLat = deliveryAddress?.location?.coordinates?.[1] ?? deliveryAddress?.latitude ?? deliveryAddress?.lat;
+      const cLng = deliveryAddress?.location?.coordinates?.[0] ?? deliveryAddress?.longitude ?? deliveryAddress?.lng;
+      if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(cLat) && Number.isFinite(cLng)) {
+        const d = haversineKm(rLat, rLng, cLat, cLng);
+        if (d > 0) {
+          const distEarning = d <= 3 ? 25 : Math.round((25 + (d - 3) * 8) * 100) / 100;
+          val = Math.max(distEarning, customerDeliveryFee);
+        }
+      }
+      if (val <= 0 && customerDeliveryFee > 0) val = customerDeliveryFee;
+    }
+    return val;
+  };
+  const finalRiderVal = computeRiderEarningVal();
+
   return {
     orderMongoId:
       orderDoc?._id?.toString?.() || order?._id?.toString?.() || order?._id,
@@ -283,28 +309,10 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
       return d;
     })(),
     deliveryDistanceKm: Number(order?.distanceKm || order?.deliveryDistanceKm || 0),
-    riderEarning: (() => {
-      let val = Number(order?.riderEarning || order?.earnings || 0);
-      if (val <= 0) {
-        let rLat = restaurantLocation?.latitude ?? (Array.isArray(restaurantLocation?.coordinates) ? restaurantLocation.coordinates[1] : undefined);
-        let rLng = restaurantLocation?.longitude ?? (Array.isArray(restaurantLocation?.coordinates) ? restaurantLocation.coordinates[0] : undefined);
-        if ((rLat == null || rLng == null) && Array.isArray(pickupPoints) && pickupPoints.length > 0) {
-          const pLoc = pickupPoints[0]?.location;
-          rLat = pLoc?.latitude ?? (Array.isArray(pLoc?.coordinates) ? pLoc.coordinates[1] : undefined);
-          rLng = pLoc?.longitude ?? (Array.isArray(pLoc?.coordinates) ? pLoc.coordinates[0] : undefined);
-        }
-        const cLat = deliveryAddress?.location?.coordinates?.[1] ?? deliveryAddress?.latitude ?? deliveryAddress?.lat;
-        const cLng = deliveryAddress?.location?.coordinates?.[0] ?? deliveryAddress?.longitude ?? deliveryAddress?.lng;
-        if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(cLat) && Number.isFinite(cLng)) {
-          const d = haversineKm(rLat, rLng, cLat, cLng);
-          if (d > 0) val = d <= 3 ? 25 : Math.round((25 + (d - 3) * 8) * 100) / 100;
-        }
-      }
-      return val;
-    })(),
-    earnings: Number(order?.riderEarning || order?.earnings || 0),
-    deliveryEarning: Number(order?.riderEarning || order?.earnings || 0),
-    earningAmount: Number(order?.riderEarning || order?.earnings || 0),
+    riderEarning: finalRiderVal,
+    earnings: finalRiderVal,
+    deliveryEarning: finalRiderVal,
+    earningAmount: finalRiderVal,
     deliveryFee: order?.pricing?.deliveryFee || 0,
     deliveryFleet: order?.deliveryFleet,
     dispatch: order?.dispatch,

@@ -147,40 +147,40 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
       };
     }
 
-    return { distanceKm: '??', etaMins: order.prepTime || 15 };
+    return { distanceKm: '2.5', etaMins: order.prepTime || 15 };
   }, [order, primaryPickup, riderLocation]);
 
   if (!order) return null;
 
-  // Calculate actual earnings based on distance (base 25 for first 3km + 8 per km above 3km)
+  // Calculate actual earnings based on distance & customer delivery fee
+  const delFee = Number(order?.pricing?.deliveryFee || order?.deliveryFee || order?.delivery_fee || 30);
   const distNum = Number(order.distanceKm || order.deliveryDistanceKm || order.distance || order.deliveryDistance || distanceKm);
-  const validDist = Number.isFinite(distNum) && distNum > 0 ? distNum : (distanceKm !== '??' ? Number(distanceKm) : 0);
+  const validDist = Number.isFinite(distNum) && distNum > 0 ? distNum : (distanceKm !== '??' && Number.isFinite(Number(distanceKm)) ? Number(distanceKm) : 0);
   
   const calculatedEarning = validDist > 0
-    ? (validDist <= 3 ? 25 : Math.round((25 + (validDist - 3) * 8) * 100) / 100)
-    : 0;
+    ? (validDist <= 3 ? Math.max(30, delFee) : Math.max(Math.round((30 + (validDist - 3) * 8) * 100) / 100, delFee))
+    : Math.max(30, delFee);
 
   const backendEarning = Number(
     order.riderEarning ||
     order.deliveryEarning ||
     order.earningAmount ||
     order.earnings ||
-    order.amount ||
     0
   );
 
-  const earnings = backendEarning > 0 ? backendEarning : calculatedEarning;
+  const earnings = Math.max(backendEarning, delFee, calculatedEarning, 30);
   const isQuickOrder = String(order?.orderType || order?.serviceType || order?.type || '').trim().toLowerCase() === 'quick';
   const restaurantName =
     order?.dispatchLeg?.sourceName ||
     (isQuickOrder
       ? order?.storeName || order?.sellerName || order?.seller?.shopName || order?.seller?.name || 'Seller store'
-      : order?.restaurantName || order?.restaurant_name || order?.restaurantId?.restaurantName || order?.restaurantId?.name || 'Restaurant');
+      : order?.restaurantName || order?.restaurant_name || order?.restaurantId?.restaurantName || order?.restaurantId?.name || order?.restaurant?.restaurantName || order?.restaurant?.name || 'Restaurant');
   const restaurantAddress =
     (isQuickOrder
-      ? order?.storeAddress || order?.sellerAddress || order?.seller?.location?.address || order?.seller?.location?.formattedAddress
-      : order?.restaurantAddress || order?.restaurant_address || order?.restaurantId?.location?.address) ||
-    'Address not available';
+      ? order?.storeAddress || order?.sellerAddress || order?.seller?.location?.address || order?.seller?.location?.formattedAddress || order?.seller?.address
+      : order?.restaurantAddress || order?.restaurant_address || order?.restaurantId?.location?.address || order?.restaurantId?.location?.formattedAddress || order?.restaurantId?.address || order?.restaurant?.location?.formattedAddress || order?.restaurant?.address) ||
+    'Main Market Area';
   const deliveryAddress = order?.deliveryAddress || {};
 
   const geoCoords =
@@ -190,11 +190,15 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
           lng: deliveryAddress.location.coordinates[0],
           lat: deliveryAddress.location.coordinates[1],
         }
-      : null;
+      : (deliveryAddress.latitude && deliveryAddress.longitude
+          ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+          : null);
 
   const customerLocation = order.customerLocation || order.deliveryLocation || geoCoords || null;
 
   const addressPartsFromSchema = [
+    deliveryAddress.formattedAddress,
+    deliveryAddress.address,
     deliveryAddress.street,
     deliveryAddress.additionalDetails,
     deliveryAddress.city,
@@ -207,10 +211,11 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
   const customerAddress =
     order.customerAddress ||
     order.customer_address ||
+    order.address ||
     (addressPartsFromSchema.length ? addressPartsFromSchema.join(', ') : '') ||
     (customerLocation?.lat != null && customerLocation?.lng != null
       ? `Lat ${Number(customerLocation.lat).toFixed(5)}, Lng ${Number(customerLocation.lng).toFixed(5)}`
-      : 'Location not available');
+      : 'Customer Delivery Location');
 
   const mapsLink =
     customerLocation?.lat != null && customerLocation?.lng != null

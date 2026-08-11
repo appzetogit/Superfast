@@ -264,7 +264,10 @@ export default function DeliverySignIn() {
       </div>
 
       {/* Footer - Fixed at bottom */}
-      <div className="mt-auto shrink-0 z-30 bg-white pt-3 pb-4 border-t border-gray-100/80 shadow-sm">
+      <div 
+        className="shrink-0 z-30 bg-white pt-3 border-t border-gray-100/80 shadow-sm"
+        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: keyboardInset > 80 ? 'none' : 'block' }}
+      >
         <div className="text-center pb-2">
           <p className="text-slate-400 text-xs font-medium">
             By continuing, you agree to our <br />

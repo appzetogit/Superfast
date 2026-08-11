@@ -31,7 +31,7 @@ export default function AdminModuleSwitcher({ className = "" }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-sm",
+        "flex items-center gap-1 rounded-2xl border border-[#14573d] bg-[#093323] p-1 shadow-sm",
         className,
       )}
       aria-label="Switch admin module"
@@ -48,8 +48,8 @@ export default function AdminModuleSwitcher({ className = "" }) {
             className={cn(
               "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide transition-all",
               isActive
-                ? "bg-slate-950 text-white shadow-lg shadow-slate-900/15"
-                : "text-slate-500 hover:bg-white hover:text-slate-950",
+                ? "bg-[#00A669] text-white shadow-md shadow-emerald-950/40"
+                : "text-emerald-200/80 hover:bg-[#0c402c] hover:text-white",
             )}
             aria-current={isActive ? "page" : undefined}
           >

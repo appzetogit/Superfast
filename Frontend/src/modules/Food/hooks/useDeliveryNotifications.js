@@ -5,6 +5,7 @@ import { deliveryAPI } from '@food/api';
 import alertSound from '@food/assets/audio/alert.mp3';
 import originalSound from '@food/assets/audio/original.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
+import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 
 const shouldLogDeliverySocket = () => {
   if (typeof window === 'undefined') return import.meta.env.DEV;
@@ -1085,7 +1086,6 @@ export const useDeliveryNotifications = () => {
          activeOrderRef.current = null;
          setNewOrder(null);
          try {
-             const { useDeliveryStore } = await import('@/modules/DeliveryV2/store/useDeliveryStore');
              useDeliveryStore.getState().clearActiveOrder();
          } catch (err) {
              console.warn('Could not clear active order store directly:', err);
@@ -1125,10 +1125,9 @@ export const useDeliveryNotifications = () => {
     });
 
     // (admin_notification listener removed)
-    socketRef.current.on('admin_status_update', async (data) => {
+    socketRef.current.on('admin_status_update', (data) => {
       if (data && data.status) {
          try {
-             const { useDeliveryStore } = await import('@/modules/DeliveryV2/store/useDeliveryStore');
              const isOnline = data.status === 'online';
              useDeliveryStore.getState().setOnline(isOnline);
              

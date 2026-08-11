@@ -763,7 +763,10 @@ export default function DeliveryOTP() {
       </div>
 
       {/* Footer */}
-      <div className="mt-auto shrink-0 z-20 bg-white pt-3 pb-4 text-center border-t border-gray-100/80 shadow-sm">
+      <div 
+        className="shrink-0 z-20 bg-white pt-3 text-center border-t border-gray-100/80 shadow-sm"
+        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: keyboardInset > 80 ? 'none' : 'block' }}
+      >
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
             &copy; {new Date().getFullYear()} {companyName.toUpperCase()} DELIVERY PARTNER
           </p>

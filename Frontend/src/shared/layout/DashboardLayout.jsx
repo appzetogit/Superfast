@@ -165,7 +165,6 @@ const DashboardLayout = ({ children, navItems, title }) => {
                     const currentId = String(newOrderAlertRef.current.orderId);
                     const stillPending = pendingOrders.some(o => String(o.orderId) === currentId);
                     if (!stillPending) {
-                        console.log(`[DashboardLayout] Clearing stale order modal: #${currentId} is no longer pending.`);
                         setNewOrderAlert(null);
                         newOrderAlertRef.current = null;
                     }
