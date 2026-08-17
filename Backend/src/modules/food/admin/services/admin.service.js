@@ -3644,6 +3644,16 @@ export async function approveRestaurant(id) {
 
     if (updated) {
         try {
+            const { invalidateCache } = await import('../../../../middleware/cache.js');
+            await invalidateCache('restaurants:*');
+            await invalidateCache('restaurant_detail:*');
+            const { invalidateLandingSettingsCache } = await import('../../landing/controllers/publicLanding.controller.js');
+            invalidateLandingSettingsCache();
+        } catch (e) {
+            console.error('Failed to invalidate cache after restaurant approval:', e);
+        }
+
+        try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated._id }],

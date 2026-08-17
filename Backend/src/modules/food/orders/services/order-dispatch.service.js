@@ -68,14 +68,11 @@ async function listNearbyOnlineDeliveryPartners(
     .lean();
 
   const scored = [];
-  const allowedStatuses =
-    process.env.NODE_ENV === "production"
-      ? ["approved"]
-      : ["approved", "pending"];
+  const allowedStatuses = ["approved"];
   const STALE_GPS_MS = 10 * 60 * 1000;
 
   for (const p of allOnline) {
-    if (!allowedStatuses.includes(p.status)) continue;
+    if (p.status !== "approved") continue;
 
     if (isCodOrder) {
       const ok = await isPartnerEligibleForCodOrder(p._id);
@@ -101,7 +98,7 @@ async function listNearbyOnlineDeliveryPartners(
 
   if (picked.length === 0) {
     const anyOnline = await FoodDeliveryPartner.find({
-      status: { $in: allowedStatuses },
+      status: "approved",
       availabilityStatus: "online",
     })
       .select("_id status name")
@@ -118,10 +115,7 @@ async function listNearbyOnlineDeliveryPartners(
     };
   }
 
-  const final =
-    config.env === "production"
-      ? picked.filter((p) => p.status === "approved")
-      : picked;
+  const final = picked.filter((p) => p.status === "approved");
 
   return { source, partners: final };
 }
@@ -148,6 +142,7 @@ export async function updateDispatchSettings(dispatchMode, adminId) {
 export async function tryAutoAssign(orderId, options = {}) {
   const attempt = options.attempt || 1;
   const lockTimeout = 35000; // 35 seconds lock interval
+  const lockCutoff = new Date(Date.now() - lockTimeout);
 
   const order = await FoodOrder.findOneAndUpdate(
     {
@@ -157,10 +152,14 @@ export async function tryAutoAssign(orderId, options = {}) {
         {
           "dispatch.status": "assigned",
           "dispatch.acceptedAt": { $exists: false },
-          "dispatch.assignedAt": { $lt: new Date(Date.now() - lockTimeout) },
+          "dispatch.assignedAt": { $lt: lockCutoff },
         },
       ],
-      "dispatch.dispatchingAt": { $exists: false },
+      $or: [
+        { "dispatch.dispatchingAt": { $exists: false } },
+        { "dispatch.dispatchingAt": null },
+        { "dispatch.dispatchingAt": { $lt: lockCutoff } }
+      ]
     },
     {
       $set: { "dispatch.dispatchingAt": new Date() },

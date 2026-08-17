@@ -433,11 +433,6 @@ export default function SearchResults() {
                       const subImageItem = subItems.find((item) => item?.image)
                       if (subImageItem?.image) return subImageItem.image
                     }
-
-                    if (restaurant?.image) return restaurant.image
-                    if (Array.isArray(restaurant?.images) && restaurant.images.length > 0) {
-                      return restaurant.images[0]
-                    }
                   }
                 }
                 return ""

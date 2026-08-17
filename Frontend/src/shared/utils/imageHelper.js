@@ -8,7 +8,7 @@ import foodPlaceholder from '@/assets/food-placeholder.jpg';
  * @param {string} path - The relative path or absolute URL of the image.
  * @returns {string} - The fully resolved and optimized image URL.
  */
-const DEFAULT_IMAGE_PLACEHOLDER = foodPlaceholder;
+const DEFAULT_IMAGE_PLACEHOLDER = '';
 
 export const getImageUrl = (path) => {
   if (!path) return DEFAULT_IMAGE_PLACEHOLDER;

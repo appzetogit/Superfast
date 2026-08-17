@@ -54,7 +54,7 @@ export default function Categories() {
             id: String(cat?.id || cat?._id || cat?.slug || idx),
             name: cat?.name || "",
             slug: cat?.slug || String(cat?.name || "").toLowerCase().replace(/\s+/g, "-"),
-            image: normalizeImageUrl(cat?.image || cat?.imageUrl) || foodImages[idx % foodImages.length],
+            image: normalizeImageUrl(cat?.image || cat?.imageUrl) || "",
             type: cat?.type || "",
           }));
           setCategories(transformed);

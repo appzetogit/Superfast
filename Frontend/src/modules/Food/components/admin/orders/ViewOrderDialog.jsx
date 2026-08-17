@@ -50,6 +50,22 @@ const ADMIN_STATUS_OPTIONS = [
 ];
 
 
+const resolveCanonicalRawStatus = (orderObj) => {
+  if (!orderObj) return '';
+  const raw = orderObj.rawOrderStatus || orderObj.status || orderObj.orderStatus || '';
+  const str = String(raw).trim().toLowerCase();
+  
+  if (['ready_for_pickup', 'ready', 'handover'].includes(str)) return 'ready_for_pickup';
+  if (['preparing', 'processing'].includes(str)) return 'preparing';
+  if (['placed', 'created', 'pending', 'confirmed'].includes(str)) return 'placed';
+  if (['picked_up', 'pickedup', 'out_for_delivery', 'food on the way', 'out for delivery'].includes(str)) return 'picked_up';
+  if (['delivered'].includes(str)) return 'delivered';
+  if (['cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(str)) return str;
+  if (['cancelled', 'canceled'].includes(str)) return 'cancelled_by_admin';
+
+  return str;
+};
+
 export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusUpdated }) {
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [availableDrivers, setAvailableDrivers] = useState([]);
@@ -87,12 +103,14 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
     return () => clearInterval(timer);
   }, [order?.reassignmentStatus, order?.reassignmentHistory]);
 
-  // Sync local status whenever a new order is shown
+  // Sync local status whenever a new order is shown or updated
   useEffect(() => {
-    if (order?.rawOrderStatus) {
-      setLocalRawStatus(order.rawOrderStatus);
+    if (order) {
+      setLocalRawStatus(resolveCanonicalRawStatus(order));
+    } else {
+      setLocalRawStatus(null);
     }
-  }, [order?.rawOrderStatus, order?.id]);
+  }, [order?.id, order?._id, order?.rawOrderStatus, order?.orderStatus, order?.status]);
 
   const handleStatusChange = async (newRawStatus) => {
     const orderId = order?.id || order?._id;
@@ -283,7 +301,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                   </p>
                   <div className="relative">
                     {(() => {
-                      const currentStatus = localRawStatus || order.rawOrderStatus || '';
+                      const currentStatus = localRawStatus || resolveCanonicalRawStatus(order);
                       const isDisabled = isUpdatingStatus || ['delivered', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(currentStatus);
                       
                       // Find index of current status to disable moving backwards

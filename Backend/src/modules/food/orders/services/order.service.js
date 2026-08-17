@@ -1412,8 +1412,8 @@ async function listNearbyOnlineDeliveryPartners(
     .select("_id lastLat lastLng")
     .lean();
 
-  console.log(
-    `[DEBUG] listNearby: Restaurant [${rLat}, ${rLng}] found ${partners.length} online approved partners with GPS`,
+  logger.info(
+    `listNearby: Restaurant [${rLat}, ${rLng}] found ${partners.length} online approved partners with GPS`,
   );
 
   const scored = [];
@@ -1659,10 +1659,10 @@ export async function processScheduledOrderNotification(orderMongoId) {
 export async function getDispatchSettings() {
   let doc = await FoodSettings.findOne({ key: "dispatch" }).lean();
   if (!doc) {
-    await FoodSettings.create({ key: "dispatch", dispatchMode: "manual" });
+    await FoodSettings.create({ key: "dispatch", dispatchMode: "auto" });
     doc = await FoodSettings.findOne({ key: "dispatch" }).lean();
   }
-  return { dispatchMode: doc?.dispatchMode || "manual" };
+  return { dispatchMode: doc?.dispatchMode || "auto" };
 }
 
 export async function updateDispatchSettings(dispatchMode, adminId) {
@@ -3233,8 +3233,8 @@ export async function updateOrderStatusRestaurant(
   try {
     const io = getIO();
     if (io) {
-      console.log(
-        `[DEBUG] Emitting status update to restaurant ${restaurantId} and user ${order.userId}: ${orderStatus}`,
+      logger.info(
+        `Emitting status update to restaurant ${restaurantId} and user ${order.userId}: ${orderStatus}`,
       );
       const payload = {
         orderMongoId: order._id?.toString?.(),
@@ -3384,7 +3384,7 @@ export async function updateOrderStatusRestaurant(
       );
     }
   } catch (err) {
-    console.error("[DEBUG] Error emitting status update to restaurant:", err);
+    logger.error(`Error emitting status update to restaurant: ${err.message}`);
   }
 
   // Real-time: delivery request / ready notifications.
@@ -3394,23 +3394,19 @@ export async function updateOrderStatusRestaurant(
       // On accept (confirmed or preparing) -> request delivery partners.
       const isInitialDispatchTrigger = ((String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && (String(from) !== "preparing" && String(from) !== "confirmed"));
       if (isInitialDispatchTrigger) {
-        console.log(
-          `[DEBUG] Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
+        logger.info(
+          `Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
         );
-        // If auto dispatch, try assign now.
-        if (
-          order.dispatch?.status === "unassigned" &&
-          order.dispatch?.modeAtCreation === "auto"
-        ) {
+        // If unassigned, try auto assign now.
+        if (order.dispatch?.status === "unassigned") {
           try {
-            console.log(`[DEBUG] Auto-assigning order ${order.orderId}`);
+            logger.info(`Auto-assigning order ${order.orderId}`);
             await tryAutoAssign(order._id);
             // Refresh order state from DB after auto-assignment
             order = await FoodOrder.findById(order._id);
           } catch (err) {
-            console.error(
-              `[DEBUG] Auto-assign failed for order ${order.orderId}:`,
-              err,
+            logger.error(
+              `Auto-assign failed for order ${order.orderId}: ${err.message}`,
             );
           }
         }
@@ -3425,12 +3421,12 @@ export async function updateOrderStatusRestaurant(
           order.dispatch?.deliveryPartnerId?.toString?.() ||
           order.dispatch?.deliveryPartnerId;
         if (order.dispatch?.status === "accepted") {
-          console.log(
-            `[DEBUG] Order ${order.orderId} is already accepted. Skipping dispatch notifications.`,
+          logger.info(
+            `Order ${order.orderId} is already accepted. Skipping dispatch notifications.`,
           );
         } else if (assignedId && order.dispatch?.status === "assigned") {
-          console.log(
-            `[DEBUG] Order ${order.orderId} status is 'assigned'. Notifying ${assignedId} only.`,
+          logger.info(
+            `Order ${order.orderId} status is 'assigned'. Notifying ${assignedId} only.`,
           );
           io.to(rooms.delivery(assignedId)).emit("new_order", payload);
           io.to(rooms.delivery(assignedId)).emit("play_notification_sound", {
@@ -3455,21 +3451,15 @@ export async function updateOrderStatusRestaurant(
             await notifySplitDispatchOffers(order, { restaurantDoc: restaurant });
           } else {
             // Broadcast to nearby online partners so someone can accept/claim.
-            console.log(
-              `[DEBUG] Searching for nearby partners for order ${order.orderId}`,
+            logger.info(
+              `Searching for nearby partners for order ${order.orderId}`,
             );
             const { partners } = await listNearbyOnlineDeliveryPartners(
               order.restaurantId,
               { maxKm: 15, limit: 25 },
             );
-            console.log(
-              `[DEBUG] Found ${partners.length} partners: ${JSON.stringify(partners)}`,
-            );
             for (const p of partners) {
               const targetRoom = rooms.delivery(p.partnerId);
-              console.log(
-                `[DEBUG] Emitting new_order_available and new_order to room: ${targetRoom}`,
-              );
               io.to(targetRoom).emit("new_order", {
                 ...payload,
                 pickupDistanceKm: p.distanceKm,
@@ -3508,20 +3498,20 @@ export async function updateOrderStatusRestaurant(
 
       // When ready for pickup -> ping assigned delivery partner.
       if (String(orderStatus) === 'ready_for_pickup' && String(from) !== 'ready_for_pickup') {
-        console.log(`[DEBUG] Order ${order.orderId} changed to 'ready_for_pickup'.`);
+        logger.info(`Order ${order.orderId} changed to 'ready_for_pickup'.`);
         const assignedId = order.dispatch?.deliveryPartnerId?.toString?.() || order.dispatch?.deliveryPartnerId;
         if (assignedId) {
-          console.log(`[DEBUG] Notifying assigned partner ${assignedId} that order is ready.`);
+          logger.info(`Notifying assigned partner ${assignedId} that order is ready.`);
           const restaurant = await FoodRestaurant.findById(order.restaurantId).select('restaurantName location addressLine1 area city state').lean();
           const payload = buildDeliverySocketPayload(order, restaurant);
           io.to(rooms.delivery(assignedId)).emit('order_ready', payload);
         } else {
-          console.log(`[DEBUG] Order ${order.orderId} is ready but no partner assigned.`);
+          logger.info(`Order ${order.orderId} is ready but no partner assigned.`);
         }
       }
     }
   } catch (err) {
-    console.error('[DEBUG] Error in delivery notification logic:', err);
+    logger.error(`Error in delivery notification logic: ${err.message}`);
   }
 
   enqueueOrderEvent('restaurant_order_status_updated', {
@@ -4175,7 +4165,7 @@ export async function confirmReachedPickupDelivery(orderId, deliveryPartnerId) {
       }
     );
   } catch (err) {
-    console.error("[DEBUG] Error notifying restaurant about rider arrival:", err);
+    logger.error(`Error notifying restaurant about rider arrival: ${err.message}`);
   }
 
   enqueueOrderEvent('reached_pickup', {
@@ -5185,7 +5175,10 @@ export async function resyncState(userId, role) {
           $elemMatch: {
             partnerId: new mongoose.Types.ObjectId(userId),
             action: "offered",
-            offeredAt: { $gte: cutoff }
+            $or: [
+              { at: { $gte: cutoff } },
+              { offeredAt: { $gte: cutoff } }
+            ]
           }
         }
       }).lean();
@@ -5834,12 +5827,12 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
   // 4. Driver Dispatch & Notifications
   const isInitialDispatchTrigger = ((String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && (String(from) !== "preparing" && String(from) !== "confirmed"));
   if (isInitialDispatchTrigger) {
-    console.log(`[DEBUG] Order ${order.orderId} status changed to '${orderStatus}' by admin. Triggering delivery dispatch.`);
+    logger.info(`Order ${order.orderId} status changed to '${orderStatus}' by admin. Triggering delivery dispatch.`);
 
-    // If auto dispatch, try assign now.
-    if (order.dispatch?.status === "unassigned" && order.dispatch?.modeAtCreation === "auto") {
+    // If unassigned, try assign now.
+    if (order.dispatch?.status === "unassigned") {
       try {
-        console.log(`[DEBUG] Auto-assigning order ${order.orderId}`);
+        logger.info(`Auto-assigning order ${order.orderId}`);
         await tryAutoAssign(order._id);
         // Refresh order state from DB after auto-assignment
         order = await FoodOrder.findById(order._id);
@@ -5859,9 +5852,9 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
         order.dispatch?.deliveryPartnerId?.toString?.() ||
         order.dispatch?.deliveryPartnerId;
       if (order.dispatch?.status === "accepted") {
-        console.log(`[DEBUG] Order ${order.orderId} is already accepted. Skipping dispatch notifications.`);
+        logger.info(`Order ${order.orderId} is already accepted. Skipping dispatch notifications.`);
       } else if (assignedId && order.dispatch?.status === "assigned") {
-        console.log(`[DEBUG] Order ${order.orderId} status is 'assigned'. Notifying ${assignedId} only.`);
+        logger.info(`Order ${order.orderId} status is 'assigned'. Notifying ${assignedId} only.`);
         io?.to(rooms.delivery(assignedId)).emit("new_order", payload);
         io?.to(rooms.delivery(assignedId)).emit("play_notification_sound", {
           orderId: payload.orderId,
@@ -5885,12 +5878,11 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
           await notifySplitDispatchOffers(order, { restaurantDoc: restaurant });
         } else {
           // Broadcast to nearby online partners so someone can accept/claim.
-          console.log(`[DEBUG] Searching for nearby partners for order ${order.orderId}`);
+          logger.info(`Searching for nearby partners for order ${order.orderId}`);
           const { partners } = await listNearbyOnlineDeliveryPartners(
             order.restaurantId,
             { maxKm: 15, limit: 25 },
           );
-          console.log(`[DEBUG] Found ${partners.length} partners.`);
           for (const p of partners) {
             const targetRoom = rooms.delivery(p.partnerId);
             io?.to(targetRoom).emit("new_order", {

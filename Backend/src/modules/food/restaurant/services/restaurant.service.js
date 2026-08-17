@@ -258,16 +258,9 @@ export const buildZoneRestaurantFilter = async (zoneIdRaw) => {
     const polygon = zoneToPolygon(zoneDoc);
     if (polygon) {
         return {
-            $and: [
-                { $or: zoneClauses },
-                {
-                    $or: [
-                        { location: { $geoWithin: { $geometry: polygon } } },
-                        { 'location.coordinates': { $exists: false } },
-                        { 'location.coordinates': null },
-                        { 'location.coordinates': [] }
-                    ]
-                }
+            $or: [
+                ...zoneClauses,
+                { location: { $geoWithin: { $geometry: polygon } } }
             ]
         };
     }
@@ -1606,7 +1599,8 @@ export const listApprovedRestaurants = async (query = {}) => {
         }
     }
 
-    const foodItemsLookupFilter = [
+    const requireFoodItems = query.requireFoodItems === 'true';
+    const foodItemsLookupFilter = (activeZoneId || !requireFoodItems) ? [] : [
         {
             $lookup: {
                 from: 'food_items',

@@ -21,7 +21,7 @@ export const useCategoryData = (zoneId) => {
           ...cats.map((cat) => ({
             id: cat.slug || cat._id,
             name: cat.name,
-            image: cat.image || foodImages[0],
+            image: cat.image || cat.imageUrl || "",
             slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
           }))
         ];
