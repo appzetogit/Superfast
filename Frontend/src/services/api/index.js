@@ -2416,9 +2416,7 @@ export const uploadAPI = {
       formData.append("folder", options.folder);
     }
 
-    return apiClient.post("/uploads/image", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    return apiClient.post("/uploads/image", formData);
   },
 };
 /** Order API (user app – Bearer USER token). Minimal calls: single create/verify, list/details cached by caller. */

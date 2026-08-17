@@ -52,6 +52,18 @@ axiosInstance.interceptors.request.use(
             token = localStorage.getItem('token');
         }
 
+        // If sending FormData, let the browser set proper multipart boundary.
+        if (config.data instanceof FormData) {
+            if (config.headers) {
+                if (typeof config.headers.delete === 'function') {
+                    config.headers.delete('Content-Type');
+                    config.headers.delete('content-type');
+                }
+                delete config.headers['Content-Type'];
+                delete config.headers['content-type'];
+            }
+        }
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }

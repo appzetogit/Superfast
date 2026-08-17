@@ -201,9 +201,7 @@ export const adminApi = {
   updateSettings: async (data) => {
     const formData = new FormData();
     formData.append('data', JSON.stringify(buildSettingsPayload(data)));
-    const response = await axiosInstance.patch('/food/admin/business-settings', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await axiosInstance.patch('/food/admin/business-settings', formData);
     return {
       ...response,
       data: {
@@ -219,9 +217,7 @@ export const adminApi = {
     const uploadData = new FormData();
     uploadData.append('file', file);
     uploadData.append('folder', `quick-commerce/settings/${type}`);
-    const response = await axiosInstance.post('/uploads/image', uploadData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await axiosInstance.post('/uploads/image', uploadData);
     return {
       ...response,
       data: {
@@ -277,13 +273,9 @@ export const adminApi = {
     };
   },
 
-  createCategory: (formData) => axiosInstance.post('/quick-commerce/admin/categories', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  createCategory: (formData) => axiosInstance.post('/quick-commerce/admin/categories', formData),
 
-  updateCategory: (id, formData) => axiosInstance.put(`/quick-commerce/admin/categories/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  updateCategory: (id, formData) => axiosInstance.put(`/quick-commerce/admin/categories/${id}`, formData),
 
   deleteCategory: (id) => axiosInstance.delete(`/quick-commerce/admin/categories/${id}`),
 
@@ -303,13 +295,9 @@ export const adminApi = {
     };
   },
 
-  createProduct: (formData) => axiosInstance.post('/quick-commerce/admin/products', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  createProduct: (formData) => axiosInstance.post('/quick-commerce/admin/products', formData),
 
-  updateProduct: (id, formData) => axiosInstance.put(`/quick-commerce/admin/products/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  updateProduct: (id, formData) => axiosInstance.put(`/quick-commerce/admin/products/${id}`, formData),
 
   deleteProduct: (id) => axiosInstance.delete(`/quick-commerce/admin/products/${id}`),
 

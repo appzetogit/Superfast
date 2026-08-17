@@ -19,7 +19,7 @@ const resolveSrvUri = async (uri) => {
 
         const [, username, password, host, databasePath = '/', queryStr = ''] = match;
         const database = databasePath.replace('/', '');
-        
+
         let srvRecords = [];
         let txtRecords = [];
 
@@ -44,7 +44,7 @@ const resolveSrvUri = async (uri) => {
             } finally {
                 try {
                     dns.setServers(originalServers);
-                } catch (e) {}
+                } catch (e) { }
             }
         }
 
@@ -53,7 +53,7 @@ const resolveSrvUri = async (uri) => {
         }
 
         const targets = srvRecords.map(r => `${r.name}:${r.port}`).join(',');
-        
+
         let txtOptions = {};
         if (txtRecords && txtRecords.length > 0) {
             const txtStr = txtRecords.flat().join('&');

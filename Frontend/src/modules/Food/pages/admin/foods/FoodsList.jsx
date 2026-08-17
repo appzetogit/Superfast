@@ -267,7 +267,7 @@ export default function FoodsList() {
       preparationTime: String(food.preparationTime || ""),
     })
     setSelectedImageFile(null)
-    setImagePreviewUrl(String(food.image || ""))
+    setImagePreviewUrl(food.image ? getImageUrl(food.image) : "")
     setCategorySearch("")
     setCategoryPopoverOpen(false)
     setShowFoodFormModal(true)
@@ -899,9 +899,10 @@ export default function FoodsList() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Image Preview</label>
                   <div className="w-28 h-28 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
                     <img
-                      src={imagePreviewUrl}
+                      src={getImageUrl(imagePreviewUrl)}
                       alt="Food preview"
                       className="w-full h-full object-cover"
+                      onError={(e) => handleImageError(e, 'food')}
                     />
                   </div>
                 </div>
