@@ -142,8 +142,8 @@ const OptimizedImage = React.memo(({
 
   const fallbackSvg = getFallbackImage()
 
-  // If src is empty, render the fallback SVG placeholder
-  const finalSrc = !src || src === '' ? fallbackSvg : (hasError ? fallbackSvg : resolvedSrc)
+  // If src is empty, render the fallback SVG/placeholder or null
+  const finalSrc = (!src || src === '') ? (fallbackSvg || null) : (hasError ? (fallbackSvg || null) : (resolvedSrc || null))
 
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
@@ -183,7 +183,7 @@ const OptimizedImage = React.memo(({
 
           {/* Fallback to original format */}
           <motion.img
-            src={finalSrc}
+            src={finalSrc || null}
             srcSet={!hasError ? srcSet : undefined}
             sizes={supportsOptimization(finalSrc) ? sizes : undefined}
             alt={alt || 'Image'}

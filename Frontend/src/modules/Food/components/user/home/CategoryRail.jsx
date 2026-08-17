@@ -5,6 +5,41 @@ import { CategoryChipRowSkeleton } from "@food/components/ui/loading-skeletons";
 import OptimizedImage from "@food/components/OptimizedImage";
 import foodPattern from "@food/assets/food_pattern_background.png";
 
+const categoryEmojiMap = {
+  pizza: "🍕",
+  burger: "🍔",
+  "south indian": "🥞",
+  sandwich: "🥪",
+  biryani: "🍲",
+  starter: "🍗",
+  starters: "🍗",
+  potato: "🍟",
+  "indian pasta": "🍝",
+  pasta: "🍝",
+  chinese: "🥢",
+  dessert: "🍰",
+  desserts: "🍰",
+  beverages: "🧃",
+  drinks: "🥤",
+  cake: "🎂",
+  bakery: "🥐",
+  thali: "🍱",
+  rolls: "🌯",
+  noodle: "🍜",
+  noodles: "🍜",
+  momos: "🥟",
+  icecream: "🍦",
+  "ice cream": "🍦",
+};
+
+const getCategoryEmoji = (name = "") => {
+  const key = String(name).toLowerCase().trim();
+  for (const [k, emoji] of Object.entries(categoryEmojiMap)) {
+    if (key.includes(k)) return emoji;
+  }
+  return "🍽️";
+};
+
 const CategoryRail = memo(({ 
   displayCategories, 
   showCategorySkeleton,
@@ -33,25 +68,36 @@ const CategoryRail = memo(({
           <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Offers</span>
         </div>
 
-        {!showCategorySkeleton && displayCategories.map((category, index) => (
-          <Link
-            key={category.id || index}
-            to={`/user/category/${category.slug || category.name.toLowerCase().replace(/\s+/g, "-")}`}
-            className="flex-shrink-0 flex flex-col items-center gap-2 group"
-          >
-            <div className="w-[72px] h-[72px] sm:w-[84px] sm:h-[84px] rounded-full overflow-hidden shadow-sm border border-gray-100 transition-transform group-hover:scale-110">
-              <OptimizedImage
-                src={category.image}
-                alt={category.name}
-                className="w-full h-full object-cover"
-                backendOrigin={backendOrigin}
-              />
-            </div>
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 truncate w-full text-center">
-              {category.name}
-            </span>
-          </Link>
-        ))}
+        {!showCategorySkeleton && displayCategories.map((category, index) => {
+          const hasImage = category.image && typeof category.image === 'string' && category.image.trim() !== '';
+          const emoji = getCategoryEmoji(category.name);
+
+          return (
+            <Link
+              key={category.id || index}
+              to={`/user/category/${category.slug || category.name.toLowerCase().replace(/\s+/g, "-")}`}
+              className="flex-shrink-0 flex flex-col items-center gap-2 group"
+            >
+              <div className="w-[72px] h-[72px] sm:w-[84px] sm:h-[84px] rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 transition-transform group-hover:scale-110 flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950/40 dark:to-orange-900/40">
+                {hasImage ? (
+                  <OptimizedImage
+                    src={category.image}
+                    alt={category.name}
+                    className="w-full h-full object-cover"
+                    backendOrigin={backendOrigin}
+                  />
+                ) : (
+                  <span className="text-3xl sm:text-4xl select-none transform group-hover:scale-110 transition-transform">
+                    {emoji}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 truncate w-full text-center max-w-[84px]">
+                {category.name}
+              </span>
+            </Link>
+          );
+        })}
 
         {showCategorySkeleton && <CategoryChipRowSkeleton className="flex-shrink-0" />}
       </div>

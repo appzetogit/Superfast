@@ -3306,12 +3306,15 @@ function RestaurantDetailsContent() {
                   </div>
 
                   {/* Image Section */}
-                  <div className="relative w-full h-64 overflow-hidden rounded-t-3xl">
+                  <div className="relative w-full h-64 overflow-hidden rounded-t-3xl bg-gray-100 dark:bg-gray-800">
                     {selectedItem.image ? (
                       <img
                         src={selectedItem.image}
-                        alt={selectedItem.name}
+                        alt=""
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
@@ -3415,7 +3418,7 @@ function RestaurantDetailsContent() {
                   </div>
 
                   {/* Bottom Action Bar */}
-                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-4 bg-white dark:bg-[#1a1a1a]">
+                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 pt-3 pb-8 md:pb-4 bg-white dark:bg-[#1a1a1a] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-4">
                       {/* Quantity Selector */}
                       <div className={`flex items-center gap-3 border-2 rounded-lg px-3 h-[44px] bg-white dark:bg-[#2a2a2a] ${shouldShowGrayscale

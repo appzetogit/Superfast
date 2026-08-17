@@ -141,9 +141,7 @@ const startServer = async () => {
                                 if (pid && pid !== process.pid.toString()) {
                                     execSync(`taskkill /F /PID ${pid}`);
                                     logger.info(`Successfully killed process ${pid} on port ${config.port}. Restarting...`);
-                                    // Give it a moment then restart or exit and let nodemon handle it
-                                    setTimeout(() => process.exit(0), 1000);
-                                    return;
+                                    process.exit(0);
                                 }
                             }
                         }

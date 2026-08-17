@@ -32,6 +32,41 @@ const PRIMARY_FILTERS = [
   { id: "distance-under-2km", label: "Under 2km", icon: MapPin },
 ];
 
+const categoryEmojiMap = {
+  pizza: "🍕",
+  burger: "🍔",
+  "south indian": "🥞",
+  sandwich: "🥪",
+  biryani: "🍲",
+  starter: "🍗",
+  starters: "🍗",
+  potato: "🍟",
+  "indian pasta": "🍝",
+  pasta: "🍝",
+  chinese: "🥢",
+  dessert: "🍰",
+  desserts: "🍰",
+  beverages: "🧃",
+  drinks: "🥤",
+  cake: "🎂",
+  bakery: "🥐",
+  thali: "🍱",
+  rolls: "🌯",
+  noodle: "🍜",
+  noodles: "🍜",
+  momos: "🥟",
+  icecream: "🍦",
+  "ice cream": "🍦",
+};
+
+const getCategoryEmoji = (name = "") => {
+  const key = String(name).toLowerCase().trim();
+  for (const [k, emoji] of Object.entries(categoryEmojiMap)) {
+    if (key.includes(k)) return emoji;
+  }
+  return "🍽️";
+};
+
 const FoodRestaurantCard = memo(function FoodRestaurantCard({
   restaurant,
   index,
@@ -224,26 +259,37 @@ function FoodHomeContent({
         </div>
 
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-x-2 gap-y-10 relative z-10">
-          {displayCategories.slice(0, 8).map((category, index) => (
-            <Link
-              key={category.id || index}
-              to={`/user/category/${category.slug}`}
-              className="group flex flex-col items-center gap-4"
-            >
-              <div className="relative aspect-square w-[76px] sm:w-[88px] overflow-hidden rounded-full border-[3px] border-white ring-1 ring-gray-100 bg-white shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl group-active:scale-95 group-hover:border-[#ef4f5f]/20">
-                <OptimizedImage
-                  src={category.image}
-                  alt={category.name}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-115"
-                />
-                 {/* Shiny overlay on hover */}
-                 <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <span className="text-center text-[12px] font-black leading-tight text-gray-800 tracking-tighter opacity-70 group-hover:opacity-100 group-hover:text-[#ef4f5f] transition-all">
-                {category.name}
-              </span>
-            </Link>
-          ))}
+          {displayCategories.slice(0, 8).map((category, index) => {
+            const hasImage = category.image && typeof category.image === 'string' && category.image.trim() !== '';
+            const emoji = getCategoryEmoji(category.name);
+
+            return (
+              <Link
+                key={category.id || index}
+                to={`/user/category/${category.slug}`}
+                className="group flex flex-col items-center gap-4"
+              >
+                <div className="relative aspect-square w-[76px] sm:w-[88px] overflow-hidden rounded-full border-[3px] border-white ring-1 ring-gray-100 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950/40 dark:to-orange-900/40 shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl group-active:scale-95 group-hover:border-[#ef4f5f]/20 flex items-center justify-center">
+                  {hasImage ? (
+                    <OptimizedImage
+                      src={category.image}
+                      alt={category.name}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-115"
+                    />
+                  ) : (
+                    <span className="text-3xl sm:text-4xl select-none transform group-hover:scale-110 transition-transform">
+                      {emoji}
+                    </span>
+                  )}
+                   {/* Shiny overlay on hover */}
+                   <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <span className="text-center text-[12px] font-black leading-tight text-gray-800 tracking-tighter opacity-70 group-hover:opacity-100 group-hover:text-[#ef4f5f] transition-all">
+                  {category.name}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

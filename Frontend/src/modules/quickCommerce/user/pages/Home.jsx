@@ -844,7 +844,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                           </div>
                           <div className="absolute right-[-10px] bottom-0 top-0 w-2/5 flex items-center justify-center">
                             <img
-                              src=""
+                              src={CardBanner}
                               alt="Promo"
                               className="w-full h-full object-contain rotate-3 scale-110"
                             />

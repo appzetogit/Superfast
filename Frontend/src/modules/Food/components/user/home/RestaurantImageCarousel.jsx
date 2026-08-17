@@ -123,7 +123,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
       >
         {items.map((item, index) => {
           const isVeg = item.foodType !== 'Non-Veg';
-          const itemImg = item.image || restaurant?.image || (Array.isArray(restaurant?.images) && restaurant.images[0]) || '';
+          const itemImg = item.image || restaurant?.image || (Array.isArray(restaurant?.images) && restaurant.images[0]) || null;
           return (
             <div 
               key={item._id || index}
@@ -131,7 +131,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
               className="w-full h-full flex-shrink-0 snap-center relative cursor-pointer"
             >
               <OptimizedImage
-                src={itemImg ? withCacheBuster(itemImg, backendOrigin) : ''}
+                src={itemImg ? withCacheBuster(itemImg, backendOrigin) : null}
                 alt={item.name}
                 priority={priority && index === 0}
                 className="w-full h-full object-cover"
