@@ -1,7 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Loader from "@food/components/Loader";
+import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
 // Auth Pages (Lazy loaded)
 const Welcome = lazy(() => import("./pages/auth/Welcome"))
@@ -39,6 +40,11 @@ const ReturnPickupHistory = lazy(() => import('../quickCommerce/delivery/pages/R
 
 const DeliveryV2Router = () => {
   const location = useLocation();
+
+  useEffect(() => {
+    registerWebPushForCurrentModule('/food/delivery').catch(console.error);
+  }, [location.pathname]);
+
   return (
     <Suspense fallback={null}>
       <Routes>

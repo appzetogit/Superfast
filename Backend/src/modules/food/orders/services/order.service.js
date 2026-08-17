@@ -3470,7 +3470,7 @@ export async function updateOrderStatusRestaurant(
               });
             }
             await notifyOwnersSafely(
-              partners.slice(0, 5).map((p) => ({
+              partners.slice(0, 15).map((p) => ({
                 ownerType: "DELIVERY_PARTNER",
                 ownerId: p.partnerId,
               })),
@@ -3486,7 +3486,7 @@ export async function updateOrderStatusRestaurant(
               },
             );
             // Also trigger a generic sound event for the first few partners.
-            for (const p of partners.slice(0, 5)) {
+            for (const p of partners.slice(0, 15)) {
               io.to(rooms.delivery(p.partnerId)).emit("play_notification_sound", {
                 orderId: payload.orderId,
                 orderMongoId: payload.orderMongoId,

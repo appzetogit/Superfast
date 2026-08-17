@@ -364,7 +364,7 @@ export async function enablePushNotificationSound() {
       pushSoundUnlocked = true;
       localStorage.setItem(pushSoundEnabledStorageKey, "true");
       window.dispatchEvent(new CustomEvent("push-sound-enabled"));
-      }
+    }
     catch (beepError) {
       pushDebugWarn(PUSH_DEBUG_PREFIX, "Synth beep fallback failed", {
         error: beepError?.message || beepError,
@@ -520,9 +520,9 @@ function showForegroundNotification(payload = {}) {
     payload?.data?.imageUrl ||
     undefined;
 
-  const isNewOrder = 
-    title.toLowerCase().includes("order") || 
-    body.toLowerCase().includes("order") || 
+  const isNewOrder =
+    title.toLowerCase().includes("order") ||
+    body.toLowerCase().includes("order") ||
     payload?.data?.orderId ||
     payload?.data?.type === 'RETURN_PICKUP';
 
@@ -766,15 +766,15 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       } catch (e) {
         pushDebugWarn(PUSH_DEBUG_PREFIX, "Failed to synchronize FCM token to backend", { error: e?.message || e, stack: e?.stack });
       }
-      
+
       await attachForegroundListener(app);
     })()
-    .catch((e) => {
-      console.error("FCM web registration failed:", e);
-    })
-    .finally(() => {
-      registrationInFlight = null;
-    });
+      .catch((e) => {
+        console.error("FCM web registration failed:", e);
+      })
+      .finally(() => {
+        registrationInFlight = null;
+      });
 
     return registrationInFlight;
   }

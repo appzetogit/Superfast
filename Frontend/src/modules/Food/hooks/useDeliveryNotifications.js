@@ -225,7 +225,7 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 export const useDeliveryNotifications = () => {
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Order: useRef -> useState -> useEffect -> useCallback
-  
+
   // Step 1: All refs first (unconditional)
   const socketRef = useRef(null);
   const audioRef = useRef(null);
@@ -236,7 +236,7 @@ export const useDeliveryNotifications = () => {
   const userInteractedRef = useRef(false);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
-  
+
   // Step 2: All state hooks (unconditional)
   const [newOrder, setNewOrder] = useState(null);
   const [orderReady, setOrderReady] = useState(null);
@@ -299,7 +299,7 @@ export const useDeliveryNotifications = () => {
       try {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
-      } catch (e) {}
+      } catch (e) { }
     }
   }, []);
 
@@ -318,10 +318,10 @@ export const useDeliveryNotifications = () => {
       playSoundFn(activeOrderRef.current);
     }, ALERT_LOOP_INTERVAL_MS);
   }, [stopAlertLoop]);
-  
+
   const playNotificationSound = useCallback(async (orderData = {}) => {
     try {
-      triggerWebViewNativeNotification(orderData).catch(() => {});
+      triggerWebViewNativeNotification(orderData).catch(() => { });
 
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         navigator.vibrate([200, 100, 200, 100, 300]);
@@ -332,7 +332,7 @@ export const useDeliveryNotifications = () => {
       const soundFile = selectedSound === 'original'
         ? resolveAudioSource(originalSound, 'delivery-original')
         : resolveAudioSource(alertSound, 'delivery-alert');
-      
+
       // Update audio source if preference changed or initialize if not exists
       if (audioRef.current) {
         const currentSrc = audioRef.current.src;
@@ -353,7 +353,7 @@ export const useDeliveryNotifications = () => {
         audioRef.current.load();
         debugLog('Audio initialized with:', selectedSound === 'original' ? 'Original' : 'Zomato Tone', 'Source:', soundFile);
       }
-      
+
       if (audioRef.current) {
         audioRef.current.muted = false;
         audioRef.current.volume = 1.0;
@@ -444,8 +444,8 @@ export const useDeliveryNotifications = () => {
       const currentTrip =
         currentTripResult.status === 'fulfilled'
           ? currentTripResult.value?.data?.data ??
-            currentTripResult.value?.data ??
-            null
+          currentTripResult.value?.data ??
+          null
           : null;
 
       if (currentTrip) {
@@ -460,8 +460,8 @@ export const useDeliveryNotifications = () => {
       const availablePayload =
         availableResult.status === 'fulfilled'
           ? availableResult.value?.data?.data ??
-            availableResult.value?.data ??
-            {}
+          availableResult.value?.data ??
+          {}
           : {};
       const availableOrders = Array.isArray(availablePayload?.docs)
         ? availablePayload.docs
@@ -624,11 +624,11 @@ export const useDeliveryNotifications = () => {
           audioRef.current.muted = true;
           // Ensure src is set even if it was just initialized
           if (!audioRef.current.src || audioRef.current.src === window.location.href) {
-             const selectedSound = localStorage.getItem('delivery_alert_sound') || 'zomato_tone';
-             const soundFile = selectedSound === 'original'
-                ? resolveAudioSource(originalSound)
-                : resolveAudioSource(alertSound);
-             audioRef.current.src = soundFile;
+            const selectedSound = localStorage.getItem('delivery_alert_sound') || 'zomato_tone';
+            const soundFile = selectedSound === 'original'
+              ? resolveAudioSource(originalSound)
+              : resolveAudioSource(alertSound);
+            audioRef.current.src = soundFile;
           }
           audioRef.current.load();
           await audioRef.current.play();
@@ -654,13 +654,13 @@ export const useDeliveryNotifications = () => {
       document.removeEventListener('keydown', handleUserInteraction);
       window.removeEventListener('pointerdown', handleUserInteraction);
     };
-    
+
     // Listen for user interaction
     document.addEventListener('click', handleUserInteraction, { once: true });
     document.addEventListener('touchstart', handleUserInteraction, { once: true });
     document.addEventListener('keydown', handleUserInteraction, { once: true });
     window.addEventListener('pointerdown', handleUserInteraction, { once: true, passive: true });
-    
+
     return () => {
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
@@ -668,7 +668,7 @@ export const useDeliveryNotifications = () => {
       window.removeEventListener('pointerdown', handleUserInteraction);
     };
   }, []);
-  
+
   // Initialize audio on mount - use selected preference from localStorage
   useEffect(() => {
     // Get selected alert sound preference from localStorage
@@ -676,7 +676,7 @@ export const useDeliveryNotifications = () => {
     const soundFile = selectedSound === 'original'
       ? resolveAudioSource(originalSound, 'delivery-original')
       : resolveAudioSource(alertSound, 'delivery-alert');
-    
+
     if (!audioRef.current) {
       audioRef.current = new Audio(soundFile);
       audioRef.current.preload = 'auto';
@@ -693,7 +693,7 @@ export const useDeliveryNotifications = () => {
         debugLog('?? Audio updated to:', selectedSound === 'original' ? 'Original' : 'Zomato Tone');
       }
     }
-    
+
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -716,9 +716,9 @@ export const useDeliveryNotifications = () => {
         if (response.data?.success && response.data.data) {
           const deliveryPartner = response.data.data.user || response.data.data.deliveryPartner;
           if (deliveryPartner) {
-            const id = deliveryPartner.id?.toString() || 
-                      deliveryPartner._id?.toString() || 
-                      deliveryPartner.deliveryId;
+            const id = deliveryPartner.id?.toString() ||
+              deliveryPartner._id?.toString() ||
+              deliveryPartner.deliveryId;
             if (id) {
               setDeliveryPartnerId(id);
               debugLog('? Delivery Partner ID fetched:', id);
@@ -766,16 +766,16 @@ export const useDeliveryNotifications = () => {
         backendUrl = window.location.origin;
       }
     }
-    
+
     // Backend uses default namespace; rooms handle role separation.
     const socketUrl = `${backendUrl}`;
-    
+
     debugLog('?? Attempting to connect to Delivery Socket.IO:', socketUrl);
     debugLog('?? Backend URL:', backendUrl);
     debugLog('?? API_BASE_URL:', API_BASE_URL);
     debugLog('?? Delivery Partner ID:', deliveryPartnerId);
     debugLog('?? Environment: (ui-only mode)');
-    
+
     // Block localhost only in production builds. In dev, localhost is expected.
     if (import.meta.env.PROD && backendUrl.includes('localhost')) {
       debugError('? CRITICAL: Trying to connect Socket.IO to localhost in production!');
@@ -784,7 +784,7 @@ export const useDeliveryNotifications = () => {
       setIsConnected(false);
       return;
     }
-    
+
     // Validate backend URL format
     if (!backendUrl || !backendUrl.startsWith('http')) {
       debugError('? CRITICAL: Invalid backend URL format:', backendUrl);
@@ -792,7 +792,7 @@ export const useDeliveryNotifications = () => {
       debugError('?? Expected format: https://your-domain.com or ');
       return; // Don't try to connect with invalid URL
     }
-    
+
     // Validate socket URL format
     try {
       new URL(socketUrl); // This will throw if URL is invalid
@@ -889,7 +889,7 @@ export const useDeliveryNotifications = () => {
       });
       setIsConnected(false);
       joinedDeliveryRoomRef.current = null;
-      
+
       if (reason === 'io server disconnect') {
         socketRef.current.connect();
       }
@@ -1013,7 +1013,7 @@ export const useDeliveryNotifications = () => {
         playNotificationSound();
         try {
           dispatchNotificationInboxRefresh();
-        } catch (e) {}
+        } catch (e) { }
       }
     });
 
@@ -1079,26 +1079,26 @@ export const useDeliveryNotifications = () => {
       const orderMongoId = data?.orderMongoId || data?.order_mongo_id;
       const currentActive = activeOrderRef.current;
       if (currentActive && String(currentActive._id || currentActive.orderId || currentActive.id) === String(orderMongoId)) {
-         toast.error('Order Reassigned by Admin', {
-            description: data.message || 'This order has been reassigned to another delivery partner.'
-         });
-         stopAlertLoop();
-         activeOrderRef.current = null;
-         setNewOrder(null);
-         try {
-             useDeliveryStore.getState().clearActiveOrder();
-         } catch (err) {
-             console.warn('Could not clear active order store directly:', err);
-         }
-         setTimeout(() => {
-             window.location.reload();
-         }, 1500);
+        toast.error('Order Reassigned by Admin', {
+          description: data.message || 'This order has been reassigned to another delivery partner.'
+        });
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+        try {
+          useDeliveryStore.getState().clearActiveOrder();
+        } catch (err) {
+          console.warn('Could not clear active order store directly:', err);
+        }
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       }
     });
 
     socketRef.current.on('order_now_active', (data) => {
-       debugLog('Order now active for me:', data);
-       window.location.reload();
+      debugLog('Order now active for me:', data);
+      window.location.reload();
     });
 
     socketRef.current.on('order_reassigned_elsewhere', (data) => {
@@ -1127,18 +1127,18 @@ export const useDeliveryNotifications = () => {
     // (admin_notification listener removed)
     socketRef.current.on('admin_status_update', (data) => {
       if (data && data.status) {
-         try {
-             const isOnline = data.status === 'online';
-             useDeliveryStore.getState().setOnline(isOnline);
-             
-             if (isOnline) {
-                 localStorage.setItem("app:isOnline", "true");
-             } else {
-                 localStorage.removeItem("app:isOnline");
-             }
-         } catch (err) {
-             console.warn('Could not update online status in store directly:', err);
-         }
+        try {
+          const isOnline = data.status === 'online';
+          useDeliveryStore.getState().setOnline(isOnline);
+
+          if (isOnline) {
+            localStorage.setItem("app:isOnline", "true");
+          } else {
+            localStorage.removeItem("app:isOnline");
+          }
+        } catch (err) {
+          console.warn('Could not update online status in store directly:', err);
+        }
       }
     });
 
@@ -1219,11 +1219,11 @@ export const useDeliveryNotifications = () => {
       const payload = event.detail;
       if (!payload) return;
       const orderData = payload;
-      
+
       // Normalize data for return orders vs normal orders
       const isReturn = orderData.type === 'RETURN_PICKUP';
       const normalizedData = isReturn ? { ...orderData, type: 'RETURN_PICKUP' } : orderData;
-      
+
       debugLog('Received FCM popup trigger event', normalizedData);
       setNewOrder(normalizedData);
       handleIncomingOrderAlert(normalizedData);

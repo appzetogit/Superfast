@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@food/components/ui/dialog"
 import { Button } from "@food/components/ui/button"
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -259,6 +260,9 @@ export default function RestaurantStatus() {
         await restaurantAPI.updateAcceptingOrders(checked)
         debugLog('? Delivery status updated in backend:', checked)
         persistRestaurantOnlineStatus(checked)
+        if (checked) {
+          registerWebPushForCurrentModule('/restaurant').catch(console.error);
+        }
       } catch (apiError) {
         debugError('Error updating delivery status in backend:', apiError)
         // Revert local toggle if backend fails.

@@ -70,7 +70,7 @@ const startServer = async () => {
                 logger.error(`Timings Sync cron error: ${err.message}`);
             });
         });
-        
+
         // 5a. Watchdog: Recover stuck orders from previous run
         try {
             const { recoverStuckOrders } = await import('./src/modules/food/orders/services/order.service.js');

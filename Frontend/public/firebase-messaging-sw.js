@@ -4,7 +4,7 @@ importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-com
 
 const sanitize = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "");
 const PUSH_DEBUG_PREFIX = "[push-sw]";
-const pushDebugLog = () => {};
+const pushDebugLog = () => { };
 const getNotificationKey = (payload) =>
   payload?.data?.notificationId ||
   payload?.data?.messageId ||
@@ -119,9 +119,9 @@ async function loadFirebaseWebConfig() {
 
   messaging.onBackgroundMessage(async (payload) => {
     pushDebugLog(PUSH_DEBUG_PREFIX, "Received Firebase background message", { payload });
-    
+
     const visibleClient = await hasVisibleClientForTarget(payload);
-    
+
     if (!visibleClient) {
       const title = payload?.notification?.title || payload?.data?.title || "New Notification";
       const body = payload?.notification?.body || payload?.data?.body || "";
@@ -131,24 +131,30 @@ async function loadFirebaseWebConfig() {
         payload?.data?.imageUrl ||
         undefined;
       const notificationKey = getNotificationKey(payload);
-      
+      const clickAction = getTargetPathFromPayload(payload);
+      const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
+
       pushDebugLog(PUSH_DEBUG_PREFIX, "Showing service worker notification", {
         title,
         body,
         image,
         notificationKey,
       });
-  
+
       self.registration.showNotification(title, {
         body,
         icon: "/favicon.ico",
-        image,
+        image: image || undefined,
         tag: notificationKey,
-        renotify: false,
+        renotify: true,
         silent: false,
-        requireInteraction: false,
-        vibrate: [200, 100, 200, 100, 300],
-        data: payload?.data || {},
+        requireInteraction: true,
+        vibrate: [300, 100, 300, 100, 300, 100, 500],
+        data: {
+          ...(payload?.data || {}),
+          click_action: clickAction,
+          sound: sound
+        },
       });
     }
 
@@ -185,8 +191,8 @@ self.addEventListener("push", (event) => {
           tag: notificationKey,
           renotify: true,
           silent: false,
-          requireInteraction: false,
-          vibrate: [200, 100, 200, 100, 300],
+          requireInteraction: true,
+          vibrate: [300, 100, 300, 100, 300, 100, 500],
           data: {
             ...(payload?.data || {}),
             click_action: clickAction,

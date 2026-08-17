@@ -7,6 +7,7 @@ import { useOrderManager } from '@/modules/DeliveryV2/hooks/useOrderManager';
 import { useDeliveryNotifications } from '@food/hooks/useDeliveryNotifications';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
+import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
 // Components
 import LiveMap from '@/modules/DeliveryV2/components/map/LiveMap';
@@ -413,9 +414,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
   }, [distanceToTarget]);
 
-  // 2. Online/Offline Status Sync (Low Frequency)
+  // 2. Online/Offline Status Sync & FCM Push Registration
   useEffect(() => {
     deliveryAPI.updateOnlineStatus(isOnline).catch(() => {});
+    if (isOnline) {
+      registerWebPushForCurrentModule('/food/delivery').catch(console.error);
+    }
   }, [isOnline]);
 
   // 3. Location logic (Smart Frequency Tracking)

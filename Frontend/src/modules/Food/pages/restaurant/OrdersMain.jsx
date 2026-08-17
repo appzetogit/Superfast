@@ -36,6 +36,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton";
 import { getImageUrl } from "@food/utils/imageUtils";
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging";
 const debugLog = (...args) => {};
 const debugWarn = (...args) => {};
 const debugError = (...args) => {};
@@ -973,6 +974,11 @@ export default function OrdersMain() {
     ...filterTabs
   ];
   const [isReverifying, setIsReverifying] = useState(false);
+
+  useEffect(() => {
+    registerWebPushForCurrentModule('/restaurant').catch(console.error);
+  }, []);
+
   // Fetch restaurant verification status
   useEffect(() => {
     const fetchRestaurantStatus = async () => {

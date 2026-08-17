@@ -78,27 +78,33 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
   }, [activeIndex, items.length]);
 
   if (!items || items.length === 0) {
-    // Fallback if no recommended items exist (render a single image or placeholder)
-    const sourceImages = Array.isArray(restaurant?.images) && restaurant.images.length > 0
-      ? restaurant.images
-      : [restaurant?.image];
-    const validImages = sourceImages.filter((img) => typeof img === "string").map((img) => img.trim()).filter(Boolean);
-    const renderSrc = validImages.length > 0 ? withCacheBuster(validImages[0], backendOrigin) : null;
+    // Fallback if no recommended items exist (render cover photo, profile image, or default food placeholder)
+    const extractUrl = (img) => {
+      if (!img) return "";
+      if (typeof img === "string") return img.trim();
+      if (typeof img === "object") return (img.url || img.imageUrl || img.secure_url || "").trim();
+      return "";
+    };
+
+    const rawList = [
+      ...(Array.isArray(restaurant?.coverImages) ? restaurant.coverImages : []),
+      ...(Array.isArray(restaurant?.images) ? restaurant.images : []),
+      restaurant?.profileImage,
+      restaurant?.image,
+      restaurant?.coverImage,
+    ];
+
+    const validImages = rawList.map(extractUrl).filter(Boolean);
+    const renderSrc = validImages.length > 0 ? withCacheBuster(validImages[0], backendOrigin) : undefined;
     
     return (
       <div className="relative w-full h-[220px] sm:h-[240px] overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-[28px] rounded-b-none">
-        {renderSrc ? (
-          <OptimizedImage
-            src={renderSrc}
-            alt={restaurant.name}
-            priority={priority}
-            className="w-full h-full object-cover transform scale-100 group-hover:scale-105 transition-transform duration-700"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-            <span className="text-sm font-medium">No items available</span>
-          </div>
-        )}
+        <OptimizedImage
+          src={renderSrc}
+          alt={restaurant.name || "Restaurant"}
+          priority={priority}
+          className="w-full h-full object-cover transform scale-100 group-hover:scale-105 transition-transform duration-700"
+        />
       </div>
     );
   }
@@ -123,7 +129,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
       >
         {items.map((item, index) => {
           const isVeg = item.foodType !== 'Non-Veg';
-          const itemImg = item.image || restaurant?.image || (Array.isArray(restaurant?.images) && restaurant.images[0]) || null;
+          const itemImg = item.image || item.imageUrl || (Array.isArray(restaurant?.coverImages) && (restaurant.coverImages[0]?.url || restaurant.coverImages[0])) || restaurant?.profileImage?.url || restaurant?.profileImage || restaurant?.image || null;
           return (
             <div 
               key={item._id || index}
