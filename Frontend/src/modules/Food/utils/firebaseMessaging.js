@@ -742,8 +742,21 @@ export async function registerWebPushForCurrentModule(pathname = window.location
   // Allow web push registration for all modules, including admin
   initPushNotificationClient();
 
-  const accessToken = localStorage.getItem(`${moduleName}_accessToken`);
+  const accessToken =
+    localStorage.getItem(`${moduleName}_accessToken`) ||
+    localStorage.getItem(`auth_${moduleName}`) ||
+    localStorage.getItem('auth_customer') ||
+    localStorage.getItem('auth_seller') ||
+    localStorage.getItem('auth_restaurant') ||
+    localStorage.getItem('auth_delivery') ||
+    localStorage.getItem('auth_admin') ||
+    localStorage.getItem('accessToken') ||
+    localStorage.getItem('token');
+
   if (!accessToken) return;
+
+  // Register native WebView FCM token if in Flutter WebView
+  await registerNativeWebViewFcmToken(moduleName).catch(() => {});
 
   const supportsBrowserPush = isSupportedBrowser() && isSecureContextForPush();
 
