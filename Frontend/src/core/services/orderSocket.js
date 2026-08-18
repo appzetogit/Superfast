@@ -159,6 +159,10 @@ export function onDeliveryOtpValidated(getToken, handler) {
     s.off("delivery:otp:validated", wrappedHandler);
   };
 }
+export function isSocketConnected() {
+  return Boolean(socket && socket.connected);
+}
+
 export function onOrderCancelled(getToken, handler) {
   const s = getOrderSocket(getToken);
   if (!s || typeof handler !== "function") return () => {};
@@ -169,3 +173,76 @@ export function onOrderCancelled(getToken, handler) {
     s.off("order:cancelled", handler);
   };
 }
+
+/**
+ * Unified Subscriber that listens to BOTH Socket.IO events AND FCM Fallback Push events,
+ * as well as handling window visibility change and network online auto-resync.
+ */
+export function subscribeToOrderStateUpdates(getToken, handler) {
+  if (typeof handler !== "function") return () => {};
+
+  const s = getOrderSocket(getToken);
+
+  // 1. Socket Event Listeners
+  const socketEvents = [
+    "order:status:update",
+    "order_status_update",
+    "order_state",
+    "active_order",
+    "new_order",
+    "new_order_available",
+    "order:new",
+    "order_cancelled",
+    "order:cancelled"
+  ];
+
+  const socketHandler = (payload) => {
+    handler({ source: 'socket', data: payload });
+  };
+
+  if (s) {
+    socketEvents.forEach(evt => s.on(evt, socketHandler));
+  }
+
+  // 2. FCM Push Notification Fallback Window Event Listener
+  const fcmHandler = (event) => {
+    const detail = event?.detail || {};
+    console.log('[orderSocket] FCM fallback notification event received in frontend:', detail);
+    handler({ source: 'fcm', data: detail });
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("fcm-order-update", fcmHandler);
+  }
+
+  // 3. Tab Visibility & Network Return Auto-Resync Listener
+  const resyncHandler = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    console.log('[orderSocket] App became visible / online — triggering state resync & socket check');
+    if (socket) {
+      if (!socket.connected) {
+        socket.connect();
+      }
+      socket.emit("resync");
+    }
+    handler({ source: 'visibility_resync' });
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("visibilitychange", resyncHandler);
+    window.addEventListener("online", resyncHandler);
+  }
+
+  // Cleanup
+  return () => {
+    if (s) {
+      socketEvents.forEach(evt => s.off(evt, socketHandler));
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener("fcm-order-update", fcmHandler);
+      window.removeEventListener("visibilitychange", resyncHandler);
+      window.removeEventListener("online", resyncHandler);
+    }
+  };
+}
+

@@ -533,6 +533,18 @@ function showForegroundNotification(payload = {}) {
     window.dispatchEvent(new CustomEvent('fcm-delivery-popup', { detail: payload.data }));
   }
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('fcm-order-update', {
+      detail: {
+        ...(payload?.data || {}),
+        title,
+        body,
+        notificationKey,
+        rawPayload: payload
+      }
+    }));
+  }
+
   playPushSound(payload);
 
   // Force system notification even when the tab is in focus

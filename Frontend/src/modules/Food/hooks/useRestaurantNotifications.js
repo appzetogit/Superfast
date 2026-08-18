@@ -677,6 +677,18 @@ export const useRestaurantNotifications = () => {
       dispatchNotificationInboxRefresh();
     });
 
+    // Fallback: FCM Push Notification Listener (for when socket is disconnected or in background)
+    const handleFcmPushEvent = (event) => {
+      const detail = event?.detail || {};
+      debugLog('?? FCM push event received in restaurant hook:', detail);
+      if (detail.orderId || detail.orderMongoId || detail.type === 'new_order') {
+        handleIncomingOrderAlert(detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('fcm-order-update', handleFcmPushEvent);
+    }
+
     // Load notification sound
     audioRef.current = new Audio(resolveAudioSource(alertSound));
     audioRef.current.preload = 'auto';
@@ -684,6 +696,9 @@ export const useRestaurantNotifications = () => {
 
     return () => {
       stopAlertLoop();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('fcm-order-update', handleFcmPushEvent);
+      }
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;

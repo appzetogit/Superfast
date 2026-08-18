@@ -641,12 +641,19 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         void hydrateAvailableOrder();
       }
     };
+    const onFcmOrderUpdate = (evt) => {
+      console.log('[DeliveryHomeV2] FCM push notification received, rehydrating order state:', evt?.detail);
+      void hydrateAvailableOrder();
+    };
+
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('fcm-order-update', onFcmOrderUpdate);
 
     return () => {
       cancelled = true;
       window.clearInterval(poller);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('fcm-order-update', onFcmOrderUpdate);
     };
   }, [activeOrder, currentTab, isOnline, isSocketConnected, setActiveOrder]);
 
