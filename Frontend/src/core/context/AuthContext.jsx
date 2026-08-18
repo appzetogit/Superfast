@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '@core/api/axios';
 import { getWithDedupe } from '@core/api/dedupe';
 import { isTokenExpired } from '@core/utils/token';
+import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
 const AuthContext = createContext(undefined);
 
@@ -90,6 +91,7 @@ export const AuthProvider = ({ children }) => {
                         requestConfig
                     );
                     setUser(extractProfilePayload(response));
+                    registerWebPushForCurrentModule(window.location.pathname).catch(() => {});
                 } catch (error) {
                     console.error('Failed to fetch profile:', error);
                     // If 401, axios interceptor will handle it
@@ -115,6 +117,7 @@ export const AuthProvider = ({ children }) => {
 
             setAuthData(prev => ({ ...prev, [role]: userData.token }));
             setUser(userData); // Set full data initially
+            registerWebPushForCurrentModule(window.location.pathname).catch(() => {});
         } else {
             console.error('Invalid role or missing token for login:', role);
         }

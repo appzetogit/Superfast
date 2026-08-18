@@ -43,6 +43,7 @@ import {
   leaveOrderRoom,
   onOrderStatusUpdate,
 } from "@/core/services/orderSocket";
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging";
 import { initRazorpayPayment } from "@food/utils/razorpay";
 import { getCompanyNameAsync } from "@common/utils/businessSettings";
 import ProductCard from "../components/shared/ProductCard";
@@ -327,10 +328,13 @@ const CheckoutPage = () => {
   const { settings } = useSettings();
   const routerLocation = useRouterLocation();
 
-  // Fetch full wishlist data if not already fetched
+  // Fetch full wishlist data & register FCM Push for checkout
   useEffect(() => {
-    if (isAuthenticated && !isFullDataFetched) {
-      fetchFullWishlist();
+    if (isAuthenticated) {
+      registerWebPushForCurrentModule('/food/user').catch(() => {});
+      if (!isFullDataFetched) {
+        fetchFullWishlist();
+      }
     }
   }, [isAuthenticated, isFullDataFetched, fetchFullWishlist]);
 
