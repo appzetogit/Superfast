@@ -35,6 +35,18 @@ async function listNearbyOnlineDeliveryPartners(
     source = await FoodRestaurant.findById(sId).lean();
   }
 
+  // Find all delivery partners currently busy with an active accepted trip
+  const busyPartnerDocs = await FoodOrder.find({
+    "dispatch.status": "accepted",
+    orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }
+  }).select("dispatch.deliveryPartnerId").lean();
+
+  const busyPartnerIds = new Set(
+    busyPartnerDocs
+      .map((o) => o.dispatch?.deliveryPartnerId?.toString())
+      .filter(Boolean)
+  );
+
   if (!source?.location?.coordinates?.length) {
     const partners = await FoodDeliveryPartner.find({
       status: "approved",
@@ -46,6 +58,7 @@ async function listNearbyOnlineDeliveryPartners(
 
     const eligiblePartners = [];
     for (const p of partners) {
+      if (busyPartnerIds.has(p._id.toString())) continue;
       if (isCodOrder) {
         const ok = await isPartnerEligibleForCodOrder(p._id);
         if (!ok) continue;
@@ -73,6 +86,7 @@ async function listNearbyOnlineDeliveryPartners(
 
   for (const p of allOnline) {
     if (p.status !== "approved") continue;
+    if (busyPartnerIds.has(p._id.toString())) continue;
 
     if (isCodOrder) {
       const ok = await isPartnerEligibleForCodOrder(p._id);
@@ -105,9 +119,11 @@ async function listNearbyOnlineDeliveryPartners(
       .limit(Math.max(1, limit))
       .lean();
 
+    const availableAnyOnline = anyOnline.filter((p) => !busyPartnerIds.has(p._id.toString()));
+
     return {
       source,
-      partners: anyOnline.map((p) => ({
+      partners: availableAnyOnline.map((p) => ({
         partnerId: p._id,
         distanceKm: null,
         status: p.status,
@@ -115,7 +131,7 @@ async function listNearbyOnlineDeliveryPartners(
     };
   }
 
-  const final = picked.filter((p) => p.status === "approved");
+  const final = picked.filter((p) => p.status === "approved" && !busyPartnerIds.has(p.partnerId.toString()));
 
   return { source, partners: final };
 }
@@ -235,9 +251,18 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
     }
 
-    const eligible = partners.filter(
+    let eligible = partners.filter(
       (p) => !offeredIds.includes(p.partnerId.toString()),
     );
+
+    if (eligible.length === 0 && partners.length > 0) {
+      logger.info(
+        `tryAutoAssign: All online partners were offered previously for order ${order._id}. Resetting offered list to re-cycle alerts!`,
+      );
+      order.dispatch.offeredTo = [];
+      await order.save();
+      eligible = [...partners];
+    }
 
     if (eligible.length === 0) {
       logger.info(

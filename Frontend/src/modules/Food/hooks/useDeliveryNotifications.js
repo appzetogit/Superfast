@@ -482,7 +482,12 @@ export const useDeliveryNotifications = () => {
         );
       });
 
-      if (recoverableOrder && !activeOrderRef.current) {
+      const hasActiveTrip = Boolean(
+        useDeliveryStore.getState().activeOrder ||
+        (useDeliveryStore.getState().tripStatus && useDeliveryStore.getState().tripStatus !== 'IDLE')
+      );
+
+      if (recoverableOrder && !activeOrderRef.current && !hasActiveTrip) {
         debugLog('Recovered available delivery order after reconnect/focus:', recoverableOrder);
         setNewOrder(recoverableOrder);
         handleIncomingOrderAlert(recoverableOrder);

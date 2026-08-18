@@ -699,6 +699,32 @@ async function attachForegroundListener(firebaseAppInstance) {
   foregroundListenerAttached = true;
 }
 
+async function safeGetFcmToken(messaging, options) {
+  const { getToken } = await import("firebase/messaging");
+  try {
+    return await getToken(messaging, options);
+  } catch (error) {
+    const errStr = String(error?.message || error || "");
+    if (errStr.includes("installations") || errStr.includes("500") || errStr.includes("request-failed")) {
+      console.warn("FCM Installations error detected. Clearing stale IndexedDB installation cache and retrying...");
+      try {
+        if (typeof indexedDB !== "undefined") {
+          indexedDB.deleteDatabase("firebase-installations-database");
+          indexedDB.deleteDatabase("firebase-messaging-database");
+        }
+      } catch (_) {}
+      try {
+        return await getToken(messaging, options);
+      } catch (retryErr) {
+        console.warn("FCM getToken retry failed:", retryErr?.message || retryErr);
+        return null;
+      }
+    }
+    console.warn("FCM getToken failed gracefully:", error?.message || error);
+    return null;
+  }
+}
+
 export async function registerWebPushForCurrentModule(pathname = window.location.pathname) {
   const moduleName = normalizeModuleFromPath(pathname);
   // Allow web push registration for all modules, including admin
@@ -735,7 +761,7 @@ export async function registerWebPushForCurrentModule(pathname = window.location
         return;
       }
 
-      const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
+      const { getMessaging, isSupported } = await import("firebase/messaging");
       const supported = await isSupported().catch(() => false);
       if (!supported) return;
 
@@ -746,7 +772,7 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       });
       const messaging = getMessaging(app);
 
-      const token = await getToken(messaging, {
+      const token = await safeGetFcmToken(messaging, {
         vapidKey: firebasePublicEnv.vapidKey,
         serviceWorkerRegistration: registration,
       });

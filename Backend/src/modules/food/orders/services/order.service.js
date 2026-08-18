@@ -3391,8 +3391,11 @@ export async function updateOrderStatusRestaurant(
   try {
     const io = getIO();
     if (io) {
-      // On accept (confirmed or preparing) -> request delivery partners.
-      const isInitialDispatchTrigger = ((String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && (String(from) !== "preparing" && String(from) !== "confirmed"));
+      // On accept (confirmed, preparing, or ready_for_pickup) -> request delivery partners.
+      const isInitialDispatchTrigger = (
+        ["confirmed", "preparing", "ready_for_pickup", "ready"].includes(String(orderStatus)) &&
+        !["confirmed", "preparing", "ready_for_pickup", "ready"].includes(String(from))
+      );
       if (isInitialDispatchTrigger) {
         logger.info(
           `Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
@@ -3496,17 +3499,42 @@ export async function updateOrderStatusRestaurant(
         }
       }
 
-      // When ready for pickup -> ping assigned delivery partner.
+      // When ready for pickup -> ping assigned delivery partner (if accepted) or trigger fresh auto-dispatch if unaccepted.
       if (String(orderStatus) === 'ready_for_pickup' && String(from) !== 'ready_for_pickup') {
         logger.info(`Order ${order.orderId} changed to 'ready_for_pickup'.`);
+        const isAcceptedByRider = order.dispatch?.status === 'accepted';
         const assignedId = order.dispatch?.deliveryPartnerId?.toString?.() || order.dispatch?.deliveryPartnerId;
-        if (assignedId) {
+        const restaurant = await FoodRestaurant.findById(order.restaurantId).select('restaurantName location addressLine1 area city state').lean();
+        const payload = buildDeliverySocketPayload(order, restaurant);
+
+        if (isAcceptedByRider && assignedId) {
           logger.info(`Notifying assigned partner ${assignedId} that order is ready.`);
-          const restaurant = await FoodRestaurant.findById(order.restaurantId).select('restaurantName location addressLine1 area city state').lean();
-          const payload = buildDeliverySocketPayload(order, restaurant);
           io.to(rooms.delivery(assignedId)).emit('order_ready', payload);
+          await notifyOwnerSafely(
+            { ownerType: 'DELIVERY_PARTNER', ownerId: assignedId },
+            {
+              title: '🛵 Order is Ready for Pickup!',
+              body: `Order #${order.orderId || order._id} is ready for pickup at ${restaurant?.restaurantName || 'the restaurant'}.`,
+              data: {
+                type: 'order_ready',
+                orderId: order.orderId || '',
+                orderMongoId: order._id?.toString() || '',
+                link: '/delivery',
+              },
+            }
+          );
         } else {
-          logger.info(`Order ${order.orderId} is ready but no partner assigned.`);
+          logger.info(`Order ${order.orderId} is ready for pickup but unassigned or unaccepted. Triggering fresh auto-dispatch & FCM push to all online delivery partners!`);
+          await FoodOrder.findByIdAndUpdate(order._id, {
+            $set: {
+              "dispatch.status": "unassigned",
+              "dispatch.deliveryPartnerId": null,
+              "dispatch.offeredTo": [],
+            },
+            $unset: { "dispatch.dispatchingAt": "" },
+          });
+          const { tryAutoAssign } = await import('./order-dispatch.service.js');
+          await tryAutoAssign(order._id, { attempt: 1, resetOffered: true });
         }
       }
     }

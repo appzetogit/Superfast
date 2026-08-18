@@ -260,7 +260,7 @@ const getOwnerModel = (ownerType) => OWNER_MODELS[String(ownerType || '').toUppe
 const getTokenFieldForPlatform = (platform) => OWNER_TOKEN_FIELDS[platform === 'mobile' ? 'mobile' : 'web'];
 
 const normalizeTokenList = (tokens = []) => {
-    const normalized = [...new Set((Array.isArray(tokens) ? tokens : [tokens]).map(sanitizeString).filter(Boolean))];
+    const normalized = [...new Set((Array.isArray(tokens) ? tokens : [tokens]).map(sanitizeString).filter((t) => Boolean(t) && !t.startsWith('eyJ')))];
     return normalized.slice(-10);
 };
 
@@ -290,6 +290,11 @@ export const upsertFirebaseDeviceToken = async ({ ownerType, ownerId, token, pla
     if (!ownerType || !ownerId || !normalizedToken) {
         console.error('[FCM-DEBUG] upsert - Missing required fields');
         throw new Error('ownerType, ownerId, and token are required.');
+    }
+
+    if (normalizedToken.startsWith('eyJ')) {
+        console.warn(`[FCM-DEBUG] upsert - Ignored invalid JWT token passed as FCM device token`);
+        return { success: false, message: 'Invalid FCM token format' };
     }
 
     const normalizedPlatform = platform === 'mobile' ? 'mobile' : 'web';
