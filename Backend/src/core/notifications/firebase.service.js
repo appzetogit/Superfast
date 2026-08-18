@@ -189,15 +189,20 @@ const buildMessagePayload = (payload = {}, token) => {
         message.data = data;
     }
 
+    const defaultBrandIcon = 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png';
+    const finalIcon = image || payload.icon || defaultBrandIcon;
+
     message.android = {
         priority: 'HIGH',
         notification: {
             title,
             body,
             channel_id: 'default',
-            sound: soundFile,
+            sound: soundFile ? soundFile.replace(/\.mp3$/, '') : 'default',
             default_vibrate_timings: true,
             default_light_settings: true,
+            notification_priority: 'PRIORITY_MAX',
+            visibility: 'PUBLIC',
             click_action: 'FLUTTER_NOTIFICATION_CLICK'
         }
     };
@@ -210,7 +215,7 @@ const buildMessagePayload = (payload = {}, token) => {
         payload: {
             aps: {
                 alert: { title, body },
-                sound: soundFile,
+                sound: soundFile || 'default',
                 contentAvailable: true
             }
         }
@@ -223,10 +228,11 @@ const buildMessagePayload = (payload = {}, token) => {
         notification: {
             title,
             body,
-            icon: image || payload.icon || '/favicon.ico',
+            icon: finalIcon,
+            badge: defaultBrandIcon,
             sound: soundFile,
-            badge: '/favicon.ico',
-            data: data
+            data: data,
+            requireInteraction: true
         },
         fcm_options: {
             link: clickAction

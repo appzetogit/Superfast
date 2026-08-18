@@ -72,7 +72,17 @@ function isFlutterWebView() {
 }
 
 function isSecureContextForPush() {
-  return window.isSecureContext || window.location.hostname === "localhost";
+  if (typeof window === "undefined") return false;
+  if (window.isSecureContext) return true;
+  const h = window.location.hostname;
+  return (
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h.startsWith("192.168.") ||
+    h.startsWith("10.") ||
+    h.startsWith("172.") ||
+    h.endsWith(".local")
+  );
 }
 
 function sanitize(value) {
@@ -556,43 +566,38 @@ function showForegroundNotification(payload = {}) {
         image,
         notificationKey,
       });
-      // Use service worker to show native system notification to ensure it bypasses focus checks
+      
+      const iconUrl = image || "/favicon.ico";
+
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(registration => {
-          if (registration) {
-            registration.showNotification(title, {
-              body,
-              icon: "/favicon.ico",
-              image,
-              tag: notificationKey || undefined,
-              data: payload?.data || {},
-              requireInteraction: true,
-              vibrate: [200, 100, 200, 100, 300]
-            });
-          } else {
-            new Notification(title, {
-              body,
-              icon: "/favicon.ico",
-              image,
-              tag: notificationKey || undefined,
-              requireInteraction: true
-            });
-          }
-        }).catch(() => {
+        navigator.serviceWorker.ready
+          .then((registration) => {
+            if (registration && typeof registration.showNotification === 'function') {
+              registration.showNotification(title, {
+                body,
+                icon: iconUrl,
+                image: image || undefined,
+                tag: notificationKey || undefined,
+                data: payload?.data || {},
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 300]
+              });
+            }
+          })
+          .catch((err) => {
+            pushDebugWarn(PUSH_DEBUG_PREFIX, "SW showNotification failed", { error: err?.message || err });
+          });
+      } else {
+        try {
           new Notification(title, {
             body,
-            icon: "/favicon.ico",
-            image,
+            icon: iconUrl,
+            image: image || undefined,
             tag: notificationKey || undefined,
           });
-        });
-      } else {
-        new Notification(title, {
-          body,
-          icon: "/favicon.ico",
-          image,
-          tag: notificationKey || undefined,
-        });
+        } catch (_) {
+          // Chrome Android throws on new Notification(); silently catch
+        }
       }
     } catch (error) {
       pushDebugWarn(PUSH_DEBUG_PREFIX, "Browser notification creation failed", {
