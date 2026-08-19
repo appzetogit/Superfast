@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, ShieldCheck, Timer, RefreshCw, Phone, ArrowRight, Loader2, ConciergeBell, Soup, Utensils, Home, Pencil } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
+import { getNativeFcmToken } from "@food/utils/firebaseMessaging"
 import {
   setAuthData as setRestaurantAuthData,
   setRestaurantPendingPhone,
@@ -221,7 +222,23 @@ export default function RestaurantOTP() {
       const email = authData.method === "email" ? authData.email : null
       const purpose = authData.isSignUp ? "register" : "login"
 
-      const response = await restaurantAPI.verifyOTP(phone, code, purpose, null, email)
+      let fcmToken = null
+      let platform = "web"
+      try {
+        if (typeof window !== "undefined") {
+          const nativeToken = await getNativeFcmToken("restaurant")
+          if (nativeToken) {
+            fcmToken = nativeToken
+            platform = "mobile"
+          } else {
+            fcmToken = localStorage.getItem("fcm_web_registered_token_restaurant") || null
+          }
+        }
+      } catch {
+        // Login must still succeed if the Flutter FCM bridge is missing.
+      }
+
+      const response = await restaurantAPI.verifyOTP(phone, code, purpose, null, email, fcmToken, platform)
       const data = response?.data?.data || response?.data
 
       const needsRegistration = data?.needsRegistration === true

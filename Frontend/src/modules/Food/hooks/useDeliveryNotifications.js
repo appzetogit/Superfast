@@ -200,9 +200,10 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
       typeof window.flutter_inappwebview.callHandler === 'function'
     ) {
       const handlerNames = [
+        'showLocalNotification',
+        'onPushNotification',
         'playNotificationSound',
         'triggerNotificationFeedback',
-        'onPushNotification',
       ];
 
       for (const handlerName of handlerNames) {

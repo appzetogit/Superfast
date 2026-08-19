@@ -141,9 +141,12 @@ async function loadFirebaseWebConfig() {
         notificationKey,
       });
 
+      const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
+
       self.registration.showNotification(title, {
         body,
-        icon: "/favicon.ico",
+        icon: iconUrl,
+        badge: iconUrl,
         image: image || undefined,
         tag: notificationKey,
         renotify: true,
@@ -183,10 +186,12 @@ self.addEventListener("push", (event) => {
         const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
         const notificationKey = getNotificationKey(payload);
         const clickAction = getTargetPathFromPayload(payload);
+        const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
 
         await self.registration.showNotification(title, {
           body,
-          icon: "/favicon.ico",
+          icon: iconUrl,
+          badge: iconUrl,
           image: image || undefined,
           tag: notificationKey,
           renotify: true,

@@ -169,7 +169,8 @@ const buildMessagePayload = (payload = {}, token) => {
         role: role.toLowerCase() || 'user',
         sound: soundFile,
         click_action: clickAction,
-        link: clickAction
+        link: clickAction,
+        android_channel_id: 'high_importance_channel'
     });
 
     const image = sanitizeString(
@@ -192,13 +193,16 @@ const buildMessagePayload = (payload = {}, token) => {
     const defaultBrandIcon = 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png';
     const finalIcon = image || payload.icon || defaultBrandIcon;
 
+    // FlutterFire's standard high-importance channel. WebView/browser
+    // notifications ignore this; native Android uses it for lock-screen heads-up.
     message.android = {
         priority: 'HIGH',
         notification: {
             title,
             body,
-            channel_id: 'default',
-            sound: soundFile ? soundFile.replace(/\.mp3$/, '') : 'default',
+            channel_id: 'high_importance_channel',
+            sound: 'default',
+            default_sound: true,
             default_vibrate_timings: true,
             default_light_settings: true,
             notification_priority: 'PRIORITY_MAX',
@@ -258,7 +262,17 @@ const parseFirebaseError = async (response) => {
 const shouldRemoveTokenFromError = (errorJson, response) => {
     const status = response?.status;
     const message = String(errorJson?.error?.message || '').toUpperCase();
-    return status === 404 || message.includes('UNREGISTERED') || message.includes('INVALID_ARGUMENT');
+    const errorStatus = String(errorJson?.error?.status || '').toUpperCase();
+    if (status === 404 || errorStatus === 'NOT_FOUND' || message.includes('UNREGISTERED')) {
+        return true;
+    }
+    // INVALID_ARGUMENT often means a bad payload, not a dead token. Only drop the
+    // token when FCM explicitly says the registration token itself is invalid.
+    return (
+        message.includes('REGISTRATION-TOKEN-NOT-VALID') ||
+        message.includes('NOT A VALID FCM REGISTRATION TOKEN') ||
+        (message.includes('INVALID_ARGUMENT') && message.includes('TOKEN') && message.includes('REGISTRATION'))
+    );
 };
 
 const getOwnerModel = (ownerType) => OWNER_MODELS[String(ownerType || '').toUpperCase()] || null;
