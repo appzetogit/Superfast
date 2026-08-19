@@ -1557,11 +1557,15 @@ export const listApprovedRestaurants = async (query = {}) => {
                         $expr: { $eq: ['$restaurantId', '$$restaurant_id'] }, 
                         approvalStatus: 'approved', 
                         isAvailable: true,
-                        isRecommended: true,
                         image: { $exists: true, $ne: '' } 
                     } 
                 },
-                { $sort: { price: 1 } },
+                { 
+                    $addFields: { 
+                        recSortWeight: { $cond: [{ $eq: ['$isRecommended', true] }, 0, 1] } 
+                    } 
+                },
+                { $sort: { recSortWeight: 1, price: 1 } },
                 { $limit: 6 }
             ],
             as: 'recommendedItems'

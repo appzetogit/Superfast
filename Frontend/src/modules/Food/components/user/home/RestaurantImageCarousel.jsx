@@ -85,17 +85,22 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
     // Auto-slide every 2 seconds continuously
     const interval = setInterval(() => {
       if (scrollContainerRef.current) {
-        const width = scrollContainerRef.current.clientWidth || scrollContainerRef.current.getBoundingClientRect().width;
+        const el = scrollContainerRef.current;
+        const width = el.clientWidth || el.getBoundingClientRect().width;
         if (!width || width <= 0) return;
 
         const nextIndex = (activeIndexRef.current + 1) % items.length;
         activeIndexRef.current = nextIndex;
         setActiveIndex(nextIndex);
 
-        scrollContainerRef.current.scrollTo({
-          left: nextIndex * width,
-          behavior: 'smooth'
-        });
+        try {
+          el.scrollTo({
+            left: nextIndex * width,
+            behavior: 'smooth'
+          });
+        } catch (_) {
+          el.scrollLeft = nextIndex * width;
+        }
       }
     }, 2000);
 
@@ -103,7 +108,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
   }, [items?.length]);
 
   if (!items || items.length === 0) {
-    // Fallback if no recommended items exist (render cover photo, profile image, or default food placeholder)
+    // Fallback if no items exist
     const extractUrl = (img) => {
       if (!img) return "";
       if (typeof img === "string") return img.trim();
@@ -120,7 +125,8 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
     ];
 
     const validImages = rawList.map(extractUrl).filter(Boolean);
-    const renderSrc = validImages.length > 0 ? withCacheBuster(validImages[0], backendOrigin) : undefined;
+    const fallbackFoodImage = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80";
+    const renderSrc = validImages.length > 0 ? withCacheBuster(validImages[0], backendOrigin) : fallbackFoodImage;
     
     return (
       <div className="relative w-full h-[220px] sm:h-[240px] overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-[28px] rounded-b-none">
@@ -137,7 +143,11 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
   const handleItemClick = (e, itemId) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`/user/restaurants/${restaurantSlug}?scrollToItem=${itemId}`);
+    if (itemId) {
+      navigate(`/user/restaurants/${restaurantSlug}?scrollToItem=${itemId}`);
+    } else {
+      navigate(`/user/restaurants/${restaurantSlug}`);
+    }
   };
 
   return (
@@ -153,32 +163,44 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
         className="flex overflow-x-auto h-full w-full hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory scroll-smooth"
       >
         {items.map((item, index) => {
-          const isVeg = item.foodType !== 'Non-Veg';
-          const itemImg = item.image || item.imageUrl || (Array.isArray(restaurant?.coverImages) && (restaurant.coverImages[0]?.url || restaurant.coverImages[0])) || restaurant?.profileImage?.url || restaurant?.profileImage || restaurant?.image || null;
+          const isVeg = item.isVeg === true || item.foodType === 'Veg' || item.foodType === 'veg' || item.isVegetarian === true || item.foodType !== 'Non-Veg';
+          const rawPrice = item.price ?? item.discountPrice ?? item.basePrice ?? (Array.isArray(item.variants) && item.variants[0]?.price) ?? 0;
+          const displayPrice = Number(rawPrice) > 0 ? Number(rawPrice) : null;
+          
+          const fallbackFoodImage = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80";
+          const rawItemImg = item.image || item.imageUrl || item.photo || (Array.isArray(restaurant?.coverImages) && (restaurant.coverImages[0]?.url || restaurant.coverImages[0])) || restaurant?.profileImage?.url || restaurant?.profileImage || restaurant?.image || null;
+          const itemImg = rawItemImg ? withCacheBuster(rawItemImg, backendOrigin) : fallbackFoodImage;
+
           return (
             <div 
-              key={item._id || index}
-              onClick={(e) => handleItemClick(e, item._id)}
+              key={item._id || item.id || index}
+              onClick={(e) => handleItemClick(e, item._id || item.id)}
               className="w-full h-full flex-shrink-0 snap-center relative cursor-pointer"
             >
               <OptimizedImage
-                src={itemImg ? withCacheBuster(itemImg, backendOrigin) : null}
-                alt={item.name}
+                src={itemImg}
+                alt={item.name || "Dish"}
                 priority={priority && index === 0}
                 className="w-full h-full object-cover"
               />
               
               {/* Subtle top gradient for better text readability */}
-              <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
 
               {/* Top-left Dish Name & Price Badge */}
-              <div className="absolute top-2 left-2 max-w-[70%] z-10 bg-black/75 backdrop-blur-sm text-white text-[11px] sm:text-xs font-medium px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm truncate pointer-events-none">
+              <div className="absolute top-2 left-2 max-w-[80%] z-10 bg-black/80 backdrop-blur-md text-white text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-md truncate pointer-events-none border border-white/10">
                 <div className={`flex items-center justify-center w-3 h-3 border shrink-0 ${isVeg ? 'border-green-600' : 'border-red-600'} bg-white rounded-[2px]`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
                 </div>
-                <span className="truncate">{item.name}</span>
-                <span className="opacity-70 mx-0.5 shrink-0">•</span>
-                <span className="flex items-center font-semibold shrink-0"><IndianRupee className="w-2.5 h-2.5" />{item.price}</span>
+                <span className="truncate">{item.name || restaurant.name || "Dish"}</span>
+                {displayPrice !== null && (
+                  <>
+                    <span className="opacity-60 mx-0.5 shrink-0">•</span>
+                    <span className="flex items-center font-bold text-amber-300 shrink-0">
+                      <IndianRupee className="w-2.5 h-2.5" />{displayPrice}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           );
@@ -192,7 +214,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
             <div 
               key={idx} 
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                activeIndex === idx ? 'w-4 bg-white shadow-sm' : 'w-1.5 bg-white/50 shadow-sm'
+                activeIndex === idx ? 'w-4 bg-white shadow-md' : 'w-1.5 bg-white/50 shadow-sm'
               }`}
             />
           ))}
