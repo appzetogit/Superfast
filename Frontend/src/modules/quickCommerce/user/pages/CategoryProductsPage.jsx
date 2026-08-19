@@ -28,7 +28,7 @@ const CategoryProductsPage = () => {
     const { isOpen: isProductDetailOpen } = useProductDetail();
     const [selectedSubCategory, setSelectedSubCategory] = useState(initialSubcategoryId);
     const [category, setCategory] = useState(null);
-    const [subCategories, setSubCategories] = useState([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/128/2321/2321831.png' }]);
+    const [subCategories, setSubCategories] = useState([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/512/709/709699.png' }]);
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [headerTheme, setHeaderTheme] = useState(FALLBACK_HEADER_COLOR);
@@ -140,10 +140,10 @@ const CategoryProductsPage = () => {
                     const formattedSubs = subs.map(s => ({
                         id: s._id,
                         name: s.name,
-                        icon: s.image || 'https://cdn-icons-png.flaticon.com/128/2321/2321801.png'
+                        icon: s.image || s.icon || 'https://cdn-icons-png.flaticon.com/512/3724/3724720.png'
                     }));
                     
-                    setSubCategories([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/128/2321/2321831.png' }, ...formattedSubs]);
+                    setSubCategories([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/512/709/709699.png' }, ...formattedSubs]);
                     
                     if (isDirectSub && selectedSubCategory === 'all' && !location.state?.activeSubcategoryId) {
                         setSelectedSubCategory(currentCat._id);
@@ -216,7 +216,7 @@ const CategoryProductsPage = () => {
 
                 <div className="flex flex-1 relative items-start">
                     {/* Sidebar */}
-                    <aside className="w-20 md:w-28 border-r border-gray-50 dark:border-white/5 flex flex-col bg-white dark:bg-card overflow-y-auto hide-scrollbar sticky top-0 h-screen pb-32 transition-colors">
+                    <aside className="w-20 md:w-28 border-r border-gray-50 dark:border-white/5 flex flex-col bg-white dark:bg-card overflow-y-auto hide-scrollbar sticky top-[64px] h-[calc(100vh-64px)] pb-32 transition-colors">
                         {subCategories.map((cat) => (
                             <button
                                 key={cat.id}
@@ -245,7 +245,7 @@ const CategoryProductsPage = () => {
                     </aside>
 
                     {/* Content */}
-                    <main className="flex-1 px-3 pt-1 pb-24 bg-white dark:bg-background transition-colors">
+                    <main className="flex-1 px-3 pt-4 pb-24 bg-white dark:bg-background transition-colors">
                         {selectedSubCategory === 'all' && experienceSections.filter(s => (s.title || '').trim().toLowerCase() !== 'best sellers').length > 0 && (
                             <div className="mb-4">
                                 <SectionRenderer

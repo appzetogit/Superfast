@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { resolveQuickImageUrl } from "../utils/image";
 
-const ProductCard = memo(({ product, quantity, onAdd, onIncrement, onDecrement, compact = false }) => {
+const ProductCard = memo(({ product, quantity, onAdd, onIncrement, onDecrement, compact = false, className }) => {
   const money = (val) => `₹${Number(val || 0).toLocaleString("en-IN")}`;
   const discount = product.originalPrice > product.price 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) 
@@ -21,7 +21,7 @@ const ProductCard = memo(({ product, quantity, onAdd, onIncrement, onDecrement, 
       )}>
         <div className="relative p-2.5">
           {discount > 0 && (
-            <span className="absolute left-2.5 top-2.5 z-10 rounded-lg bg-[#0c831f] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white">
+            <span className="absolute left-2 top-2 z-10 rounded-md bg-[#0c831f] px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-wide text-white shadow-sm">
               {discount}% OFF
             </span>
           )}
@@ -40,7 +40,7 @@ const ProductCard = memo(({ product, quantity, onAdd, onIncrement, onDecrement, 
               className="h-full w-full object-contain mix-blend-multiply transition duration-500 group-hover:scale-110"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = "https://cdn-icons-png.flaticon.com/128/2321/2321831.png";
+                e.target.src = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80";
               }}
             />
           </div>

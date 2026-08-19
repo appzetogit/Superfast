@@ -465,7 +465,7 @@ const getQuickCategoryImage = (category = {}) => {
 
   return (
     resolveQuickImageUrl(candidate) ||
-    "https://cdn-icons-png.flaticon.com/128/2321/2321831.png"
+    "https://cdn-icons-png.flaticon.com/512/3724/3724720.png"
   );
 };
 
@@ -981,7 +981,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                                 className="h-full w-full object-cover object-center group-hover/item:scale-110 transition-transform duration-500"
                                 onError={(e) => {
                                   e.currentTarget.onerror = null;
-                                  e.currentTarget.src = "https://cdn-icons-png.flaticon.com/128/2321/2321831.png";
+                                  e.currentTarget.src = "https://cdn-icons-png.flaticon.com/512/3724/3724720.png";
                                 }}
                               />
                             ) : (
@@ -992,7 +992,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
                           </div>
                           {/* Dedicated bottom title area without overlap */}
                           <div className="relative z-20 w-full px-0.5 pb-0.5 text-center flex items-center justify-center min-h-[22px]">
-                            <span className="block text-[10px] md:text-[11px] lg:text-[12px] font-bold text-[#1f2b20] dark:text-gray-900 leading-tight truncate drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] group-hover/item:text-[#0c831f] dark:group-hover/item:text-emerald-700 transition-colors">
+                            <span className="block text-[10px] md:text-[11px] lg:text-[12px] font-bold text-[#1f2b20] dark:text-gray-900 leading-tight truncate drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] group-hover/item:text-[#0c831f] dark:group-hover/item:text-emerald-700 transition-colors capitalize">
                               {cat.name}
                             </span>
                           </div>

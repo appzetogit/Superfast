@@ -193,7 +193,7 @@ export const useQuickHomeData = ({ currentLocation }) => {
 
   const getQuickCategoryImage = useCallback((category = {}) => {
     const candidate = category?.image || category?.icon || category?.thumbnail || category?.imageUrl || category?.iconUrl || category?.media?.image || category?.media?.url || "";
-    return resolveQuickImageUrl(candidate) || "https://cdn-icons-png.flaticon.com/128/2321/2321831.png";
+    return resolveQuickImageUrl(candidate) || "https://cdn-icons-png.flaticon.com/512/3724/3724720.png";
   }, []);
 
   const fetchData = useCallback(async () => {
