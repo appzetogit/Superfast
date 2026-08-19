@@ -11,6 +11,8 @@ import {
   SlidersHorizontal,
   Star,
   Timer,
+  ChevronDown,
+  UtensilsCrossed,
 } from "lucide-react";
 import PromoRow from "@food/components/user/home/PromoRow";
 import OptimizedImage from "@food/components/OptimizedImage";
@@ -259,7 +261,7 @@ function FoodHomeContent({
         </div>
 
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-x-2 gap-y-10 relative z-10">
-          {displayCategories.slice(0, 8).map((category, index) => {
+          {displayCategories.slice(0, 7).map((category, index) => {
             const hasImage = category.image && typeof category.image === 'string' && category.image.trim() !== '';
             const emoji = getCategoryEmoji(category.name);
 
@@ -290,6 +292,21 @@ function FoodHomeContent({
               </Link>
             );
           })}
+
+          {/* See All Card (Matching Image 2 Design) */}
+          <Link
+            to="/food/user/categories"
+            className="group flex flex-col items-center gap-4"
+          >
+            <div className="relative aspect-square w-[76px] sm:w-[88px] overflow-hidden rounded-full border-[3px] border-white ring-1 ring-emerald-100 bg-[#e6f7ef] dark:bg-emerald-950/40 shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl group-active:scale-95 flex items-center justify-center">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#d0f2e3] dark:bg-emerald-900/60 flex items-center justify-center">
+                <UtensilsCrossed className="w-5 h-5 sm:w-6 sm:h-6 text-[#00B761] dark:text-emerald-400" />
+              </div>
+            </div>
+            <span className="text-center text-[12px] font-black leading-tight text-gray-800 tracking-tighter group-hover:text-[#00B761] transition-all flex items-center gap-0.5 whitespace-nowrap">
+              See all <ChevronDown className="w-3 h-3 text-[#00B761]" />
+            </span>
+          </Link>
         </div>
       </div>
 

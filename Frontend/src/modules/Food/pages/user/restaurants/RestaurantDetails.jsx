@@ -105,7 +105,6 @@ function RestaurantDetailsContent() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePayload, setSharePayload] = useState(null)
   const [expandedAddButtons, setExpandedAddButtons] = useState(new Set())
-  const [expandedSections, setExpandedSections] = useState(new Set([0])) // Default: Recommended section is expanded
   const [highlightedDishId, setHighlightedDishId] = useState(null)
   const [loadingMenuItems, setLoadingMenuItems] = useState(true)
   const [selectedMenuCategory, setSelectedMenuCategory] = useState("all")
@@ -855,12 +854,6 @@ function RestaurantDetailsContent() {
                   ...prev,
                   menuSections: finalMenuSections,
                 }))
-
-                // Set first 3 sections (Recommended, Starters, Main Course) as expanded by default
-                const defaultExpandedSections = new Set(
-                  Array.from({ length: Math.min(3, finalMenuSections.length) }, (_, idx) => idx)
-                )
-                setExpandedSections(defaultExpandedSections)
 
                 debugLog('Fetched menu sections with recommended items:', finalMenuSections)
               }
@@ -1834,26 +1827,11 @@ function RestaurantDetailsContent() {
   )
 
   useEffect(() => {
-    if (!hasActiveMenuFilters) return
-
-    const nextExpanded = new Set()
-    filteredSections.forEach(({ section, originalIndex }) => {
-      nextExpanded.add(originalIndex)
-      toRenderableArray(section?.subsections).forEach((_, subIndex) => {
-        nextExpanded.add(`${originalIndex}-${subIndex}`)
-      })
-    })
-
-    setExpandedSections(nextExpanded)
-  }, [filteredSections, hasActiveMenuFilters])
-
-  useEffect(() => {
     if (!restaurant?.menuSections || !targetDishId) return
 
     let matchedItem = null
-    const sectionKeysToExpand = new Set()
 
-    restaurant.menuSections.forEach((section, originalIndex) => {
+    restaurant.menuSections.forEach((section) => {
       const sectionItems = toRenderableArray(section?.items)
       const matchedSectionItem = sectionItems.find(
         (item) => String(item?.id || item?._id || "").trim() === targetDishId,
@@ -1861,11 +1839,10 @@ function RestaurantDetailsContent() {
 
       if (matchedSectionItem && !matchedItem) {
         matchedItem = matchedSectionItem
-        sectionKeysToExpand.add(originalIndex)
       }
 
       const sectionSubsections = toRenderableArray(section?.subsections)
-      sectionSubsections.forEach((subsection, subIndex) => {
+      sectionSubsections.forEach((subsection) => {
         const subsectionItems = toRenderableArray(subsection?.items)
         const matchedSubsectionItem = subsectionItems.find(
           (item) => String(item?.id || item?._id || "").trim() === targetDishId,
@@ -1873,19 +1850,12 @@ function RestaurantDetailsContent() {
 
         if (matchedSubsectionItem && !matchedItem) {
           matchedItem = matchedSubsectionItem
-          sectionKeysToExpand.add(originalIndex)
-          sectionKeysToExpand.add(`${originalIndex}-${subIndex}`)
         }
       })
     })
 
     if (!matchedItem) return
 
-    setExpandedSections((prev) => {
-      const next = new Set(prev)
-      sectionKeysToExpand.forEach((key) => next.add(key))
-      return next
-    })
     setHighlightedDishId(targetDishId)
 
     const scrollTimer = window.setTimeout(() => {
@@ -2244,7 +2214,7 @@ function RestaurantDetailsContent() {
                 </p>
               </div>
             )}
-            {filteredSections.length === 0 && (
+            {filteredSections.length === 0 && !hasActiveMenuFilters && (
               <div className="rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500">
                 No dishes match the current filters.
               </div>
@@ -2257,92 +2227,41 @@ function RestaurantDetailsContent() {
               const sectionItems = toRenderableArray(section?.items)
               const sectionSubsections = toRenderableArray(section?.subsections)
 
-              const isExpanded = expandedSections.has(originalIndex)
-
               return (
                 <div key={sectionIndex} id={sectionId} className="space-y-1 scroll-mt-20">
                   {/* Section Header */}
-                  {isRecommended && (
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                        {getSectionDisplayName(section)}
-                      </h2>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedSections(prev => {
-                            const newSet = new Set(prev)
-                            if (newSet.has(originalIndex)) {
-                              newSet.delete(originalIndex)
-                            } else {
-                              newSet.add(originalIndex)
-                            }
-                            return newSet
-                          })
-                        }}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                      >
-                        <ChevronDown
-                          className={`h-5 w-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'
-                            }`}
-                        />
-                      </button>
-                    </div>
-                  )}
-                  {!isRecommended && (
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                          {(section?.name && typeof section.name === 'string' && section.name.trim())
-                            ? section.name.trim()
-                            : (section?.title && typeof section.title === 'string' && section.title.trim())
-                              ? section.title.trim()
-                              : "Unnamed Section"}
-                        </h2>
-                        {section.subtitle && (
-                          <button className="text-sm text-blue-600 dark:text-blue-400 underline">
-                            {section.subtitle}
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedSections(prev => {
-                            const newSet = new Set(prev)
-                            if (newSet.has(originalIndex)) {
-                              newSet.delete(originalIndex)
-                            } else {
-                              newSet.add(originalIndex)
-                            }
-                            return newSet
-                          })
-                        }}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                      >
-                        <ChevronDown
-                          className={`h-5 w-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'
-                            }`}
-                        />
-                      </button>
-                    </div>
-                  )}
+                  <div className="pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+                    <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
+                      {isRecommended
+                        ? getSectionDisplayName(section)
+                        : (section?.name && typeof section.name === 'string' && section.name.trim())
+                          ? section.name.trim()
+                          : (section?.title && typeof section.title === 'string' && section.title.trim())
+                            ? section.title.trim()
+                            : "Unnamed Section"}
+                    </h2>
+                    {section.subtitle && (
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-0.5">
+                        {section.subtitle}
+                      </p>
+                    )}
+                  </div>
 
                   {/* Direct Items */}
-                  {isExpanded && isRecommended && !loadingMenuItems && sectionItems.length === 0 && (
+                  {isRecommended && !loadingMenuItems && sectionItems.length === 0 && (
                     <div className="text-center py-8">
                       <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base">
                         No dish recommended
                       </p>
                     </div>
                   )}
-                  {isExpanded && loadingMenuItems && (
+                  {loadingMenuItems && (
                     <div className="space-y-3 px-1 py-2 animate-pulse">
                       <div className="h-24 rounded-2xl bg-gray-100 dark:bg-gray-800" />
                       <div className="h-24 rounded-2xl bg-gray-100 dark:bg-gray-800" />
                     </div>
                   )}
-                  {isExpanded && sectionItems.length > 0 && (
+                  {sectionItems.length > 0 && (
                     <div className="space-y-0">
                       {sectionItems.map((item) => {
                         const quantity = getDishQuantity(item)
@@ -2530,44 +2449,22 @@ function RestaurantDetailsContent() {
                   )}
 
                   {/* Subsections */}
-                  {isExpanded && sectionSubsections.length > 0 && (
-                    <div className="space-y-4">
+                  {sectionSubsections.length > 0 && (
+                    <div className="space-y-4 pt-2">
                       {sectionSubsections.map((subsection, subIndex) => {
-                        const subsectionKey = `${originalIndex}-${subIndex}`
-                        const isSubsectionExpanded = expandedSections.has(subsectionKey)
                         const subsectionItems = toRenderableArray(subsection?.items)
 
                         return (
                           <div key={subIndex} className="space-y-4">
                             {/* Subsection Header */}
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                            <div className="pt-2 pb-1 border-b border-gray-100 dark:border-gray-800">
+                              <h3 className="text-base font-bold text-gray-900 dark:text-white">
                                 {subsection?.name || subsection?.title || "Subsection"}
                               </h3>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setExpandedSections(prev => {
-                                    const newSet = new Set(prev)
-                                    if (newSet.has(subsectionKey)) {
-                                      newSet.delete(subsectionKey)
-                                    } else {
-                                      newSet.add(subsectionKey)
-                                    }
-                                    return newSet
-                                  })
-                                }}
-                                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                              >
-                                <ChevronDown
-                                  className={`h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${isSubsectionExpanded ? '' : '-rotate-90'
-                                    }`}
-                                />
-                              </button>
                             </div>
 
                             {/* Subsection Items */}
-                            {isSubsectionExpanded && subsectionItems.length > 0 && (
+                            {subsectionItems.length > 0 && (
                               <div className="space-y-0">
                                 {subsectionItems.map((item) => {
                                   const quantity = getDishQuantity(item)
