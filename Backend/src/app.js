@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -18,6 +19,11 @@ import { sanitizeBodyToRelative, transformImageFields, requestContext } from './
 
 const app = express();
 
+// Enable HTTP response compression (Gzip / Brotli)
+app.use(compression({
+    level: 6,
+    threshold: 1024, // Compress responses above 1KB
+}));
 
 // Trust first proxy (essential for express-rate-limit if behind a proxy)
 app.set('trust proxy', 1);
@@ -39,10 +45,12 @@ if (!fs.existsSync(uploadDir)) {
 const localUploadsDir = path.join(__dirname, '..', 'uploads');
 
 const staticOptions = {
+    maxAge: '1y',
+    immutable: true,
     setHeaders: (res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
 };
 

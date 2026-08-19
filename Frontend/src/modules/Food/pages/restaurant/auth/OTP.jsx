@@ -484,7 +484,7 @@ export default function RestaurantOTP() {
         </div>
       </div>
       {/* Footer */}
-      <div className="shrink-0 z-20 bg-[#fafafa] py-4 text-center border-t border-gray-100">
+      <div className={`shrink-0 z-20 bg-[#fafafa] py-4 text-center border-t border-gray-100 ${keyboardOffset > 0 || focusedIndex !== null ? "hidden" : "block"}`}>
         <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] uppercase">
           SECURE VERIFICATION SYSTEM &bull; {companyName.toUpperCase()}
         </p>

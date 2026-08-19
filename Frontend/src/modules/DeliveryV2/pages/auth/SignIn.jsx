@@ -56,6 +56,7 @@ export default function DeliverySignIn() {
   const [isSending, setIsSending] = useState(false)
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.delivery?.logo?.url || getCachedSettings()?.logo?.url || null)
   const [keyboardInset, setKeyboardInset] = useState(0)
+  const [isFocused, setIsFocused] = useState(false)
 
   useEffect(() => {
     if (isModuleAuthenticated("delivery")) {
@@ -232,6 +233,8 @@ export default function DeliverySignIn() {
                   placeholder="Enter phone number"
                   value={formData.phone}
                   onChange={handlePhoneChange}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                   className="w-full bg-transparent pl-2 pr-2 py-1.5 text-sm text-gray-900 font-semibold outline-none placeholder:text-gray-400 placeholder:font-normal"
                 />
               </div>
@@ -266,7 +269,7 @@ export default function DeliverySignIn() {
       {/* Footer - Fixed at bottom */}
       <div 
         className="shrink-0 z-30 bg-white pt-3 border-t border-gray-100/80 shadow-sm"
-        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: keyboardInset > 80 ? 'none' : 'block' }}
+        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: (keyboardInset > 0 || isFocused) ? 'none' : 'block' }}
       >
         <div className="text-center pb-2">
           <p className="text-slate-400 text-xs font-medium">

@@ -38,6 +38,7 @@ export default function DeliveryOTP() {
   const inputRefs = useRef([])
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.delivery?.logo?.url || getCachedSettings()?.logo?.url || null)
   const [keyboardInset, setKeyboardInset] = useState(0)
+  const [isFocused, setIsFocused] = useState(false)
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -702,6 +703,8 @@ export default function DeliveryOTP() {
                       onChange={(e) => handleChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
                       onPaste={index === 0 ? handlePaste : undefined}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
                       disabled={isLoading}
                       autoComplete="off"
                       className={`w-12 h-14 sm:w-14 sm:h-16 bg-slate-50 border-2 rounded-2xl text-center text-2xl font-bold text-slate-900 focus:outline-none transition-all duration-300 border-gray-200 focus:border-[#00B761]`}
@@ -765,7 +768,7 @@ export default function DeliveryOTP() {
       {/* Footer */}
       <div 
         className="shrink-0 z-20 bg-white pt-3 text-center border-t border-gray-100/80 shadow-sm"
-        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: keyboardInset > 80 ? 'none' : 'block' }}
+        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: (keyboardInset > 0 || isFocused) ? 'none' : 'block' }}
       >
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
             &copy; {new Date().getFullYear()} {companyName.toUpperCase()} DELIVERY PARTNER

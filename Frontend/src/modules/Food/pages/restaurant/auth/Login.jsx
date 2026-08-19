@@ -29,6 +29,7 @@ export default function RestaurantLogin() {
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
+  const [isFocused, setIsFocused] = useState(false)
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.restaurant?.logo?.url || getCachedSettings()?.logo?.url || null)
 
   useEffect(() => {
@@ -191,7 +192,13 @@ export default function RestaurantLogin() {
                   placeholder="Enter phone number"
                   value={formData.phone}
                   onChange={handlePhoneChange}
-                  onFocus={ensurePhoneFieldVisible}
+                  onFocus={() => {
+                    setIsFocused(true)
+                    ensurePhoneFieldVisible()
+                  }}
+                  onBlur={() => {
+                    setIsFocused(false)
+                  }}
                   className="w-full bg-transparent pl-2 pr-2 py-1.5 text-sm text-gray-900 font-semibold outline-none placeholder:text-gray-400 placeholder:font-normal"
                 />
               </div>
@@ -224,7 +231,7 @@ export default function RestaurantLogin() {
       </div>
 
       {/* Footer */}
-      <div>
+      <div className={keyboardInset > 0 || isFocused ? "hidden" : "block"}>
         <div className="text-center pt-4 pb-2">
           <p className="text-slate-400 text-xs font-medium">
             By logging in, you agree to our <br />

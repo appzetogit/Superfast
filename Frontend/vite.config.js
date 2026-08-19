@@ -40,6 +40,39 @@ export default defineConfig({
       '@mui/x-date-pickers',
     ],
   },
+  build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    cssMinify: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'vendor-react'
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-framer'
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-lucide'
+            }
+            if (id.includes('@mui') || id.includes('@emotion')) {
+              return 'vendor-mui'
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-recharts'
+            }
+            if (id.includes('firebase')) {
+              return 'vendor-firebase'
+            }
+            return 'vendor-others'
+          }
+        }
+      }
+    }
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
