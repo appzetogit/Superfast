@@ -453,8 +453,7 @@ export const LocationProvider = ({ children }) => {
     refreshAddresses();
   }, [refreshAddresses]);
 
-  // On mount: only restore from cache. Do NOT auto-fetch – browsers block the
-  // location prompt unless it's triggered by a user gesture (e.g. tap).
+  // On mount: restore cached location immediately, then silently refresh live GPS location in background if available
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -487,7 +486,12 @@ export const LocationProvider = ({ children }) => {
     } catch {
       // ignore parse errors
     }
-    // Live fetch happens only when user taps location pill or "Use current location"
+
+    // Automatically trigger background live GPS fetch ONLY if deliveryAddressMode is 'current'
+    const addressMode = localStorage.getItem("deliveryAddressMode") || "saved";
+    if (addressMode === "current" && typeof navigator !== "undefined" && navigator.geolocation) {
+      fetchAndCacheLocation().catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -497,9 +501,10 @@ export const LocationProvider = ({ children }) => {
 
     const handleUserLocationUpdated = (event) => {
       const loc = event.detail?.location;
-      if (loc && loc.latitude && loc.longitude) {
+      const addrName = loc?.formattedAddress || loc?.address || loc?.name;
+      if (loc && addrName) {
         setCurrentLocation({
-          name: loc.formattedAddress || loc.address,
+          name: addrName,
           time: "12-15 mins",
           city: loc.city || "",
           state: loc.state || "",

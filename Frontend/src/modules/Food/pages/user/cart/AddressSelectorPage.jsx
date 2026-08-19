@@ -48,25 +48,40 @@ const getAddressIcon = (address) => {
 const buildLocationPayloadFromAddress = (address) => {
   if (!address || typeof address !== "object") return null
 
-  const coordinates = Array.isArray(address.location?.coordinates)
-    ? address.location.coordinates
-    : []
-  const longitude = Number(
-    coordinates[0] ?? address.longitude ?? address.lng ?? null,
-  )
-  const latitude = Number(
-    coordinates[1] ?? address.latitude ?? address.lat ?? null,
-  )
+  let latitude = null
+  let longitude = null
+
+  if (Array.isArray(address.location?.coordinates) && address.location.coordinates.length >= 2) {
+    longitude = Number(address.location.coordinates[0])
+    latitude = Number(address.location.coordinates[1])
+  } else if (typeof address.location?.lat === "number" && typeof address.location?.lng === "number") {
+    latitude = Number(address.location.lat)
+    longitude = Number(address.location.lng)
+  } else if (typeof address.location?.latitude === "number" && typeof address.location?.longitude === "number") {
+    latitude = Number(address.location.latitude)
+    longitude = Number(address.location.longitude)
+  } else {
+    latitude = Number(address.latitude ?? address.lat ?? null)
+    longitude = Number(address.longitude ?? address.lng ?? null)
+  }
 
   const street = String(address.street || "").trim()
-  const area = String(address.additionalDetails || address.area || "").trim()
+  const area = String(address.additionalDetails || address.area || address.landmark || "").trim()
   const city = String(address.city || "").trim()
   const state = String(address.state || "").trim()
   const zipCode = String(address.zipCode || address.postalCode || "").trim()
+  const rawFormatted = String(address.formattedAddress || address.address || address.fullAddress || "").trim()
+
   const formattedAddress =
-    String(address.formattedAddress || "").trim() ||
+    rawFormatted ||
     [area, street, city, state, zipCode].filter(Boolean).join(", ") ||
     [street, city, state].filter(Boolean).join(", ")
+
+  const displayAddress =
+    [street || area, city].filter(Boolean).join(", ") ||
+    formattedAddress ||
+    address.label ||
+    "Selected Address"
 
   return {
     label: address.label || "Home",
@@ -78,20 +93,35 @@ const buildLocationPayloadFromAddress = (address) => {
     state,
     zipCode,
     postalCode: zipCode,
-    address: [street, city].filter(Boolean).join(", ") || formattedAddress,
+    address: displayAddress,
     formattedAddress,
+    name: displayAddress,
   }
 }
 
 const persistSelectedLocation = (locationData) => {
   if (!locationData) return
   try {
+    const locName = locationData.formattedAddress || locationData.address || locationData.name || "Selected Address"
+    const locV2Payload = {
+      name: locName,
+      address: locName,
+      city: locationData.city || "",
+      state: locationData.state || "",
+      pincode: locationData.postalCode || locationData.zipCode || "",
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+      time: "12-15 mins",
+    }
     localStorage.setItem("userLocation", JSON.stringify(locationData))
+    localStorage.setItem("location_v2", JSON.stringify(locV2Payload))
+    localStorage.setItem("deliveryAddressMode", "saved")
     window.dispatchEvent(
       new CustomEvent("userLocationUpdated", {
         detail: { location: locationData },
       }),
     )
+    window.dispatchEvent(new Event("deliveryAddressModeChanged"))
   } catch {
     // Ignore storage/event sync errors so selection still works.
   }

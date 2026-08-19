@@ -430,8 +430,18 @@ export function useLocation() {
       // Check if user is authenticated before trying to fetch from DB
       const userToken = localStorage.getItem('user_accessToken') || localStorage.getItem('accessToken')
       if (!userToken || userToken === 'null' || userToken === 'undefined') {
-        // User not logged in - skip DB fetch, return null to use localStorage
         return null
+      }
+
+      // If userLocation is already stored in localStorage, prefer userLocation over DB fetch
+      const existingStored = localStorage.getItem("userLocation")
+      if (existingStored) {
+        try {
+          const parsed = JSON.parse(existingStored)
+          if (parsed && (parsed.address || parsed.formattedAddress || parsed.city || parsed.area)) {
+            return parsed
+          }
+        } catch (e) {}
       }
 
       const dbLocationAgeMs = Date.now() - lastDbLocationFetchAtRef.current
@@ -443,52 +453,40 @@ export function useLocation() {
       const addressesData = res?.data?.data?.addresses || res?.data?.addresses || []
       const defaultAddr = addressesData.find((addr) => addr.isDefault) || addressesData[0] || null
 
-      if (defaultAddr && defaultAddr.location?.coordinates) {
-        const coords = defaultAddr.location.coordinates
-        const lat = coords[1]
-        const lng = coords[0]
+      if (defaultAddr) {
+        const coords = defaultAddr.location?.coordinates || []
+        const lat = typeof defaultAddr.location?.lat === "number" ? defaultAddr.location.lat : (coords[1] ?? defaultAddr.latitude ?? defaultAddr.lat)
+        const lng = typeof defaultAddr.location?.lng === "number" ? defaultAddr.location.lng : (coords[0] ?? defaultAddr.longitude ?? defaultAddr.lng)
 
-        // Validate coordinates are in India range BEFORE attempting geocoding
-        const isInIndiaRange = lat >= 6.5 && lat <= 37.1 && lng >= 68.7 && lng <= 97.4 && lng > 0
-
-        if (!isInIndiaRange || lng < 0) {
-          // Coordinates are outside India - return placeholder
-          debugWarn("?? Coordinates from DB are outside India range:", { latitude: lat, longitude: lng })
-          const outOfRangeLocation = {
-            latitude: lat,
-            longitude: lng,
-            city: "Current Location",
-            state: "",
-            country: "",
-            area: "",
-            address: "Select location",
-            formattedAddress: "Select location",
-          }
-          lastDbLocationRef.current = outOfRangeLocation
-          lastDbLocationFetchAtRef.current = Date.now()
-          return outOfRangeLocation
-        }
+        const street = String(defaultAddr.street || "").trim()
+        const area = String(defaultAddr.additionalDetails || defaultAddr.area || defaultAddr.landmark || "").trim()
+        const city = String(defaultAddr.city || "").trim()
+        const state = String(defaultAddr.state || "").trim()
+        const zipCode = String(defaultAddr.zipCode || defaultAddr.postalCode || "").trim()
+        const rawFormatted = String(defaultAddr.formattedAddress || defaultAddr.address || "").trim()
+        const formattedAddress = rawFormatted || [area, street, city, state, zipCode].filter(Boolean).join(", ")
+        const displayAddress = [street || area, city].filter(Boolean).join(", ") || formattedAddress || defaultAddr.label || "Saved Address"
 
         const storedLocation = {
-          latitude: lat,
-          longitude: lng,
-          city: defaultAddr.city || "Current Location",
-          area: defaultAddr.area || defaultAddr.landmark || "",
-          state: defaultAddr.state || "",
-          country: defaultAddr.country || "",
-          address: defaultAddr.address || "Select location",
-          formattedAddress: defaultAddr.address || "Select location",
-          label: defaultAddr.label || ""
+          latitude: Number.isFinite(Number(lat)) ? Number(lat) : undefined,
+          longitude: Number.isFinite(Number(lng)) ? Number(lng) : undefined,
+          city: city || "Current Location",
+          area: area,
+          state: state,
+          street: street,
+          postalCode: zipCode,
+          zipCode: zipCode,
+          address: displayAddress,
+          formattedAddress: formattedAddress,
+          label: defaultAddr.label || "Saved Address"
         }
         lastDbLocationRef.current = storedLocation
         lastDbLocationFetchAtRef.current = Date.now()
         localStorage.setItem("userLocation", JSON.stringify(storedLocation))
-        // Also dispatch event so other tabs/components can sync
         window.dispatchEvent(new CustomEvent("userLocationUpdated", { detail: { location: storedLocation } }))
         return storedLocation
       }
     } catch (err) {
-      // Silently fail for 404/401 (user not authenticated) or network errors
       if (err.code !== "ERR_NETWORK" && err.response?.status !== 404 && err.response?.status !== 401) {
         debugError("DB location fetch error:", err)
       }
@@ -1118,11 +1116,10 @@ export function useLocation() {
 
         if (!nextLocation || typeof nextLocation !== "object") return
 
+        lastDbLocationRef.current = nextLocation
+        lastDbLocationFetchAtRef.current = Date.now()
         setLocation(nextLocation)
-        setPermissionGranted(
-          Number.isFinite(Number(nextLocation.latitude)) &&
-            Number.isFinite(Number(nextLocation.longitude))
-        )
+        setPermissionGranted(true)
         setLoading(false)
         setError(null)
       } catch (err) {
@@ -1260,56 +1257,46 @@ export function useLocation() {
         // If permission NOT granted, and we don't have a specific user request (this is page load),
         // we should SKIP automatic fetching/watching to allow the user to choose when to enable it.
         // UNLESS we already have a valid initial location from localStorage/DB, in which case we might want to refresh?
-        // Actually, even then, we shouldn't prompt.
         if (!permissionGranted) {
-          // If we have an initial location, we are fine (it's displayed).
-          // If we don't, we show "Select Location".
-          // In either case, we avoid the PROMPT.
-          // Ensure loading is false so UI doesn't hang
           setLoading(false);
           return;
         }
 
-        debugLog("?? Permission granted! Fetching/Watching location...", shouldForceRefresh ? "(FORCE REFRESH)" : "");
-
-        // Only fetch once on initial app open if we have no stored coordinates yet.
-        // Do not keep re-geocoding just because the address text is placeholder.
-        const shouldFetch = shouldForceRefresh || !hasInitialLocation
-
-        if (shouldFetch) {
-          debugLog("?? Fetching location - shouldForceRefresh:", shouldForceRefresh, "hasInitialLocation:", hasInitialLocation)
-          getLocation(true, shouldForceRefresh) // forceFresh = true if cached location is incomplete
-            .then((location) => {
-              if (location &&
-                location.formattedAddress !== "Select location" &&
-                location.city !== "Current Location") {
-                debugLog("? Fresh location fetched:", location)
-                debugLog("? Location details:", {
-                  formattedAddress: location?.formattedAddress,
-                  address: location?.address,
-                  city: location?.city,
-                  state: location?.state,
-                  area: location?.area
-                })
-                // CRITICAL: Update state with fresh location so PageNavbar displays it
-                setLocation(location)
-                setPermissionGranted(true)
-                if (AUTO_START_LIVE_WATCH) startWatchingLocation()
-              } else {
-                // Placeholder result means reverse-geocode failed or was unavailable.
-                // Requirement: no more automatic retries; user can trigger manual refresh.
-                debugWarn("?? Location fetch returned placeholder; not retrying automatically")
-              }
-            })
-            .catch((err) => {
-              debugWarn("?? Background location fetch failed (using cached):", err.message)
-              // Don't auto-start live watching; keep cached/localStorage behavior.
-              if (AUTO_START_LIVE_WATCH) startWatchingLocation()
-            })
-        } else {
-          // We have a valid location; no need to start live watching.
-          if (AUTO_START_LIVE_WATCH) startWatchingLocation()
+        const addressMode = localStorage.getItem("deliveryAddressMode") || "saved";
+        if (addressMode === "saved") {
+          debugLog("📍 deliveryAddressMode is 'saved'; preserving user-selected saved address.");
+          setLoading(false);
+          return;
         }
+
+        debugLog("📍 Permission granted & mode is 'current'! Auto-fetching fresh GPS location in background on app open...");
+
+        // Automatically fetch fresh GPS location in background when user opens app with location enabled in 'current' mode
+        getLocation(true, true)
+          .then((location) => {
+            if (
+              location &&
+              location.formattedAddress !== "Select location" &&
+              location.city !== "Current Location"
+            ) {
+              debugLog("✅ Fresh location auto-updated on app open:", location);
+              setLocation(location);
+              try {
+                localStorage.setItem("userLocation", JSON.stringify(location));
+                localStorage.setItem("deliveryAddressMode", "current");
+                window.dispatchEvent(
+                  new CustomEvent("userLocationUpdated", {
+                    detail: { location },
+                  })
+                );
+              } catch (e) {}
+              setPermissionGranted(true);
+              if (AUTO_START_LIVE_WATCH) startWatchingLocation();
+            }
+          })
+          .catch((err) => {
+            debugWarn("⚠️ Background location refresh error:", err);
+          });
       } catch (err) {
         debugError("Error in checkPermissionAndStart:", err);
         setLoading(false);

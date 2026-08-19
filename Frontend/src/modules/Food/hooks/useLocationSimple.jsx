@@ -264,9 +264,9 @@ export function useLocationSimple() {
     }
   }
 
-  // Initialize: Load cached location; only fetch if missing.
+  // Initialize: Load cached location immediately, then silently refresh live GPS location in background
   useEffect(() => {
-    // Load cached location immediately (no loading state)
+    // Load cached location immediately (no loading delay)
     const cached = localStorage.getItem("userLocation")
     if (cached) {
       try {
@@ -280,15 +280,24 @@ export function useLocationSimple() {
       setLoading(false)
     }
 
-    // IMPORTANT: Do NOT fetch on every reload.
-    // Only fetch once when userLocation is missing; after that, rely on localStorage
-    // unless the user explicitly requests a refresh via requestLocation().
-    if (!cached) {
-      getCurrentLocation()
+    // Automatically trigger background live GPS fetch ONLY if deliveryAddressMode is 'current'
+    const addressMode = localStorage.getItem("deliveryAddressMode") || "saved";
+    if (addressMode === "current" && typeof navigator !== "undefined" && navigator.geolocation) {
+      getCurrentLocation(true)
         .then((locationData) => {
           setLocation(locationData)
+          try {
+            localStorage.setItem("userLocation", JSON.stringify(locationData))
+            localStorage.setItem("deliveryAddressMode", "current")
+          } catch (e) {}
           setPermissionGranted(true)
           setError(null)
+          // Broadcast location update to other components/modules
+          window.dispatchEvent(
+            new CustomEvent("userLocationUpdated", {
+              detail: { location: locationData },
+            })
+          )
         })
         .catch((err) => {
           setError(err.message)
