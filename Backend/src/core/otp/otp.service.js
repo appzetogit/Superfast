@@ -60,6 +60,7 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
             url.searchParams.append('PE_ID', config.smsPeId);
         }
         if (config.smsDltTemplateId) {
+            url.searchParams.append('templateid', config.smsDltTemplateId);
             url.searchParams.append('DLT_TE_ID', config.smsDltTemplateId);
         }
 
