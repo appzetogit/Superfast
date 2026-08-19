@@ -171,10 +171,21 @@ export default function useAppBackNavigation() {
       navigate(explicitBackPath, { replace: true })
       return
     }
-    if (typeof window !== "undefined" && window.history.length > 1 && (window.history.state?.idx > 0 || document.referrer)) {
+
+    const normalizedPath = getNormalizedUserPath(location.pathname)
+
+    // For restaurant details / product details, directly navigate back to main listing/home
+    if (/^\/user\/restaurants\/[^/]+$/.test(normalizedPath) || /^\/user\/product\/[^/]+$/.test(normalizedPath)) {
+      const target = resolveBackPath(location)
+      navigate(target, { replace: true })
+      return
+    }
+
+    if (typeof window !== "undefined" && window.history.length > 1 && window.history.state?.idx > 0) {
       navigate(-1)
       return
     }
-    navigate(resolveBackPath(location))
+
+    navigate(resolveBackPath(location), { replace: true })
   }, [location, navigate])
 }

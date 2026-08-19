@@ -1983,10 +1983,15 @@ function RestaurantDetailsContent() {
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-4 md:pt-6 pb-6 relative z-20 bg-white dark:bg-[#1a1a1a]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Button
+            type="button"
             variant="outline"
             size="icon"
-            className="rounded-full h-11 w-11 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a]"
-            onClick={goBack}
+            className="rounded-full h-11 w-11 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95 transition-all"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goBack();
+            }}
           >
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </Button>

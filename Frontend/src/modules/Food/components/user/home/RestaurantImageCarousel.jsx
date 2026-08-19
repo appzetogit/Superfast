@@ -34,8 +34,27 @@ const withCacheBuster = (url, backendOrigin) => {
 
 const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, backendOrigin = "" }) => {
   const navigate = useNavigate();
-  const items = restaurant?.recommendedItems || [];
+
+  const rawItems = [
+    ...(Array.isArray(restaurant?.recommendedItems) ? restaurant.recommendedItems : []),
+    ...(Array.isArray(restaurant?.items) ? restaurant.items : []),
+    ...(Array.isArray(restaurant?.menuItems) ? restaurant.menuItems : []),
+    ...(Array.isArray(restaurant?.menu) ? restaurant.menu.flatMap(c => (Array.isArray(c?.items) ? c.items : Array.isArray(c?.dishes) ? c.dishes : [])) : []),
+    ...(Array.isArray(restaurant?.categories) ? restaurant.categories.flatMap(c => (Array.isArray(c?.items) ? c.items : Array.isArray(c?.dishes) ? c.dishes : [])) : [])
+  ];
+
+  const seenIds = new Set();
+  const items = rawItems.filter(item => {
+    if (!item) return false;
+    const id = item._id || item.id || item.name;
+    if (!id || seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
+
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
+  activeIndexRef.current = activeIndex;
   const scrollContainerRef = useRef(null);
   
   const nameStr = typeof restaurant?.name === "string" ? restaurant.name.trim() : "";
@@ -54,28 +73,34 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
       const width = scrollContainerRef.current.clientWidth;
       if (width > 0) {
         const newIndex = Math.round(scrollLeft / width);
+        activeIndexRef.current = newIndex;
         setActiveIndex(newIndex);
       }
     }
   };
 
   React.useEffect(() => {
-    if (items.length <= 1) return;
+    if (!items || items.length <= 1) return;
     
-    // Auto-slide every 1.5 seconds
+    // Auto-slide every 2 seconds continuously
     const interval = setInterval(() => {
       if (scrollContainerRef.current) {
-        const width = scrollContainerRef.current.clientWidth;
-        const nextIndex = (activeIndex + 1) % items.length;
+        const width = scrollContainerRef.current.clientWidth || scrollContainerRef.current.getBoundingClientRect().width;
+        if (!width || width <= 0) return;
+
+        const nextIndex = (activeIndexRef.current + 1) % items.length;
+        activeIndexRef.current = nextIndex;
+        setActiveIndex(nextIndex);
+
         scrollContainerRef.current.scrollTo({
           left: nextIndex * width,
           behavior: 'smooth'
         });
       }
-    }, 1500);
+    }, 2000);
 
     return () => clearInterval(interval);
-  }, [activeIndex, items.length]);
+  }, [items?.length]);
 
   if (!items || items.length === 0) {
     // Fallback if no recommended items exist (render cover photo, profile image, or default food placeholder)
