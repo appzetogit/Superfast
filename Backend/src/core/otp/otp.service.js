@@ -36,16 +36,21 @@ const getPhoneCandidates = (phone) => {
  */
 const sendSmsViaIndiaHub = async (phone, otp) => {
     try {
-        // Normalize phone: strip non-digits, ensure 91 country code prefix
+        // Normalize phone: extract last 10 digits and prefix with 91 country code
         const digits = String(phone || '').replace(/\D/g, '');
-        const msisdn = digits.startsWith('91') ? digits : `91${digits}`;
+        const last10 = digits.slice(-10);
+        if (!last10 || last10.length < 10) {
+            logger.error(`[SMS] Invalid phone number provided: ${phone}`);
+            return;
+        }
+        const msisdn = `91${last10}`;
 
         // EXACT DLT TEMPLATE provided by user:
         // "Welcome to the ##var## powered by Appzeto.Your OTP for registration is ##var##.BGADEC"
         const message = `Welcome to the SUPERFAST powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
 
-        // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
-        const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
+        // SMS India Hub API URL (HTTPS)
+        const url = new URL('https://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
         url.searchParams.append('APIKey', config.smsApiKey);
         url.searchParams.append('sid', config.smsSenderId);
         url.searchParams.append('msisdn', msisdn);
