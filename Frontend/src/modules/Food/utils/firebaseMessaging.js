@@ -16,10 +16,13 @@ const DEFAULT_FIREBASE_CONFIG = {
 
 const tokenCachePrefix = "fcm_web_registered_token_";
 const pushSoundEnabledStorageKey = "push_sound_enabled";
+const pendingNativeTokenKey = "pending_native_fcm_token";
 let publicEnvPromise = null;
 let foregroundListenerAttached = false;
 let registrationInFlight = null;
 let serviceWorkerMessageListenerAttached = false;
+let nativeTokenListenersAttached = false;
+let nativeRetryTimeouts = [];
 const MESSAGING_APP_NAME = "web-push-app";
 const recentForegroundNotifications = new Map();
 let pushSoundAudio = null;
@@ -34,12 +37,73 @@ const pushDebugWarn = (prefix, message, data = {}) => {
   console.warn(`${prefix} ${message}`, data);
 };
 
+function getCurrentAppPath(pathname = "") {
+  const fromArg = String(pathname || "");
+  if (
+    fromArg.includes("restaurant") ||
+    fromArg.includes("delivery") ||
+    fromArg.includes("seller") ||
+    fromArg.includes("admin") ||
+    fromArg.includes("food") ||
+    fromArg.includes("user")
+  ) {
+    return fromArg;
+  }
+  if (typeof window === "undefined") return fromArg;
+  const hash = String(window.location.hash || "").replace(/^#/, "").split("?")[0];
+  if (
+    hash.includes("restaurant") ||
+    hash.includes("delivery") ||
+    hash.includes("seller") ||
+    hash.includes("admin") ||
+    hash.includes("food") ||
+    hash.includes("user")
+  ) {
+    return hash;
+  }
+  return String(window.location.pathname || fromArg || "");
+}
+
 function normalizeModuleFromPath(pathname = window.location.pathname) {
-  if (pathname.includes("/restaurant") && !pathname.includes("/restaurants")) return "restaurant";
-  if (pathname.includes("/seller")) return "seller";
-  if (pathname.includes("/delivery")) return "delivery";
-  if (pathname.includes("/admin")) return "admin";
+  const path = getCurrentAppPath(pathname);
+  if (path.includes("restaurant") && !path.includes("restaurants")) return "restaurant";
+  if (path.includes("seller")) return "seller";
+  if (path.includes("delivery")) return "delivery";
+  if (path.includes("admin")) return "admin";
   return "user";
+}
+
+function getModuleAccessToken(moduleName) {
+  return (
+    localStorage.getItem(`${moduleName}_accessToken`) ||
+    localStorage.getItem(`auth_${moduleName}`) ||
+    ""
+  );
+}
+
+function resolvePushModule(pathname) {
+  const fromPath = normalizeModuleFromPath(pathname);
+  if (getModuleAccessToken(fromPath)) return fromPath;
+  for (const moduleName of ["restaurant", "delivery", "admin", "seller", "user"]) {
+    if (getModuleAccessToken(moduleName) || localStorage.getItem(`${moduleName}_authenticated`) === "true") {
+      return moduleName;
+    }
+  }
+  return fromPath;
+}
+
+function readAnyAccessToken(moduleName) {
+  return (
+    getModuleAccessToken(moduleName) ||
+    localStorage.getItem("auth_customer") ||
+    localStorage.getItem("auth_seller") ||
+    localStorage.getItem("auth_restaurant") ||
+    localStorage.getItem("auth_delivery") ||
+    localStorage.getItem("auth_admin") ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    ""
+  );
 }
 
 function isRecord(value) {
@@ -71,6 +135,19 @@ function isFlutterWebView() {
   );
 }
 
+function isNativeAppShell() {
+  if (typeof window === "undefined") return false;
+  if (isFlutterWebView()) return true;
+  const protocol = String(window.location?.protocol || "").toLowerCase();
+  const userAgent = String(window.navigator?.userAgent || "").toLowerCase();
+  return (
+    Boolean(window.ReactNativeWebView) ||
+    protocol === "file:" ||
+    userAgent.includes(" wv") ||
+    userAgent.includes("; wv")
+  );
+}
+
 function extractFcmTokenCandidate(value) {
   if (!value) return "";
   if (typeof value === "string") {
@@ -93,25 +170,54 @@ function extractFcmTokenCandidate(value) {
   return "";
 }
 
+async function callFlutterHandler(handlerName, payload) {
+  if (!window.flutter_inappwebview || typeof window.flutter_inappwebview.callHandler !== "function") {
+    return null;
+  }
+  try {
+    if (payload !== undefined) {
+      return await window.flutter_inappwebview.callHandler(handlerName, payload);
+    }
+    return await window.flutter_inappwebview.callHandler(handlerName);
+  } catch {
+    if (payload !== undefined) {
+      try {
+        return await window.flutter_inappwebview.callHandler(handlerName);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+async function requestNativeNotificationPermission() {
+  for (const handlerName of [
+    "requestNotificationPermission",
+    "requestPushPermission",
+    "askNotificationPermission",
+  ]) {
+    const result = await callFlutterHandler(handlerName, { module: "push" });
+    if (result !== null) return result;
+  }
+  return null;
+}
+
 export async function getNativeFcmToken(moduleName = normalizeModuleFromPath()) {
   if (typeof window === "undefined") return "";
 
+  await requestNativeNotificationPermission();
+
   const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"];
-  if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === "function") {
-    for (const handlerName of handlerNames) {
-      try {
-        const raw = await window.flutter_inappwebview.callHandler(handlerName, { module: moduleName });
-        const token = extractFcmTokenCandidate(raw);
-        if (token.length >= 20) return token;
-      } catch {
-        // Try the next handler name.
-      }
-    }
+  for (const handlerName of handlerNames) {
+    const raw = await callFlutterHandler(handlerName, { module: moduleName });
+    const token = extractFcmTokenCandidate(raw);
+    if (token.length >= 20) return token;
   }
 
   try {
     if (window.MobileApp && typeof window.MobileApp.getFcmToken === "function") {
-      const token = extractFcmTokenCandidate(window.MobileApp.getFcmToken());
+      const token = extractFcmTokenCandidate(await window.MobileApp.getFcmToken());
       if (token.length >= 20) return token;
     }
   } catch {
@@ -527,28 +633,104 @@ async function saveTokenByModule(moduleName, token, platform = "web") {
   }
 }
 
-async function registerNativeWebViewFcmToken(moduleName) {
-  if (!isFlutterWebView()) return false;
+async function persistNativeFcmToken(moduleName, token) {
+  const normalizedToken = extractFcmTokenCandidate(token);
+  if (!normalizedToken) return false;
 
-  const normalizedToken = await getNativeFcmToken(moduleName);
-  if (!normalizedToken) {
-    pushDebugWarn(PUSH_DEBUG_PREFIX, "Flutter WebView has no native FCM token handler", {
-      moduleName,
-    });
+  if (!readAnyAccessToken(moduleName)) {
+    localStorage.setItem(
+      pendingNativeTokenKey,
+      JSON.stringify({ token: normalizedToken, at: Date.now() }),
+    );
+    pushDebugLog(PUSH_DEBUG_PREFIX, "Cached native FCM token until login", { moduleName });
     return false;
   }
 
-  const lastSavedToken = getSavedToken(moduleName);
-  if (lastSavedToken !== normalizedToken) {
+  if (getSavedToken(moduleName) !== normalizedToken) {
     await saveTokenByModule(moduleName, normalizedToken, "mobile");
     setSavedToken(moduleName, normalizedToken);
   }
 
+  localStorage.removeItem(pendingNativeTokenKey);
   pushDebugLog(PUSH_DEBUG_PREFIX, "Registered native WebView FCM token", {
     moduleName,
     tokenPreview: `${normalizedToken.slice(0, 12)}...`,
   });
   return true;
+}
+
+async function savePendingNativeToken(moduleName) {
+  try {
+    const raw = localStorage.getItem(pendingNativeTokenKey);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return persistNativeFcmToken(moduleName, parsed?.token);
+  } catch {
+    return false;
+  }
+}
+
+async function registerNativeWebViewFcmToken(moduleName) {
+  const pendingSaved = await savePendingNativeToken(moduleName).catch(() => false);
+  if (pendingSaved) return true;
+
+  const normalizedToken = await getNativeFcmToken(moduleName);
+  if (!normalizedToken) {
+    pushDebugWarn(PUSH_DEBUG_PREFIX, "Native FCM token not available yet", {
+      moduleName,
+      flutterReady: isFlutterWebView(),
+    });
+    return false;
+  }
+
+  return persistNativeFcmToken(moduleName, normalizedToken);
+}
+
+function clearNativeTokenRetries() {
+  nativeRetryTimeouts.forEach((id) => clearTimeout(id));
+  nativeRetryTimeouts = [];
+}
+
+function scheduleNativeTokenRetries(moduleName) {
+  clearNativeTokenRetries();
+  [0, 800, 2000, 5000, 10000, 20000].forEach((delay) => {
+    nativeRetryTimeouts.push(
+      setTimeout(() => {
+        registerNativeWebViewFcmToken(moduleName).catch(() => {});
+      }, delay),
+    );
+  });
+}
+
+function attachNativeTokenListeners() {
+  if (nativeTokenListenersAttached || typeof window === "undefined") return;
+  nativeTokenListenersAttached = true;
+
+  const retry = () => {
+    const moduleName = resolvePushModule();
+    registerNativeWebViewFcmToken(moduleName).catch(() => {});
+  };
+
+  window.addEventListener("flutterInAppWebViewPlatformReady", retry);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") retry();
+  });
+  window.addEventListener("focus", retry);
+
+  const receiveToken = (token, module) => {
+    persistNativeFcmToken(module || resolvePushModule(), token).catch(() => {});
+  };
+  window.SuperfastReceiveFcmToken = receiveToken;
+  window.onNativeFcmToken = receiveToken;
+
+  window.addEventListener("message", (event) => {
+    const data = event?.data;
+    if (!data || typeof data !== "object") return;
+    const type = String(data.type || data.event || "").toLowerCase();
+    if (type !== "fcm_token" && type !== "native-fcm-token" && type !== "fcm-token") return;
+    const token = extractFcmTokenCandidate(data.token || data.fcmToken || data.payload);
+    persistNativeFcmToken(resolvePushModule(), token).catch(() => {});
+  });
 }
 
 function showForegroundNotification(payload = {}) {
@@ -727,14 +909,13 @@ function scheduleForegroundNotification(payload) {
 
 export function initPushNotificationClient() {
   if (typeof window === "undefined") return;
-  const moduleName = normalizeModuleFromPath(window.location.pathname);
+  const moduleName = resolvePushModule();
   pushDebugLog(PUSH_DEBUG_PREFIX, "Initializing push notification client", {
-    path: window.location.pathname,
+    path: getCurrentAppPath(),
     moduleName,
     soundEnabled: isPushSoundEnabled(),
+    nativeShell: isNativeAppShell(),
   });
-
-  // Allow all modules, including admin, to register for push notifications
 
   if (isPushSoundEnabled()) {
     pushSoundUnlocked = true;
@@ -742,6 +923,7 @@ export function initPushNotificationClient() {
 
   setupPushSoundUnlock();
   attachServiceWorkerMessageListener();
+  attachNativeTokenListeners();
 }
 
 async function attachForegroundListener(firebaseAppInstance) {
@@ -790,26 +972,20 @@ async function safeGetFcmToken(messaging, options) {
 }
 
 export async function registerWebPushForCurrentModule(pathname = window.location.pathname) {
-  const moduleName = normalizeModuleFromPath(pathname);
-  // Allow web push registration for all modules, including admin
+  const moduleName = resolvePushModule(pathname);
   initPushNotificationClient();
 
-  const accessToken =
-    localStorage.getItem(`${moduleName}_accessToken`) ||
-    localStorage.getItem(`auth_${moduleName}`) ||
-    localStorage.getItem('auth_customer') ||
-    localStorage.getItem('auth_seller') ||
-    localStorage.getItem('auth_restaurant') ||
-    localStorage.getItem('auth_delivery') ||
-    localStorage.getItem('auth_admin') ||
-    localStorage.getItem('accessToken') ||
-    localStorage.getItem('token');
+  const accessToken = readAnyAccessToken(moduleName);
+  if (!accessToken) {
+    if (isNativeAppShell()) {
+      scheduleNativeTokenRetries(moduleName);
+    }
+    return;
+  }
 
-  if (!accessToken) return;
-
-  // Flutter WebView cannot show lock-screen notifications via web push.
-  // Only the native FCM token from the wrapper can wake the device.
-  if (isFlutterWebView()) {
+  // Flutter / Android WebView cannot show lock-screen alerts via web push.
+  // Keep retrying the native token after data-clear / first login.
+  if (isNativeAppShell() || isFlutterWebView()) {
     const registered = await registerNativeWebViewFcmToken(moduleName).catch((error) => {
       pushDebugWarn(PUSH_DEBUG_PREFIX, "Native WebView FCM registration failed", {
         moduleName,
@@ -819,8 +995,9 @@ export async function registerWebPushForCurrentModule(pathname = window.location
     });
     if (!registered) {
       console.warn(
-        "FCM: Flutter wrapper did not return a native device token. Lock-screen notifications require getFcmToken + a high_importance_channel in the app.",
+        "FCM: waiting for Flutter native token. Lock-screen alerts need getFcmToken + high_importance_channel.",
       );
+      scheduleNativeTokenRetries(moduleName);
     }
     return;
   }

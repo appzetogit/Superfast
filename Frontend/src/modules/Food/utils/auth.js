@@ -378,6 +378,18 @@ export function setAuthData(module, token, user, refreshToken = null) {
     }
 
     console.log(`[setAuthData] Successfully stored auth data for ${module}`);
+
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        import("./firebaseMessaging")
+          .then(({ registerWebPushForCurrentModule }) => {
+            registerWebPushForCurrentModule(module).catch((err) =>
+              console.warn("[setAuthData] Auto Web Push registration error:", err)
+            );
+          })
+          .catch(() => {});
+      }, 200);
+    }
   } catch (error) {
     // If quota exceeded, try to clear some space
     if (error.name === 'QuotaExceededError' || error.code === 22) {
