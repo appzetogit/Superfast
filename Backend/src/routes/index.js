@@ -12,6 +12,7 @@ import paymentRoutes from '../core/payments/payment.routes.js';
 import fcmRoutes from '../core/notifications/fcm.routes.js';
 import notificationRoutes from '../core/notifications/notification.routes.js';
 import { authMiddleware } from '../core/auth/auth.middleware.js';
+import { privateRateLimiter } from '../middleware/rateLimit.js';
 
 import { requireRoles } from '../core/roles/role.middleware.js';
 import { getQueuesController } from '../controllers/admin.controller.js';
@@ -57,11 +58,13 @@ router.get('/v1/migrate-test', async (req, res) => {
     }
 });
 
+// Category A — Auth Routes
 // Food-prefixed auth routes (preferred)
 router.use('/v1/food/auth', authRoutes);
-
 // Backward-compatible auth routes (legacy)
 router.use('/v1/auth', authRoutes);
+
+// Category B — Public Routes (Unrestricted)
 router.use('/v1/food/delivery', deliveryRoutes);
 router.use('/v1/food/restaurant', restaurantRoutes);
 // Landing & hero-banners for Food user app (paths start with /food/hero-banners/...)
@@ -78,11 +81,12 @@ router.use('/v1/common/settings', commonSettingsRoutes);
 // Backward compatibility for public settings
 router.get('/v1/food/admin/business-settings/public', getPublicSettings);
 
-router.use('/v1/food/admin', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), restaurantAdminRoutes);
-router.use('/v1/food/user', authMiddleware, requireRoles('USER'), userRoutes);
-router.use('/v1/food/notifications', authMiddleware, requireRoles('USER', 'RESTAURANT', 'DELIVERY_PARTNER'), notificationRoutes);
-router.use('/v1/food/orders', authMiddleware, requireRoles('USER'), orderUserRoutes);
-router.use('/v1/food/payments', authMiddleware, paymentRoutes);
+// Category C — Private Routes (Rate limited after authentication with User_ID:Real_Client_IP key)
+router.use('/v1/food/admin', authMiddleware, privateRateLimiter, requireRoles('ADMIN', 'SUB_ADMIN'), restaurantAdminRoutes);
+router.use('/v1/food/user', authMiddleware, privateRateLimiter, requireRoles('USER'), userRoutes);
+router.use('/v1/food/notifications', authMiddleware, privateRateLimiter, requireRoles('USER', 'RESTAURANT', 'DELIVERY_PARTNER'), notificationRoutes);
+router.use('/v1/food/orders', authMiddleware, privateRateLimiter, requireRoles('USER'), orderUserRoutes);
+router.use('/v1/food/payments', authMiddleware, privateRateLimiter, paymentRoutes);
 router.use('/v1/payments/webhook', webhookRoutes);
 router.use('/v1/fcm-tokens', fcmRoutes);
 router.use('/fcm-tokens', fcmRoutes);
@@ -91,10 +95,6 @@ router.use('/v1/quick-commerce', returnRoutes);
 router.use('/v1/seller', sellerRoutes);
 router.use('/v1/preferences', preferencesRoutes);
 
-
-// router.get('/v1/env/public', getPublicEnvController);
-// router.get('/env/public', getPublicEnvController);
-
-router.get('/v1/admin/queues', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), getQueuesController);
+router.get('/v1/admin/queues', authMiddleware, privateRateLimiter, requireRoles('ADMIN', 'SUB_ADMIN'), getQueuesController);
 
 export default router;

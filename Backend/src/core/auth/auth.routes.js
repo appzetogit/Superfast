@@ -49,7 +49,7 @@ router.post('/admin/forgot-password/request-otp', authRateLimiter, requestAdminF
 router.post('/admin/forgot-password/reset', authRateLimiter, resetAdminPasswordWithOtpController);
 
 // Refresh token
-router.post('/refresh-token', refreshTokenController);
+router.post('/refresh-token', authRateLimiter, refreshTokenController);
 
 // Logout (invalidates refresh token)
 router.post('/logout', logoutController);

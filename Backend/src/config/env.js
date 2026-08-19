@@ -36,11 +36,13 @@ export const config = {
     smsPeId: process.env.SMS_INDIA_HUB_PE_ID,
     smsDltTemplateId: process.env.SMS_INDIA_HUB_DLT_TEMPLATE_ID,
 
-    // Rate limiting
+    // Rate limiting (APPZETO MERN Standard v1.0)
+    rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== 'false',
     rateLimitWindowMinutes: Number(process.env.RATE_LIMIT_WINDOW || 15),
-    rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX || 100),
+    rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX || 3500),
+    rateLimitDevMaxRequests: Number(process.env.RATE_LIMIT_DEV_MAX || 2000),
     authRateLimitWindowMinutes: Number(process.env.AUTH_RATE_LIMIT_WINDOW || 15),
-    authRateLimitMax: Number(process.env.AUTH_RATE_LIMIT_MAX || 30),
+    authRateLimitMaxRequests: Number(process.env.AUTH_RATE_LIMIT_MAX || 30),
 
     // Security
     bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
