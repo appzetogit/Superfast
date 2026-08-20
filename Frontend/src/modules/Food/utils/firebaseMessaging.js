@@ -1011,28 +1011,33 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       const firebasePublicEnv = await getFirebasePublicEnv();
       if (!firebasePublicEnv?.vapidKey) {
         console.warn("FCM web registration skipped: FIREBASE_VAPID_KEY is missing in env setup.");
-        return;
+        return { success: false, reason: "missing_vapid_key" };
       }
 
       const app = getMessagingFirebaseApp(firebasePublicEnv);
       if (!app) {
         console.warn("FCM web registration skipped: Firebase public web config is incomplete.");
-        return;
+        return { success: false, reason: "incomplete_firebase_config" };
+      }
+
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        console.warn("FCM web registration skipped: Notification permission is blocked/denied.");
+        return { success: false, reason: "permission_denied", permission: "denied" };
       }
 
       const permission =
-        Notification.permission === "default"
+        typeof Notification !== "undefined" && Notification.permission === "default"
           ? await Notification.requestPermission()
-          : Notification.permission;
+          : typeof Notification !== "undefined" ? Notification.permission : "granted";
 
       if (permission !== "granted") {
         console.warn("FCM web registration skipped: Notification permission not granted.", permission);
-        return;
+        return { success: false, reason: "permission_not_granted", permission };
       }
 
       const { getMessaging, isSupported } = await import("firebase/messaging");
       const supported = await isSupported().catch(() => false);
-      if (!supported) return;
+      if (!supported) return { success: false, reason: "messaging_unsupported" };
 
       const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
       pushDebugLog(PUSH_DEBUG_PREFIX, "Service worker registered for push", {
@@ -1046,26 +1051,27 @@ export async function registerWebPushForCurrentModule(pathname = window.location
         serviceWorkerRegistration: registration,
       });
 
-      if (!token) return;
+      if (!token) return { success: false, reason: "failed_to_get_token" };
       pushDebugLog(PUSH_DEBUG_PREFIX, "FCM token resolved", {
         moduleName,
         tokenPreview: `${token.slice(0, 12)}...`,
       });
 
-      // Removed localStorage caching (getSavedToken/setSavedToken) as per user requirements.
-      // The backend 'upsert' already handles duplicates efficiently.
       try {
         pushDebugLog(PUSH_DEBUG_PREFIX, "Synchronizing FCM token with backend database", { moduleName, tokenPreview: `${token?.slice(0, 10)}...` });
         await saveTokenByModule(moduleName, token);
         pushDebugLog(PUSH_DEBUG_PREFIX, "FCM token synchronized with backend successfully");
       } catch (e) {
         pushDebugWarn(PUSH_DEBUG_PREFIX, "Failed to synchronize FCM token to backend", { error: e?.message || e, stack: e?.stack });
+        return { success: false, reason: "backend_save_failed", token, error: e?.message };
       }
 
       await attachForegroundListener(app);
+      return { success: true, token, permission: "granted" };
     })()
       .catch((e) => {
         console.error("FCM web registration failed:", e);
+        return { success: false, reason: "exception", error: e?.message || String(e) };
       })
       .finally(() => {
         registrationInFlight = null;
@@ -1074,5 +1080,5 @@ export async function registerWebPushForCurrentModule(pathname = window.location
     return registrationInFlight;
   }
 
-  return null;
+  return { success: false, reason: "unsupported_browser_or_insecure_context" };
 }

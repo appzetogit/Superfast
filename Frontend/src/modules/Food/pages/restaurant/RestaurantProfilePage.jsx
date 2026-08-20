@@ -36,15 +36,38 @@ export default function RestaurantProfilePage() {
   const handleTestFcm = async () => {
     if (isTestingFcm) return
     setIsTestingFcm(true)
-    toast.info("Registering FCM token & sending test push notification...")
+    toast.info("Preparing push token & testing notification...")
     try {
-      await registerWebPushForCurrentModule('/food/restaurant').catch(console.error)
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        toast.error("Notification permission is BLOCKED in your browser. Please allow notifications for this site in site settings.")
+        setIsTestingFcm(false)
+        return
+      }
+
+      const regResult = await registerWebPushForCurrentModule("/food/restaurant").catch(() => null)
+      if (regResult && regResult.success === false) {
+        if (regResult.reason === "permission_denied" || regResult.reason === "permission_not_granted") {
+          toast.warning("Notification permission not granted. Please allow notifications when prompted.")
+          setIsTestingFcm(false)
+          return
+        }
+      }
+
       const res = await restaurantAPI.testFcmNotification()
-      const successCount = res?.data?.data?.successCount ?? res?.data?.successCount
-      if (res?.data?.success && (successCount > 0 || successCount === undefined)) {
-        toast.success("Test FCM Push Notification sent! Check your notification bar.")
+      const resData = res?.data?.data || res?.data || {}
+      const successCount = resData?.successCount
+      const failureCount = resData?.failureCount
+      const results = resData?.results || []
+
+      if (res?.data?.success && successCount > 0) {
+        toast.success("Test FCM Push Notification sent! Check your notification bar or screen.")
+      } else if (successCount === 0 && failureCount === 0) {
+        toast.warning("No device token found in database. Registering token now, please try clicking once more.")
+      } else if (failureCount > 0 && results.length > 0) {
+        const errorMsg = results[0]?.error || "FCM delivery failed"
+        toast.error(`Push notification failed: ${errorMsg}`)
       } else {
-        toast.warning(res?.data?.message || "Test notification sent, but no registered device token was reached.")
+        toast.warning(res?.data?.message || "Push test completed.")
       }
     } catch (err) {
       console.error("Test FCM error:", err)
