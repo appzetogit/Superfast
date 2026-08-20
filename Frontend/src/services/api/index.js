@@ -1229,6 +1229,10 @@ export const restaurantAPI = {
       },
     );
   },
+  testFcmNotification: (options = {}) => {
+    const platform = options?.platform === "mobile" ? "mobile" : "web";
+    return apiClient.post("/fcm-tokens/test", { platform }, { contextModule: "restaurant" });
+  },
   /** Outlet timings (restaurant dashboard) */
   getOutletTimings: () =>
     apiClient.get("/food/restaurant/outlet-timings", {
@@ -1852,6 +1856,10 @@ export const deliveryAPI = {
         contextModule: "delivery",
       },
     );
+  },
+  testFcmNotification: (options = {}) => {
+    const platform = options?.platform === "mobile" ? "mobile" : "web";
+    return apiClient.post("/fcm-tokens/test", { platform }, { contextModule: "delivery" });
   },
   /** GET /food/delivery/support-tickets - list tickets for logged-in delivery partner. */
   getSupportTickets: () =>

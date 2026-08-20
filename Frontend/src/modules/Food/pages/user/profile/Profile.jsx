@@ -28,6 +28,8 @@ import {
   Undo,
   Sparkles,
   ClipboardList,
+  Bell,
+  Loader2,
 } from "lucide-react";
 
 import AnimatedPage from "@food/components/user/AnimatedPage";
@@ -122,11 +124,33 @@ export default function Profile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [referralReward, setReferralReward] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [isTestingFcm, setIsTestingFcm] = useState(false);
 
   // Trigger web push registration when profile mounts to ensure FCM token is saved
   useEffect(() => {
     registerWebPushForCurrentModule().catch(console.error);
   }, []);
+
+  const handleTestFcm = async () => {
+    if (isTestingFcm) return;
+    setIsTestingFcm(true);
+    toast.info("Registering FCM token & sending test push notification...");
+    try {
+      await registerWebPushForCurrentModule().catch(console.error);
+      const res = await userAPI.testFcmNotification();
+      const successCount = res?.data?.data?.successCount ?? res?.data?.successCount;
+      if (res?.data?.success && (successCount > 0 || successCount === undefined)) {
+        toast.success("Test FCM Push Notification sent! Check your notification bar.");
+      } else {
+        toast.warning(res?.data?.message || "Test notification sent, but no registered device token was reached.");
+      }
+    } catch (err) {
+      console.error("Test FCM error:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to send test FCM notification.");
+    } finally {
+      setIsTestingFcm(false);
+    }
+  };
 
   const handleVegModeUpdate = (nextValue) => {
     setVegMode(nextValue);
@@ -780,6 +804,44 @@ export default function Profile() {
                     transition={{ duration: 0.2 }}>
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </motion.div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ x: 4, scale: 1.01 }}
+            transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
+            <Card
+              className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+              onClick={handleTestFcm}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="bg-blue-50 dark:bg-blue-950/40 rounded-full p-2"
+                    whileHover={{ rotate: 15, scale: 1.1 }}
+                    transition={{ duration: 0.3 }}>
+                    <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </motion.div>
+                  <div>
+                    <span className="text-base font-semibold text-gray-900 dark:text-white block">
+                      Test FCM Notification
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                      Verify Firebase push notifications
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isTestingFcm ? (
+                    <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                  ) : (
+                    <motion.span
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                      whileHover={{ scale: 1.05 }}>
+                      Test Push
+                    </motion.span>
+                  )}
                 </div>
               </CardContent>
             </Card>

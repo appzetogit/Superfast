@@ -7,10 +7,14 @@ import {
   Edit,
   LogOut,
   ShieldCheck,
+  Bell,
+  Loader2
 } from "lucide-react"
 import { restaurantAPI } from "@food/api"
 import { clearModuleAuth, clearAuthData, getCurrentUser } from "@food/utils/auth"
 import { firebaseAuth, ensureFirebaseInitialized } from "@food/firebase"
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
+import { toast } from "sonner"
 
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -20,6 +24,28 @@ export default function RestaurantProfile({ isOpen, onClose }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [restaurantData, setRestaurantData] = useState(null)
   const [loadingRestaurant, setLoadingRestaurant] = useState(true)
+  const [isTestingFcm, setIsTestingFcm] = useState(false)
+
+  const handleTestFcm = async () => {
+    if (isTestingFcm) return
+    setIsTestingFcm(true)
+    toast.info("Registering FCM token & sending test push notification...")
+    try {
+      await registerWebPushForCurrentModule('/food/restaurant').catch(console.error)
+      const res = await restaurantAPI.testFcmNotification()
+      const successCount = res?.data?.data?.successCount ?? res?.data?.successCount
+      if (res?.data?.success && (successCount > 0 || successCount === undefined)) {
+        toast.success("Test FCM Push Notification sent! Check your notification bar.")
+      } else {
+        toast.warning(res?.data?.message || "Test notification sent, but no registered device token was reached.")
+      }
+    } catch (err) {
+      console.error("Test FCM error:", err)
+      toast.error(err?.response?.data?.message || err?.message || "Failed to send test FCM notification.")
+    } finally {
+      setIsTestingFcm(false)
+    }
+  }
 
   // Handle back button to close the sheet
   useEffect(() => {
@@ -291,6 +317,24 @@ export default function RestaurantProfile({ isOpen, onClose }) {
 
             {/* Action Buttons */}
             <div className="px-6 pb-8 space-y-4">
+              <button
+                onClick={handleTestFcm}
+                disabled={isTestingFcm}
+                className="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                {isTestingFcm ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    <span>Sending test push...</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-5 h-5 text-blue-600" />
+                    <span>Test FCM Push Notification</span>
+                  </>
+                )}
+              </button>
+
               <button
                 onClick={handleLogout}
                 disabled={isLoggingOut}

@@ -11,11 +11,13 @@ import {
   X,
   Loader2,
   Briefcase,
-  Trash2
+  Trash2,
+  Bell
 } from "lucide-react"
 import { deliveryAPI, authAPI } from "@food/api"
 import { toast } from "sonner"
 import { clearModuleAuth } from "@food/utils/auth"
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
 
 /**
  * ProfileV2 - 1:1 EXACT Restoration of the Legacy Profile Hub.
@@ -32,6 +34,28 @@ export const ProfileV2 = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteInput, setDeleteInput] = useState("")
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [isTestingFcm, setIsTestingFcm] = useState(false)
+
+  const handleTestFcm = async () => {
+    if (isTestingFcm) return
+    setIsTestingFcm(true)
+    toast.info("Registering FCM token & sending test push notification...")
+    try {
+      await registerWebPushForCurrentModule('/food/delivery').catch(console.error)
+      const res = await deliveryAPI.testFcmNotification()
+      const successCount = res?.data?.data?.successCount ?? res?.data?.successCount
+      if (res?.data?.success && (successCount > 0 || successCount === undefined)) {
+        toast.success("Test FCM Push Notification sent! Check your notification bar.")
+      } else {
+        toast.warning(res?.data?.message || "Test notification sent, but no registered device token was reached.")
+      }
+    } catch (err) {
+      console.error("Test FCM error:", err)
+      toast.error(err?.response?.data?.message || err?.message || "Failed to send test FCM notification.")
+    } finally {
+      setIsTestingFcm(false)
+    }
+  }
 
   // Fetch profile data
   useEffect(() => {
@@ -198,13 +222,35 @@ export const ProfileV2 = () => {
             <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-3 px-1">Support</h3>
             <div 
               onClick={() => navigate("/food/delivery/help/tickets")}
-              className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer active:bg-gray-50 transition-colors"
+              className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer active:bg-gray-50 transition-colors mb-2"
             >
               <div className="flex items-center gap-3">
                 <Ticket className="w-5 h-5 text-gray-700" />
                 <span className="text-sm font-bold text-gray-900">Support tickets</span>
               </div>
               <ArrowRight className="w-5 h-5 text-gray-300" />
+            </div>
+
+            <div 
+              onClick={handleTestFcm}
+              className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer border border-blue-100 hover:bg-blue-50/40 active:bg-blue-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-blue-50 rounded-lg">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-gray-900 block">Test FCM Push Notification</span>
+                  <span className="text-[11px] text-gray-500 font-medium block">Verify Firebase push notifications</span>
+                </div>
+              </div>
+              {isTestingFcm ? (
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              ) : (
+                <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                  Test Push
+                </span>
+              )}
             </div>
           </div>
 
