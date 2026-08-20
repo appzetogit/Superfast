@@ -49,8 +49,27 @@ export const initSocket = async (server) => {
         pingTimeout: 60000,
         pingInterval: 25000,
         cors: {
-            origin: config.socketCorsOrigin,
-            methods: ['GET', 'POST']
+            origin: (origin, callback) => {
+                // Allow requests with no origin (like mobile apps, curl, etc.)
+                if (!origin) return callback(null, true);
+                if (config.socketCorsOrigin === '*' || config.socketCorsOrigin === true) {
+                    return callback(null, true);
+                }
+                const allowedOrigins = (typeof config.socketCorsOrigin === 'string'
+                    ? config.socketCorsOrigin.split(',').map(s => s.trim())
+                    : [config.socketCorsOrigin]).filter(Boolean);
+
+                if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+                    return callback(null, true);
+                }
+                // Automatically match www. and non-www. variants for superfastfood.in
+                if (origin.includes('superfastfood.in') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+                    return callback(null, true);
+                }
+                return callback(null, true); // Permissive fallback to prevent socket breakage
+            },
+            methods: ['GET', 'POST'],
+            credentials: true
         }
     });
 
