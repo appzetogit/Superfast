@@ -120,46 +120,42 @@ async function loadFirebaseWebConfig() {
   messaging.onBackgroundMessage(async (payload) => {
     pushDebugLog(PUSH_DEBUG_PREFIX, "Received Firebase background message", { payload });
 
-    const visibleClient = await hasVisibleClientForTarget(payload);
+    const title = payload?.notification?.title || payload?.data?.title || "New Notification";
+    const body = payload?.notification?.body || payload?.data?.body || "";
+    const image =
+      payload?.notification?.image ||
+      payload?.data?.image ||
+      payload?.data?.imageUrl ||
+      undefined;
+    const notificationKey = getNotificationKey(payload);
+    const clickAction = getTargetPathFromPayload(payload);
+    const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
 
-    if (!visibleClient) {
-      const title = payload?.notification?.title || payload?.data?.title || "New Notification";
-      const body = payload?.notification?.body || payload?.data?.body || "";
-      const image =
-        payload?.notification?.image ||
-        payload?.data?.image ||
-        payload?.data?.imageUrl ||
-        undefined;
-      const notificationKey = getNotificationKey(payload);
-      const clickAction = getTargetPathFromPayload(payload);
-      const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
+    pushDebugLog(PUSH_DEBUG_PREFIX, "Showing service worker notification", {
+      title,
+      body,
+      image,
+      notificationKey,
+    });
 
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Showing service worker notification", {
-        title,
-        body,
-        image,
-        notificationKey,
-      });
+    const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
 
-      const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
-
-      self.registration.showNotification(title, {
-        body,
-        icon: iconUrl,
-        badge: iconUrl,
-        image: image || undefined,
-        tag: notificationKey,
-        renotify: true,
-        silent: false,
-        requireInteraction: true,
-        vibrate: [300, 100, 300, 100, 300, 100, 500],
-        data: {
-          ...(payload?.data || {}),
-          click_action: clickAction,
-          sound: sound
-        },
-      });
-    }
+    self.registration.showNotification(title, {
+      body,
+      icon: iconUrl,
+      badge: iconUrl,
+      image: image || undefined,
+      tag: notificationKey,
+      renotify: true,
+      silent: false,
+      requireInteraction: true,
+      vibrate: [300, 100, 300, 100, 300, 100, 500],
+      data: {
+        ...(payload?.data || {}),
+        click_action: clickAction,
+        sound: sound
+      },
+    });
 
     // Always notify clients regardless of visibility
     await notifyOpenClients(payload);
@@ -178,33 +174,30 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
-      const visibleClient = await hasVisibleClientForTarget(payload);
-      if (!visibleClient) {
-        const title = payload?.notification?.title || payload?.data?.title || "New Notification";
-        const body = payload?.notification?.body || payload?.data?.body || "";
-        const image = payload?.notification?.image || payload?.data?.image || payload?.data?.imageUrl;
-        const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
-        const notificationKey = getNotificationKey(payload);
-        const clickAction = getTargetPathFromPayload(payload);
-        const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
+      const title = payload?.notification?.title || payload?.data?.title || "New Notification";
+      const body = payload?.notification?.body || payload?.data?.body || "";
+      const image = payload?.notification?.image || payload?.data?.image || payload?.data?.imageUrl;
+      const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
+      const notificationKey = getNotificationKey(payload);
+      const clickAction = getTargetPathFromPayload(payload);
+      const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
 
-        await self.registration.showNotification(title, {
-          body,
-          icon: iconUrl,
-          badge: iconUrl,
-          image: image || undefined,
-          tag: notificationKey,
-          renotify: true,
-          silent: false,
-          requireInteraction: true,
-          vibrate: [300, 100, 300, 100, 300, 100, 500],
-          data: {
-            ...(payload?.data || {}),
-            click_action: clickAction,
-            sound: sound
-          }
-        });
-      }
+      await self.registration.showNotification(title, {
+        body,
+        icon: iconUrl,
+        badge: iconUrl,
+        image: image || undefined,
+        tag: notificationKey,
+        renotify: true,
+        silent: false,
+        requireInteraction: true,
+        vibrate: [300, 100, 300, 100, 300, 100, 500],
+        data: {
+          ...(payload?.data || {}),
+          click_action: clickAction,
+          sound: sound
+        }
+      });
       await notifyOpenClients(payload);
     })()
   );
