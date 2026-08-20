@@ -185,7 +185,7 @@ export const PickupActionModal = ({
                   <span className="text-green-600">Reached Location</span>
                 ) : (
                   <span className="text-[var(--primary-theme)]">
-                    {(distanceToTarget / 1000).toFixed(1)} km • {eta || '--'} min to {primaryDestinationLabel}
+                    {distanceToTarget && distanceToTarget !== Infinity ? `${(distanceToTarget / 1000).toFixed(1)} km` : '-- km'} • {eta || '--'} min to {primaryDestinationLabel}
                   </span>
                 )}
               </p>
