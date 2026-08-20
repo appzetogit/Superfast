@@ -106,6 +106,7 @@ function RestaurantDetailsContent() {
   const [sharePayload, setSharePayload] = useState(null)
   const [expandedAddButtons, setExpandedAddButtons] = useState(new Set())
   const [highlightedDishId, setHighlightedDishId] = useState(null)
+  const [hasScrolledToDish, setHasScrolledToDish] = useState(false)
   const [loadingMenuItems, setLoadingMenuItems] = useState(true)
   const [selectedMenuCategory, setSelectedMenuCategory] = useState("all")
   const dishCardRefs = useRef({})
@@ -1827,7 +1828,7 @@ function RestaurantDetailsContent() {
   )
 
   useEffect(() => {
-    if (!restaurant?.menuSections || !targetDishId) return
+    if (!restaurant?.menuSections || !targetDishId || hasScrolledToDish) return
 
     let matchedItem = null
 
@@ -1857,6 +1858,7 @@ function RestaurantDetailsContent() {
     if (!matchedItem) return
 
     setHighlightedDishId(targetDishId)
+    setHasScrolledToDish(true)
 
     const scrollTimer = window.setTimeout(() => {
       const targetNode = dishCardRefs.current[targetDishId]
@@ -1873,7 +1875,7 @@ function RestaurantDetailsContent() {
       window.clearTimeout(scrollTimer)
       window.clearTimeout(highlightTimer)
     }
-  }, [restaurant, targetDishId])
+  }, [restaurant, targetDishId, hasScrolledToDish])
 
   // Highlight offers/texts for the blue offer line
   const highlightOffers = [
@@ -2165,7 +2167,15 @@ function RestaurantDetailsContent() {
                 <div className="flex items-center gap-2 w-max">
                   <button
                     type="button"
-                    onClick={() => setSelectedMenuCategory("all")}
+                    onClick={() => {
+                      setSelectedMenuCategory("all")
+                      window.setTimeout(() => {
+                        const sectionElement = document.getElementById("menu-section-0")
+                        if (sectionElement) {
+                          sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }
+                      }, 40)
+                    }}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                       selectedMenuCategory === "all"
                         ? "border-[#ed840c] bg-[#ed840c]/10 text-[#ed840c]"
@@ -2178,7 +2188,15 @@ function RestaurantDetailsContent() {
                     <button
                       key={category.id}
                       type="button"
-                      onClick={() => setSelectedMenuCategory(category.id)}
+                      onClick={() => {
+                        setSelectedMenuCategory(category.id)
+                        window.setTimeout(() => {
+                          const sectionElement = document.getElementById("menu-section-0") || document.getElementById(`menu-section-${category.sectionIndex ?? 0}`)
+                          if (sectionElement) {
+                            sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          }
+                        }, 40)
+                      }}
                       className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                         selectedMenuCategory === category.id
                           ? "border-[#ed840c] bg-[#ed840c]/10 text-[#ed840c]"
