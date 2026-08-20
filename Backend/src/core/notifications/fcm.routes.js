@@ -108,17 +108,21 @@ router.post('/test', authMiddleware, async (req, res, next) => {
         const { ownerType, ownerId } = getOwnerContext(req);
         const platform = req.body?.platform === 'mobile' ? 'mobile' : req.body?.platform === 'web' ? 'web' : undefined;
 
+        console.log(`[FCM-DEBUG] /test endpoint hit for ${ownerType}:${ownerId}, platform=${platform}`);
+
         if (!ownerType || !ownerId) {
             return sendError(res, 401, 'Authentication required');
         }
 
         const result = await sendTestNotification({ ownerType, ownerId, platform });
+        console.log(`[FCM-DEBUG] /test result for ${ownerType}:${ownerId}:`, JSON.stringify(result));
         return res.status(200).json({
             success: true,
             message: 'Test notification sent',
             data: result
         });
     } catch (error) {
+        console.error(`[FCM-DEBUG] /test error for owner:`, error);
         next(error);
     }
 });

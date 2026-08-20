@@ -135,6 +135,7 @@ export default function Profile() {
     if (isTestingFcm) return;
     setIsTestingFcm(true);
     toast.info("Preparing push token & testing notification...");
+    console.log("[push-debug] handleTestFcm started");
     try {
       if (typeof Notification !== "undefined" && Notification.permission === "denied") {
         toast.error("Notification permission is BLOCKED in your browser. Please allow notifications for this site in site settings.");
@@ -142,7 +143,12 @@ export default function Profile() {
         return;
       }
 
-      const regResult = await registerWebPushForCurrentModule("/food/user").catch(() => null);
+      const regResult = await registerWebPushForCurrentModule("/food/user").catch((e) => {
+        console.error("[push-debug] registerWebPushForCurrentModule error:", e);
+        return null;
+      });
+      console.log("[push-debug] regResult:", regResult);
+
       if (regResult && regResult.success === false) {
         if (regResult.reason === "permission_denied" || regResult.reason === "permission_not_granted") {
           toast.warning("Notification permission not granted. Please allow notifications when prompted.");
@@ -151,7 +157,10 @@ export default function Profile() {
         }
       }
 
+      console.log("[push-debug] Triggering userAPI.testFcmNotification()...");
       const res = await userAPI.testFcmNotification();
+      console.log("[push-debug] userAPI.testFcmNotification() response:", res?.data);
+
       const resData = res?.data?.data || res?.data || {};
       const successCount = resData?.successCount;
       const failureCount = resData?.failureCount;
@@ -164,11 +173,13 @@ export default function Profile() {
       } else if (failureCount > 0 && results.length > 0) {
         const errorMsg = results[0]?.error || "FCM delivery failed";
         toast.error(`Push notification failed: ${errorMsg}`);
+      } else if (resData?.error) {
+        toast.error(`Push notification failed: ${resData.error}`);
       } else {
         toast.warning(res?.data?.message || "Push test completed.");
       }
     } catch (err) {
-      console.error("Test FCM error:", err);
+      console.error("[push-debug] Test FCM error:", err);
       toast.error(err?.response?.data?.message || err?.message || "Failed to send test FCM notification.");
     } finally {
       setIsTestingFcm(false);
