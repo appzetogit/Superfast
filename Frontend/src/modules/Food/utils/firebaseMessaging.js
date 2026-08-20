@@ -7,11 +7,14 @@ import fallbackNotificationSound from "@food/assets/audio/alert.mp3";
 const pushNotificationSoundPath = "/zomato_sms.mp3";
 
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
-  messagingSenderId: "",
+  apiKey: "AIzaSyAYOU6SqSltWXs0qPcTZr-4BiU8EhmT1Z8",
+  authDomain: "superfast-9fb35.firebaseapp.com",
+  projectId: "superfast-9fb35",
+  storageBucket: "superfast-9fb35.firebasestorage.app",
+  messagingSenderId: "983730882946",
+  appId: "1:983730882946:web:de18e0398ac793c52a279b",
+  measurementId: "G-50D5FK55YN",
+  vapidKey: "BKgheoJbnS9r_ln95WM6GYz674cXnMQFK8g7g7QVu9866ouMXrEY5XkOje8DlAg2MbGT3tm5eBi7vsnZ7GI0nDM",
 };
 
 const tokenCachePrefix = "fcm_web_registered_token_";
@@ -550,28 +553,27 @@ async function getFirebasePublicEnv() {
   if (publicEnvPromise) return publicEnvPromise;
 
   publicEnvPromise = (async () => {
+    let jsonConfig = {};
     try {
-      return {
-        apiKey: sanitize(import.meta.env.VITE_FIREBASE_API_KEY) || DEFAULT_FIREBASE_CONFIG.apiKey,
-        authDomain: sanitize(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || DEFAULT_FIREBASE_CONFIG.authDomain,
-        projectId: sanitize(import.meta.env.VITE_FIREBASE_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId,
-        appId: sanitize(import.meta.env.VITE_FIREBASE_APP_ID) || DEFAULT_FIREBASE_CONFIG.appId,
-        messagingSenderId:
-          sanitize(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
-        storageBucket: sanitize(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
-        measurementId: sanitize(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID),
-        vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY),
-      };
-    } catch {
-      return {
-        ...DEFAULT_FIREBASE_CONFIG,
-        storageBucket: sanitize(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
-        measurementId: sanitize(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID),
-        vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY),
-      };
-    } finally {
-      publicEnvPromise = null;
-    }
+      if (typeof window !== "undefined") {
+        const res = await fetch("/firebase-web-config.json", { cache: "no-store" }).catch(() => null);
+        if (res && res.ok) {
+          jsonConfig = await res.json().catch(() => ({}));
+        }
+      }
+    } catch (_) {}
+
+    return {
+      apiKey: sanitize(import.meta.env.VITE_FIREBASE_API_KEY) || sanitize(jsonConfig.VITE_FIREBASE_API_KEY) || DEFAULT_FIREBASE_CONFIG.apiKey,
+      authDomain: sanitize(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || sanitize(jsonConfig.VITE_FIREBASE_AUTH_DOMAIN) || DEFAULT_FIREBASE_CONFIG.authDomain,
+      projectId: sanitize(import.meta.env.VITE_FIREBASE_PROJECT_ID) || sanitize(jsonConfig.VITE_FIREBASE_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId,
+      appId: sanitize(import.meta.env.VITE_FIREBASE_APP_ID) || sanitize(jsonConfig.VITE_FIREBASE_APP_ID) || DEFAULT_FIREBASE_CONFIG.appId,
+      messagingSenderId:
+        sanitize(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || sanitize(jsonConfig.VITE_FIREBASE_MESSAGING_SENDER_ID) || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+      storageBucket: sanitize(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || sanitize(jsonConfig.VITE_FIREBASE_STORAGE_BUCKET) || DEFAULT_FIREBASE_CONFIG.storageBucket,
+      measurementId: sanitize(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) || sanitize(jsonConfig.VITE_FIREBASE_MEASUREMENT_ID) || DEFAULT_FIREBASE_CONFIG.measurementId,
+      vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY) || sanitize(jsonConfig.VITE_FIREBASE_VAPID_KEY) || DEFAULT_FIREBASE_CONFIG.vapidKey,
+    };
   })();
 
   return publicEnvPromise;
