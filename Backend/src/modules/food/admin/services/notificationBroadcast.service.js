@@ -82,7 +82,7 @@ const buildSellerLabel = (doc) => ({
 const modelConfigMap = {
     USER: {
         model: FoodUser,
-        query: { isActive: true },
+        query: { isBlocked: { $ne: true }, isDeleted: { $ne: true } },
         select: '_id name phone email',
         buildLabel: buildUserLabel
     },
@@ -143,7 +143,7 @@ const resolveCustomTargets = async ({ targets = [], targetIds = [] } = {}) => {
         throw new ValidationError('Please select at least one recipient for custom broadcast');
     }
 
-    const users = await FoodUser.find({ _id: { $in: ids }, isActive: true }).select('_id name phone email').lean();
+    const users = await FoodUser.find({ _id: { $in: ids }, isBlocked: { $ne: true }, isDeleted: { $ne: true } }).select('_id name phone email').lean();
     return users.map((row) => ({
         ownerType: 'USER',
         ownerId: String(row._id),
@@ -190,30 +190,40 @@ const emitRealtimeNotifications = (targets = [], broadcast) => {
     const io = getIO();
     if (!io) return;
 
+    const payload = {
+        id: String(broadcast._id),
+        title: broadcast.title,
+        message: broadcast.message,
+        link: broadcast.link || '',
+        targetType: broadcast.targetType,
+        createdAt: broadcast.createdAt
+    };
+
+    // Emit global broadcast event for all connected socket clients
+    try {
+        io.emit('broadcast_notification', payload);
+        io.emit('admin_notification', payload);
+    } catch (_) {}
+
     for (const target of targets) {
         const ownerId = String(target.ownerId || '');
         if (!ownerId) continue;
 
-        const payload = {
-            id: String(broadcast._id),
-            title: broadcast.title,
-            message: broadcast.message,
-            link: broadcast.link || '',
-            targetType: broadcast.targetType,
-            createdAt: broadcast.createdAt
-        };
-
         if (target.ownerType === 'USER') {
             io.to(rooms.user(ownerId)).emit('admin_notification', payload);
+            io.to(rooms.user(ownerId)).emit('broadcast_notification', payload);
         }
         if (target.ownerType === 'RESTAURANT') {
             io.to(rooms.restaurant(ownerId)).emit('admin_notification', payload);
+            io.to(rooms.restaurant(ownerId)).emit('broadcast_notification', payload);
         }
-        if (target.ownerType === 'DELIVERY_PARTNER') {
+        if (target.ownerType === 'DELIVERY_PARTNER' || target.ownerType === 'DELIVERY') {
             io.to(rooms.delivery(ownerId)).emit('admin_notification', payload);
+            io.to(rooms.delivery(ownerId)).emit('broadcast_notification', payload);
         }
         if (target.ownerType === 'SELLER') {
             io.to(rooms.seller(ownerId)).emit('admin_notification', payload);
+            io.to(rooms.seller(ownerId)).emit('broadcast_notification', payload);
         }
     }
 };

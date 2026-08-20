@@ -18,6 +18,7 @@ const OWNER_MODELS = {
     RESTAURANT: FoodRestaurant,
     SELLER: Seller,
     DELIVERY_PARTNER: FoodDeliveryPartner,
+    DELIVERY: FoodDeliveryPartner,
     ADMIN: FoodAdmin
 };
 const OWNER_TOKEN_FIELDS = {
@@ -29,6 +30,7 @@ const OWNER_APP_PREFIXES = {
     RESTAURANT: '',
     SELLER: '🏪',
     DELIVERY_PARTNER: '🛵',
+    DELIVERY: '🛵',
     ADMIN: '🛡️'
 };
 

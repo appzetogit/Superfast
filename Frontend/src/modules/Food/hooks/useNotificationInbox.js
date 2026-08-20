@@ -65,11 +65,15 @@ export default function useNotificationInbox(module, options = {}) {
       fetchInbox();
     };
     window.addEventListener(REFRESH_EVENT, handler);
-    return () => window.removeEventListener(REFRESH_EVENT, handler);
+    window.addEventListener("adminBroadcastUpdated", handler);
+    return () => {
+      window.removeEventListener(REFRESH_EVENT, handler);
+      window.removeEventListener("adminBroadcastUpdated", handler);
+    };
   }, [fetchInbox]);
 
   useEffect(() => {
-    const pollMs = Number(options?.pollMs || 0);
+    const pollMs = Number(options?.pollMs || 15000);
     if (!pollMs || pollMs < 1000 || !module) return undefined;
     const timer = window.setInterval(() => {
       fetchInbox();
