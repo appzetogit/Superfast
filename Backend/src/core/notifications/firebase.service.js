@@ -54,16 +54,27 @@ const getServiceAccountFromEnv = () => {
 
     const rawJson = sanitizeString(config.firebaseServiceAccount || process.env.FIREBASE_SERVICE_ACCOUNT);
     if (rawJson) {
-        cachedServiceAccount = JSON.parse(rawJson);
-        return cachedServiceAccount;
+        try {
+            cachedServiceAccount = JSON.parse(rawJson);
+            return cachedServiceAccount;
+        } catch (_) {}
     }
 
-    const pathValue = sanitizeString(config.firebaseServiceAccountPath || process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
-    if (pathValue) {
+    const candidatePaths = [
+        config.firebaseServiceAccountPath || process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
+        'config/firebase-service-account.json',
+        './config/firebase-service-account.json',
+        '../config/firebase-service-account.json',
+        'src/config/firebase-service-account.json'
+    ].filter(Boolean);
+
+    for (const pathValue of candidatePaths) {
         const filePath = resolve(process.cwd(), pathValue);
         if (existsSync(filePath)) {
-            cachedServiceAccount = JSON.parse(readFileSync(filePath, 'utf8'));
-            return cachedServiceAccount;
+            try {
+                cachedServiceAccount = JSON.parse(readFileSync(filePath, 'utf8'));
+                return cachedServiceAccount;
+            } catch (_) {}
         }
     }
 
