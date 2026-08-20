@@ -103,14 +103,16 @@ export const verifyUserOtpAndLogin = async (
   // Update FCM token if provided
   if (fcmToken) {
     let isModified = false;
+    let targetField = "fcmTokens";
     if (platform === "mobile") {
+      targetField = "fcmTokenMobile";
       if (!userDoc.fcmTokenMobile) userDoc.fcmTokenMobile = [];
       if (!userDoc.fcmTokenMobile.includes(fcmToken)) {
         userDoc.fcmTokenMobile.push(fcmToken);
         isModified = true;
       }
     } else {
-      // Default to web if not explicitly mobile
+      targetField = "fcmTokens";
       if (!userDoc.fcmTokens) userDoc.fcmTokens = [];
       if (!userDoc.fcmTokens.includes(fcmToken)) {
         userDoc.fcmTokens.push(fcmToken);
@@ -118,7 +120,9 @@ export const verifyUserOtpAndLogin = async (
       }
     }
     if (isModified) {
+      userDoc.markModified(targetField);
       await userDoc.save();
+      await FoodUser.updateOne({ _id: userDoc._id }, { $addToSet: { [targetField]: fcmToken } });
     }
   }
 
@@ -323,13 +327,16 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
   // Update FCM token if provided
   if (fcmToken) {
     let isModified = false;
+    let targetField = "fcmTokens";
     if (platform === "mobile") {
+      targetField = "fcmTokenMobile";
       if (!restaurant.fcmTokenMobile) restaurant.fcmTokenMobile = [];
       if (!restaurant.fcmTokenMobile.includes(fcmToken)) {
         restaurant.fcmTokenMobile.push(fcmToken);
         isModified = true;
       }
     } else {
+      targetField = "fcmTokens";
       if (!restaurant.fcmTokens) restaurant.fcmTokens = [];
       if (!restaurant.fcmTokens.includes(fcmToken)) {
         restaurant.fcmTokens.push(fcmToken);
@@ -337,7 +344,9 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
       }
     }
     if (isModified) {
+      restaurant.markModified(targetField);
       await restaurant.save();
+      await FoodRestaurant.updateOne({ _id: restaurant._id }, { $addToSet: { [targetField]: fcmToken } });
     }
   }
 
@@ -420,13 +429,16 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
   // so we can notify them when approved.
   if (fcmToken) {
     let isModified = false;
+    let targetField = "fcmTokens";
     if (platform === "mobile") {
+      targetField = "fcmTokenMobile";
       if (!deliveryPartner.fcmTokenMobile) deliveryPartner.fcmTokenMobile = [];
       if (!deliveryPartner.fcmTokenMobile.includes(fcmToken)) {
         deliveryPartner.fcmTokenMobile.push(fcmToken);
         isModified = true;
       }
     } else {
+      targetField = "fcmTokens";
       if (!deliveryPartner.fcmTokens) deliveryPartner.fcmTokens = [];
       if (!deliveryPartner.fcmTokens.includes(fcmToken)) {
         deliveryPartner.fcmTokens.push(fcmToken);
@@ -434,7 +446,9 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
       }
     }
     if (isModified) {
+      deliveryPartner.markModified(targetField);
       await deliveryPartner.save();
+      await FoodDeliveryPartner.updateOne({ _id: deliveryPartner._id }, { $addToSet: { [targetField]: fcmToken } });
     }
   }
 
