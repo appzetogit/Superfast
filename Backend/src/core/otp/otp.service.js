@@ -45,8 +45,9 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         }
         const msisdn = `91${last10}`;
 
-        // Clean OTP Message Template with Superfast branding:
-        const message = `Welcome to Superfast. Your OTP for registration is ${otp}. BGADEC`;
+        // Exact Approved DLT Template (Template ID: 1077469120018685234):
+        // DLT pattern: "Your##var##,OTP for Login verification is ##var##. Please do not share this OTP with anyone.BGADEC"
+        const message = `Your Superfast,OTP for Login verification is ${otp}. Please do not share this OTP with anyone.BGADEC`;
 
         // SMS India Hub API URL (HTTPS)
         const url = new URL('https://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
