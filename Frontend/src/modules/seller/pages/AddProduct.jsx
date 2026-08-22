@@ -152,6 +152,7 @@ const AddProduct = () => {
 
     // Validate Main Group and Specific Category (Sub-Category is optional)
     if (!formData.header || !formData.category) {
+      setModalTab("category");
       toast.error("Please select Main Group and Specific Category");
       return;
     }
@@ -161,6 +162,7 @@ const AddProduct = () => {
     const effectiveStock = firstVariant.stock || formData.stock;
 
     if (!effectivePrice || effectiveStock === "" || effectiveStock === null || effectiveStock === undefined) {
+      setModalTab("pricing");
       toast.error("Please fill in Price and Stock in the Pricing & Stock tab");
       return;
     }
