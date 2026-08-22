@@ -190,6 +190,20 @@ export async function tryAutoAssign(orderId, options = {}) {
     return null;
   }
 
+  // Guard: For food orders, DO NOT assign or send requests to delivery partners until the restaurant marks the order as ready!
+  const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
+  const isReadyForPickup = ["ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
+
+  if (isFoodOrder && !isReadyForPickup) {
+    logger.info(
+      `tryAutoAssign: Holding delivery assignment for food order ${order._id} (Status is '${order.orderStatus}'). Waiting for restaurant to mark order as 'ready_for_pickup'.`
+    );
+    await FoodOrder.findByIdAndUpdate(orderId, {
+      $unset: { "dispatch.dispatchingAt": "" },
+    });
+    return null;
+  }
+
   try {
     const offeredIds = (order.dispatch?.offeredTo || []).map((o) =>
       o.partnerId.toString(),

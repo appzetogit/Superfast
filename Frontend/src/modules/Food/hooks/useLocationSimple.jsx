@@ -280,9 +280,16 @@ export function useLocationSimple() {
       setLoading(false)
     }
 
-    // Automatically trigger background live GPS fetch ONLY if deliveryAddressMode is 'current'
+    // Automatically trigger background live GPS fetch on fresh app launch,
+    // but preserve user's manually chosen saved address during current session.
+    const isFreshSession = typeof sessionStorage !== "undefined" && !sessionStorage.getItem("app_session_started");
     const addressMode = localStorage.getItem("deliveryAddressMode") || "saved";
-    if (addressMode === "current" && typeof navigator !== "undefined" && navigator.geolocation) {
+    const hasCachedLocation = localStorage.getItem("userLocation");
+
+    if ((isFreshSession || addressMode === "current" || !hasCachedLocation) && typeof navigator !== "undefined" && navigator.geolocation) {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("app_session_started", "true");
+      }
       getCurrentLocation(true)
         .then((locationData) => {
           setLocation(locationData)
@@ -298,6 +305,7 @@ export function useLocationSimple() {
               detail: { location: locationData },
             })
           )
+          window.dispatchEvent(new Event("deliveryAddressModeChanged"))
         })
         .catch((err) => {
           setError(err.message)

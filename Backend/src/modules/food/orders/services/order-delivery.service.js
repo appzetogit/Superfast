@@ -249,7 +249,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     $or: [
       {
         'dispatch.status': 'unassigned',
-        orderStatus: { $in: ['created', 'placed', 'pending', 'confirmed', 'preparing', 'packed', 'ready_for_pickup', 'assigning', 'accepted'] },
+        orderStatus: { $in: ['ready_for_pickup', 'ready'] },
       },
       {
         'dispatch.deliveryPartnerId': new mongoose.Types.ObjectId(deliveryPartnerId),

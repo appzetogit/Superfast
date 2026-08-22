@@ -45,9 +45,8 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         }
         const msisdn = `91${last10}`;
 
-        // EXACT DLT TEMPLATE provided by user:
-        // "Welcome to the ##var## powered by Appzeto.Your OTP for registration is ##var##.BGADEC"
-        const message = `Welcome to the SUPERFAST powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
+        // Clean OTP Message Template with Superfast branding:
+        const message = `Welcome to Superfast. Your OTP for registration is ${otp}. BGADEC`;
 
         // SMS India Hub API URL (HTTPS)
         const url = new URL('https://cloud.smsindiahub.in/vendorsms/pushsms.aspx');

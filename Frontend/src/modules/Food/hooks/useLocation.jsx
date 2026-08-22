@@ -1231,47 +1231,33 @@ export function useLocation() {
     // The background fetch will set the location, or we'll use the cached/DB location
     // Only set fallback if we have no location after all attempts
 
-    // Request fresh location in BACKGROUND (non-blocking)
-    // CRITICAL FIX: Only auto-request if permission is ALREADY granted
-    // This prevents "Requests geolocation permission on page load" warning
+    // Automatically request fresh live GPS location on fresh app open (new session),
+    // but preserve user's manually chosen saved address during current session.
     const checkPermissionAndStart = async () => {
       try {
-        let permissionGranted = false;
-
-        if (navigator.permissions && navigator.permissions.query) {
-          try {
-            const result = await navigator.permissions.query({ name: 'geolocation' });
-            if (result.state === 'granted') {
-              permissionGranted = true;
-            } else {
-              debugLog(`?? Geolocation permission is '${result.state}' - Waiting for user action (avoiding prompt on load)`);
-            }
-          } catch (permErr) {
-            debugWarn("?? Permission query failed:", permErr);
-          }
-        } else {
-          // Fallback for browsers without permissions API - assume not granted to be safe
-          debugLog("?? Permissions API not available - Skipping auto-start");
-        }
-
-        // If permission NOT granted, and we don't have a specific user request (this is page load),
-        // we should SKIP automatic fetching/watching to allow the user to choose when to enable it.
-        // UNLESS we already have a valid initial location from localStorage/DB, in which case we might want to refresh?
-        if (!permissionGranted) {
+        if (typeof navigator === "undefined" || !navigator.geolocation) {
           setLoading(false);
           return;
         }
 
+        const isFreshSession = typeof sessionStorage !== "undefined" && !sessionStorage.getItem("app_session_started");
         const addressMode = localStorage.getItem("deliveryAddressMode") || "saved";
-        if (addressMode === "saved") {
-          debugLog("📍 deliveryAddressMode is 'saved'; preserving user-selected saved address.");
+        const hasCachedLocation = localStorage.getItem("userLocation");
+
+        // If not a fresh app launch AND user has selected a saved address, DO NOT overwrite!
+        if (!isFreshSession && addressMode === "saved" && hasCachedLocation) {
+          debugLog("📍 deliveryAddressMode is 'saved'; preserving user's chosen address during session.");
           setLoading(false);
           return;
         }
 
-        debugLog("📍 Permission granted & mode is 'current'! Auto-fetching fresh GPS location in background on app open...");
+        // Mark session as started so subsequent in-app route changes respect user selection
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("app_session_started", "true");
+        }
 
-        // Automatically fetch fresh GPS location in background when user opens app with location enabled in 'current' mode
+        debugLog("📍 Auto-fetching fresh live GPS location on app launch...");
+
         getLocation(true, true)
           .then((location) => {
             if (
@@ -1279,7 +1265,7 @@ export function useLocation() {
               location.formattedAddress !== "Select location" &&
               location.city !== "Current Location"
             ) {
-              debugLog("✅ Fresh location auto-updated on app open:", location);
+              debugLog("✅ Live GPS location auto-updated on app launch:", location);
               setLocation(location);
               try {
                 localStorage.setItem("userLocation", JSON.stringify(location));
@@ -1289,6 +1275,7 @@ export function useLocation() {
                     detail: { location },
                   })
                 );
+                window.dispatchEvent(new Event("deliveryAddressModeChanged"));
               } catch (e) {}
               setPermissionGranted(true);
               if (AUTO_START_LIVE_WATCH) startWatchingLocation();

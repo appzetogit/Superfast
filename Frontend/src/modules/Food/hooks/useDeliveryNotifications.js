@@ -159,7 +159,7 @@ const isActionableDeliveryOffer = (orderData = {}) => {
     orderData?.dispatch?.status || orderData?.dispatchStatus || ''
   ).trim().toLowerCase();
 
-  const actionableStatuses = ['created', 'confirmed', 'preparing', 'ready_for_pickup'];
+  const actionableStatuses = ['ready_for_pickup', 'ready'];
   const actionableDispatchStatuses = ['unassigned', 'assigned'];
 
   if (orderStatus && !actionableStatuses.includes(orderStatus)) {
@@ -479,7 +479,7 @@ export const useDeliveryNotifications = () => {
         const orderStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
         return (
           ['unassigned', 'assigned'].includes(dispatchStatus) &&
-          ['created', 'confirmed', 'preparing', 'ready_for_pickup'].includes(orderStatus)
+          ['ready_for_pickup', 'ready'].includes(orderStatus)
         );
       });
 

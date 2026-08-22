@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Printer, Volume2, VolumeX, ChevronDown, ChevronUp, Minus, Plus, Calendar } from 'lucide-react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { Printer, Volume2, VolumeX, ChevronDown, ChevronUp, Minus, Plus, Calendar, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import notificationSound from '@food/assets/audio/alert.mp3';
 import { restaurantAPI } from '@food/api';
@@ -39,8 +39,10 @@ export default function GlobalNewOrderPopup() {
   const audioRef = useRef(null);
   const shownOrdersRef = useRef(new Set()); // Track orders already shown in popup
   const acceptSliderRef = useRef(null);
+  const acceptControls = useAnimation();
   const acceptSwipeStartXRef = useRef(0);
   const acceptSwipeActiveRef = useRef(false);
+  const acceptSwipeProgressRef = useRef(0);
 
   const showNewOrderPopupRef = useRef(false);
   const isMutedRef = useRef(false);
@@ -346,51 +348,26 @@ export default function GlobalNewOrderPopup() {
     }
   }, [showNewOrderPopup, countdown]);
 
-  useEffect(() => {
-    if (!showNewOrderPopup) {
-      setAcceptSwipeProgress(0);
-      setIsAcceptingOrder(false);
-      acceptSwipeActiveRef.current = false;
-      acceptSwipeStartXRef.current = 0;
+  const handleDragSlider = (event, info) => {
+    if (isAcceptingOrder) return;
+    const containerWidth = acceptSliderRef.current?.offsetWidth || 320;
+    const totalPath = Math.max(containerWidth - 56, 1);
+    const currentProgress = Math.min(1, Math.max(0, info.offset.x / totalPath));
+    setAcceptSwipeProgress(currentProgress);
+    if (info.offset.x > 80 || currentProgress > 0.4) {
+      handleAcceptOrder();
     }
-  }, [showNewOrderPopup]);
+  };
 
-  useEffect(() => {
-    const handleMouseMove = (event) => {
-      if (acceptSwipeActiveRef.current) {
-        handleAcceptSwipeMove(event.clientX);
-      }
-    };
-
-    const handleTouchMove = (event) => {
-      if (acceptSwipeActiveRef.current && event.touches[0]) {
-        // Prevent page scroll while swiping the slider
-        if (typeof event.preventDefault === "function") event.preventDefault();
-        handleAcceptSwipeMove(event.touches[0].clientX);
-      }
-    };
-
-    const handlePointerEnd = () => {
-      if (acceptSwipeActiveRef.current) {
-        handleAcceptSwipeEnd();
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handlePointerEnd);
-    // passive: false is required to allow preventDefault() during swipe
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handlePointerEnd);
-    window.addEventListener("touchcancel", handlePointerEnd);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handlePointerEnd);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handlePointerEnd);
-      window.removeEventListener("touchcancel", handlePointerEnd);
-    };
-  }, [isAcceptingOrder]);
+  const handleDragEndSlider = (event, info) => {
+    if (isAcceptingOrder) return;
+    if (info.offset.x > 40 || acceptSwipeProgress > 0.2) {
+      handleAcceptOrder();
+    } else {
+      setAcceptSwipeProgress(0);
+      acceptControls.start({ x: 0 });
+    }
+  };
 
   // Format countdown time
   const formatTime = (seconds) => {
@@ -401,46 +378,13 @@ export default function GlobalNewOrderPopup() {
 
   const getAcceptSliderMetrics = () => {
     const sliderWidth = acceptSliderRef.current?.offsetWidth || 320;
-    const handleWidth = 56;
+    const handleWidth = 48;
     const horizontalPadding = 8;
     const maxTravel = Math.max(
       sliderWidth - handleWidth - horizontalPadding * 2,
       1,
     );
     return { maxTravel };
-  };
-
-  const triggerSwipeAccept = () => {
-    if (isAcceptingOrder) return;
-    setAcceptSwipeProgress(1);
-    setTimeout(() => {
-      handleAcceptOrder();
-    }, 160);
-  };
-
-  const handleAcceptSwipeStart = (clientX) => {
-    if (isAcceptingOrder) return;
-    acceptSwipeStartXRef.current = clientX;
-    acceptSwipeActiveRef.current = true;
-  };
-
-  const handleAcceptSwipeMove = (clientX) => {
-    if (!acceptSwipeActiveRef.current || isAcceptingOrder) return;
-    const deltaX = Math.max(clientX - acceptSwipeStartXRef.current, 0);
-    const { maxTravel } = getAcceptSliderMetrics();
-    setAcceptSwipeProgress(Math.min(deltaX / maxTravel, 1));
-  };
-
-  const handleAcceptSwipeEnd = () => {
-    if (!acceptSwipeActiveRef.current || isAcceptingOrder) return;
-    acceptSwipeActiveRef.current = false;
-
-    if (acceptSwipeProgress >= 0.25) {
-      triggerSwipeAccept();
-      return;
-    }
-
-    setAcceptSwipeProgress(0);
   };
 
   // Handle auto reject on timeout
@@ -493,16 +437,21 @@ export default function GlobalNewOrderPopup() {
     // Ensure this order can't re-trigger fallback popup by using a different id key.
     markOrderAsShown(orderToAccept);
 
-    // Accept order via API if we have a real order
-    if (orderToAccept?.orderMongoId || orderToAccept?.orderId) {
+    const orderId =
+      orderToAccept?.orderMongoId ||
+      orderToAccept?._id ||
+      orderToAccept?.id ||
+      orderToAccept?.orderId;
+
+    // Accept order via API if we have a real order ID
+    if (orderId) {
       try {
-        const orderId = orderToAccept.orderMongoId || orderToAccept.orderId;
         const response = await restaurantAPI.acceptOrder(orderId, prepTime);
-        debugLog("? Order accepted:", orderId);
+        debugLog("✅ Order accepted:", orderId);
         toast.success("Order accepted successfully");
         requestOrdersRefresh();
       } catch (error) {
-        debugError("? Error accepting order:", error);
+        debugError("❌ Error accepting order:", error);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -524,7 +473,6 @@ export default function GlobalNewOrderPopup() {
       }
     }
 
-    const orderId = orderToAccept?.orderMongoId || orderToAccept?.orderId || orderToAccept?._id;
     clearOrderTimer(orderId);
     
     setShowNewOrderPopup(false);
@@ -534,9 +482,6 @@ export default function GlobalNewOrderPopup() {
     setPrepTime(11);
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
-
-    // Note: PreparingOrders component will automatically refresh orders via its own useEffect
-    // No need to manually refresh here as the component polls every 10 seconds
   };
 
   // Handle reject order
@@ -1087,13 +1032,13 @@ export default function GlobalNewOrderPopup() {
                     <div
                       ref={acceptSliderRef}
                       onClick={() => {
-                        if (!isAcceptingOrder) {
+                        if (!isAcceptingOrder && acceptSwipeProgress < 0.15) {
                           handleAcceptOrder();
                         }
                       }}
-                      className="relative h-14 rounded-2xl bg-blue-600 overflow-hidden select-none cursor-pointer flex items-center justify-between px-3 shadow-lg hover:bg-blue-700 transition-colors">
+                      className="relative w-full h-14 rounded-2xl bg-blue-600 overflow-hidden select-none cursor-pointer flex items-center justify-between px-3 shadow-lg hover:bg-blue-700 transition-colors">
                       <motion.div
-                        className="absolute inset-y-0 left-0 bg-blue-700"
+                        className="absolute inset-y-0 left-0 bg-blue-700 pointer-events-none"
                         initial={{ width: "100%" }}
                         animate={{ width: `${(countdown / 240) * 100}%` }}
                         transition={{ duration: 1, ease: "linear" }}
@@ -1105,36 +1050,20 @@ export default function GlobalNewOrderPopup() {
                             : `Slide or Tap to accept (${formatTime(countdown)})`}
                         </span>
                       </div>
-                      <motion.button
-                        type="button"
-                        className="relative z-20 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-md hover:scale-105 active:scale-95 transition-transform"
-                        style={{
-                          x: (() => {
-                            const sliderWidth =
-                              acceptSliderRef.current?.offsetWidth || 320;
-                            const handleWidth = 40;
-                            const maxTravel = Math.max(
-                              sliderWidth - handleWidth - 24,
-                              0,
-                            );
-                            return acceptSwipeProgress * maxTravel;
-                          })(),
+                      <motion.div
+                        drag={isAcceptingOrder ? false : "x"}
+                        dragConstraints={{
+                          left: 0,
+                          right: acceptSliderRef.current?.offsetWidth ? acceptSliderRef.current.offsetWidth - 56 : 240
                         }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          handleAcceptSwipeStart(e.clientX);
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          handleAcceptSwipeStart(e.touches[0].clientX);
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAcceptOrder();
-                        }}
-                        disabled={isAcceptingOrder}>
-                        <span className="text-xl font-black">›</span>
-                      </motion.button>
+                        dragElastic={0.05}
+                        dragSnapToOrigin={true}
+                        onDrag={handleDragSlider}
+                        onDragEnd={handleDragEndSlider}
+                        animate={acceptControls}
+                        className="relative z-20 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-md cursor-grab active:cursor-grabbing">
+                        <ChevronRight className="w-6 h-6" />
+                      </motion.div>
                     </div>
 
                     <button

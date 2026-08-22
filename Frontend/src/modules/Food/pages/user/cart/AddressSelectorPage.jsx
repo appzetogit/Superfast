@@ -173,17 +173,29 @@ export default function AddressSelectorPage() {
   const ENABLE_NOMINATIM_SEARCH = import.meta.env.VITE_ENABLE_NOMINATIM_SEARCH !== "false"
   const getAddressId = (address) => address?.id || address?._id || null
 
-  const handleBack = () => {
-    const explicitFrom = routeLocation.state?.from || routeLocation.state?.backTo
-    if (explicitFrom && explicitFrom !== routeLocation.pathname) {
-      navigate(explicitFrom, { replace: true })
-      return
+  useEffect(() => {
+    const from = routeLocation.state?.from || routeLocation.state?.backTo
+    if (from && from !== routeLocation.pathname) {
+      sessionStorage.setItem("address_selector_from", from)
     }
-    if (typeof window !== "undefined" && window.history.length > 1 && (window.history.state?.idx > 0 || document.referrer)) {
-      navigate(-1)
-      return
+  }, [routeLocation.state, routeLocation.pathname])
+
+  const handleBack = (e) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault()
+      e.stopPropagation()
     }
-    navigate("/food/user/profile", { replace: true })
+    const explicitFrom =
+      routeLocation.state?.from ||
+      routeLocation.state?.backTo ||
+      sessionStorage.getItem("address_selector_from")
+
+    try {
+      sessionStorage.removeItem("address_selector_from")
+    } catch {}
+
+    const targetRoute = (explicitFrom && !explicitFrom.includes("address-selector")) ? explicitFrom : "/food/user"
+    navigate(targetRoute, { replace: true })
   }
 
   const addressAutocompleteSuggestions = useMemo(() => {
@@ -438,9 +450,10 @@ export default function AddressSelectorPage() {
           toast.success("Location updated", { id: "geo" })
           // Redirect if they are on the main selection page
           setTimeout(() => {
-            const from = routeLocation?.state?.from || routeLocation?.state?.backTo || "/food/user/profile"
-            navigate(from, { replace: true })
-          }, 500)
+            const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
+            const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
+            navigate(targetRoute, { replace: true })
+          }, 300)
         }
       } else {
         toast.error("Please switch on Location/GPS on your phone to detect location.", { id: "geo", duration: 5000 })
@@ -451,21 +464,29 @@ export default function AddressSelectorPage() {
   }
 
   const handleSelectSavedAddress = async (address) => {
+    if (!address) return
     const id = getAddressId(address)
     if (id) {
-      await setDefaultAddress(id)
-      persistSelectedLocation(buildLocationPayloadFromAddress(address))
+      try {
+        await setDefaultAddress(id)
+      } catch (err) {
+        debugWarn("Failed to set default address in DB:", err)
+      }
+    }
+    const locationPayload = buildLocationPayloadFromAddress(address)
+    if (locationPayload) {
+      persistSelectedLocation(locationPayload)
       try { 
         localStorage.setItem("deliveryAddressMode", "saved");
         window.dispatchEvent(new Event("deliveryAddressModeChanged"));
       } catch {}
       toast.success("Address selected")
       
-      // Use "from" state if available, otherwise default to profile page
-      const from = routeLocation?.state?.from || routeLocation?.state?.backTo || "/food/user/profile"
+      const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
+      const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
       setTimeout(() => {
-        navigate(from, { replace: true })
-      }, 500)
+        navigate(targetRoute, { replace: true })
+      }, 300)
     }
   }
 
@@ -681,10 +702,11 @@ export default function AddressSelectorPage() {
         setAddressAutocompleteValue("")
         setKeywordAddressSuggestions([])
         
-        const from = routeLocation?.state?.from || routeLocation?.state?.backTo || "/food/user/profile"
+        const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
+        const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
         setTimeout(() => {
-          navigate(from, { replace: true })
-        }, 500)
+          navigate(targetRoute, { replace: true })
+        }, 300)
       }
     } catch (error) {
       toast.error("Failed to save address")
@@ -1043,7 +1065,7 @@ export default function AddressSelectorPage() {
   return (
     <AnimatedPage className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col">
       <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 px-4 py-4 flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-full">
+        <Button type="button" variant="ghost" size="icon" onClick={handleBack} className="rounded-full cursor-pointer z-50">
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <h1 className="text-xl font-bold">Select Location</h1>
@@ -1086,18 +1108,26 @@ export default function AddressSelectorPage() {
                 return (
                   <div
                     key={getAddressId(addr) || idx}
-                    className="w-full flex items-start gap-4 p-4 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-left group"
+                    onClick={() => handleSelectSavedAddress(addr)}
+                    className="w-full flex items-start gap-4 p-4 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-all text-left group cursor-pointer border border-transparent hover:border-orange-200 dark:hover:border-orange-900/40 active:scale-[0.99]"
                   >
-                    <div className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm cursor-pointer" onClick={() => handleSelectSavedAddress(addr)}>
+                    <div className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm flex-shrink-0">
                       <Icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                     </div>
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleSelectSavedAddress(addr)}>
-                      <p className="font-bold text-gray-900 dark:text-white capitalize">{addr.label || "Address"}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-gray-900 dark:text-white capitalize">{addr.label || "Address"}</p>
+                        {addr.isDefault && (
+                          <span className="text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 px-2 py-0.5 rounded-full uppercase">
+                            Default
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">
                         {[addr.additionalDetails, addr.street, addr.city, addr.state].filter(Boolean).join(", ")}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 self-center">
+                    <div className="flex items-center gap-1 self-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button onClick={(e) => handleEdit(e, addr)} className="p-2 text-gray-400 hover:text-[var(--primary-theme)] rounded-full transition-colors" title="Edit">
                         <Edit2 className="h-4 w-4" />
                       </button>

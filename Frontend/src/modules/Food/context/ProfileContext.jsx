@@ -245,12 +245,11 @@ export function ProfileProvider({ children }) {
   const addAddress = useCallback(async (address) => {
     try {
       const response = await userAPI.addAddress(address)
-      const newAddress = response?.data?.data?.address || response?.data?.address
+      const resData = response?.data?.data || response?.data
+      const newAddress = resData?.address || (Array.isArray(resData?.addresses) ? resData.addresses[resData.addresses.length - 1] : (resData?._id || resData?.id ? resData : null))
       
-      if (newAddress) {
-        await refreshAddresses()
-        return normalizeAddress(newAddress)
-      }
+      const refreshed = await refreshAddresses()
+      return normalizeAddress(newAddress) || refreshed?.[refreshed.length - 1] || address
     } catch (error) {
       debugError("Error adding address:", error)
       throw error
@@ -260,12 +259,11 @@ export function ProfileProvider({ children }) {
   const updateAddress = useCallback(async (id, updatedAddress) => {
     try {
       const response = await userAPI.updateAddress(id, updatedAddress)
-      const updatedAddr = response?.data?.data?.address || response?.data?.address
+      const resData = response?.data?.data || response?.data
+      const updatedAddr = resData?.address || (resData?._id || resData?.id ? resData : null)
       
-      if (updatedAddr) {
-        await refreshAddresses()
-        return normalizeAddress(updatedAddr)
-      }
+      const refreshed = await refreshAddresses()
+      return normalizeAddress(updatedAddr) || updatedAddress
     } catch (error) {
       debugError("Error updating address:", error)
       throw error
