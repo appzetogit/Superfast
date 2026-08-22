@@ -18,44 +18,23 @@ const ExperienceBannerCarousel = ({ section, items, fullWidth = false, slideGap 
     if (items.length <= 1) return;
 
     const intervalId = setInterval(() => {
-      setActiveIndex((prev) => prev + 1);
-    }, 4000);
+      setActiveIndex((prev) => (prev + 1) % items.length);
+    }, 3500);
 
     return () => clearInterval(intervalId);
   }, [items.length]);
 
-  React.useEffect(() => {
-    if (items.length <= 1 || activeIndex !== items.length) return;
-
-    const timeoutId = window.setTimeout(() => {
-      setIsResetting(true);
-      setActiveIndex(0);
-    }, 500);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [activeIndex, items.length]);
-
-  React.useEffect(() => {
-    if (!isResetting) return;
-
-    const frameId = window.requestAnimationFrame(() => {
-      setIsResetting(false);
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [isResetting]);
-
   return (
     <div className={cn("overflow-hidden", fullWidth && "w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]")}>
       <div
-        className={cn("flex ease-out", isResetting ? "transition-none" : "transition-transform duration-500")}
+        className="flex ease-out transition-transform duration-500"
         style={{
-          width: `${loopedItems.length * 100}%`,
+          width: `${items.length * 100}%`,
           gap: `${effectiveSlideGap}px`,
-          transform: `translateX(-${activeIndex * stepPercent}%)`,
+          transform: `translateX(-${activeIndex * (100 / items.length)}%)`,
         }}
       >
-        {loopedItems.map((banner, idx) => {
+        {items.map((banner, idx) => {
           const rawImage = banner?.imageUrl || banner?.image || banner?.url || banner?.src || banner?.path || "";
           const resolvedUrl = resolveQuickImageUrl(rawImage);
 
@@ -67,7 +46,7 @@ const ExperienceBannerCarousel = ({ section, items, fullWidth = false, slideGap 
                 fullWidth ? "h-[190px] rounded-none px-0" : "h-[190px] px-4 md:px-8"
               )}
               style={{
-                width: `${stepPercent}%`,
+                width: `${100 / items.length}%`,
               }}
             >
               {fullWidth ? (

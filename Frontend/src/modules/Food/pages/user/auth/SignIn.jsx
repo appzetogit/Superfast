@@ -9,7 +9,7 @@ import { clearUserSession } from "@food/utils/auth"
 import AuthBrandHeader from "@/modules/auth/components/AuthBrandHeader"
 import { SUPERFAST_BRAND } from "@/modules/auth/constants/brand"
 
-const debugError = (...args) => {}
+const debugError = (...args) => { }
 
 export default function SignIn() {
   const navigate = useNavigate()

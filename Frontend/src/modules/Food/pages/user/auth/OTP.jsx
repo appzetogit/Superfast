@@ -37,7 +37,7 @@ export default function OTP() {
       if (userStr) {
         try {
           hasSetPrefs = JSON.parse(userStr).hasSetPreferences === true
-        } catch (e) {}
+        } catch (e) { }
       }
       navigate(hasSetPrefs ? "/food/user" : "/food/user/preferences", { replace: true })
       return
@@ -233,7 +233,7 @@ export default function OTP() {
                   fcmToken = t.trim();
                   break;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
           } else {
             fcmToken = localStorage.getItem("fcm_web_registered_token_user") || null;
@@ -503,108 +503,108 @@ export default function OTP() {
               <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
             </div>
 
-          {/* OTP Input Fields */}
-          {!showNameInput && (
-            <div className="space-y-6">
-              <div className="flex justify-between gap-3 sm:gap-4 max-w-[280px] mx-auto">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(el) => (inputRefs.current[index] = el)}
+            {/* OTP Input Fields */}
+            {!showNameInput && (
+              <div className="space-y-6">
+                <div className="flex justify-between gap-3 sm:gap-4 max-w-[280px] mx-auto">
+                  {otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (inputRefs.current[index] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleChange(index, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(index, e)}
+                      onPaste={index === 0 ? handlePaste : undefined}
+                      disabled={isLoading}
+                      aria-label={`OTP digit ${index + 1} of 4`}
+                      onFocus={(e) => {
+                        setTimeout(() => {
+                          e.target.scrollIntoView({ behavior: "smooth", block: "center" })
+                        }, 300)
+                      }}
+                      className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"
+                    />
+                  ))}
+                </div>
+
+                {error && (
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-red-500 bg-red-50 dark:bg-red-900/10 py-2 rounded-lg">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* Resend Section */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">
+                    Didn't get the OTP?{" "}
+                    {resendTimer > 0 ? (
+                      <span className="font-medium text-gray-900">Retry in {resendTimer}s</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={isLoading}
+                        className="font-bold transition-colors disabled:opacity-50 hover:underline"
+                        style={{ color: SUPERFAST_BRAND.primary }}
+                      >
+                        Resend SMS
+                      </button>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Name Input */}
+            {showNameInput && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Input
                     type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={index === 0 ? handlePaste : undefined}
+                    value={name}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^A-Za-z\s]/g, "")
+                      setName(cleaned)
+                      if (nameError) setNameError("")
+                    }}
                     disabled={isLoading}
-                    aria-label={`OTP digit ${index + 1} of 4`}
+                    placeholder="Full Name"
                     onFocus={(e) => {
                       setTimeout(() => {
                         e.target.scrollIntoView({ behavior: "smooth", block: "center" })
                       }, 300)
                     }}
-                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"
+                    className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${nameError ? "border-red-500" : ""} transition-all`}
                   />
-                ))}
-              </div>
-
-              {error && (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-red-500 bg-red-50 dark:bg-red-900/10 py-2 rounded-lg">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Resend Section */}
-              <div className="text-center">
-                <p className="text-sm text-gray-500">
-                  Didn't get the OTP?{" "}
-                  {resendTimer > 0 ? (
-                    <span className="font-medium text-gray-900">Retry in {resendTimer}s</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleResend}
-                      disabled={isLoading}
-                      className="font-bold transition-colors disabled:opacity-50 hover:underline"
-                      style={{ color: SUPERFAST_BRAND.primary }}
-                    >
-                      Resend SMS
-                    </button>
+                  {nameError && (
+                    <p className="text-xs text-red-500 pl-1">
+                      {nameError}
+                    </p>
                   )}
-                </p>
-              </div>
-            </div>
-          )}
+                </div>
 
-          {/* Name Input */}
-          {showNameInput && (
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Input
-                  type="text"
-                  value={name}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^A-Za-z\s]/g, "")
-                    setName(cleaned)
-                    if (nameError) setNameError("")
-                  }}
+                <Button
+                  onClick={handleSubmitName}
                   disabled={isLoading}
-                  placeholder="Full Name"
-                  onFocus={(e) => {
-                    setTimeout(() => {
-                      e.target.scrollIntoView({ behavior: "smooth", block: "center" })
-                    }, 300)
-                  }}
-                  className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${nameError ? "border-red-500" : ""} transition-all`}
-                />
-                {nameError && (
-                  <p className="text-xs text-red-500 pl-1">
-                    {nameError}
-                  </p>
-                )}
+                  className="w-full h-12 md:h-14 text-white font-bold text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
+                  style={{ background: SUPERFAST_BRAND.gradient }}
+                >
+                  {isLoading ? "Getting things ready..." : "Finish Registration"}
+                </Button>
               </div>
+            )}
 
-              <Button
-                onClick={handleSubmitName}
-                disabled={isLoading}
-                className="w-full h-12 md:h-14 text-white font-bold text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
-                style={{ background: SUPERFAST_BRAND.gradient }}
-              >
-                {isLoading ? "Getting things ready..." : "Finish Registration"}
-              </Button>
-            </div>
-          )}
-
-          {/* Verification Loading Overlay */}
-          {isLoading && !showNameInput && (
-            <div className="flex justify-center pt-2">
-              <Loader2 className="h-6 w-6 animate-spin" style={{ color: SUPERFAST_BRAND.primary }} />
-            </div>
-          )}
+            {/* Verification Loading Overlay */}
+            {isLoading && !showNameInput && (
+              <div className="flex justify-center pt-2">
+                <Loader2 className="h-6 w-6 animate-spin" style={{ color: SUPERFAST_BRAND.primary }} />
+              </div>
+            )}
           </div>
         </div>
       </div>

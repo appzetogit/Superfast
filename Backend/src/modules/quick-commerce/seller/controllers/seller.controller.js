@@ -85,11 +85,11 @@ const buildSellerAddressFromParentOrder = (order) => {
     city: String(order?.deliveryAddress?.city || "").trim(),
     ...(Array.isArray(coords) && coords.length === 2
       ? {
-          location: {
-            lat: Number(coords[1]),
-            lng: Number(coords[0]),
-          },
-        }
+        location: {
+          lat: Number(coords[1]),
+          lng: Number(coords[0]),
+        },
+      }
       : {}),
   };
 };
@@ -100,10 +100,10 @@ const buildSellerOrderFromParentOrder = async (order, sellerId) => {
 
   const quickItems = Array.isArray(order?.items)
     ? order.items.filter(
-        (item) =>
-          item?.type === "quick" &&
-          String(item?.sourceId || "").trim() === sellerKey,
-      )
+      (item) =>
+        item?.type === "quick" &&
+        String(item?.sourceId || "").trim() === sellerKey,
+    )
     : [];
   if (!quickItems.length) return null;
 
@@ -121,11 +121,11 @@ const buildSellerOrderFromParentOrder = async (order, sellerId) => {
   const allocatedDeliveryFee =
     quickSubtotal > 0
       ? Number(
-          (
-            (Number(order?.pricing?.deliveryFee || 0) * sellerSubtotal) /
-            quickSubtotal
-          ).toFixed(2),
-        )
+        (
+          (Number(order?.pricing?.deliveryFee || 0) * sellerSubtotal) /
+          quickSubtotal
+        ).toFixed(2),
+      )
       : 0;
   const { commissionAmount } = await getSellerCommissionSnapshot(
     sellerId,
@@ -197,9 +197,9 @@ const buildSellerOrderFromParentOrder = async (order, sellerId) => {
       city: addr?.city || "",
       location: addr?.location
         ? {
-            lat: addr.location.coordinates?.[1],
-            lng: addr.location.coordinates?.[0],
-          }
+          lat: addr.location.coordinates?.[1],
+          lng: addr.location.coordinates?.[0],
+        }
         : undefined,
     },
     payment: {
@@ -517,8 +517,8 @@ const reconcileSellerDeliveredOrders = async (sellerId) => {
 
   const parentOrders = parentIds.length
     ? await QuickOrder.find({ _id: { $in: parentIds } })
-        .select("_id orderId orderStatus workflowStatus updatedAt")
-        .lean()
+      .select("_id orderId orderStatus workflowStatus updatedAt")
+      .lean()
     : [];
 
   const parentMap = new Map(parentOrders.map((p) => [String(p._id), p]));
@@ -674,11 +674,11 @@ const parseProductPayload = async (req, existingProduct = null) => {
     mrp: num(
       req.body?.mrp,
       req.body?.salePrice ??
-        req.body?.price ??
-        existingProduct?.mrp ??
-        firstVariant?.salePrice ??
-        firstVariant?.price ??
-        0,
+      req.body?.price ??
+      existingProduct?.mrp ??
+      firstVariant?.salePrice ??
+      firstVariant?.price ??
+      0,
     ),
     unit:
       str(req.body?.unit) ||
@@ -805,9 +805,9 @@ const serializeLedger = (transactions) =>
       : "",
     time: item.createdAt
       ? new Date(item.createdAt).toLocaleTimeString("en-IN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+        hour: "2-digit",
+        minute: "2-digit",
+      })
       : "",
     customer:
       item.type === "Withdrawal"
@@ -982,11 +982,11 @@ export const createSellerProductController = async (req, res) => {
   try {
     const sellerId = sellerScope(req);
     const basePayload = await parseProductPayload(req);
-    
+
     if (basePayload.salePrice > basePayload.price) {
       return sendError(res, 400, "Discount price cannot be greater than original price");
     }
-    
+
     if (basePayload.variants?.some(v => v.salePrice > v.price)) {
       return sendError(res, 400, "Variant discount price cannot be greater than original price");
     }
@@ -1107,9 +1107,9 @@ export const getSellerStockHistoryController = async (req, res) => {
         ...item,
         product: item.productId
           ? {
-              _id: item.productId._id,
-              name: item.productId.name,
-            }
+            _id: item.productId._id,
+            name: item.productId.name,
+          }
           : null,
       })),
     });
@@ -1597,7 +1597,7 @@ export const getSellerOrdersController = async (req, res) => {
   try {
     const sellerId = sellerScope(req);
     const sellerKey = String(sellerId);
-    
+
     const page = Math.max(1, num(req.query?.page, 1));
     const limit = Math.max(1, Math.min(100, num(req.query?.limit, 50)));
     const skip = (page - 1) * limit;
@@ -1697,8 +1697,8 @@ export const getSellerOrdersController = async (req, res) => {
 
     const deliveryPartners = deliveryPartnerIds.length
       ? await FoodDeliveryPartner.find({ _id: { $in: deliveryPartnerIds } })
-          .select("_id name phone vehicleType vehicleNumber")
-          .lean()
+        .select("_id name phone vehicleType vehicleNumber")
+        .lean()
       : [];
 
     const deliveryPartnerMap = new Map(
@@ -1726,12 +1726,12 @@ export const getSellerOrdersController = async (req, res) => {
         dispatchStatus: quickOrder?.dispatch?.status || "unassigned",
         deliveryPartner: acceptedPartner
           ? {
-              _id: acceptedPartner._id,
-              name: acceptedPartner.name || "Delivery Partner",
-              phone: acceptedPartner.phone || "",
-              vehicleType: acceptedPartner.vehicleType || "",
-              vehicleNumber: acceptedPartner.vehicleNumber || "",
-            }
+            _id: acceptedPartner._id,
+            name: acceptedPartner.name || "Delivery Partner",
+            phone: acceptedPartner.phone || "",
+            vehicleType: acceptedPartner.vehicleType || "",
+            vehicleNumber: acceptedPartner.vehicleNumber || "",
+          }
           : null,
       };
     });
@@ -1859,7 +1859,7 @@ export const resendSellerOrderDispatchController = async (req, res) => {
     }
 
     const now = new Date();
-    
+
     const newOffers = (nearbyPartners || []).map(p => ({
       partnerId: p.partnerId,
       at: now,
@@ -2293,9 +2293,9 @@ export const getSellerStatsController = async (req, res) => {
           ? `${createdAt.getFullYear()}-${createdAt.getMonth()}`
           : range === "weekly"
             ? `week-${Math.min(
-                3,
-                Math.floor((now - createdAt) / (7 * 24 * 60 * 60 * 1000)),
-              )}`
+              3,
+              Math.floor((now - createdAt) / (7 * 24 * 60 * 60 * 1000)),
+            )}`
             : `${createdAt.getFullYear()}-${createdAt.getMonth()}-${createdAt.getDate()}`;
 
       const bucket = chartBuckets.get(key);
@@ -2395,9 +2395,9 @@ export const getSellerStatsController = async (req, res) => {
           topCity: orders[0]?.address?.city || "Local",
           peakTime: orders[0]?.createdAt
             ? `${String(new Date(orders[0].createdAt).getHours()).padStart(
-                2,
-                "0",
-              )}:00`
+              2,
+              "0",
+            )}:00`
             : "12:00",
           topDevice: balances.totalRevenue > 0 ? "Mobile" : "N/A",
         },
@@ -2422,8 +2422,8 @@ export const testSellerPushController = async (req, res) => {
       ownerType: "SELLER",
       ownerId: sellerId,
       platform: "mobile",
-    }).catch(() => {});
-    
+    }).catch(() => { });
+
     return res.json({ success: true, message: "Test push notification sent successfully" });
   } catch (error) {
     return sendError(res, 500, error.message || "Failed to send test push notification");

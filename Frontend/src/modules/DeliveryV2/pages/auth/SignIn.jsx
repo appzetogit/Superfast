@@ -10,9 +10,9 @@ import { motion } from "framer-motion"
 import SuperfastLogo from "@/assets/Logo.webp"
 import { loadBusinessSettings, getCachedSettings } from "@common/utils/businessSettings"
 import AuthBrandHeader from "@/modules/auth/components/AuthBrandHeader"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 // Common country codes
@@ -73,7 +73,7 @@ export default function DeliverySignIn() {
         } else if (settings?.logo?.url) {
           setLogoUrl(settings.logo.url)
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     fetchSettings()
   }, [])
@@ -157,7 +157,7 @@ export default function DeliverySignIn() {
         module: "delivery",
       }
       sessionStorage.setItem("deliveryAuthData", JSON.stringify(authData))
-      
+
       if (referralCode) {
         try {
           const existingSignupDetails = JSON.parse(sessionStorage.getItem("deliverySignupDetails") || "{}")
@@ -165,7 +165,7 @@ export default function DeliverySignIn() {
             ...existingSignupDetails,
             ref: referralCode
           }))
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Navigate to OTP page
@@ -201,17 +201,17 @@ export default function DeliverySignIn() {
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 shrink-0 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center mb-5">
             <div className="flex items-center justify-center gap-3 mb-1.5">
-               <div className="relative w-5 h-5">
-                 <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
-                 <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#00B761]" />
-                 <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
-               </div>
-               <h2 className="text-2xl font-black text-[#1c1c1c]">Welcome Back!</h2>
-               <div className="relative w-5 h-5">
-                 <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
-                 <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#00B761]" />
-                 <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
-               </div>
+              <div className="relative w-5 h-5">
+                <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
+                <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#00B761]" />
+                <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
+              </div>
+              <h2 className="text-2xl font-black text-[#1c1c1c]">Welcome Back!</h2>
+              <div className="relative w-5 h-5">
+                <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#00B761] transform -rotate-45" />
+                <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#00B761]" />
+                <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#00B761] transform rotate-45" />
+              </div>
             </div>
             <p className="text-sm text-gray-500 font-medium">Login to your delivery partner account</p>
             <div className="h-1 w-8 bg-[#00B761] mx-auto mt-2 rounded-full" />
@@ -247,11 +247,10 @@ export default function DeliverySignIn() {
             <Button
               onClick={handleSendOTP}
               disabled={isSubmitDisabled}
-              className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                !isSubmitDisabled
-                ? "bg-[#00B761] hover:bg-[#009e53] text-white shadow-lg shadow-[#00B761]/30 active:scale-[0.98]"
-                : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
-              }`}
+              className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${!isSubmitDisabled
+                  ? "bg-[#00B761] hover:bg-[#009e53] text-white shadow-lg shadow-[#00B761]/30 active:scale-[0.98]"
+                  : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
+                }`}
             >
               {isSending ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
@@ -267,7 +266,7 @@ export default function DeliverySignIn() {
       </div>
 
       {/* Footer - Fixed at bottom */}
-      <div 
+      <div
         className="shrink-0 z-30 bg-white pt-3 border-t border-gray-100/80 shadow-sm"
         style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: (keyboardInset > 0 || isFocused) ? 'none' : 'block' }}
       >

@@ -317,17 +317,17 @@ export default function UnifiedOTPFastLogin() {
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100 shrink-0 mb-4">
           <div className="text-center mb-5">
             <div className="flex items-center justify-center gap-3 mb-1.5">
-               <div className="relative w-5 h-5">
-                 <div className="absolute top-1 right-0 w-2.5 h-0.5 transform rotate-45" style={{ background: SUPERFAST_BRAND.orange }} />
-                 <div className="absolute top-2.5 right-0 w-3 h-0.5" style={{ background: SUPERFAST_BRAND.primary }} />
-                 <div className="absolute top-4 right-0 w-2.5 h-0.5 transform -rotate-45" style={{ background: SUPERFAST_BRAND.orangeDeep }} />
-               </div>
-               <h2 className="text-2xl font-black text-[#1c1c1c]">Welcome!</h2>
-               <div className="relative w-5 h-5">
-                 <div className="absolute top-1 left-0 w-2.5 h-0.5 transform -rotate-45" style={{ background: SUPERFAST_BRAND.orange }} />
-                 <div className="absolute top-2.5 left-0 w-3 h-0.5" style={{ background: SUPERFAST_BRAND.primary }} />
-                 <div className="absolute top-4 left-0 w-2.5 h-0.5 transform rotate-45" style={{ background: SUPERFAST_BRAND.orangeDeep }} />
-               </div>
+              <div className="relative w-5 h-5">
+                <div className="absolute top-1 right-0 w-2.5 h-0.5 transform rotate-45" style={{ background: SUPERFAST_BRAND.orange }} />
+                <div className="absolute top-2.5 right-0 w-3 h-0.5" style={{ background: SUPERFAST_BRAND.primary }} />
+                <div className="absolute top-4 right-0 w-2.5 h-0.5 transform -rotate-45" style={{ background: SUPERFAST_BRAND.orangeDeep }} />
+              </div>
+              <h2 className="text-2xl font-black text-[#1c1c1c]">Welcome!</h2>
+              <div className="relative w-5 h-5">
+                <div className="absolute top-1 left-0 w-2.5 h-0.5 transform -rotate-45" style={{ background: SUPERFAST_BRAND.orange }} />
+                <div className="absolute top-2.5 left-0 w-3 h-0.5" style={{ background: SUPERFAST_BRAND.primary }} />
+                <div className="absolute top-4 left-0 w-2.5 h-0.5 transform rotate-45" style={{ background: SUPERFAST_BRAND.orangeDeep }} />
+              </div>
             </div>
             <p className="text-sm text-gray-500 font-medium">Login or Signup to continue</p>
             <div className="h-1 w-8 mx-auto mt-2 rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
@@ -359,7 +359,7 @@ export default function UnifiedOTPFastLogin() {
                     placeholder="Enter phone number"
                   />
                 </div>
-                
+
                 <div className="flex items-start gap-2 pt-1">
                   <div className="shrink-0 mt-0.5">
                     <ShieldCheck className="w-4 h-4" style={{ color: SUPERFAST_BRAND.primary }} />
@@ -476,11 +476,10 @@ export default function UnifiedOTPFastLogin() {
             <button
               type="submit"
               disabled={isSubmitDisabled}
-              className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                isSubmitDisabled
-                ? "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
-                : "text-white shadow-lg active:scale-[0.98] hover:opacity-95"
-              }`}
+              className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${isSubmitDisabled
+                  ? "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
+                  : "text-white shadow-lg active:scale-[0.98] hover:opacity-95"
+                }`}
               style={!isSubmitDisabled ? { background: SUPERFAST_BRAND.gradient, boxShadow: "0 10px 24px rgba(249,115,22,0.28)" } : undefined}
             >
               {loading ? (
@@ -497,29 +496,29 @@ export default function UnifiedOTPFastLogin() {
 
         {/* Features Row */}
         {step === 1 && keyboardInset === 0 && !isInputFocused && (
-        <div className="grid grid-cols-3 gap-1 shrink-0 mt-2">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
-               <ShieldCheck className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+          <div className="grid grid-cols-3 gap-1 shrink-0 mt-2">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
+                <ShieldCheck className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+              </div>
+              <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Safe & Secure</h4>
+              <p className="text-[8px] text-gray-500 leading-tight">Your data is protected</p>
             </div>
-            <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Safe & Secure</h4>
-            <p className="text-[8px] text-gray-500 leading-tight">Your data is protected</p>
-          </div>
-          <div className="flex flex-col items-center text-center border-l border-r border-gray-200">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
-               <Zap className="w-5 h-5" style={{ color: SUPERFAST_BRAND.orange }} />
+            <div className="flex flex-col items-center text-center border-l border-r border-gray-200">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
+                <Zap className="w-5 h-5" style={{ color: SUPERFAST_BRAND.orange }} />
+              </div>
+              <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Fast & Easy</h4>
+              <p className="text-[8px] text-gray-500 leading-tight">Quick login in seconds</p>
             </div>
-            <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Fast & Easy</h4>
-            <p className="text-[8px] text-gray-500 leading-tight">Quick login in seconds</p>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
-               <HeadphonesIcon className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+            <div className="flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
+                <HeadphonesIcon className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+              </div>
+              <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">24/7 Support</h4>
+              <p className="text-[8px] text-gray-500 leading-tight">We're here to help</p>
             </div>
-            <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">24/7 Support</h4>
-            <p className="text-[8px] text-gray-500 leading-tight">We're here to help</p>
           </div>
-        </div>
         )}
       </div>
 

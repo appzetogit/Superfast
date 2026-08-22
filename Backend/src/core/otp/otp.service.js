@@ -164,9 +164,9 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         existing.lastRequestAt = now;
         await existing.save();
     } else {
-        await FoodOtp.create({ 
+        await FoodOtp.create({
             phone: normalizedPhone,
-            otp, 
+            otp,
             expiresAt,
             requestCount: 1,
             lastRequestAt: now

@@ -588,7 +588,7 @@ const Home = ({ embedded = false, onThemeChange, embeddedHeaderColor = null }) =
   useEffect(() => {
     const totalSlides = 3;
     const intervalId = setInterval(() => {
-      setMobileBannerIndex((prev) => (prev >= totalSlides - 1 ? prev : prev + 1));
+      setMobileBannerIndex((prev) => (prev + 1) % totalSlides);
     }, 3500);
     return () => clearInterval(intervalId);
   }, []);

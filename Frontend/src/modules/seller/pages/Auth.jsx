@@ -37,7 +37,7 @@ export default function SellerAuth() {
         } else if (settings?.logo?.url) {
           setLogoUrl(settings.logo.url)
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     fetchSettings()
   }, [])
@@ -65,7 +65,7 @@ export default function SellerAuth() {
 
   const nextSellerPath =
     typeof location.state?.from === "string" &&
-    location.state.from.startsWith("/seller")
+      location.state.from.startsWith("/seller")
       ? location.state.from
       : "/seller";
 
@@ -194,17 +194,17 @@ export default function SellerAuth() {
             <>
               <div className="text-center mb-5">
                 <div className="flex items-center justify-center gap-3 mb-1.5">
-                   <div className="relative w-5 h-5">
-                     <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
-                     <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#16a34a]" />
-                     <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
-                   </div>
-                   <h2 className="text-2xl font-black text-[#1c1c1c]">Welcome Back!</h2>
-                   <div className="relative w-5 h-5">
-                     <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
-                     <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#16a34a]" />
-                     <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
-                   </div>
+                  <div className="relative w-5 h-5">
+                    <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
+                    <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#16a34a]" />
+                    <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
+                  </div>
+                  <h2 className="text-2xl font-black text-[#1c1c1c]">Welcome Back!</h2>
+                  <div className="relative w-5 h-5">
+                    <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
+                    <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#16a34a]" />
+                    <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500 font-medium">Login to your seller partner account</p>
                 <div className="h-1 w-8 bg-[#16a34a] mx-auto mt-2 rounded-full" />
@@ -240,11 +240,10 @@ export default function SellerAuth() {
                 <Button
                   onClick={handleSendOtp}
                   disabled={isSubmitDisabled}
-                  className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                    !isSubmitDisabled
-                    ? "bg-[#16a34a] hover:bg-[#128a3e] text-white shadow-lg shadow-[#16a34a]/30 active:scale-[0.98]"
-                    : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
-                  }`}
+                  className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${!isSubmitDisabled
+                      ? "bg-[#16a34a] hover:bg-[#128a3e] text-white shadow-lg shadow-[#16a34a]/30 active:scale-[0.98]"
+                      : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
+                    }`}
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
@@ -276,17 +275,17 @@ export default function SellerAuth() {
             <>
               <div className="text-center mb-5">
                 <div className="flex items-center justify-center gap-3 mb-1.5">
-                   <div className="relative w-5 h-5">
-                     <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
-                     <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#16a34a]" />
-                     <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
-                   </div>
-                   <h2 className="text-2xl font-black text-[#1c1c1c]">Verify OTP</h2>
-                   <div className="relative w-5 h-5">
-                     <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
-                     <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#16a34a]" />
-                     <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
-                   </div>
+                  <div className="relative w-5 h-5">
+                    <div className="absolute top-1 right-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
+                    <div className="absolute top-2.5 right-0 w-3 h-0.5 bg-[#16a34a]" />
+                    <div className="absolute top-4 right-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
+                  </div>
+                  <h2 className="text-2xl font-black text-[#1c1c1c]">Verify OTP</h2>
+                  <div className="relative w-5 h-5">
+                    <div className="absolute top-1 left-0 w-2.5 h-0.5 bg-[#16a34a] transform -rotate-45" />
+                    <div className="absolute top-2.5 left-0 w-3 h-0.5 bg-[#16a34a]" />
+                    <div className="absolute top-4 left-0 w-2.5 h-0.5 bg-[#16a34a] transform rotate-45" />
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500 font-medium flex items-center justify-center gap-1.5 flex-wrap">
                   <span>Sent to <span className="text-[#16a34a] font-bold">{maskedPhone}</span></span>
@@ -344,11 +343,10 @@ export default function SellerAuth() {
                 <Button
                   onClick={handleVerifyOtp}
                   disabled={isSubmitDisabled}
-                  className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                    !isSubmitDisabled
-                    ? "bg-[#16a34a] hover:bg-[#128a3e] text-white shadow-lg shadow-[#16a34a]/30 active:scale-[0.98]"
-                    : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
-                  }`}
+                  className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${!isSubmitDisabled
+                      ? "bg-[#16a34a] hover:bg-[#128a3e] text-white shadow-lg shadow-[#16a34a]/30 active:scale-[0.98]"
+                      : "bg-gray-100 cursor-not-allowed opacity-50 text-gray-400 shadow-none"
+                    }`}
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
@@ -381,9 +379,9 @@ export default function SellerAuth() {
       </div>
 
       <div className="pb-4 text-center shrink-0 z-20 hidden sm:block">
-          <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
-            &copy; {new Date().getFullYear()} {companyName.toUpperCase()} SELLER PORTAL
-          </p>
+        <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
+          &copy; {new Date().getFullYear()} {companyName.toUpperCase()} SELLER PORTAL
+        </p>
       </div>
     </div>
   );

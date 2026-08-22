@@ -29,26 +29,44 @@ const BannerSection = memo(({
 
   const goToNext = useCallback(() => {
     if (bannerCount <= 1) return;
-    const nextIndex = (currentBannerIndex + 1) % bannerCount;
-    scrollToIndex(nextIndex);
-  }, [bannerCount, currentBannerIndex, scrollToIndex]);
+    setCurrentBannerIndex((prev) => {
+      const nextIndex = (prev + 1) % bannerCount;
+      if (scrollRef.current) {
+        const width = scrollRef.current.offsetWidth;
+        scrollRef.current.scrollTo({ left: nextIndex * width, behavior: 'smooth' });
+      }
+      return nextIndex;
+    });
+  }, [bannerCount, setCurrentBannerIndex]);
 
   const goToPrev = useCallback(() => {
     if (bannerCount <= 1) return;
-    const prevIndex = (currentBannerIndex - 1 + bannerCount) % bannerCount;
-    scrollToIndex(prevIndex);
-  }, [bannerCount, currentBannerIndex, scrollToIndex]);
+    setCurrentBannerIndex((prev) => {
+      const prevIndex = (prev - 1 + bannerCount) % bannerCount;
+      if (scrollRef.current) {
+        const width = scrollRef.current.offsetWidth;
+        scrollRef.current.scrollTo({ left: prevIndex * width, behavior: 'smooth' });
+      }
+      return prevIndex;
+    });
+  }, [bannerCount, setCurrentBannerIndex]);
 
-  // Auto-slide effect that pauses on user hover
+  // Auto-slide effect
   useEffect(() => {
     if (bannerCount <= 1 || isHovered) return;
-    autoSlideTimerRef.current = setInterval(() => {
-      goToNext();
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => {
+        const nextIndex = (prev + 1) % bannerCount;
+        if (scrollRef.current) {
+          const width = scrollRef.current.offsetWidth;
+          scrollRef.current.scrollTo({ left: nextIndex * width, behavior: 'smooth' });
+        }
+        return nextIndex;
+      });
     }, 3500);
-    return () => {
-      if (autoSlideTimerRef.current) clearInterval(autoSlideTimerRef.current);
-    };
-  }, [bannerCount, isHovered, goToNext]);
+
+    return () => clearInterval(interval);
+  }, [bannerCount, isHovered, setCurrentBannerIndex]);
 
   if (showBannerSkeleton) {
     return (
@@ -85,7 +103,10 @@ const BannerSection = memo(({
       className="group relative h-full w-full overflow-hidden rounded-[22px] select-none bg-transparent"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onTouchStart={() => setIsHovered(true)}
+      onTouchStart={() => {
+        setIsHovered(true);
+        setTimeout(() => setIsHovered(false), 2000);
+      }}
       onTouchEnd={() => setIsHovered(false)}
     >
       {/* Sliding Track */}
