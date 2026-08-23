@@ -221,9 +221,13 @@ const AddProduct = () => {
       data.append("status", formData.status);
 
       // Map top-level price/stock — prefer pricing tab values, fallback to first variant
-      data.append("price", formData.price || firstVariant.price);
-      data.append("salePrice", formData.salePrice || firstVariant.salePrice || 0);
-      data.append("stock", formData.stock || firstVariant.stock);
+      const targetPrice = formData.price || firstVariant.price || 0;
+      const targetSalePrice = formData.salePrice || firstVariant.salePrice || 0;
+      const targetStock = (formData.stock !== "" && formData.stock !== null && formData.stock !== undefined) ? formData.stock : (firstVariant.stock || 0);
+
+      data.append("price", targetPrice);
+      data.append("salePrice", targetSalePrice);
+      data.append("stock", targetStock);
       data.append("lowStockAlert", formData.lowStockAlert || 5);
 
       // Category IDs
@@ -250,8 +254,16 @@ const AddProduct = () => {
         });
       }
 
+      // Sync variants so default variant stock is not 0
+      const syncedVariants = (formData.variants || []).map((v) => ({
+        ...v,
+        price: v.price || targetPrice,
+        salePrice: v.salePrice || targetSalePrice,
+        stock: (v.stock !== "" && v.stock !== null && v.stock !== undefined) ? v.stock : targetStock,
+      }));
+
       // Variants
-      data.append("variants", JSON.stringify(formData.variants));
+      data.append("variants", JSON.stringify(syncedVariants));
 
       await sellerApi.createProduct(data);
       localStorage.removeItem(DRAFT_KEY);

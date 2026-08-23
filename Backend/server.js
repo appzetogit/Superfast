@@ -19,6 +19,7 @@ const SHUTDOWN_TIMEOUT_MS = 10000;
 let server = null;
 let expireOffersInterval = null;
 let fssaiExpiryInterval = null;
+let dispatchWatchdogInterval = null;
 
 const gracefulShutdown = async (signal) => {
     logger.info(`${signal} received, starting graceful shutdown`);
@@ -33,6 +34,7 @@ const gracefulShutdown = async (signal) => {
             await closeBullMQConnection();
             if (expireOffersInterval) clearInterval(expireOffersInterval);
             if (fssaiExpiryInterval) clearInterval(fssaiExpiryInterval);
+            if (dispatchWatchdogInterval) clearInterval(dispatchWatchdogInterval);
             logger.info('Graceful shutdown complete');
             process.exit(0);
         } catch (err) {
@@ -118,6 +120,17 @@ const startServer = async () => {
         };
         runFssaiExpirySync();
         fssaiExpiryInterval = setInterval(runFssaiExpirySync, 60 * 60 * 1000);
+
+        const runDispatchWatchdogTask = async () => {
+            try {
+                const { runDispatchWatchdog } = await import('./src/modules/food/orders/services/order-dispatch.service.js');
+                await runDispatchWatchdog();
+            } catch (err) {
+                logger.error(`Dispatch watchdog error: ${err.message}`);
+            }
+        };
+        runDispatchWatchdogTask();
+        dispatchWatchdogInterval = setInterval(runDispatchWatchdogTask, 30 * 1000);
 
 
         process.on('SIGINT', () => gracefulShutdown('SIGINT'));

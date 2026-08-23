@@ -496,3 +496,45 @@ export async function resendDeliveryNotificationRestaurant(
     notifiedCount: res?.notifiedCount || 0,
   };
 }
+
+/**
+ * 🛰️ Dispatch Watchdog: Periodically scans for orders needing delivery assignment
+ * Runs automatically every 30-60 seconds in the background.
+ */
+export async function runDispatchWatchdog() {
+  try {
+    const lockCutoff = new Date(Date.now() - 30 * 1000); // 30s lock
+
+    const pendingOrders = await FoodOrder.find({
+      orderStatus: { $in: ["ready_for_pickup", "ready", "confirmed", "preparing"] },
+      $or: [
+        { "dispatch.status": "unassigned" },
+        {
+          "dispatch.status": "assigned",
+          "dispatch.acceptedAt": { $exists: false },
+          "dispatch.assignedAt": { $lt: lockCutoff },
+        },
+      ],
+      "dispatch.status": { $ne: "accepted" },
+    })
+      .select("_id orderStatus orderType restaurantId items dispatch")
+      .limit(30)
+      .lean();
+
+    if (!pendingOrders.length) return;
+
+    for (const order of pendingOrders) {
+      const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
+      const isReadyForPickup = ["ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
+
+      if (!isFoodOrder || isReadyForPickup) {
+        const attempt = (order.dispatch?.offeredTo?.length || 0) + 1;
+        await tryAutoAssign(order._id.toString(), { attempt }).catch((err) => {
+          logger.warn(`runDispatchWatchdog: tryAutoAssign error for ${order._id}: ${err.message}`);
+        });
+      }
+    }
+  } catch (err) {
+    logger.error(`runDispatchWatchdog failed: ${err.message}`);
+  }
+}

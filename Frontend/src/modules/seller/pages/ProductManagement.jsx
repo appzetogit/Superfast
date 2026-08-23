@@ -264,8 +264,16 @@ const ProductManagement = () => {
       data.append("status", formData.status);
       data.append("brand", formData.brand);
       data.append("weight", formData.weight);
-      data.append("tags", formData.tags);
-      data.append("variants", JSON.stringify(formData.variants));
+      const syncedVariants = (formData.variants || []).map((v) => ({
+        ...v,
+        price: v.price || Number(formData.price) || 0,
+        salePrice: v.salePrice || Number(formData.salePrice) || 0,
+        stock: (v.stock !== "" && v.stock !== null && v.stock !== undefined && Number(v.stock) > 0)
+          ? Number(v.stock)
+          : Number(formData.stock),
+      }));
+
+      data.append("variants", JSON.stringify(syncedVariants));
 
       if (formData.mainImageFile) {
         data.append("mainImage", formData.mainImageFile);
@@ -755,9 +763,8 @@ const ProductManagement = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       {(() => {
-                        const totalStock = p.variants?.length > 0
-                          ? p.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
-                          : p.stock;
+                        const variantSum = p.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
+                        const totalStock = Math.max(Number(p.stock) || 0, variantSum);
                         return (
                           <span
                             className={cn(

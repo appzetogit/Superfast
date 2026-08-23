@@ -51,8 +51,12 @@ const STATUS_LABELS = {
 const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
 const last10 = (value) => normalizePhone(value).slice(-10);
 const num = (value, fallback = 0) => {
+  if (value === "" || value === null || value === undefined) {
+    const fb = Number(fallback);
+    return Number.isFinite(fb) ? fb : 0;
+  }
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : (Number(fallback) || 0);
 };
 const optionalNumber = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -454,6 +458,9 @@ const parseVariants = (raw, fallback = {}) => {
     .filter((variant) => variant.name);
 
   if (variants.length > 0) {
+    if (variants.length === 1 && (variants[0].stock === 0 || variants[0].stock === null || variants[0].stock === undefined) && num(fallback.stock) > 0) {
+      variants[0].stock = Math.max(0, num(fallback.stock));
+    }
     return variants;
   }
 
