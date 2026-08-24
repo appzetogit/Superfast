@@ -283,7 +283,7 @@ const MapPicker = ({
           </Button>
         </div>
 
-        <div className="h-[250px] sm:h-[400px] rounded-xl overflow-hidden border border-gray-200 shadow-inner relative">
+        <div className="h-[210px] sm:h-[380px] rounded-xl overflow-hidden border border-gray-200 shadow-inner relative">
           {!isLoaded ? (
             <div className="h-full flex items-center justify-center bg-gray-50">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -377,6 +377,21 @@ const MapPicker = ({
             Customers within this radius from your shop will be able to see and
             order from you.
           </p>
+
+          <div className="pt-2">
+            <Button
+              onClick={handleConfirm}
+              disabled={!marker || isGeocoding}
+              className="w-full py-3.5 text-base font-bold bg-[#0c831f] hover:bg-[#0a6d19] text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              {isGeocoding ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <MapPin className="w-5 h-5" />
+              )}
+              {isGeocoding ? "Saving Location..." : "Confirm & Save Location"}
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

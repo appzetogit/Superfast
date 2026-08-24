@@ -597,11 +597,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
         const nextIncomingOrder = availableOrders.find((order) => {
           if (order?.type === 'RETURN_PICKUP') return true;
+          if (order?.isReassignment || order?.reassignmentStatus === 'pending') return true;
           const dispatchStatus = String(order?.dispatch?.status || '').toLowerCase();
           const orderStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
           return (
             ['unassigned', 'assigned'].includes(dispatchStatus) &&
-            ['created', 'placed', 'pending', 'confirmed', 'preparing', 'packed', 'ready_for_pickup', 'assigning', 'accepted'].includes(orderStatus)
+            ['created', 'placed', 'pending', 'confirmed', 'preparing', 'packed', 'ready_for_pickup', 'assigning', 'accepted', 'picked_up', 'out_for_delivery', 'reached_pickup', 'reached_drop'].includes(orderStatus)
           );
         });
 

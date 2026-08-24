@@ -1073,8 +1073,9 @@ export const useDeliveryNotifications = () => {
       const normalizedData = {
         ...reassignData,
         isReassignment: true,
-        orderId: reassignData.order_id || reassignData.orderMongoId,
-        orderMongoId: reassignData.orderMongoId
+        reassignmentStatus: 'pending',
+        orderId: reassignData.orderId || reassignData.order_id || reassignData.orderMongoId,
+        orderMongoId: reassignData.orderMongoId || reassignData._id
       };
       setNewOrder(normalizedData);
       handleIncomingOrderAlert(normalizedData);

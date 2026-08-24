@@ -122,7 +122,7 @@ export const PickupActionModal = ({
   const restaurantPhone = isQuickOrder
     ? order?.storePhone || order?.sellerPhone || order?.seller?.phone || order?.seller?.ownerPhone || order?.seller?.primaryContactNumber || order?.seller?.contactNumber || order?.seller?.mobile || ''
     : order?.restaurantPhone || order?.restaurant_phone || order?.restaurantId?.phone || order?.restaurantId?.ownerPhone || order?.restaurantId?.primaryContactNumber || order?.restaurantId?.contactNumber || order?.restaurantId?.mobile || order?.restaurant?.phone || order?.restaurant?.ownerPhone || order?.restaurant?.primaryContactNumber || order?.restaurant?.contactNumber || order?.phone || '';
-  const items = order.items || [];
+  const items = Array.isArray(order?.items) ? order.items : (Array.isArray(order?.products) ? order.products : (Array.isArray(order?.foodItems) ? order.foodItems : (Array.isArray(order?.cartItems) ? order.cartItems : [])));
   const restaurantLogo = isQuickOrder
     ? order?.storeImage || order?.seller?.logo || order?.seller?.image || order?.seller?.profileImage || 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png'
     : order?.restaurantImage || order?.restaurant?.logo || order?.restaurant?.profileImage || 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png';

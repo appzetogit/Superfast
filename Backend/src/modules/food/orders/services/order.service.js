@@ -5460,18 +5460,32 @@ export async function reassignDeliveryPartnerAdmin(orderId, { newDriverId, reaso
 
   const io = getIO();
   if (io) {
-    const pickupAddress = order.pickupPoints?.[0]?.address || order.restaurantId?.addressLine1 || '';
-    const dropAddress = order.deliveryAddress?.street || '';
-    const amount = order.pricing?.deliveryFee || 0;
-    io.to(rooms.delivery(newDriverId)).emit('new_reassignment_request', {
-      order_id: String(order.orderId || order._id),
-      orderMongoId: String(order._id),
-      pickup: pickupAddress,
-      dropoff: dropAddress,
-      amount,
-      timeout_seconds: 60,
-      timeoutSeconds: 60
+    const fullOrderView = buildDeliveryOrderView(order, newDriverId);
+    fullOrderView.isReassignment = true;
+    fullOrderView.reassignmentStatus = 'pending';
+    fullOrderView.timeout_seconds = 60;
+    fullOrderView.timeoutSeconds = 60;
+
+    io.to(rooms.delivery(newDriverId)).emit('new_reassignment_request', fullOrderView);
+  }
+
+  try {
+    const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
+    await notifyOwnerSafely({
+      ownerType: 'DELIVERY_PARTNER',
+      ownerId: String(newDriverId)
+    }, {
+      title: 'New Reassignment Request 🛵',
+      body: `You have a new reassignment request for Order #${order.orderId || order._id}`,
+      data: {
+        type: 'reassignment_request',
+        orderId: String(order._id),
+        orderMongoId: String(order._id),
+        isReassignment: 'true'
+      }
     });
+  } catch (pushErr) {
+    logger.warn(`FCM push failed for reassignment request: ${pushErr.message}`);
   }
 
   return sanitizeOrderForExternal(order);

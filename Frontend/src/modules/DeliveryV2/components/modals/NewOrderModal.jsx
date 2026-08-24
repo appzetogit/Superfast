@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown } from 'lucide-react';
+import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown, Package } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { getHaversineDistance, calculateETA } from '@/modules/DeliveryV2/utils/geo';
@@ -379,6 +379,52 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                </div>
              </div>
           </div>
+
+          {/* Order Items / Products Summary */}
+          {(() => {
+            const rawItems = Array.isArray(order?.items)
+              ? order.items
+              : (Array.isArray(order?.products)
+                  ? order.products
+                  : (Array.isArray(order?.foodItems)
+                      ? order.foodItems
+                      : (Array.isArray(order?.cartItems) ? order.cartItems : [])));
+            const itemCount = rawItems.length || order?.itemCount || order?.totalItems || order?.totalQuantity || 0;
+
+            if (rawItems && rawItems.length > 0) {
+              return (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-800 font-bold text-[10px] uppercase tracking-widest">
+                      <Package className="w-3.5 h-3.5 text-[var(--primary-theme)]" />
+                      <span>Order Items ({rawItems.length})</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 pt-0.5 max-h-28 overflow-y-auto pr-1">
+                    {rawItems.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs font-semibold text-slate-800 bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-2xs">
+                        <span className="truncate flex-1 mr-2">{item.name || item.itemName || item.title || item.productName || 'Item'}</span>
+                        <span className="font-bold text-[var(--primary-theme)] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded text-[10px]">
+                          x{item.quantity || item.qty || item.count || 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            if (itemCount > 0) {
+              return (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <Package className="w-4 h-4 text-slate-400" />
+                  <span>{itemCount} Items in Order</span>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
 
           {/* Action Area */}
           <div className="space-y-4">
