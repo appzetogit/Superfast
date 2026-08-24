@@ -137,37 +137,71 @@ const MapPicker = ({
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported on this device.");
+      toast.error("Geolocation is not supported on this device.");
       return;
     }
 
     setIsFetchingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newPos = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setMarker(newPos);
-        setAddress("");
-        setIsFetchingLocation(false);
-        if (mapRef.current) {
-          mapRef.current.panTo(newPos);
-          mapRef.current.setZoom(16);
+
+    const tryFetch = (highAccuracy = true) => {
+      let timeoutId = setTimeout(() => {
+        if (highAccuracy) {
+          console.warn("High accuracy geolocation timed out, trying low accuracy fallback...");
+          tryFetch(false);
         } else {
-          setCenter(newPos);
+          setIsFetchingLocation(false);
+          toast.error("Unable to retrieve location automatically. Please tap directly on the map or use search bar.");
         }
-      },
-      () => {
-        setIsFetchingLocation(false);
-        alert("Unable to retrieve your current location. Please allow location access and try again.");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
+      }, highAccuracy ? 5000 : 7000);
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          clearTimeout(timeoutId);
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setMarker(newPos);
+          setIsFetchingLocation(false);
+          if (mapRef.current) {
+            mapRef.current.panTo(newPos);
+            mapRef.current.setZoom(16);
+          } else {
+            setCenter(newPos);
+          }
+
+          if (window.google?.maps?.Geocoder) {
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode({ location: newPos }, (results, status) => {
+              if (status === "OK" && results?.[0]) {
+                setAddress(results[0].formatted_address || "");
+              }
+            });
+          }
+        },
+        (error) => {
+          clearTimeout(timeoutId);
+          if (highAccuracy) {
+            console.warn("High accuracy geolocation failed, trying low accuracy fallback...", error);
+            tryFetch(false);
+          } else {
+            setIsFetchingLocation(false);
+            if (error?.code === error?.PERMISSION_DENIED) {
+              toast.error("Location permission denied. Please allow location access in your browser settings or tap directly on the map.");
+            } else {
+              toast.error("Unable to retrieve location. Please tap directly on the map or use the search bar.");
+            }
+          }
+        },
+        {
+          enableHighAccuracy: highAccuracy,
+          timeout: highAccuracy ? 5000 : 7000,
+          maximumAge: 30000,
+        }
+      );
+    };
+
+    tryFetch(true);
   };
 
   const handleConfirm = async () => {
