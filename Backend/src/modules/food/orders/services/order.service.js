@@ -4509,6 +4509,16 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     logger.warn(`Push notification failed on delivery completion: ${err?.message || err}`);
   }
 
+  // Target Milestone Bonus check & auto-credit
+  void (async () => {
+    try {
+      const { checkAndCreditTargetBonus } = await import('../../delivery/services/deliveryTarget.service.js');
+      await checkAndCreditTargetBonus(deliveryPartnerId, order._id);
+    } catch (targetErr) {
+      logger.warn(`Target bonus check failed on delivery complete: ${targetErr?.message || targetErr}`);
+    }
+  })();
+
   return sanitizeOrderForExternal(order);
 }
 

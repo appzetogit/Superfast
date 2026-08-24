@@ -40,7 +40,25 @@ export const getPublicPageByKey = async (key, role = 'user') => {
     const r = String(role || 'user').toLowerCase();
     
     const doc = await FoodPageContent.findOne({ key: k, role: r }).lean();
-    if (!doc) return { key: k, role: r, data: null };
+    if (!doc) {
+        const defaultTitles = {
+            cancellation: 'Cancellation Policy',
+            refund: 'Refund Policy',
+            shipping: 'Shipping Policy',
+            privacy: 'Privacy Policy',
+            terms: 'Terms and Conditions',
+            support: 'Support & Help',
+            about: 'About Us'
+        };
+        if (k === 'about') {
+            return {
+                key: k,
+                role: r,
+                data: { appName: 'Superfast', version: '1.0.0', description: '', logo: '', features: [], stats: [] }
+            };
+        }
+        return { key: k, role: r, data: { title: defaultTitles[k] || 'Page Content', content: '' } };
+    }
     if (k === 'about') return { key: k, role: r, data: normalizeAboutForResponse(doc.about || null) };
     return { key: k, role: r, data: normalizeLegalForResponse(doc.legal || null) };
 };

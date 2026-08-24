@@ -11,6 +11,7 @@ import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
 // Components
 import LiveMap from '@/modules/DeliveryV2/components/map/LiveMap';
+import TargetProgressCardV2 from '@/modules/DeliveryV2/components/TargetProgressCardV2';
 import { NewOrderModal } from '@/modules/DeliveryV2/components/modals/NewOrderModal';
 import { PickupActionModal } from '@/modules/DeliveryV2/components/modals/PickupActionModal';
 import { DeliveryVerificationModal } from '@/modules/DeliveryV2/components/modals/DeliveryVerificationModal';
@@ -801,9 +802,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white/5 rounded-2xl p-4 flex items-center border border-white/5 shadow-sm backdrop-blur-md">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
+                <div className="bg-white/5 rounded-2xl p-3 px-4 flex items-center justify-between border border-white/5 shadow-sm backdrop-blur-md">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-green-500/10 rounded-full flex items-center justify-center">
                       <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
                     </div>
                     <div>
@@ -811,6 +812,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                       <p className="text-gray-400 text-[10px] font-bold uppercase tracking-tight">{isOnline ? 'Waiting for order requests' : 'Go online to receive jobs'}</p>
                     </div>
                   </div>
+
+                  {/* Dynamic Target Bonus Light Pill */}
+                  <TargetProgressCardV2 activeOrder={activeOrder} />
                 </div>
               )}
             </motion.div>

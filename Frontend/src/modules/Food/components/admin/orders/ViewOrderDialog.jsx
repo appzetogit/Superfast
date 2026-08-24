@@ -541,50 +541,65 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
             </div>
           )}
 
-          {/* Delivery Partner Information */}
-          {(order.deliveryPartnerName || order.deliveryPartnerPhone) && (
-            <div className="border-t border-slate-200 pt-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 m-0">
-                  <Truck className="w-4 h-4" />
-                  Delivery Partner
-                </h3>
-                {['created', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up'].includes(order.orderStatus) && (
-                  <button
-                    type="button"
-                    disabled={order.reassignmentStatus === 'pending' || countdown > 0}
-                    onClick={() => setShowReassignModal(true)}
-                    className="px-3 py-1.5 bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
-                  >
-                    Reassign Driver
-                  </button>
-                )}
-              </div>
-              {(order.reassignmentStatus === 'pending' || countdown > 0) && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-800">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 animate-pulse" />
-                    <span>Reassignment offer pending acceptance...</span>
-                  </div>
-                  <span className="font-bold text-sm bg-amber-100 px-2 py-0.5 rounded">{countdown}s</span>
+          {/* Delivery Partner Information & Reassign Option */}
+          {(() => {
+            const currentStatus = String(order.rawOrderStatus || order.orderStatus || order.status || '').toLowerCase();
+            const isFinishedOrCancelled = ['delivered', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user', 'canceled', 'refunded'].includes(currentStatus);
+            const hasDriver = Boolean(order.deliveryPartnerName || order.deliveryPartnerPhone);
+
+            if (!hasDriver && isFinishedOrCancelled) return null;
+
+            return (
+              <div className="border-t border-slate-200 pt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 m-0">
+                    <Truck className="w-4 h-4 text-[var(--primary-theme)]" />
+                    Delivery Partner {hasDriver ? `(${order.deliveryPartnerName})` : ''}
+                  </h3>
+                  {!isFinishedOrCancelled && (
+                    <button
+                      type="button"
+                      disabled={order.reassignmentStatus === 'pending' || countdown > 0}
+                      onClick={() => setShowReassignModal(true)}
+                      className="px-3 py-1.5 bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Truck className="w-3.5 h-3.5" />
+                      <span>{hasDriver ? 'Reassign Driver' : 'Assign Driver'}</span>
+                    </button>
+                  )}
                 </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {order.deliveryPartnerName && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</p>
-                    <p className="text-sm font-medium text-slate-900">{order.deliveryPartnerName}</p>
+
+                {(order.reassignmentStatus === 'pending' || countdown > 0) && (
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-800">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 animate-pulse" />
+                      <span>Reassignment offer pending acceptance...</span>
+                    </div>
+                    <span className="font-bold text-sm bg-amber-100 px-2 py-0.5 rounded">{countdown}s</span>
                   </div>
                 )}
-                {order.deliveryPartnerPhone && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</p>
-                    <p className="text-sm font-medium text-slate-900">{order.deliveryPartnerPhone}</p>
+
+                {hasDriver ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {order.deliveryPartnerName && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</p>
+                        <p className="text-sm font-medium text-slate-900">{order.deliveryPartnerName}</p>
+                      </div>
+                    )}
+                    {order.deliveryPartnerPhone && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</p>
+                        <p className="text-sm font-medium text-slate-900">{order.deliveryPartnerPhone}</p>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">No delivery partner assigned yet. Click "Assign Driver" button above to assign one.</p>
                 )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Pricing Breakdown */}
           <div className="border-t border-slate-200 pt-4">

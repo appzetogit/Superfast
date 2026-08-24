@@ -16,6 +16,10 @@ export const scrollToAllTops = () => {
     );
     scrollableElements.forEach((el) => {
       if (el && typeof el.scrollTop === 'number' && el.scrollTop > 0) {
+        // Do NOT reset scroll position for sidebars, navigation panels, or elements inside sidebar/nav
+        if (el.closest('aside, nav, [data-sidebar], .sidebar, .admin-sidebar-scroll, [data-no-scroll-reset]')) {
+          return;
+        }
         el.scrollTop = 0;
       }
     });

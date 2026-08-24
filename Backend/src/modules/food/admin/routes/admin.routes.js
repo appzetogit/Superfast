@@ -156,6 +156,8 @@ router.patch('/delivery/wallets', adminController.updateDeliveryBoyWallet);
 router.get('/delivery/bonus-transactions', adminController.getDeliveryPartnerBonusTransactions);
 router.get('/delivery/earnings', adminController.getDeliveryEarnings);
 router.post('/delivery/bonus', adminController.addDeliveryPartnerBonus);
+router.get('/delivery/targets', adminController.getDeliveryTargetRulesAdmin);
+router.post('/delivery/targets', adminController.saveDeliveryTargetRuleAdmin);
 router.get('/delivery/commission-rules', adminController.getDeliveryCommissionRules);
 router.post('/delivery/commission-rules', adminController.createDeliveryCommissionRule);
 router.patch('/delivery/commission-rules/:id', adminController.updateDeliveryCommissionRule);

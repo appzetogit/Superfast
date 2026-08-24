@@ -447,19 +447,28 @@ const parseVariants = (raw, fallback = {}) => {
     }
   }
 
+  const fallbackStock = Math.max(0, num(fallback.stock));
+
   const variants = arr(parsed)
-    .map((variant, index) => ({
-      name: str(variant?.name) || `Variant ${index + 1}`,
-      price: num(variant?.price, fallback.price),
-      salePrice: num(variant?.salePrice, fallback.salePrice),
-      stock: Math.max(0, num(variant?.stock, fallback.stock)),
-      sku: str(variant?.sku) || fallback.sku || createSellerSku(),
-    }))
+    .map((variant, index) => {
+      const rawStock = variant?.stock;
+      const vStock = (rawStock !== "" && rawStock !== null && rawStock !== undefined)
+        ? Math.max(0, num(rawStock, fallbackStock))
+        : fallbackStock;
+
+      return {
+        name: str(variant?.name) || `Variant ${index + 1}`,
+        price: num(variant?.price, fallback.price),
+        salePrice: num(variant?.salePrice, fallback.salePrice),
+        stock: vStock,
+        sku: str(variant?.sku) || fallback.sku || createSellerSku(),
+      };
+    })
     .filter((variant) => variant.name);
 
   if (variants.length > 0) {
-    if (variants.length === 1 && (variants[0].stock === 0 || variants[0].stock === null || variants[0].stock === undefined) && num(fallback.stock) > 0) {
-      variants[0].stock = Math.max(0, num(fallback.stock));
+    if (variants.length === 1 && variants[0].stock === 0 && fallbackStock > 0) {
+      variants[0].stock = fallbackStock;
     }
     return variants;
   }
@@ -469,7 +478,7 @@ const parseVariants = (raw, fallback = {}) => {
       name: str(fallback.weight) || "Default",
       price: num(fallback.price),
       salePrice: num(fallback.salePrice),
-      stock: Math.max(0, num(fallback.stock)),
+      stock: fallbackStock,
       sku: str(fallback.sku) || createSellerSku(),
     },
   ];

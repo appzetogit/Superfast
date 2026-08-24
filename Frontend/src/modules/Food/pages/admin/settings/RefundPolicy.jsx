@@ -26,12 +26,12 @@ export default function RefundPolicy() {
     try {
       setLoading(true)
       const response = await api.get(API_ENDPOINTS.ADMIN.REFUND, { contextModule: "admin" })
-      if (response.data.success) {
-        // Convert HTML to plain text for textarea
-        const content = response.data.data.content || ''
+      if (response?.data?.success) {
+        const dataObj = response.data?.data || {}
+        const content = dataObj.content || ''
         const textContent = legalHtmlToPlainText(content)
         setRefundData({
-          ...response.data.data,
+          title: dataObj.title || 'Refund Policy',
           content: textContent
         })
       }
@@ -52,16 +52,16 @@ export default function RefundPolicy() {
       
       const response = await api.put(
         API_ENDPOINTS.ADMIN.REFUND,
-        { title: refundData.title, content: htmlContent },
+        { title: refundData.title || 'Refund Policy', content: htmlContent },
         { contextModule: "admin" }
       )
-      if (response.data.success) {
+      if (response?.data?.success) {
         toast.success('Refund policy updated successfully')
-        // Convert HTML to plain text for display in textarea
-        const content = response.data.data.content || ''
+        const dataObj = response.data?.data || {}
+        const content = dataObj.content || ''
         const textContent = legalHtmlToPlainText(content)
         setRefundData({
-          ...response.data.data,
+          title: dataObj.title || 'Refund Policy',
           content: textContent
         })
       }

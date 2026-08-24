@@ -323,9 +323,14 @@ const ProductDetailPage = () => {
     ? selectedVariant.name
     : (product?.weight || product?.unit || "1 unit");
 
-  const displayStock = selectedVariant
-    ? selectedVariant.stock
-    : (product?.stock || 0);
+  const displayStock = useMemo(() => {
+    const pStock = Number(product?.stock || 0);
+    if (!selectedVariant) return pStock;
+    const vStock = Number(selectedVariant.stock);
+    if (Number.isFinite(vStock) && vStock > 0) return vStock;
+    if (pStock > 0) return pStock;
+    return Number.isFinite(vStock) ? vStock : pStock;
+  }, [selectedVariant, product?.stock]);
 
   const variantProduct = useMemo(() => {
     if (!product) return null;
@@ -341,10 +346,10 @@ const ProductDetailPage = () => {
       originalPrice: displayOriginalPrice,
       mrp: displayOriginalPrice,
       weight: selectedVariant.name,
-      stock: selectedVariant.stock,
+      stock: displayStock,
       sku: selectedVariant.sku,
     };
-  }, [product, selectedVariant, currentVariantId, displayPrice, displayOriginalPrice]);
+  }, [product, selectedVariant, currentVariantId, displayPrice, displayOriginalPrice, displayStock]);
 
   const displayDetails = useMemo(() => {
     if (!product) return [];

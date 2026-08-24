@@ -153,16 +153,32 @@ const parseBool = (value, fallback = false) => {
   return fallback;
 };
 
-const parseVariants = (value = '[]') => {
+const parseVariants = (value = '[]', fallbackStock = 0) => {
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value;
-    return Array.isArray(parsed) ? parsed.map((variant) => ({
-      name: String(variant?.name || '').trim(),
-      price: parseNumber(variant?.price, 0),
-      salePrice: parseNumber(variant?.salePrice, 0),
-      stock: parseNumber(variant?.stock, 0),
-      sku: String(variant?.sku || '').trim(),
-    })) : [];
+    if (!Array.isArray(parsed)) return [];
+    const stockFallbackNum = parseNumber(fallbackStock, 0);
+
+    const variants = parsed.map((variant) => {
+      const vStockRaw = variant?.stock;
+      const vStockParsed = (vStockRaw !== "" && vStockRaw !== null && vStockRaw !== undefined)
+        ? parseNumber(vStockRaw, stockFallbackNum)
+        : stockFallbackNum;
+
+      return {
+        name: String(variant?.name || '').trim(),
+        price: parseNumber(variant?.price, 0),
+        salePrice: parseNumber(variant?.salePrice, 0),
+        stock: Math.max(0, vStockParsed),
+        sku: String(variant?.sku || '').trim(),
+      };
+    });
+
+    if (variants.length === 1 && variants[0].stock === 0 && stockFallbackNum > 0) {
+      variants[0].stock = stockFallbackNum;
+    }
+
+    return variants;
   } catch {
     return [];
   }
@@ -637,7 +653,7 @@ export const createProduct = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Discount price cannot be greater than original price' });
   }
 
-  const parsedVariants = parseVariants(variants);
+  const parsedVariants = parseVariants(variants, parseNumber(stock, 0));
   if (parsedVariants.some(v => v.salePrice > v.price)) {
     return res.status(400).json({ success: false, message: 'Variant discount price cannot be greater than original price' });
   }
@@ -704,7 +720,8 @@ export const updateProduct = async (req, res) => {
   }
 
   if (body.variants !== undefined) {
-    const parsedVariants = parseVariants(body.variants);
+    const nextStockForVariants = body.stock !== undefined ? parseNumber(body.stock, product.stock) : product.stock;
+    const parsedVariants = parseVariants(body.variants, nextStockForVariants);
     if (parsedVariants.some(v => v.salePrice > v.price)) {
       return res.status(400).json({ success: false, message: 'Variant discount price cannot be greater than original price' });
     }
@@ -744,7 +761,10 @@ export const updateProduct = async (req, res) => {
       .map((tag) => tag.trim())
       .filter(Boolean);
   }
-  if (body.variants !== undefined) product.variants = parseVariants(body.variants);
+  if (body.variants !== undefined) {
+    const nextStockForVariants = body.stock !== undefined ? parseNumber(body.stock, product.stock) : product.stock;
+    product.variants = parseVariants(body.variants, nextStockForVariants);
+  }
   if (body.deliveryTime !== undefined) product.deliveryTime = body.deliveryTime || '10 mins';
   if (body.badge !== undefined) product.badge = body.badge || '';
   if (images.mainImage) {

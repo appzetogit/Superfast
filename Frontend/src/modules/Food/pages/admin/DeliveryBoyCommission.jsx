@@ -81,10 +81,51 @@ export default function DeliveryBoyCommission() {
     return calculateTotalCommission(commission, midDistance)
   }
 
-  // Fetch commission rules on component mount
+  const [targetRule, setTargetRule] = useState({
+    title: "Daily Target Bonus",
+    description: "Complete orders today to earn extra bonus rewards!",
+    isActive: true,
+    tiers: [
+      { ordersCount: 5, bonusAmount: 50, title: "Tier 1" },
+      { ordersCount: 10, bonusAmount: 120, title: "Tier 2" },
+      { ordersCount: 15, bonusAmount: 200, title: "Tier 3" },
+    ],
+  })
+  const [savingTargets, setSavingTargets] = useState(false)
+  const [loadingTargets, setLoadingTargets] = useState(true)
+
+  // Fetch commission rules & target rules on component mount
   useEffect(() => {
     fetchCommissionRules()
+    fetchTargetRules()
   }, [])
+
+  const fetchTargetRules = async () => {
+    try {
+      setLoadingTargets(true)
+      const res = await adminAPI.getDeliveryTargetRules()
+      if (res?.data?.data?.rule || res?.data?.rule) {
+        const rule = res.data.data?.rule || res.data.rule
+        if (rule && rule.tiers) setTargetRule(rule)
+      }
+    } catch (err) {
+      debugError("Failed to fetch target rules:", err)
+    } finally {
+      setLoadingTargets(false)
+    }
+  }
+
+  const handleSaveTargetRules = async () => {
+    try {
+      setSavingTargets(true)
+      await adminAPI.saveDeliveryTargetRules(targetRule)
+      toast.success("Target Bonus rules saved successfully!")
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to save target rules")
+    } finally {
+      setSavingTargets(false)
+    }
+  }
 
   const fetchCommissionRules = async () => {
     try {
@@ -433,6 +474,116 @@ export default function DeliveryBoyCommission() {
                   Only the slab with <strong>min distance = 0</strong> can have a base payout. All other slabs should keep base payout set to 0 and use only amount per km.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Daily Target Bonus Configuration Panel */}
+          <div className="mb-6 p-5 bg-gradient-to-r from-amber-50/70 via-emerald-50/50 to-blue-50/50 border border-amber-200/80 rounded-xl shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  🏆 Daily Driver Target Bonus Rules
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Drivers dynamically see these milestone targets & cash rewards on their home screen today.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={targetRule.isActive}
+                    onChange={(e) => setTargetRule({ ...targetRule, isActive: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                  />
+                  Active
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleSaveTargetRules}
+                  disabled={savingTargets}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {savingTargets ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Save Target Rules
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {targetRule.tiers.map((tier, idx) => (
+                <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                    <span>Tier {idx + 1}</span>
+                    {targetRule.tiers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = targetRule.tiers.filter((_, i) => i !== idx);
+                          setTargetRule({ ...targetRule, tiers: updated });
+                        }}
+                        className="text-red-500 hover:text-red-700 text-[11px] font-medium"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">Target Orders</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={tier.ordersCount}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 1;
+                          const updated = [...targetRule.tiers];
+                          updated[idx].ordersCount = val;
+                          setTargetRule({ ...targetRule, tiers: updated });
+                        }}
+                        className="w-full text-xs font-bold px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">Bonus Payout (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={tier.bonusAmount}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          const updated = [...targetRule.tiers];
+                          updated[idx].bonusAmount = val;
+                          setTargetRule({ ...targetRule, tiers: updated });
+                        }}
+                        className="w-full text-xs font-bold px-2.5 py-1.5 border border-slate-300 rounded bg-white text-emerald-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex justify-start">
+              <button
+                type="button"
+                onClick={() => {
+                  const lastCount = targetRule.tiers[targetRule.tiers.length - 1]?.ordersCount || 10;
+                  const lastBonus = targetRule.tiers[targetRule.tiers.length - 1]?.bonusAmount || 100;
+                  setTargetRule({
+                    ...targetRule,
+                    tiers: [
+                      ...targetRule.tiers,
+                      { ordersCount: lastCount + 5, bonusAmount: lastBonus + 80, title: `Tier ${targetRule.tiers.length + 1}` },
+                    ],
+                  });
+                }}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-3 py-1.5 rounded-lg shadow-2xs cursor-pointer"
+              >
+                + Add New Milestone Tier
+              </button>
             </div>
           </div>
 

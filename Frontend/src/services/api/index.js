@@ -888,6 +888,16 @@ export const adminAPI = {
       { contextModule: "admin" },
     ),
 
+  /** Delivery Boy Target Rules (admin) */
+  getDeliveryTargetRules: () =>
+    apiClient.get("/food/admin/delivery/targets", {
+      contextModule: "admin",
+    }),
+  saveDeliveryTargetRules: (body) =>
+    apiClient.post("/food/admin/delivery/targets", body ?? {}, {
+      contextModule: "admin",
+    }),
+
   /** Fee Settings (admin) */
   getFeeSettings: () =>
     apiClient.get("/food/admin/fee-settings", { contextModule: "admin" }),
@@ -1742,6 +1752,10 @@ export const deliveryAPI = {
     })),
   getReferralStats: () =>
     apiClient.get("/food/delivery/referrals/stats", {
+      contextModule: "delivery",
+    }),
+  getTodayTargetProgress: () =>
+    apiClient.get("/food/delivery/targets/today", {
       contextModule: "delivery",
     }),
   checkVehicleNumber: (vehicleNumber) =>

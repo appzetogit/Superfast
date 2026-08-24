@@ -360,3 +360,14 @@ export const getDeliveryReferralStatsController = async (req, res, next) => {
     }
 };
 
+export const getTodayTargetProgressController = async (req, res, next) => {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const { getDriverTargetProgress } = await import('../services/deliveryTarget.service.js');
+        const progress = await getDriverTargetProgress(deliveryPartnerId);
+        return sendResponse(res, 200, 'Target progress fetched successfully', { targetProgress: progress });
+    } catch (error) {
+        next(error);
+    }
+};
+

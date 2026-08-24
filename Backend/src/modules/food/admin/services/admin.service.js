@@ -6017,3 +6017,46 @@ export async function processRefund(orderId, refundAmount, refundTo) {
     return order.toObject();
 }
 
+// ----- Delivery Target Rules (admin) -----
+export async function getDeliveryTargetRulesAdmin() {
+  const { DeliveryTargetRule } = await import('../models/deliveryTargetRule.model.js');
+  let rule = await DeliveryTargetRule.findOne({ period: 'daily' }).lean();
+  if (!rule) {
+    rule = await DeliveryTargetRule.create({
+      title: 'Daily Target Bonus',
+      period: 'daily',
+      tiers: [
+        { ordersCount: 5, bonusAmount: 50, title: 'Tier 1' },
+        { ordersCount: 10, bonusAmount: 120, title: 'Tier 2' },
+        { ordersCount: 15, bonusAmount: 200, title: 'Tier 3' },
+      ],
+      isActive: true,
+      description: 'Complete orders today to earn extra bonus rewards!'
+    });
+    rule = rule.toObject();
+  }
+  return rule;
+}
+
+export async function saveDeliveryTargetRuleAdmin(body) {
+  const { DeliveryTargetRule } = await import('../models/deliveryTargetRule.model.js');
+  const title = body.title ? String(body.title).trim() : 'Daily Target Bonus';
+  const description = body.description ? String(body.description).trim() : '';
+  const isActive = body.isActive !== false;
+  const tiers = Array.isArray(body.tiers)
+    ? body.tiers.map((t, idx) => ({
+        ordersCount: Math.max(1, Number(t.ordersCount) || 1),
+        bonusAmount: Math.max(0, Number(t.bonusAmount) || 0),
+        title: t.title ? String(t.title).trim() : `Tier ${idx + 1}`
+      })).sort((a, b) => a.ordersCount - b.ordersCount)
+    : [];
+
+  const updated = await DeliveryTargetRule.findOneAndUpdate(
+    { period: 'daily' },
+    { $set: { title, description, isActive, tiers } },
+    { upsert: true, new: true }
+  ).lean();
+
+  return updated;
+}
+

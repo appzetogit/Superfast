@@ -1581,3 +1581,21 @@ export async function getExpiredFssaiNotifications(req, res, next) {
         next(error);
     }
 }
+
+export async function getDeliveryTargetRulesAdmin(req, res, next) {
+    try {
+        const rule = await adminService.getDeliveryTargetRulesAdmin();
+        res.status(200).json({ success: true, message: 'Target rules fetched successfully', data: { rule } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function saveDeliveryTargetRuleAdmin(req, res, next) {
+    try {
+        const updated = await adminService.saveDeliveryTargetRuleAdmin(req.body || {});
+        res.status(200).json({ success: true, message: 'Target rules saved successfully', data: { rule: updated } });
+    } catch (error) {
+        next(error);
+    }
+}

@@ -1022,6 +1022,17 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     commissionAmount: order.pricing?.restaurantCommission || 0,
     total: order.pricing?.total || 0
   });
+
+  // Target Milestone Bonus check & auto-credit
+  void (async () => {
+    try {
+      const { checkAndCreditTargetBonus } = await import('../../delivery/services/deliveryTarget.service.js');
+      await checkAndCreditTargetBonus(deliveryPartnerId, order._id);
+    } catch (targetErr) {
+      logger.warn(`Target bonus check failed on delivery complete: ${targetErr?.message || targetErr}`);
+    }
+  })();
+
   return sanitizeOrderForExternal(order);
 }
 
