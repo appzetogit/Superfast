@@ -25,7 +25,7 @@ export const PickupActionModal = ({
   onPickedUp,
   onMinimize
 }) => {
-  const [showItems, setShowItems] = useState(false);
+  const [showItems, setShowItems] = useState(true);
   const [isUploadingBill, setIsUploadingBill] = useState(false);
   const cameraInputRef = useRef(null);
 
@@ -147,18 +147,19 @@ export const PickupActionModal = ({
   const primaryDestinationLabel = primaryPickupType === 'quick' ? 'Store' : 'Restaurant';
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-[110] p-0 sm:p-2 sm:mb-2 flex items-end justify-center">
+    <div className="fixed inset-0 z-[110] p-0 sm:p-2 flex items-end justify-center pointer-events-none">
       {/* Background Dim */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="absolute inset-0 bg-black/40 -z-10"
+        className="absolute inset-0 bg-black/40 -z-10 pointer-events-auto"
+        onClick={onMinimize}
       />
 
       <motion.div 
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
-        className="w-full max-w-lg bg-white rounded-t-[2rem] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] p-4 pb-8"
+        className="w-full max-w-lg bg-white rounded-t-[2rem] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] p-4 pb-8 pointer-events-auto max-h-[90dvh] max-h-[90vh] overflow-y-auto"
       >
         {/* Handle / Minimize */}
         <div className="w-full flex justify-center pb-4 pt-1">
@@ -330,12 +331,12 @@ export const PickupActionModal = ({
           )}
 
           {/* Delivery Instructions (User Note) */}
-          {order?.note && (
-            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex gap-3 items-start">
-              <ChefHat className="w-5 h-5 text-[var(--primary-theme)] mt-0.5 shrink-0" />
+          {(order?.note || order?.instructions || order?.deliveryInstructions || order?.userNote) && (
+            <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3 flex gap-3 items-start shadow-2xs">
+              <ChefHat className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
               <div>
-                <p className="text-[10px] font-bold text-[var(--primary-theme)] uppercase tracking-widest mb-1.5">User Instructions</p>
-                <p className="text-sm font-bold text-gray-800 leading-snug">"{order.note}"</p>
+                <p className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider mb-0.5">Customer Instructions</p>
+                <p className="text-xs font-bold text-slate-900 leading-relaxed italic">"{order?.note || order?.instructions || order?.deliveryInstructions || order?.userNote}"</p>
               </div>
             </div>
           )}
@@ -343,23 +344,36 @@ export const PickupActionModal = ({
           {/* Collapsible Order Summary */}
           <button 
             onClick={() => setShowItems(!showItems)}
-            className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 hover:bg-slate-100 transition-colors"
           >
-            <div className="flex items-center gap-3 text-gray-900 font-bold text-xs uppercase tracking-widest">
-              <Package className="w-5 h-5 text-gray-400" />
-              <span>Order Details ({items.length || 0})</span>
+            <div className="flex items-center gap-2.5 text-slate-900 font-extrabold text-xs uppercase tracking-wider">
+              <Package className="w-4 h-4 text-emerald-600" />
+              <span>Order Summary ({items.length || 0} Items)</span>
             </div>
-            {showItems ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {showItems ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronUp className="w-4 h-4 text-slate-500" />}
           </button>
 
-          {showItems && (
-            <div className="overflow-hidden space-y-2 px-1">
-              {items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 border-b border-gray-50 last:border-0">
-                  <span className="text-gray-700 text-sm font-bold">{item.name || 'Item Name'}</span>
-                  <span className="text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg text-xs">x{item.quantity || 1}</span>
-                </div>
-              ))}
+          {showItems && items.length > 0 && (
+            <div className="space-y-1.5 px-1 max-h-48 overflow-y-auto">
+              {items.map((item, idx) => {
+                const itemName = item.name || item.itemName || item.title || item.productName || 'Item';
+                const qty = item.quantity || item.qty || item.count || 1;
+                const isVeg = item.isVeg !== undefined ? item.isVeg : true;
+
+                return (
+                  <div key={idx} className="flex justify-between items-center text-xs font-bold text-slate-800 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
+                      <div className={`w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center shrink-0 ${isVeg ? 'border-emerald-600 bg-emerald-50' : 'border-rose-600 bg-rose-50'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+                      </div>
+                      <span className="truncate text-slate-900 leading-snug">{itemName}</span>
+                    </div>
+                    <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md text-[11px] shrink-0">
+                      x{qty}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

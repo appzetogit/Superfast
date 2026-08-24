@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown, Package } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
+import { deliveryAPI } from '@food/api';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { getHaversineDistance, calculateETA } from '@/modules/DeliveryV2/utils/geo';
 import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
@@ -10,8 +11,42 @@ import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/
  * NewOrderModal - Ported to Original 1:1 Theme with Slider Accept.
  * Matches the Zomato/Swiggy style Green Header + White Card.
  */
-export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
+export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeout, onMinimize }) => {
   const { riderLocation } = useDeliveryStore();
+  const [fetchedDetails, setFetchedDetails] = useState(null);
+
+  const rawOrderId = initialOrder?._id || initialOrder?.orderId || initialOrder?.orderMongoId || initialOrder?.id || 'temp';
+
+  useEffect(() => {
+    if (!rawOrderId || rawOrderId === 'temp') return;
+
+    const hasPopulatedName = Boolean(
+      initialOrder?.restaurantName || initialOrder?.storeName || initialOrder?.sellerName ||
+      (typeof initialOrder?.restaurantId === 'object' && (initialOrder?.restaurantId?.restaurantName || initialOrder?.restaurantId?.name)) ||
+      (typeof initialOrder?.seller === 'object' && (initialOrder?.seller?.shopName || initialOrder?.seller?.name))
+    );
+
+    if (!hasPopulatedName) {
+      deliveryAPI.getOrderDetails(rawOrderId)
+        .then((res) => {
+          const details = res?.data?.data?.order || res?.data?.order || res?.data?.data;
+          if (details && (details._id || details.orderId)) {
+            setFetchedDetails(details);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [rawOrderId]);
+
+  const order = useMemo(() => {
+    if (!fetchedDetails) return initialOrder;
+    return {
+      ...initialOrder,
+      ...fetchedDetails,
+      dispatchLeg: initialOrder?.dispatchLeg || fetchedDetails?.dispatchLeg,
+    };
+  }, [initialOrder, fetchedDetails]);
+
   const pickupPoints = normalizePickupPoints(order);
   const primaryPickup = pickupPoints[0] || null;
   const mixedOrder = isMixedOrder(order);
@@ -41,7 +76,11 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
       const remainingSeconds = Math.ceil((expiresAtRef.current.endTime - Date.now()) / 1000);
       if (remainingSeconds <= 0) {
         setTimeLeft(0);
-        onReject();
+        if (onTimeout) {
+          onTimeout(order);
+        } else if (onReject) {
+          onReject(order, { isTimeout: true });
+        }
       } else {
         setTimeLeft(Math.min(30, remainingSeconds));
       }
@@ -257,39 +296,39 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-x-0 bottom-0 h-full z-150 bg-black/60 flex items-end justify-center p-0"
+      className="fixed inset-0 z-150 bg-black/60 flex items-end justify-center p-0"
     >
       <motion.div 
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        className="w-full max-w-lg bg-white rounded-t-[3rem] overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.5)] flex flex-col pt-2"
+        className="w-full max-w-lg bg-white rounded-t-[2.5rem] overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.5)] flex flex-col max-h-[90dvh] max-h-[90vh]"
       >
         {/* Handle / Minimize */}
-        <div className="w-full flex justify-center pb-1 pt-1 bg-white relative z-10 rounded-t-[2rem] -mb-[2px]">
+        <div className="w-full flex justify-center pb-1 pt-2 bg-white relative z-10 rounded-t-[2.5rem] shrink-0">
           <button onClick={onMinimize} className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center">
              <ChevronDown className="w-5 h-5 text-gray-400 stroke-[3px]" />
           </button>
         </div>
 
-        {/* Header Ribbon (Old Green Style) */}
-        <div className="bg-green-500 p-5 flex justify-between items-center text-white border-b border-green-600/20">
+        {/* Top Header Banner (Clean & Elegant) */}
+        <div className="bg-slate-900 px-6 py-3.5 flex justify-between items-center text-white border-b border-slate-800 shrink-0">
           <div>
-            <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest mb-0.5">Incoming Request</p>
+            <p className="text-slate-400 text-[10px] font-extrabold uppercase tracking-widest mb-0.5">Trip Earnings</p>
             {mixedOrder && (
-              <div className="mb-2 inline-flex items-center rounded-full border border-white/30 bg-white/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+              <div className="mb-1 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-slate-200">
                 Mixed Order
               </div>
             )}
-            <h2 className="text-3xl font-extrabold tracking-tight">₹{Number(earnings || 0).toFixed(2)}</h2>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-emerald-400">₹{Number(earnings || 0).toFixed(2)}</h2>
           </div>
-          <div className="bg-white/20 border border-white/30 rounded-2xl px-4 py-2 text-white font-bold text-xl shadow-inner tabular-nums">
+          <div className="bg-slate-800 border border-slate-700/80 rounded-2xl px-4 py-1.5 text-amber-400 font-extrabold text-lg sm:text-xl shadow-inner tabular-nums">
             {timeLeft}s
           </div>
         </div>
 
         {/* Info Body */}
-        <div className="p-5 pb-8 space-y-6">
+        <div className="p-5 pb-8 space-y-6 overflow-y-auto max-h-full flex-1">
           <div className="flex gap-4">
             <div className="flex flex-col items-center gap-1 mt-1.5 py-0.5">
               <div className={`w-4 h-4 rounded-full ${isReturnPickup ? 'bg-blue-500 border-blue-50 shadow-blue-500/20' : 'bg-green-500 border-green-50 shadow-green-500/20'} border-[3px] shadow-lg`} />
@@ -363,6 +402,82 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
             </div>
           </div>
 
+          {/* Zomato Style Order Items / Products Summary - Positioned prominently above Time & Distance */}
+          {(() => {
+            const rawItems = (Array.isArray(order?.items) && order.items.length > 0)
+              ? order.items
+              : ((Array.isArray(order?.products) && order.products.length > 0)
+                  ? order.products
+                  : ((Array.isArray(order?.foodItems) && order.foodItems.length > 0)
+                      ? order.foodItems
+                      : ((Array.isArray(order?.cartItems) && order.cartItems.length > 0)
+                          ? order.cartItems
+                          : ((Array.isArray(order?.orderItems) && order.orderItems.length > 0)
+                              ? order.orderItems
+                              : ((Array.isArray(order?.cart) && order.cart.length > 0)
+                                  ? order.cart
+                                  : (Array.isArray(order?.dispatchLeg?.items) ? order.dispatchLeg.items : []))))));
+            const itemCount = rawItems.length || order?.itemCount || order?.totalItems || order?.totalQuantity || 0;
+            const note = order?.note || order?.instructions || order?.deliveryInstructions || order?.userNote || '';
+
+            return (
+              <div className="space-y-3">
+                {rawItems && rawItems.length > 0 ? (
+                  <div className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/80 space-y-2.5 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                      <div className="flex items-center gap-2 text-slate-900 font-extrabold text-[11px] uppercase tracking-wider">
+                        <Package className="w-4 h-4 text-emerald-600" />
+                        <span>Order Summary ({rawItems.length} Items)</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                        {itemCount} {itemCount === 1 ? 'Item' : 'Items'} Total
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {rawItems.map((item, idx) => {
+                        const itemName = item.name || item.itemName || item.title || item.productName || 'Item';
+                        const qty = item.quantity || item.qty || item.count || 1;
+                        const isVeg = item.isVeg !== undefined ? item.isVeg : true;
+
+                        return (
+                          <div key={idx} className="flex justify-between items-center text-xs font-bold text-slate-800 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
+                              {/* Veg / Non-Veg Icon */}
+                              <div className={`w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center shrink-0 ${isVeg ? 'border-emerald-600 bg-emerald-50' : 'border-rose-600 bg-rose-50'}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+                              </div>
+                              <span className="truncate text-slate-900 leading-snug">{itemName}</span>
+                            </div>
+                            <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md text-[11px] shrink-0">
+                              x{qty}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : itemCount > 0 ? (
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-2.5 text-xs font-bold text-slate-800">
+                    <Package className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{itemCount} Items in Order</span>
+                  </div>
+                ) : null}
+
+                {/* Customer Instructions / Cooking Note */}
+                {note ? (
+                  <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3 flex gap-3 items-start shadow-2xs">
+                    <ChefHat className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider mb-0.5">Customer Instructions</p>
+                      <p className="text-xs font-bold text-slate-900 leading-relaxed italic">"{note}"</p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
+
           <div className="grid grid-cols-2 gap-3">
              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
                <Clock className="w-4 h-4 text-[var(--primary-theme)]" />
@@ -379,52 +494,6 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                </div>
              </div>
           </div>
-
-          {/* Order Items / Products Summary */}
-          {(() => {
-            const rawItems = Array.isArray(order?.items)
-              ? order.items
-              : (Array.isArray(order?.products)
-                  ? order.products
-                  : (Array.isArray(order?.foodItems)
-                      ? order.foodItems
-                      : (Array.isArray(order?.cartItems) ? order.cartItems : [])));
-            const itemCount = rawItems.length || order?.itemCount || order?.totalItems || order?.totalQuantity || 0;
-
-            if (rawItems && rawItems.length > 0) {
-              return (
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-slate-800 font-bold text-[10px] uppercase tracking-widest">
-                      <Package className="w-3.5 h-3.5 text-[var(--primary-theme)]" />
-                      <span>Order Items ({rawItems.length})</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 pt-0.5 max-h-28 overflow-y-auto pr-1">
-                    {rawItems.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs font-semibold text-slate-800 bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-2xs">
-                        <span className="truncate flex-1 mr-2">{item.name || item.itemName || item.title || item.productName || 'Item'}</span>
-                        <span className="font-bold text-[var(--primary-theme)] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded text-[10px]">
-                          x{item.quantity || item.qty || item.count || 1}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-
-            if (itemCount > 0) {
-              return (
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <Package className="w-4 h-4 text-slate-400" />
-                  <span>{itemCount} Items in Order</span>
-                </div>
-              );
-            }
-
-            return null;
-          })()}
 
           {/* Action Area */}
           <div className="space-y-4">

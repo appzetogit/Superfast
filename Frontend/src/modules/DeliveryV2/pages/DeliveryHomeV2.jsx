@@ -24,8 +24,8 @@ import HistoryV2 from '@/modules/DeliveryV2/pages/HistoryV2';
 import ProfileV2 from '@/modules/DeliveryV2/pages/ProfileV2';
 
 // Icons
-import { 
-  Bell, HelpCircle, AlertTriangle, 
+import {
+  Bell, HelpCircle, AlertTriangle,
   Wallet, History, User as UserIcon, LayoutGrid,
   Plus, Minus, Navigation2, Target, Play, CheckCircle2, Clock, ChevronDown,
   Contact, Package
@@ -54,7 +54,7 @@ function BottomPopup({ isOpen, onClose, title, children }) {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{title}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-             <AlertTriangle className="w-4 h-4" />
+            <AlertTriangle className="w-4 h-4" />
           </button>
         </div>
         {children}
@@ -76,17 +76,19 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const companyName = useCompanyName();
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
 
-    const [incomingOrder, setIncomingOrder] = useState(null);
-    const [currentTab, setCurrentTab] = useState(tab);
-    const [codLimitReached, setCodLimitReached] = useState(false);
-  
+  const [incomingOrder, setIncomingOrder] = useState(null);
+  const [currentTab, setCurrentTab] = useState(tab);
+  const [codLimitReached, setCodLimitReached] = useState(false);
+  const rejectedOrderIdsRef = useRef(new Set());
+  const timedOutOrdersMapRef = useRef(new Map());
+
   // Track URL changes (Prop changes) to update sub-page content
   useEffect(() => {
     setCurrentTab(tab);
     if (scrollContainerRef.current) {
-       scrollContainerRef.current.scrollTo(0, 0);
+      scrollContainerRef.current.scrollTo(0, 0);
     }
-}, [tab]);
+  }, [tab]);
 
   const [showVerification, setShowVerification] = useState(false);
   const [showEmergencyPopup, setShowEmergencyPopup] = useState(false);
@@ -96,48 +98,48 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     accidentHelpline: "",
     contactPolice: "",
     insurance: "",
-    });
-    
-    const [isModalMinimized, setIsModalMinimized] = useState(false);
-    const [eta, setEta] = useState(null);
-    const [activeReturn, setActiveReturn] = useState(null);
+  });
 
-    useEffect(() => {
-      if (!isOnline) return;
-      const fetchActiveReturn = async () => {
-        try {
-          const response = await apiClient.get('/quick-commerce/delivery/returns/active', { contextModule: 'delivery' });
-          const data = response.data || {};
-          if (data.success && data.activePickups && data.activePickups.length > 0) {
-            const ret = data.activePickups[0];
-            setActiveReturn(ret);
-            
-            if (!sessionStorage.getItem("hasAutoRedirectedReturn")) {
-              sessionStorage.setItem("hasAutoRedirectedReturn", "true");
-              navigate(`/food/delivery/quick-commerce/returns/${ret._id}/active`);
-            }
-          } else {
-            setActiveReturn(null);
+  const [isModalMinimized, setIsModalMinimized] = useState(false);
+  const [eta, setEta] = useState(null);
+  const [activeReturn, setActiveReturn] = useState(null);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    const fetchActiveReturn = async () => {
+      try {
+        const response = await apiClient.get('/quick-commerce/delivery/returns/active', { contextModule: 'delivery' });
+        const data = response.data || {};
+        if (data.success && data.activePickups && data.activePickups.length > 0) {
+          const ret = data.activePickups[0];
+          setActiveReturn(ret);
+
+          if (!sessionStorage.getItem("hasAutoRedirectedReturn")) {
+            sessionStorage.setItem("hasAutoRedirectedReturn", "true");
+            navigate(`/food/delivery/quick-commerce/returns/${ret._id}/active`);
           }
-        } catch (e) {
-          console.error("Failed to fetch active return", e);
+        } else {
+          setActiveReturn(null);
         }
-      };
-      // Poll active return every 10s if we are on the feed tab
-      fetchActiveReturn();
-      const interval = setInterval(() => {
-        if (!document.hidden && currentTab === 'feed') {
-          fetchActiveReturn();
-        }
-      }, 10000);
-      return () => clearInterval(interval);
-    }, [isOnline, navigate, currentTab]);
+      } catch (e) {
+        console.error("Failed to fetch active return", e);
+      }
+    };
+    // Poll active return every 10s if we are on the feed tab
+    fetchActiveReturn();
+    const interval = setInterval(() => {
+      if (!document.hidden && currentTab === 'feed') {
+        fetchActiveReturn();
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isOnline, navigate, currentTab]);
 
-    const scrollContainerRef = useRef(null);
-    const lastLocationSentAt = useRef(0);
-    const lastCoordRef = useRef(null);
-    const rollingSpeedRef = useRef([]);
-    const lastAutoArrivalRef = useRef({ PICKING_UP: false, PICKED_UP: false });
+  const scrollContainerRef = useRef(null);
+  const lastLocationSentAt = useRef(0);
+  const lastCoordRef = useRef(null);
+  const rollingSpeedRef = useRef([]);
+  const lastAutoArrivalRef = useRef({ PICKING_UP: false, PICKED_UP: false });
 
   const [zoom, setZoom] = useState(14);
   const [isSimMode, setIsSimMode] = useState(false);
@@ -205,22 +207,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const handleLogout = useCallback(() => {
     if (isLoggingOut.current) return;
     isLoggingOut.current = true;
-    
+
     // 1. Clear tokens and state
     localStorage.removeItem('delivery_accessToken');
     localStorage.removeItem('delivery_refreshToken');
     localStorage.removeItem('delivery_authenticated');
     localStorage.removeItem('delivery_user');
-    
+
     // 2. Alert user and redirect
     toast.error("Session Expired", { description: "Please log in again." });
     navigate("/food/delivery/login", { replace: true });
 
     // Optional: Full refresh after delay ONLY if we're not already on login
     setTimeout(() => {
-       if (!window.location.pathname.includes('/login')) {
-          window.location.reload();
-       }
+      if (!window.location.pathname.includes('/login')) {
+        window.location.reload();
+      }
     }, 1500);
   }, [navigate]);
 
@@ -242,7 +244,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       interval = setInterval(() => {
         setSimProgress(prev => {
           const nextProgress = prev + 0.08; // 8% movement per tick
-          
+
           if (nextProgress >= 1) {
             setSimIndex(idx => idx + 1);
             return 0; // Move to next segment
@@ -267,24 +269,24 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             const now = Date.now();
             if (now - lastSimUpdateSentAt.current >= 2000) { // Reduced to 2s to match backend throttle
               lastSimUpdateSentAt.current = now;
-                const payload = { 
-                  lat, 
-                  lng, 
-                  heading, 
-                  orderId: activeOrder?.orderId || activeOrder?._id,
-                  status: 'on_the_way',
-                 polyline: activePolyline, // Include polyline in every stream update for resilience
-                 eta,
-                };
+              const payload = {
+                lat,
+                lng,
+                heading,
+                orderId: activeOrder?.orderId || activeOrder?._id,
+                status: 'on_the_way',
+                polyline: activePolyline, // Include polyline in every stream update for resilience
+                eta,
+              };
               // A. HTTP Backup
-              deliveryAPI.updateLocation(lat, lng, true, { heading }).catch(() => {});
-              
-                // B. SOCKET LIVE (SILKY SMOOTH)
-                if (payload.orderId) emitLocation(payload);
-              }
+              deliveryAPI.updateLocation(lat, lng, true, { heading }).catch(() => { });
+
+              // B. SOCKET LIVE (SILKY SMOOTH)
+              if (payload.orderId) emitLocation(payload);
             }
-            return nextProgress;
-          });
+          }
+          return nextProgress;
+        });
       }, 50); // 20 FPS movement
     }
     return () => clearInterval(interval);
@@ -316,15 +318,15 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     { title: "Insurance", subtitle: "Policy & claim help", icon: <AlertTriangle className="text-green-600" />, phone: emergencyNumbers.insurance },
   ];
 
-    // Reset simulation only when a new trip/mode starts.
-    // Do not reset on every path refresh, or the rider keeps restarting
-    // from the beginning of the simulated route.
-    useEffect(() => {
-      if (isSimMode) {
-        setSimIndex(0);
-        setSimProgress(0);
-      }
-    }, [tripStatus, isSimMode, activeOrder?._id]);
+  // Reset simulation only when a new trip/mode starts.
+  // Do not reset on every path refresh, or the rider keeps restarting
+  // from the beginning of the simulated route.
+  useEffect(() => {
+    if (isSimMode) {
+      setSimIndex(0);
+      setSimProgress(0);
+    }
+  }, [tripStatus, isSimMode, activeOrder?._id]);
 
   // Auto-restore modal when status or content changes
 
@@ -340,7 +342,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         const response = await deliveryAPI.getCurrentDelivery();
         const rawData = response?.data?.data?.activeOrder || response?.data?.data;
         const serverData = (rawData && (rawData._id || rawData.orderId)) ? rawData : null;
-        
+
         if (serverData) {
           // Robust location mapping (Same as acceptOrder logic)
           const getLoc = (ref, keysLat, keysLng) => {
@@ -361,11 +363,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             return null;
           };
 
-          const resLoc = getLoc(serverData.restaurantId, ['latitude', 'lat'], ['longitude', 'lng']) || 
-                         getLoc(serverData, ['restaurant_lat', 'restaurantLat', 'latitude'], ['restaurant_lng', 'restaurantLng', 'longitude']);
-                         
-          const cusLoc = getLoc(serverData.deliveryAddress, ['latitude', 'lat'], ['longitude', 'lng']) || 
-                         getLoc(serverData, ['customer_lat', 'customerLat', 'latitude'], ['customer_lng', 'customerLng', 'longitude']);
+          const resLoc = getLoc(serverData.restaurantId, ['latitude', 'lat'], ['longitude', 'lng']) ||
+            getLoc(serverData, ['restaurant_lat', 'restaurantLat', 'latitude'], ['restaurant_lng', 'restaurantLng', 'longitude']);
+
+          const cusLoc = getLoc(serverData.deliveryAddress, ['latitude', 'lat'], ['longitude', 'lng']) ||
+            getLoc(serverData, ['customer_lat', 'customerLat', 'latitude'], ['customer_lng', 'customerLng', 'longitude']);
 
           const syncedOrder = {
             ...serverData,
@@ -375,7 +377,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           };
 
           setActiveOrder(syncedOrder);
-          
+
           const backendStatus = serverData.deliveryStatus || serverData.orderState?.status || serverData.orderStatus || serverData.status;
           const currentPhase = serverData.deliveryState?.currentPhase;
 
@@ -393,22 +395,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         } else {
           clearActiveOrder();
         }
-      } catch (err) { 
-        console.error('Order Sync Failed:', err); 
+      } catch (err) {
+        console.error('Order Sync Failed:', err);
         clearActiveOrder();
       }
     };
     syncWithServer();
   }, []); // Only on mount to stabilize state
-  
+
   // 1.5 Professional Unified ETA Calculation Hook
   useEffect(() => {
     // If we have distance, calculate ETA. Fallback to 8m/s (28km/h) avg if GPS speed is unknown.
     if (distanceToTarget != null && distanceToTarget !== Infinity) {
-      const avgSpeed = rollingSpeedRef.current.length > 0 
-        ? rollingSpeedRef.current.reduce((a, b) => a + b, 0) / rollingSpeedRef.current.length 
+      const avgSpeed = rollingSpeedRef.current.length > 0
+        ? rollingSpeedRef.current.reduce((a, b) => a + b, 0) / rollingSpeedRef.current.length
         : 8;
-      
+
       setEta(calculateETA(distanceToTarget, avgSpeed));
     } else {
       setEta(null);
@@ -417,7 +419,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
   // 2. Online/Offline Status Sync & FCM Push Registration
   useEffect(() => {
-    deliveryAPI.updateOnlineStatus(isOnline).catch(() => {});
+    deliveryAPI.updateOnlineStatus(isOnline).catch(() => { });
     if (isOnline) {
       registerWebPushForCurrentModule('/food/delivery').catch(console.error);
     }
@@ -428,24 +430,24 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     if (!isOnline) {
       return;
     }
-    
+
     const watchId = navigator.geolocation.watchPosition((pos) => {
       // CRITICAL: In Simulation Mode, we disable actual GPS to prevent overwriting our test position
       if (isSimMode) return;
-      
+
       const { latitude: lat, longitude: lng, heading, speed } = pos.coords;
       const now = Date.now();
-      
+
       const currentRiderPos = { lat, lng, heading: heading || 0 };
       setRiderLocation(currentRiderPos);
-      
+
       // Calculate Rolling Average Speed for Smart ETA
       if (speed && speed > 0) {
         rollingSpeedRef.current = [...rollingSpeedRef.current.slice(-4), speed]; // keep last 5 points
       }
-      
-      const avgSpeed = rollingSpeedRef.current.length > 0 
-        ? rollingSpeedRef.current.reduce((a, b) => a + b, 0) / rollingSpeedRef.current.length 
+
+      const avgSpeed = rollingSpeedRef.current.length > 0
+        ? rollingSpeedRef.current.reduce((a, b) => a + b, 0) / rollingSpeedRef.current.length
         : speed || 0;
 
       // ETA update is now handled by a separate globally-synchronized effect
@@ -469,43 +471,43 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       }
 
       // Check threshold for Sync (distance-based or 7s time-based)
-      const distMoved = lastCoordRef.current 
-        ? getHaversineDistance(lat, lng, lastCoordRef.current.lat, lastCoordRef.current.lng) 
+      const distMoved = lastCoordRef.current
+        ? getHaversineDistance(lat, lng, lastCoordRef.current.lat, lastCoordRef.current.lng)
         : 1000; // assume huge distance if first update
 
       if (distMoved >= 25 || (now - lastLocationSentAt.current >= 7000)) {
         lastLocationSentAt.current = now;
         lastCoordRef.current = { lat, lng };
-        
-          const payload = { 
-            lat, 
-            lng, 
-            heading: heading || 0,
-            speed: speed || 0,
-            accuracy: pos.coords.accuracy,
-            orderId: activeOrder?.orderId || activeOrder?._id,
-            status: 'on_the_way',
-            polyline: activePolyline,
-            eta,
-          };
 
-        // A. HTTP Backup
-        deliveryAPI.updateLocation(lat, lng, true, { 
+        const payload = {
+          lat,
+          lng,
           heading: heading || 0,
           speed: speed || 0,
-          accuracy: pos.coords.accuracy 
-          }).catch(() => {});
+          accuracy: pos.coords.accuracy,
+          orderId: activeOrder?.orderId || activeOrder?._id,
+          status: 'on_the_way',
+          polyline: activePolyline,
+          eta,
+        };
 
-          // B. SOCKET LIVE (SILKY SMOOTH)
-          if (payload.orderId) emitLocation(payload);
-        }
-      }, handleGeolocationError, {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 5000
-      });
-      
-      return () => navigator.geolocation.clearWatch(watchId);
+        // A. HTTP Backup
+        deliveryAPI.updateLocation(lat, lng, true, {
+          heading: heading || 0,
+          speed: speed || 0,
+          accuracy: pos.coords.accuracy
+        }).catch(() => { });
+
+        // B. SOCKET LIVE (SILKY SMOOTH)
+        if (payload.orderId) emitLocation(payload);
+      }
+    }, handleGeolocationError, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 5000
+    });
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [isOnline, setRiderLocation, isSimMode, activeOrder, activePolyline, emitLocation, eta, tripStatus, distanceToTarget, reachPickup, reachDrop, handleGeolocationError]);
 
   // 3.5. Background Ping / Heartbeat
@@ -514,25 +516,52 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   // and keeps the Delivery Partner "online" in the backend.
   useEffect(() => {
     if (!isOnline) return;
-    
+
     const pingInterval = setInterval(() => {
       const now = Date.now();
       // If no natural GPS update happened in the last 15 seconds, force a ping
       if (now - lastLocationSentAt.current >= 15000 && lastCoordRef.current) {
         lastLocationSentAt.current = now;
         deliveryAPI.updateLocation(
-          lastCoordRef.current.lat, 
-          lastCoordRef.current.lng, 
-          true, 
+          lastCoordRef.current.lat,
+          lastCoordRef.current.lng,
+          true,
           { heading: 0, speed: 0, accuracy: null }
-        ).catch(() => {});
+        ).catch(() => { });
       }
     }, 10000); // Check every 10 seconds
-    
+
     return () => clearInterval(pingInterval);
   }, [isOnline]);
 
-  useEffect(() => { if (newOrder) setIncomingOrder(newOrder); }, [newOrder]);
+  useEffect(() => {
+    if (!newOrder) return;
+    const rawId = newOrder?.orderId || newOrder?._id || newOrder?.orderMongoId || newOrder?.id;
+    if (!rawId) return;
+
+    const hasPopulatedName = Boolean(
+      newOrder?.restaurantName || newOrder?.storeName || newOrder?.sellerName ||
+      (typeof newOrder?.restaurantId === 'object' && (newOrder?.restaurantId?.restaurantName || newOrder?.restaurantId?.name)) ||
+      (typeof newOrder?.seller === 'object' && (newOrder?.seller?.shopName || newOrder?.seller?.name))
+    );
+
+    if (hasPopulatedName) {
+      setIncomingOrder(newOrder);
+    } else {
+      deliveryAPI.getOrderDetails(rawId)
+        .then((res) => {
+          const fullData = res?.data?.data?.order || res?.data?.order || res?.data?.data;
+          if (fullData && (fullData._id || fullData.orderId)) {
+            setIncomingOrder({ ...newOrder, ...fullData });
+          } else {
+            setIncomingOrder(newOrder);
+          }
+        })
+        .catch(() => {
+          setIncomingOrder(newOrder);
+        });
+    }
+  }, [newOrder]);
 
   useEffect(() => {
     if (activeOrder && incomingOrder) {
@@ -578,53 +607,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           } else if (currentPayload.dispatch?.status === 'accepted') {
             updateTripStatus('PICKING_UP');
           }
-          
+
           return;
-        }
-
-        const availableResponse = await deliveryAPI.getOrders({ limit: 20, page: 1 });
-        const availablePayload =
-          availableResponse?.data?.data ||
-          availableResponse?.data ||
-          {};
-        const availableOrders = Array.isArray(availablePayload?.docs)
-          ? availablePayload.docs
-          : Array.isArray(availablePayload?.items)
-            ? availablePayload.items
-            : Array.isArray(availablePayload)
-              ? availablePayload
-              : [];
-
-        const nextIncomingOrder = availableOrders.find((order) => {
-          if (order?.type === 'RETURN_PICKUP') return true;
-          if (order?.isReassignment || order?.reassignmentStatus === 'pending') return true;
-          const dispatchStatus = String(order?.dispatch?.status || '').toLowerCase();
-          const orderStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
-          return (
-            ['unassigned', 'assigned'].includes(dispatchStatus) &&
-            ['created', 'placed', 'pending', 'confirmed', 'preparing', 'packed', 'ready_for_pickup', 'assigning', 'accepted', 'picked_up', 'out_for_delivery', 'reached_pickup', 'reached_drop'].includes(orderStatus)
-          );
-        });
-
-        if (!cancelled && nextIncomingOrder) {
-          setIncomingOrder((prev) => {
-            if (!prev) return nextIncomingOrder;
-
-            const prevId = String(prev?.orderId || prev?._id || prev?.orderMongoId || '');
-            const nextId = String(nextIncomingOrder?.orderId || nextIncomingOrder?._id || nextIncomingOrder?.orderMongoId || '');
-
-            if (prevId && nextId && prevId === nextId) {
-              return {
-                ...nextIncomingOrder,
-                ...prev,
-                riderEarning: prev.riderEarning || prev.deliveryEarning || prev.earnings || nextIncomingOrder.riderEarning || nextIncomingOrder.deliveryEarning || 0,
-                deliveryEarning: prev.deliveryEarning || prev.riderEarning || prev.earnings || nextIncomingOrder.deliveryEarning || nextIncomingOrder.riderEarning || 0,
-                distanceKm: prev.distanceKm || prev.deliveryDistanceKm || nextIncomingOrder.distanceKm || nextIncomingOrder.deliveryDistanceKm || 0,
-                offeredAt: prev.offeredAt || nextIncomingOrder.offeredAt
-              };
-            }
-            return prev;
-          });
         }
       } catch (error) {
         console.warn('[DeliveryHomeV2] Available order fallback sync failed:', error?.message || error);
@@ -701,9 +685,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const handleCenterMap = () => {
     if (mapRef.current && useDeliveryStore.getState().riderLocation) {
       const loc = useDeliveryStore.getState().riderLocation;
-      mapRef.current.panTo({ 
-        lat: parseFloat(loc.lat || loc.latitude), 
-        lng: parseFloat(loc.lng || loc.longitude) 
+      mapRef.current.panTo({
+        lat: parseFloat(loc.lat || loc.latitude),
+        lng: parseFloat(loc.lng || loc.longitude)
       });
       mapRef.current.setZoom(16);
     } else {
@@ -721,241 +705,241 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     <div className="relative h-screen w-full bg-white text-gray-900 overflow-hidden flex flex-col">
       {/* ─── 1. TOP HEADER (Premium Dark Gray) ─── */}
       {currentTab === 'feed' && (
-      <div className="absolute top-0 inset-x-0 bg-[#121212]/95 backdrop-blur-2xl shadow-2xl z-[200] safe-top pb-2 border-b border-white/10">
-        <div className="flex items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-4">
-             <div 
+        <div className="absolute top-0 inset-x-0 bg-[#121212]/95 backdrop-blur-2xl shadow-2xl z-[200] safe-top pb-2 border-b border-white/10">
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="flex items-center gap-4">
+              <div
                 onClick={() => navigate('/food/delivery/profile')}
                 className="w-10 h-10 rounded-full border border-white/20 p-0.5 shadow-xl overflow-hidden bg-white/5 cursor-pointer active:scale-95 transition-all"
-             >
+              >
                 <img src={profileImage || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png"} alt="Profile" className="w-full h-full object-cover rounded-full" />
-             </div>
-             <button 
-               onClick={async () => {
-                 const nextState = !isOnline;
-                 toggleOnline(); // Store action
-                 if (nextState) {
+              </div>
+              <button
+                onClick={async () => {
+                  const nextState = !isOnline;
+                  toggleOnline(); // Store action
+                  if (nextState) {
                     // Try to get location and sync immediately so we are visible for dispatch right away
                     navigator.geolocation.getCurrentPosition((pos) => {
-                        deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => {});
+                      deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => { });
                     }, (err) => console.warn('Online sync position failed:', err), { enableHighAccuracy: true });
-                 } else {
-                    deliveryAPI.updateOnlineStatus(false).catch(() => {});
-                 }
-               }}
-               className={`relative w-[92px] h-8 rounded-full p-1 transition-all duration-500 flex items-center ${isOnline ? 'bg-green-500 shadow-lg shadow-green-500/20' : 'bg-gray-400'}`}
-             >
-               <div className={`flex items-center justify-between w-full px-2 text-[8.5px] font-black uppercase tracking-widest text-white`}>
-                 <span>{isOnline ? 'Online' : ''}</span>
-                 <span>{!isOnline ? 'Offline' : ''}</span>
-               </div>
-               <motion.div animate={{ x: isOnline ? 59 : 0 }} className="absolute left-1 w-6 h-6 bg-white rounded-full shadow-sm" />
-             </button>
-          </div>
-          <div className="flex items-center gap-3">
-             <button onClick={() => setShowEmergencyPopup(true)} className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20 active:scale-95 transition-all shadow-lg"><AlertTriangle className="w-4 h-4" /></button>
-             <button onClick={() => navigate('/food/delivery/help/id-card')} className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20 active:scale-95 transition-all shadow-lg"><Contact className="w-4 h-4" /></button>
-             <button onClick={() => navigate('/food/delivery/notifications')} className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-95 transition-all shadow-lg"><Bell className="w-4 h-4" />{notificationUnreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-orange-400 border border-[#1f1f1f]" />}</button>
-          </div>
-        </div>
-
-        {/* ─── LIVE STATUS / PROGRESS BADGE (MATCHED PRO) ─── */}
-        <AnimatePresence>
-          {currentTab === 'feed' && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="px-4 mt-1"
-            >
-              {activeOrder ? (
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  {/* LEFT: DISTANCE (Vibrant Orange Card) */}
-                  <div className="bg-[#ff8100] rounded-2xl p-3.5 shadow-xl shadow-[var(--primary-theme)]/20 border border-orange-400/50 flex items-center justify-between overflow-hidden relative">
-                    <div className="flex flex-col z-10">
-                      <span className="text-[9px] text-white/70 font-black uppercase tracking-[0.15em] mb-1">Distance</span>
-                      <div className="flex items-end gap-1">
-                        <span className="text-2xl font-black text-white leading-none tracking-tighter">
-                          {distanceToTarget && distanceToTarget !== Infinity ? (distanceToTarget / 1000).toFixed(1) : '--'}
-                        </span>
-                        <span className="text-[11px] text-white/80 font-bold mb-0.5">KM</span>
-                      </div>
-                    </div>
-                    <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center z-10 shadow-lg">
-                      <Navigation2 className="w-4 h-4 text-[#ff8100] rotate-45" />
-                    </div>
-                  </div>
-
-                  {/* RIGHT: TIME (Emerald PRO Content) */}
-                  <div className="bg-[#10B981] rounded-2xl p-3.5 shadow-xl shadow-green-500/20 border border-green-400/50 flex items-center justify-between relative overflow-hidden group">
-                    <div className="flex flex-col z-10">
-                      <span className="text-[9px] text-white/70 font-black uppercase tracking-[0.15em] mb-1">Arrival</span>
-                      <div className="flex items-end gap-1">
-                        <span className="text-2xl font-black text-white leading-none tracking-tighter">
-                          {eta ? String(eta) : '--'}
-                        </span>
-                        <span className="text-[11px] text-white/80 font-bold mb-0.5">MIN</span>
-                      </div>
-                    </div>
-                    <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center z-10 shadow-lg">
-                       <Clock className="w-4 h-4 text-[#10B981]" />
-                    </div>
-                  </div>
+                  } else {
+                    deliveryAPI.updateOnlineStatus(false).catch(() => { });
+                  }
+                }}
+                className={`relative w-[92px] h-8 rounded-full p-1 transition-all duration-500 flex items-center ${isOnline ? 'bg-green-500 shadow-lg shadow-green-500/20' : 'bg-gray-400'}`}
+              >
+                <div className={`flex items-center justify-between w-full px-2 text-[8.5px] font-black uppercase tracking-widest text-white`}>
+                  <span>{isOnline ? 'Online' : ''}</span>
+                  <span>{!isOnline ? 'Offline' : ''}</span>
                 </div>
-              ) : (
-                <div className="bg-white/5 rounded-2xl p-3 px-4 flex items-center justify-between border border-white/5 shadow-sm backdrop-blur-md">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-green-500/10 rounded-full flex items-center justify-center">
-                      <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-black text-[11px] uppercase tracking-widest leading-none mb-1">{isOnline ? 'System Online' : 'System Offline'}</h3>
-                      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-tight">{isOnline ? 'Waiting for order requests' : 'Go online to receive jobs'}</p>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Target Bonus Light Pill */}
-                  <TargetProgressCardV2 activeOrder={activeOrder} />
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {/* ─── COD LIMIT WARNING BANNER (inside header) ─── */}
-        {codLimitReached && (
-          <div
-            onClick={() => navigate('/food/delivery/pocket')}
-            className="mx-3 mt-1 mb-1 rounded-xl overflow-hidden cursor-pointer active:opacity-90 transition-all border border-orange-400/30"
-            style={{ background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)' }}
-          >
-            <div className="px-3 py-2.5 flex items-center gap-3">
-              <div className="relative shrink-0">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center border border-white/30">
-                  <AlertTriangle className="w-4 h-4 text-white" />
-                </div>
-                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-yellow-300 rounded-full border-2 border-red-600 animate-pulse" />
-              </div>
-              <div className="flex-1">
-                <p className="text-[12px] font-black text-white uppercase tracking-wide leading-tight">COD Limit Reached!</p>
-                <p className="text-[10.5px] font-semibold text-white/85 leading-snug">Deposit cash to receive COD orders again</p>
-              </div>
-              <div className="shrink-0 bg-white text-red-600 px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wide shadow">
-                Deposit
-              </div>
+                <motion.div animate={{ x: isOnline ? 59 : 0 }} className="absolute left-1 w-6 h-6 bg-white rounded-full shadow-sm" />
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setShowEmergencyPopup(true)} className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20 active:scale-95 transition-all shadow-lg"><AlertTriangle className="w-4 h-4" /></button>
+              <button onClick={() => navigate('/food/delivery/help/id-card')} className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20 active:scale-95 transition-all shadow-lg"><Contact className="w-4 h-4" /></button>
+              <button onClick={() => navigate('/food/delivery/notifications')} className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-95 transition-all shadow-lg"><Bell className="w-4 h-4" />{notificationUnreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-orange-400 border border-[#1f1f1f]" />}</button>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* ─── LIVE STATUS / PROGRESS BADGE (MATCHED PRO) ─── */}
+          <AnimatePresence>
+            {currentTab === 'feed' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="px-4 mt-1"
+              >
+                {activeOrder ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {/* LEFT: DISTANCE (Vibrant Orange Card) */}
+                    <div className="bg-[#ff8100] rounded-2xl p-3.5 shadow-xl shadow-[var(--primary-theme)]/20 border border-orange-400/50 flex items-center justify-between overflow-hidden relative">
+                      <div className="flex flex-col z-10">
+                        <span className="text-[9px] text-white/70 font-black uppercase tracking-[0.15em] mb-1">Distance</span>
+                        <div className="flex items-end gap-1">
+                          <span className="text-2xl font-black text-white leading-none tracking-tighter">
+                            {distanceToTarget && distanceToTarget !== Infinity ? (distanceToTarget / 1000).toFixed(1) : '--'}
+                          </span>
+                          <span className="text-[11px] text-white/80 font-bold mb-0.5">KM</span>
+                        </div>
+                      </div>
+                      <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center z-10 shadow-lg">
+                        <Navigation2 className="w-4 h-4 text-[#ff8100] rotate-45" />
+                      </div>
+                    </div>
+
+                    {/* RIGHT: TIME (Emerald PRO Content) */}
+                    <div className="bg-[#10B981] rounded-2xl p-3.5 shadow-xl shadow-green-500/20 border border-green-400/50 flex items-center justify-between relative overflow-hidden group">
+                      <div className="flex flex-col z-10">
+                        <span className="text-[9px] text-white/70 font-black uppercase tracking-[0.15em] mb-1">Arrival</span>
+                        <div className="flex items-end gap-1">
+                          <span className="text-2xl font-black text-white leading-none tracking-tighter">
+                            {eta ? String(eta) : '--'}
+                          </span>
+                          <span className="text-[11px] text-white/80 font-bold mb-0.5">MIN</span>
+                        </div>
+                      </div>
+                      <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center z-10 shadow-lg">
+                        <Clock className="w-4 h-4 text-[#10B981]" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white/5 rounded-2xl p-3 px-4 flex items-center justify-between border border-white/5 shadow-sm backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-green-500/10 rounded-full flex items-center justify-center">
+                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-black text-[11px] uppercase tracking-widest leading-none mb-1">{isOnline ? 'System Online' : 'System Offline'}</h3>
+                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-tight">{isOnline ? 'Waiting for order requests' : 'Go online to receive jobs'}</p>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Target Bonus Light Pill */}
+                    <TargetProgressCardV2 activeOrder={activeOrder} />
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* ─── COD LIMIT WARNING BANNER (inside header) ─── */}
+          {codLimitReached && (
+            <div
+              onClick={() => navigate('/food/delivery/pocket')}
+              className="mx-3 mt-1 mb-1 rounded-xl overflow-hidden cursor-pointer active:opacity-90 transition-all border border-orange-400/30"
+              style={{ background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)' }}
+            >
+              <div className="px-3 py-2.5 flex items-center gap-3">
+                <div className="relative shrink-0">
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center border border-white/30">
+                    <AlertTriangle className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-yellow-300 rounded-full border-2 border-red-600 animate-pulse" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[12px] font-black text-white uppercase tracking-wide leading-tight">COD Limit Reached!</p>
+                  <p className="text-[10.5px] font-semibold text-white/85 leading-snug">Deposit cash to receive COD orders again</p>
+                </div>
+                <div className="shrink-0 bg-white text-red-600 px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wide shadow">
+                  Deposit
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
 
       {/* ─── 2. MAIN CONTENT ─── */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className={`flex-1 relative overflow-y-auto ${currentTab === 'feed' ? (codLimitReached ? 'pt-[178px]' : 'pt-[120px]') : 'pt-0'} no-scrollbar`}
       >
-         {currentTab === 'feed' ? (
-           <div className={`absolute inset-0 ${codLimitReached ? 'top-[-178px]' : 'top-[-120px]'}`}>
-               <LiveMap 
-                 onMapLoad={(m) => mapRef.current = m}
-                 onMapClick={handleMapClick}
-                 onPathReceived={handleSimPathReceived}
-                 onPolylineReceived={handlePolylineReceived}
-                 zoom={zoom}
-                 simulationPath={simPath}
-                 simulationIndex={simIndex}
-                 simulationProgress={simProgress}
-                 simulationLocked={isSimMode && simPath.length > 1}
-               />
-             
-             {/* SIMULATION INDICATOR */}
-             {isSimMode && (
-               <div className={`absolute ${codLimitReached ? 'top-[240px]' : 'top-[180px]'} left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl`}>
-                  <div className="flex items-center gap-4">
-                     <div className="w-8 h-8 bg-[var(--primary-theme)] rounded-lg flex items-center justify-center animate-pulse">
-                        <Play className="w-4 h-4 text-white fill-current" />
-                     </div>
-                     <div className="flex flex-col">
-                        <span className="text-[var(--primary-theme)] text-[10px] font-bold uppercase tracking-widest">Auto Navigation Active</span>
-                        <span className="text-white text-[11px] font-medium">Following actual road path...</span>
-                     </div>
-                  </div>
-                  <button onClick={() => setIsSimMode(false)} className="bg-white/10 text-white/50 hover:text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/10">Stop</button>
-               </div>
-             )}
+        {currentTab === 'feed' ? (
+          <div className={`absolute inset-0 ${codLimitReached ? 'top-[-178px]' : 'top-[-120px]'}`}>
+            <LiveMap
+              onMapLoad={(m) => mapRef.current = m}
+              onMapClick={handleMapClick}
+              onPathReceived={handleSimPathReceived}
+              onPolylineReceived={handlePolylineReceived}
+              zoom={zoom}
+              simulationPath={simPath}
+              simulationIndex={simIndex}
+              simulationProgress={simProgress}
+              simulationLocked={isSimMode && simPath.length > 1}
+            />
 
-             <div className="absolute right-4 bottom-28 md:bottom-32 flex flex-col gap-4 z-[120]">
-                <div className="flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-                   <button onClick={() => setZoom(z => Math.min(22, z + 1))} className="p-3 hover:bg-gray-50 border-b border-gray-100 text-gray-900 active:scale-90 transition-all" aria-label="Zoom in"><Plus className="w-5 h-5 stroke-[2.75]" /></button>
-                   <button onClick={() => setZoom(z => Math.max(8, z - 1))} className="p-3 hover:bg-gray-50 text-gray-900 active:scale-90 transition-all" aria-label="Zoom out"><Minus className="w-5 h-5 stroke-[2.75]" /></button>
+            {/* SIMULATION INDICATOR */}
+            {isSimMode && (
+              <div className={`absolute ${codLimitReached ? 'top-[240px]' : 'top-[180px]'} left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl`}>
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-[var(--primary-theme)] rounded-lg flex items-center justify-center animate-pulse">
+                    <Play className="w-4 h-4 text-white fill-current" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[var(--primary-theme)] text-[10px] font-bold uppercase tracking-widest">Auto Navigation Active</span>
+                    <span className="text-white text-[11px] font-medium">Following actual road path...</span>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => {
-                    const nextSimState = !isSimMode;
-                    setIsSimMode(nextSimState);
-                    
-                    if (nextSimState) {
-                      toast.warning('Simulation Mode Active');
-                      // Initialize position if null
-                      if (!useDeliveryStore.getState().riderLocation && activeOrder) {
-                        const target = activeOrder.restaurantLocation || activeOrder.customerLocation;
-                        if (target) {
-                          setRiderLocation({ 
-                            lat: parseFloat(target.lat || target.latitude) + 0.001, 
-                            lng: parseFloat(target.lng || target.longitude) + 0.001, 
-                            heading: 0 
-                          });
-                        }
+                <button onClick={() => setIsSimMode(false)} className="bg-white/10 text-white/50 hover:text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/10">Stop</button>
+              </div>
+            )}
+
+            <div className="absolute right-4 bottom-28 md:bottom-32 flex flex-col gap-4 z-[120]">
+              <div className="flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                <button onClick={() => setZoom(z => Math.min(22, z + 1))} className="p-3 hover:bg-gray-50 border-b border-gray-100 text-gray-900 active:scale-90 transition-all" aria-label="Zoom in"><Plus className="w-5 h-5 stroke-[2.75]" /></button>
+                <button onClick={() => setZoom(z => Math.max(8, z - 1))} className="p-3 hover:bg-gray-50 text-gray-900 active:scale-90 transition-all" aria-label="Zoom out"><Minus className="w-5 h-5 stroke-[2.75]" /></button>
+              </div>
+              <button
+                onClick={() => {
+                  const nextSimState = !isSimMode;
+                  setIsSimMode(nextSimState);
+
+                  if (nextSimState) {
+                    toast.warning('Simulation Mode Active');
+                    // Initialize position if null
+                    if (!useDeliveryStore.getState().riderLocation && activeOrder) {
+                      const target = activeOrder.restaurantLocation || activeOrder.customerLocation;
+                      if (target) {
+                        setRiderLocation({
+                          lat: parseFloat(target.lat || target.latitude) + 0.001,
+                          lng: parseFloat(target.lng || target.longitude) + 0.001,
+                          heading: 0
+                        });
                       }
                     }
-                  }}
-                  className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center border border-gray-100 transition-all ${isSimMode ? 'bg-[var(--primary-theme)] text-white' : 'bg-white text-green-500'}`}
-                >
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${isSimMode ? 'border-white' : 'border-green-500'}`}>
-                    <Play className={`w-4 h-4 fill-current ml-0.5 ${isSimMode ? 'animate-pulse' : ''}`} />
-                  </div>
-                </button>
-                <button 
-                   onClick={() => {
-                      if (!activeOrder) {
-                         toast.error('No active order to navigate to');
-                         return;
-                      }
-                      let target = null;
-                      if (tripStatus === 'PICKING_UP' || tripStatus === 'REACHED_PICKUP') {
-                        target = activeOrder.restaurantLocation;
-                      } else if (tripStatus === 'PICKED_UP' || tripStatus === 'REACHED_DROP') {
-                        target = activeOrder.customerLocation || activeOrder.deliveryAddress?.location;
-                      }
-                      if (target && (target.lat || target.latitude)) {
-                        const lat = target.lat || target.latitude;
-                        const lng = target.lng || target.longitude;
-                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
-                      } else {
-                        toast.error('Target location not available');
-                      }
-                   }} 
-                   className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-blue-600 border border-gray-100 active:scale-90 transition-all"
-                >
-                  <div className="w-8 h-8 rounded-full border-2 border-blue-600 flex items-center justify-center"><Navigation2 className="w-4 h-4" /></div>
-                </button>
-                <button 
-                  onClick={handleCenterMap}
-                  className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-gray-900 border border-gray-100 group active:scale-90 transition-all"
-                >
-                  <Target className="w-7 h-7" />
-                </button>
-             </div>
-           </div>
-         ) : currentTab === 'pocket' ? (
-           <PocketV2 />
-         ) : currentTab === 'history' ? (
-           <HistoryV2 />
-         ) : (
-           <ProfileV2 />
-         )}
+                  }
+                }}
+                className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center border border-gray-100 transition-all ${isSimMode ? 'bg-[var(--primary-theme)] text-white' : 'bg-white text-green-500'}`}
+              >
+                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${isSimMode ? 'border-white' : 'border-green-500'}`}>
+                  <Play className={`w-4 h-4 fill-current ml-0.5 ${isSimMode ? 'animate-pulse' : ''}`} />
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  if (!activeOrder) {
+                    toast.error('No active order to navigate to');
+                    return;
+                  }
+                  let target = null;
+                  if (tripStatus === 'PICKING_UP' || tripStatus === 'REACHED_PICKUP') {
+                    target = activeOrder.restaurantLocation;
+                  } else if (tripStatus === 'PICKED_UP' || tripStatus === 'REACHED_DROP') {
+                    target = activeOrder.customerLocation || activeOrder.deliveryAddress?.location;
+                  }
+                  if (target && (target.lat || target.latitude)) {
+                    const lat = target.lat || target.latitude;
+                    const lng = target.lng || target.longitude;
+                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+                  } else {
+                    toast.error('Target location not available');
+                  }
+                }}
+                className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-blue-600 border border-gray-100 active:scale-90 transition-all"
+              >
+                <div className="w-8 h-8 rounded-full border-2 border-blue-600 flex items-center justify-center"><Navigation2 className="w-4 h-4" /></div>
+              </button>
+              <button
+                onClick={handleCenterMap}
+                className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-gray-900 border border-gray-100 group active:scale-90 transition-all"
+              >
+                <Target className="w-7 h-7" />
+              </button>
+            </div>
+          </div>
+        ) : currentTab === 'pocket' ? (
+          <PocketV2 />
+        ) : currentTab === 'history' ? (
+          <HistoryV2 />
+        ) : (
+          <ProfileV2 />
+        )}
 
-         {/* OVERLAYS (Persistent if active) */}
+        {/* OVERLAYS (Persistent if active) */}
       </div>
 
       {/* OVERLAYS (Persistent if active) - Outside flex container to avoid clipping and z-index issues */}
@@ -972,22 +956,37 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             >
               <div className="w-full pointer-events-auto relative">
                 {incomingOrder && (
-                  <NewOrderModal 
-                    order={incomingOrder} 
+                  <NewOrderModal
+                    order={incomingOrder}
                     onAccept={(o) => { acceptOrder(o); setIncomingOrder(null); clearNewOrder(); }}
-                    onReject={(o) => { rejectOrder(o || incomingOrder); setIncomingOrder(null); clearNewOrder(); }}
+                    onReject={(o) => {
+                      const target = o || incomingOrder;
+                      const targetId = String(target?.orderId || target?._id || target?.id || '');
+                      if (targetId) rejectedOrderIdsRef.current.add(targetId);
+                      rejectOrder(target);
+                      setIncomingOrder(null);
+                      clearNewOrder();
+                    }}
+                    onTimeout={(o) => {
+                      const target = o || incomingOrder;
+                      const targetId = String(target?.orderId || target?._id || target?.id || '');
+                      if (targetId) timedOutOrdersMapRef.current.set(targetId, Date.now());
+                      rejectOrder(target);
+                      setIncomingOrder(null);
+                      clearNewOrder();
+                    }}
                     onMinimize={() => setIsModalMinimized(true)}
                   />
                 )}
                 {(tripStatus === 'PICKING_UP' || tripStatus === 'REACHED_PICKUP') && (
-                  <PickupActionModal 
-                    order={activeOrder} 
-                    status={tripStatus} 
-                    isWithinRange={isWithinRange} 
+                  <PickupActionModal
+                    order={activeOrder}
+                    status={tripStatus}
+                    isWithinRange={isWithinRange}
                     distanceToTarget={distanceToTarget}
                     eta={eta}
-                    onReachedPickup={reachPickup} 
-                    onPickedUp={(billImageUrl) => pickUpOrder(billImageUrl)} 
+                    onReachedPickup={reachPickup}
+                    onPickedUp={(billImageUrl) => pickUpOrder(billImageUrl)}
                     onMinimize={() => setIsModalMinimized(true)}
                   />
                 )}
@@ -998,58 +997,58 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                         {/* Handle / Minimize */}
                         <div className="w-full flex justify-center pb-4 pt-0 -mt-2">
                           <button onClick={() => setIsModalMinimized(true)} className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center">
-                             <ChevronDown className="w-6 h-6 text-gray-400 stroke-[3]" />
+                            <ChevronDown className="w-6 h-6 text-gray-400 stroke-[3]" />
                           </button>
                         </div>
                         <div className="flex flex-col justify-center w-full items-center mb-8 px-2 text-center">
                           <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-sm shrink-0 mb-3">
-                             <img 
-                               src={activeOrder?.user?.logo || activeOrder?.user?.profileImage || 'https://cdn-icons-png.flaticon.com/512/1275/1275302.png'} 
-                               className="w-full h-full object-cover" 
-                               alt="User"
-                             />
+                            <img
+                              src={activeOrder?.user?.logo || activeOrder?.user?.profileImage || 'https://cdn-icons-png.flaticon.com/512/1275/1275302.png'}
+                              className="w-full h-full object-cover"
+                              alt="User"
+                            />
                           </div>
                           <div className="flex-1 min-w-0 w-full flex flex-col items-center">
-                             <h3 className="text-gray-950 text-2xl font-bold uppercase truncate max-w-[280px]">Handover Drop</h3>
-                             <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1.5 ${isWithinRange ? 'text-green-600' : 'text-[var(--primary-theme)]'}`}>
-                               {isWithinRange ? 'Ready - Swipe to Arrive √' : `${(distanceToTarget / 1000).toFixed(1)} km • ${eta || '--'} min Arrival`}
-                             </p>
+                            <h3 className="text-gray-950 text-2xl font-bold uppercase truncate max-w-[280px]">Handover Drop</h3>
+                            <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1.5 ${isWithinRange ? 'text-green-600' : 'text-[var(--primary-theme)]'}`}>
+                              {isWithinRange ? 'Ready - Swipe to Arrive √' : `${(distanceToTarget / 1000).toFixed(1)} km • ${eta || '--'} min Arrival`}
+                            </p>
                           </div>
                         </div>
 
                         {/* Customer Instructions Panel */}
                         {activeOrder?.note && (
                           <div className="w-full bg-orange-50 border border-orange-100 rounded-3xl p-5 mb-8 flex gap-4 items-start shadow-sm mx-2 text-left">
-                             <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-[var(--primary-theme)] shadow-sm shrink-0 border border-orange-50">
-                                <Package className="w-5 h-5" />
-                             </div>
-                             <div className="flex-1">
-                                <p className="text-[10px] font-black text-[var(--primary-theme)] uppercase tracking-[0.2em] mb-1.5 opacity-80">Drop Message</p>
-                                <p className="text-sm font-bold text-gray-950 leading-relaxed capitalize">"{activeOrder.note}"</p>
-                             </div>
+                            <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-[var(--primary-theme)] shadow-sm shrink-0 border border-orange-50">
+                              <Package className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[10px] font-black text-[var(--primary-theme)] uppercase tracking-[0.2em] mb-1.5 opacity-80">Drop Message</p>
+                              <p className="text-sm font-bold text-gray-950 leading-relaxed capitalize">"{activeOrder.note}"</p>
+                            </div>
                           </div>
                         )}
-                        
+
                         <div className="w-full mb-8 px-2 text-left flex flex-col">
-                           {(() => {
-                             const deliveryAddress = activeOrder?.deliveryAddress || {};
-                             const addrParts = [deliveryAddress.street, deliveryAddress.additionalDetails, deliveryAddress.city, deliveryAddress.state, deliveryAddress.zipCode].map(v => String(v || '').trim()).filter(Boolean);
-                             const cAddr = activeOrder?.customerAddress || activeOrder?.customer_address || (addrParts.length ? addrParts.join(', ') : 'Address not available');
-                             const cName = activeOrder?.userName || activeOrder?.user?.name || activeOrder?.customerName || 'Customer';
-                             return (
-                               <div className="flex flex-col bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-sm">
-                                 <span className="text-gray-900 font-bold text-lg truncate">{cName}</span>
-                                 <span className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2" title={cAddr}>{cAddr}</span>
-                               </div>
-                             );
-                           })()}
+                          {(() => {
+                            const deliveryAddress = activeOrder?.deliveryAddress || {};
+                            const addrParts = [deliveryAddress.street, deliveryAddress.additionalDetails, deliveryAddress.city, deliveryAddress.state, deliveryAddress.zipCode].map(v => String(v || '').trim()).filter(Boolean);
+                            const cAddr = activeOrder?.customerAddress || activeOrder?.customer_address || (addrParts.length ? addrParts.join(', ') : 'Address not available');
+                            const cName = activeOrder?.userName || activeOrder?.user?.name || activeOrder?.customerName || 'Customer';
+                            return (
+                              <div className="flex flex-col bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-sm">
+                                <span className="text-gray-900 font-bold text-lg truncate">{cName}</span>
+                                <span className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2" title={cAddr}>{cAddr}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <ActionSlider label="Slide to Arrive" successLabel="Arrived ✓" disabled={!isWithinRange} onConfirm={reachDrop} color="bg-blue-600" />
                       </div>
                     ) : (
-                      <button 
-                        onClick={() => setShowVerification(true)} 
+                      <button
+                        onClick={() => setShowVerification(true)}
                         className="w-full bg-green-500 hover:bg-green-600 text-white shadow-xl shadow-green-500/30 rounded-2xl py-5 font-bold text-sm tracking-[0.2em] transform transition-all active:scale-95 flex items-center justify-center gap-3"
                       >
                         <CheckCircle2 className="w-6 h-6" /> VERIFY & COMPLETE
@@ -1058,8 +1057,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   </div>
                 )}
                 {showVerification && tripStatus !== 'COMPLETED' && (
-                  <DeliveryVerificationModal 
-                    order={activeOrder} 
+                  <DeliveryVerificationModal
+                    order={activeOrder}
                     onComplete={async (...args) => {
                       const res = await completeDelivery(...args);
                       setShowVerification(false);
@@ -1077,85 +1076,85 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
       {/* ─── MODALS RESTORED FROM OLD UI ─── */}
       <BottomPopup isOpen={showEmergencyPopup} title="Emergency Help" onClose={() => setShowEmergencyPopup(false)}>
-         <div className="grid gap-4 py-2">
-           {emergencyOptions.map((opt, i) => (
-             <button 
-               key={i} 
-               onClick={() => {
-                 const num = opt.phone?.replace(/\D/g, '');
-                 if (num) window.location.href = `tel:${num}`;
-                 else toast.error('Number not configured');
-               }}
-               className="flex items-center gap-5 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 active:scale-95 transition-all text-left"
-             >
-               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-xl">{opt.icon}</div>
-               <div>
-                 <h4 className="font-bold text-gray-900">{opt.title}</h4>
-                 <p className="text-xs text-gray-500 font-medium">{opt.subtitle}</p>
-               </div>
-             </button>
-           ))}
-         </div>
+        <div className="grid gap-4 py-2">
+          {emergencyOptions.map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                const num = opt.phone?.replace(/\D/g, '');
+                if (num) window.location.href = `tel:${num}`;
+                else toast.error('Number not configured');
+              }}
+              className="flex items-center gap-5 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 active:scale-95 transition-all text-left"
+            >
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-xl">{opt.icon}</div>
+              <div>
+                <h4 className="font-bold text-gray-900">{opt.title}</h4>
+                <p className="text-xs text-gray-500 font-medium">{opt.subtitle}</p>
+              </div>
+            </button>
+          ))}
+        </div>
       </BottomPopup>
 
       {/* Floating Minimize/Restore Toggle - Above navbar */}
       {isModalMinimized && (activeOrder || incomingOrder || showVerification) && (
-        <motion.div 
-           initial={{ y: 100, opacity: 0 }}
-           animate={{ y: 0, opacity: 1 }}
-           className="fixed bottom-[100px] inset-x-0 z-[300] px-6"
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed bottom-[100px] inset-x-0 z-[300] px-6"
         >
-           <button 
-             onClick={() => setIsModalMinimized(false)}
-             className="w-full bg-gray-900/90 text-white rounded-2xl py-4 flex items-center justify-between px-6 shadow-2xl backdrop-blur-md border border-white/10"
-           >
-              <div className="flex flex-col items-start gap-0.5">
-                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Order Action Pending</span>
-                 <span className="text-xs font-bold uppercase tracking-wider">Tap to open delivery panel</span>
-              </div>
-              <div className="bg-[var(--primary-theme)] p-2 rounded-xl text-white">
-                 <Plus className="w-5 h-5" />
-              </div>
-           </button>
+          <button
+            onClick={() => setIsModalMinimized(false)}
+            className="w-full bg-gray-900/90 text-white rounded-2xl py-4 flex items-center justify-between px-6 shadow-2xl backdrop-blur-md border border-white/10"
+          >
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Order Action Pending</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Tap to open delivery panel</span>
+            </div>
+            <div className="bg-[var(--primary-theme)] p-2 rounded-xl text-white">
+              <Plus className="w-5 h-5" />
+            </div>
+          </button>
         </motion.div>
       )}
 
       {/* Floating Return Tracker - Above navbar */}
       {activeReturn && !activeOrder && !incomingOrder && (
-        <motion.div 
-           initial={{ y: 100, opacity: 0 }}
-           animate={{ y: 0, opacity: 1 }}
-           className="fixed bottom-[100px] inset-x-0 z-[300] px-6"
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed bottom-[100px] inset-x-0 z-[300] px-6"
         >
-           <button 
-             onClick={() => navigate(`/food/delivery/quick-commerce/returns/${activeReturn._id}/active`)}
-             className="w-full bg-blue-600/95 text-white rounded-2xl py-4 flex items-center justify-between px-6 shadow-2xl backdrop-blur-md border border-white/10"
-           >
-              <div className="flex flex-col items-start gap-0.5">
-                 <span className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Active Return Pending</span>
-                 <span className="text-xs font-bold uppercase tracking-wider">Tap to open return flow</span>
-              </div>
-              <div className="bg-white/20 p-2 rounded-xl text-white">
-                 <Package className="w-5 h-5" />
-              </div>
-           </button>
+          <button
+            onClick={() => navigate(`/food/delivery/quick-commerce/returns/${activeReturn._id}/active`)}
+            className="w-full bg-blue-600/95 text-white rounded-2xl py-4 flex items-center justify-between px-6 shadow-2xl backdrop-blur-md border border-white/10"
+          >
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Active Return Pending</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Tap to open return flow</span>
+            </div>
+            <div className="bg-white/20 p-2 rounded-xl text-white">
+              <Package className="w-5 h-5" />
+            </div>
+          </button>
         </motion.div>
       )}
 
       {/* ─── 3. BOTTOM NAV (Fixed - Compact Pro) ─── */}
       <div className="bg-white border-t border-gray-100 px-8 py-3 pb-6 flex justify-between items-center z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-         <button onClick={() => navigate('/food/delivery/feed')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'feed' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-            <LayoutGrid className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Feed</span>
-         </button>
-         <button onClick={() => navigate('/food/delivery/pocket')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'pocket' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-            <Wallet className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Pocket</span>
-         </button>
-         <button onClick={() => navigate('/food/delivery/history')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'history' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-            <History className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Trip History</span>
-         </button>
-         <button onClick={() => navigate('/food/delivery/profile')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'profile' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-            <UserIcon className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Profile</span>
-         </button>
+        <button onClick={() => navigate('/food/delivery/feed')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'feed' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+          <LayoutGrid className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Feed</span>
+        </button>
+        <button onClick={() => navigate('/food/delivery/pocket')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'pocket' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+          <Wallet className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Pocket</span>
+        </button>
+        <button onClick={() => navigate('/food/delivery/history')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'history' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+          <History className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Trip History</span>
+        </button>
+        <button onClick={() => navigate('/food/delivery/profile')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'profile' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+          <UserIcon className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Profile</span>
+        </button>
       </div>
     </div>
   );

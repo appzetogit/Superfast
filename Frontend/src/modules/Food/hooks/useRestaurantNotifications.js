@@ -181,6 +181,12 @@ export const useRestaurantNotifications = () => {
       alertLoopTimerRef.current = null;
     }
     alertLoopStartedAtRef.current = 0;
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
+    }
   };
 
   const startAlertLoop = () => {
@@ -252,30 +258,33 @@ export const useRestaurantNotifications = () => {
           response?.data?.data?.data?.orders ||
           [];
 
-        // REST layer normalizes backend statuses so:
-        // - backend "created" -> UI "confirmed"
-        // We alert only for "confirmed/new order waiting for review".
-        const confirmed = (rows || [])
-          .filter((o) => String(o?.status || "").toLowerCase() === "confirmed")
+        // We alert ONLY for unaccepted new orders waiting for restaurant review (status "confirmed", "placed", "created", or "pending").
+        // Once restaurant accepts and status becomes "preparing", "ready_for_pickup", or "cancelled", NO alert sound should play!
+        const unacceptedNewOrders = (rows || [])
+          .filter((o) => {
+            const st = String(o?.orderStatus || o?.status || "").toLowerCase();
+            return ["confirmed", "placed", "created", "pending", "placed_pending"].includes(st);
+          })
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || 0;
             const bt = b?.updatedAt || b?.createdAt || 0;
             return new Date(bt).getTime() - new Date(at).getTime();
           });
 
-        if (confirmed.length > 0) {
-          // Trigger alerts for newest confirmed orders (dedupe prevents spam).
-          confirmed.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
-
-          // Also trigger the popup for the most recent confirmed order if not already shown.
-          // This ensures orders arrive even when socket didn't fire (page navigation, etc.)
-          const newest = confirmed[0];
+        if (unacceptedNewOrders.length > 0) {
+          unacceptedNewOrders.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
+          const newest = unacceptedNewOrders[0];
           const newestKey = String(
             newest?.orderMongoId || newest?.order_mongo_id || newest?._id || newest?.orderId || newest?.order_id || ''
           ).trim();
           if (newestKey && !activeOrderRef.current) {
             setNewOrder(newest);
           }
+        } else {
+          // If no unaccepted new orders remain, ensure sound is stopped immediately
+          stopAlertLoop();
+          activeOrderRef.current = null;
+          setNewOrder(null);
         }
       } catch (error) {
         // Non-blocking: keep polling.
@@ -630,48 +639,24 @@ export const useRestaurantNotifications = () => {
     // Listen for order status updates
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
-
-      const updatedIds = [
-        String(data?.orderId || '').trim(),
-        String(data?.orderMongoId || '').trim(),
-      ].filter(Boolean);
-
-      const activeIds = [
-        String(activeOrderRef.current?.orderId || '').trim(),
-        String(activeOrderRef.current?.orderMongoId || '').trim(),
-      ].filter(Boolean);
-
-      const matchesActiveOrder = updatedIds.some((id) => activeIds.includes(id));
-      if (matchesActiveOrder) {
-        const newStatus = String(data?.orderStatus || '').toLowerCase();
-        if (['confirmed', 'preparing', 'ready_for_pickup', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(newStatus)) {
-          stopAlertLoop();
-          activeOrderRef.current = null;
-          setNewOrder(null);
-        }
+      const newStatus = String(data?.orderStatus || data?.status || '').toLowerCase();
+      if (['confirmed', 'preparing', 'ready_for_pickup', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(newStatus) || newStatus.includes('cancel')) {
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
       }
     });
 
-    socketRef.current.on('order_deleted', (data) => {
-      debugLog('?? Order deleted:', data);
-      const deletedIds = [
-        String(data?.orderId || '').trim(),
-        String(data?.orderMongoId || '').trim(),
-      ].filter(Boolean);
-      const activeIds = [
-        String(activeOrderRef.current?.orderId || '').trim(),
-        String(activeOrderRef.current?.orderMongoId || '').trim(),
-        String(newOrder?.orderId || '').trim(),
-        String(newOrder?.orderMongoId || '').trim(),
-      ].filter(Boolean);
-
-      const matchesActiveOrder = deletedIds.some((id) => activeIds.includes(id));
-      if (!matchesActiveOrder) return;
-
+    const handleOrderEnded = (data) => {
+      debugLog('?? Order ended/cancelled:', data);
       stopAlertLoop();
       activeOrderRef.current = null;
       setNewOrder(null);
-    });
+    };
+
+    socketRef.current.on('order_cancelled', handleOrderEnded);
+    socketRef.current.on('cancel_order', handleOrderEnded);
+    socketRef.current.on('order_deleted', handleOrderEnded);
 
     socketRef.current.on('restaurant_notification', (payload) => {
       debugLog('?? Restaurant notification received:', payload);

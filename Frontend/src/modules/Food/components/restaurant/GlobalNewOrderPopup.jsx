@@ -8,9 +8,9 @@ import { useRestaurantNotifications } from '@food/hooks/useRestaurantNotificatio
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const debugLog = (...args) => {};
-const debugWarn = (...args) => {};
-const debugError = (...args) => {};
+const debugLog = (...args) => { };
+const debugWarn = (...args) => { };
+const debugError = (...args) => { };
 
 const getRestaurantVisibleItems = (items = []) => {
   const normalizedItems = Array.isArray(items) ? items : [];
@@ -55,7 +55,7 @@ export default function GlobalNewOrderPopup() {
     if (!orderId) return 240;
     const storageKey = `order_timer_${orderId}`;
     const startTime = localStorage.getItem(storageKey);
-    
+
     if (startTime) {
       const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
       const remaining = 240 - elapsed;
@@ -210,7 +210,7 @@ export default function GlobalNewOrderPopup() {
         if (showNewOrderPopupRef.current && !isMutedRef.current) {
           audioRef.current.loop = true;
           audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(() => {});
+          audioRef.current.play().catch(() => { });
         }
       } catch (_) {
         audioRef.current.muted = false;
@@ -474,7 +474,7 @@ export default function GlobalNewOrderPopup() {
     }
 
     clearOrderTimer(orderId);
-    
+
     setShowNewOrderPopup(false);
     setPopupOrder(null);
     clearNewOrder();
@@ -594,12 +594,12 @@ export default function GlobalNewOrderPopup() {
 
       const orderDate = orderToPrint.createdAt
         ? new Date(orderToPrint.createdAt).toLocaleString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
         : new Date().toLocaleString("en-GB");
 
       doc.text(`Date: ${orderDate}`, 20, 52);
@@ -842,13 +842,13 @@ export default function GlobalNewOrderPopup() {
                     <p className="text-xs text-gray-500 mt-1">
                       {currentPopupOrder?.createdAt
                         ? new Date(
-                            currentPopupOrder.createdAt,
-                          ).toLocaleString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                          currentPopupOrder.createdAt,
+                        ).toLocaleString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                         : "Just now"}
                     </p>
                   </div>
@@ -928,13 +928,13 @@ export default function GlobalNewOrderPopup() {
                   {/* Cutlery preference */}
                   <div
                     className={`mb-4 flex items-center gap-2 rounded-lg p-3 ${(popupOrder || newOrder)?.sendCutlery === false
-                        ? "bg-orange-50"
-                        : "bg-gray-50"
+                      ? "bg-orange-50"
+                      : "bg-gray-50"
                       }`}>
                     <svg
                       className={`h-5 w-5 ${(popupOrder || newOrder)?.sendCutlery === false
-                          ? "text-[var(--primary-theme)]"
-                          : "text-gray-600"
+                        ? "text-[var(--primary-theme)]"
+                        : "text-gray-600"
                         }`}
                       fill="none"
                       stroke="currentColor"
@@ -948,8 +948,8 @@ export default function GlobalNewOrderPopup() {
                     </svg>
                     <span
                       className={`text-sm font-medium ${(popupOrder || newOrder)?.sendCutlery === false
-                          ? "text-orange-700"
-                          : "text-gray-700"
+                        ? "text-orange-700"
+                        : "text-gray-700"
                         }`}>
                       {(popupOrder || newOrder)?.sendCutlery === false
                         ? "Don't send cutlery"
@@ -1113,18 +1113,16 @@ export default function GlobalNewOrderPopup() {
                       <button
                         key={reason}
                         onClick={() => setRejectReason(reason)}
-                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                          rejectReason === reason
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${rejectReason === reason
                             ? "border-black bg-black/5"
                             : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}>
+                          }`}>
                         <div className="flex items-center justify-between">
                           <span
-                            className={`text-sm font-medium ${
-                              rejectReason === reason
+                            className={`text-sm font-medium ${rejectReason === reason
                                 ? "text-black"
                                 : "text-gray-900"
-                            }`}>
+                              }`}>
                             {reason}
                           </span>
                           {rejectReason === reason && (
@@ -1159,11 +1157,10 @@ export default function GlobalNewOrderPopup() {
                   <button
                     onClick={handleRejectConfirm}
                     disabled={!rejectReason}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                      rejectReason
+                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${rejectReason
                         ? "!bg-black !text-white"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}>
+                      }`}>
                     Confirm Rejection
                   </button>
                 </div>

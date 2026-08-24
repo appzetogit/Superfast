@@ -163,6 +163,7 @@ const MapPicker = ({
           };
           setMarker(newPos);
           setIsFetchingLocation(false);
+          toast.success("Location fetched! Tap 'Confirm & Save Location' at the bottom to save.");
           if (mapRef.current) {
             mapRef.current.panTo(newPos);
             mapRef.current.setZoom(16);
@@ -412,20 +413,29 @@ const MapPicker = ({
             order from you.
           </p>
 
-          <div className="pt-2">
-            <Button
-              onClick={handleConfirm}
-              disabled={!marker || isGeocoding}
-              className="w-full py-3.5 text-base font-bold bg-[#0c831f] hover:bg-[#0a6d19] text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              {isGeocoding ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <MapPin className="w-5 h-5" />
-              )}
-              {isGeocoding ? "Saving Location..." : "Confirm & Save Location"}
-            </Button>
+        </div>
+
+        {/* Sticky Fixed Save Bar at Modal Bottom */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-3 pt-2 shadow-[0_-8px_20px_rgba(0,0,0,0.1)] z-30 -mx-6 -mb-5 px-6 rounded-b-2xl">
+          <div className="text-[11px] text-gray-500 mb-1.5 text-center truncate font-medium">
+            {marker
+              ? address
+                ? <span className="font-semibold text-slate-800">{address}</span>
+                : `Selected: ${marker.lat.toFixed(5)}, ${marker.lng.toFixed(5)}`
+              : "Tap map or search to select shop location"}
           </div>
+          <Button
+            onClick={handleConfirm}
+            disabled={!marker || isGeocoding}
+            className="w-full py-3.5 text-base font-bold bg-[#0c831f] hover:bg-[#09701a] text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+          >
+            {isGeocoding ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <MapPin className="w-5 h-5" />
+            )}
+            {isGeocoding ? "Saving Location..." : "Confirm & Save Location"}
+          </Button>
         </div>
       </div>
     </Modal>

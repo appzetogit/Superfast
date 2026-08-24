@@ -129,17 +129,22 @@ export const useOrderManager = () => {
    * Mark "Reached Pickup" (Arrival at restaurant)
    */
   const reachPickup = async () => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
     try {
       const response = await deliveryAPI.confirmReachedPickup(orderId);
       if (response?.data?.success) {
         updateTripStatus('REACHED_PICKUP');
         // toast.info('Arrived at Restaurant');
       } else {
-        throw new Error('Confirm pickup failed');
+        throw new Error(response?.data?.message || 'Confirm pickup failed');
       }
     } catch (error) {
-      toast.error('Failed to update status');
+      const msg = error?.response?.data?.message || error?.message || 'Failed to update status';
+      toast.error(msg);
       throw error;
     }
   };
@@ -148,12 +153,16 @@ export const useOrderManager = () => {
    * Mark "Picked Up" (Confirm order ID & start delivery)
    */
   const pickUpOrder = async (billImageUrl) => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
     try {
       // confirmOrderId(orderId, confirmedOrderId, location, data)
       const response = await deliveryAPI.confirmOrderId(
         orderId, 
-        activeOrder.displayOrderId || orderId, 
+        activeOrder.displayOrderId || activeOrder.orderId || orderId, 
         riderLocation || {},
         { billImageUrl }
       );
@@ -162,10 +171,11 @@ export const useOrderManager = () => {
         updateTripStatus('PICKED_UP');
         // toast.success('Order Collected! Heading to Drop-off');
       } else {
-        throw new Error('Confirm order ID failed');
+        throw new Error(response?.data?.message || 'Confirm order ID failed');
       }
     } catch (error) {
-      toast.error('Error confirming pickup');
+      const msg = error?.response?.data?.message || error?.message || 'Error confirming pickup';
+      toast.error(msg);
       throw error;
     }
   };
@@ -174,17 +184,22 @@ export const useOrderManager = () => {
    * Mark "Reached Drop" (Arrival at customer)
    */
   const reachDrop = async () => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
     try {
       const response = await deliveryAPI.confirmReachedDrop(orderId);
       if (response?.data?.success) {
         updateTripStatus('REACHED_DROP');
         // toast.info('Arrived at Customer Location');
       } else {
-        throw new Error('Confirm drop failed');
+        throw new Error(response?.data?.message || 'Confirm drop failed');
       }
     } catch (error) {
-      toast.error('Failed to notify arrival');
+      const msg = error?.response?.data?.message || error?.message || 'Failed to notify arrival';
+      toast.error(msg);
       throw error;
     }
   };
@@ -194,7 +209,11 @@ export const useOrderManager = () => {
    */
   const completeDelivery = async (otp, options = {}) => {
     const { paymentMode } = options;
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
     try {
       // 1. Verify OTP first
       const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otp);

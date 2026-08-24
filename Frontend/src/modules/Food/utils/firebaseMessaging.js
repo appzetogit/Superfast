@@ -134,7 +134,7 @@ function isFlutterWebView() {
   if (typeof window === "undefined") return false;
   return Boolean(
     (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === "function") ||
-      (window.MobileApp && typeof window.MobileApp.getFcmToken === "function"),
+    (window.MobileApp && typeof window.MobileApp.getFcmToken === "function"),
   );
 }
 
@@ -561,7 +561,7 @@ async function getFirebasePublicEnv() {
           jsonConfig = await res.json().catch(() => ({}));
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return {
       apiKey: sanitize(import.meta.env.VITE_FIREBASE_API_KEY) || sanitize(jsonConfig.VITE_FIREBASE_API_KEY) || DEFAULT_FIREBASE_CONFIG.apiKey,
@@ -698,7 +698,7 @@ function scheduleNativeTokenRetries(moduleName) {
   [0, 800, 2000, 5000, 10000, 20000].forEach((delay) => {
     nativeRetryTimeouts.push(
       setTimeout(() => {
-        registerNativeWebViewFcmToken(moduleName).catch(() => {});
+        registerNativeWebViewFcmToken(moduleName).catch(() => { });
       }, delay),
     );
   });
@@ -710,7 +710,7 @@ function attachNativeTokenListeners() {
 
   const retry = () => {
     const moduleName = resolvePushModule();
-    registerNativeWebViewFcmToken(moduleName).catch(() => {});
+    registerNativeWebViewFcmToken(moduleName).catch(() => { });
   };
 
   window.addEventListener("flutterInAppWebViewPlatformReady", retry);
@@ -720,7 +720,7 @@ function attachNativeTokenListeners() {
   window.addEventListener("focus", retry);
 
   const receiveToken = (token, module) => {
-    persistNativeFcmToken(module || resolvePushModule(), token).catch(() => {});
+    persistNativeFcmToken(module || resolvePushModule(), token).catch(() => { });
   };
   window.SuperfastReceiveFcmToken = receiveToken;
   window.onNativeFcmToken = receiveToken;
@@ -731,7 +731,7 @@ function attachNativeTokenListeners() {
     const type = String(data.type || data.event || "").toLowerCase();
     if (type !== "fcm_token" && type !== "native-fcm-token" && type !== "fcm-token") return;
     const token = extractFcmTokenCandidate(data.token || data.fcmToken || data.payload);
-    persistNativeFcmToken(resolvePushModule(), token).catch(() => {});
+    persistNativeFcmToken(resolvePushModule(), token).catch(() => { });
   });
 }
 
@@ -797,7 +797,7 @@ function showForegroundNotification(payload = {}) {
         image,
         notificationKey,
       });
-      
+
       const iconUrl = image || "/favicon.ico";
 
       if ('serviceWorker' in navigator) {
@@ -960,7 +960,7 @@ async function safeGetFcmToken(messaging, options) {
           indexedDB.deleteDatabase("firebase-installations-database");
           indexedDB.deleteDatabase("firebase-messaging-database");
         }
-      } catch (_) {}
+      } catch (_) { }
       try {
         return await getToken(messaging, options);
       } catch (retryErr) {
