@@ -153,18 +153,19 @@ const isActionableDeliveryOffer = (orderData = {}) => {
     );
   }
   const orderStatus = String(
-    orderData?.orderStatus || orderData?.status || ''
+    orderData?.orderStatus || orderData?.status || orderData?.order?.orderStatus || orderData?.orderState?.status || ''
   ).trim().toLowerCase();
+
+  // STAGE GUARD: Delivery Partners MUST ONLY receive actionable offers if status is explicitly ready_for_pickup / ready!
+  const isReady = ['ready_for_pickup', 'ready'].includes(orderStatus);
+  if (!isReady) {
+    return false;
+  }
+
   const dispatchStatus = String(
     orderData?.dispatch?.status || orderData?.dispatchStatus || ''
   ).trim().toLowerCase();
-
-  const actionableStatuses = ['ready_for_pickup', 'ready'];
   const actionableDispatchStatuses = ['unassigned', 'assigned'];
-
-  if (orderStatus && !actionableStatuses.includes(orderStatus)) {
-    return false;
-  }
 
   if (dispatchStatus && !actionableDispatchStatuses.includes(dispatchStatus)) {
     return false;

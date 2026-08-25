@@ -350,7 +350,7 @@ export async function notifyRestaurantNewOrder(orderDoc) {
       io.to(rooms.restaurant(orderDoc.restaurantId)).emit("new_order", payload);
     }
 
-    await notifyOwnersSafely(
+    void notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: orderDoc.restaurantId }],
       {
         title: "New order received",

@@ -1132,7 +1132,7 @@ async function notifyRestaurantNewOrder(orderDoc) {
       );
     }
 
-    await notifyOwnersSafely(
+    void notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: orderDoc.restaurantId }],
       {
         title: "New order received",
@@ -3676,13 +3676,19 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
 
   // Find the active order assigned to or accepted by this rider.
+  // An active current delivery trip MUST be accepted by the delivery partner!
   const order = await FoodOrder.findOne({
     $or: [
       { "dispatch.deliveryPartnerId": partnerId },
       { "dispatchPlan.legs": { $elemMatch: { deliveryPartnerId: partnerId } } },
     ],
+    $or: [
+      { "dispatch.acceptedAt": { $exists: true, $ne: null } },
+      { "dispatch.status": "accepted" },
+      { orderStatus: { $in: ["picked_up", "reached_pickup", "reached_drop"] } }
+    ],
     orderStatus: {
-      $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up", "reached_pickup", "reached_drop"]
+      $nin: ["delivered", "cancelled_by_user", "cancelled_by_restaurant", "cancelled_by_admin"]
     }
   })
     .populate({ path: "restaurantId", select: "restaurantName name phone location addressLine1 area city state profileImage" })
@@ -3788,7 +3794,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     const isMarketplaceOrder = isSplitDispatchOrder(order)
       ? eligibleLegs.length > 0
       : order?.dispatch?.status === "unassigned" &&
-      ["confirmed", "preparing", "ready_for_pickup"].includes(order?.orderStatus);
+      ["ready_for_pickup", "ready"].includes(order?.orderStatus);
 
     if (assignedLeg) {
       docs.push(
@@ -5909,7 +5915,10 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
   }
 
   // 4. Driver Dispatch & Notifications
-  const isInitialDispatchTrigger = ((String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && (String(from) !== "preparing" && String(from) !== "confirmed"));
+  const isInitialDispatchTrigger = (
+    ["ready_for_pickup", "ready"].includes(String(orderStatus)) &&
+    !["ready_for_pickup", "ready"].includes(String(from))
+  );
   if (isInitialDispatchTrigger) {
     logger.info(`Order ${order.orderId} status changed to '${orderStatus}' by admin. Triggering delivery dispatch.`);
 

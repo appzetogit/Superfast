@@ -832,6 +832,7 @@ function AllOrders({ onSelectOrder, onCancel , searchTerm = "" }) {
         ),
       );
       toast.success("Order marked as ready");
+      window.dispatchEvent(new CustomEvent('order-ready-marked', { detail: { orderId: orderKey, orderStatus: 'ready' } }));
     } catch (error) {
       debugError("Error marking order as ready from All orders:", error);
       toast.error(
@@ -2173,6 +2174,7 @@ function PreparingOrders({
       toast.success(
         `Order ${orderId} marked ready${customerName ? ` for ${customerName}` : ""}`,
       );
+      window.dispatchEvent(new CustomEvent('order-ready-marked', { detail: { orderId: orderKey, orderStatus: 'ready' } }));
       onStatusChanged?.();
     } catch (error) {
       const status = error.response?.status;

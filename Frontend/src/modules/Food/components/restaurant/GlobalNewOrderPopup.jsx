@@ -180,6 +180,39 @@ export default function GlobalNewOrderPopup() {
     }
   }, [newOrder]);
 
+  // Stop popup ringing audio immediately when an order is marked ready or status advances
+  useEffect(() => {
+    const handleOrderReadyOrUpdated = (event) => {
+      const detail = event?.detail || {};
+      const status = String(detail.orderStatus || detail.status || detail.order_status || '').toLowerCase();
+      const isReadyOrAdvanced =
+        ['ready', 'ready_for_pickup', 'preparing', 'picked_up', 'on_the_way', 'delivered', 'cancelled'].includes(status) ||
+        event?.type === 'order-ready-marked';
+
+      if (isReadyOrAdvanced) {
+        if (audioRef.current) {
+          try {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          } catch (_) {}
+        }
+        setShowNewOrderPopup(false);
+        setPopupOrder(null);
+        if (clearNewOrder) clearNewOrder();
+      }
+    };
+
+    window.addEventListener('order-ready-marked', handleOrderReadyOrUpdated);
+    window.addEventListener('fcm-order-update', handleOrderReadyOrUpdated);
+    window.addEventListener('orderStatusNotification', handleOrderReadyOrUpdated);
+
+    return () => {
+      window.removeEventListener('order-ready-marked', handleOrderReadyOrUpdated);
+      window.removeEventListener('fcm-order-update', handleOrderReadyOrUpdated);
+      window.removeEventListener('orderStatusNotification', handleOrderReadyOrUpdated);
+    };
+  }, [clearNewOrder]);
+
   // Keep refs in sync to avoid stale state inside one-time event handlers.
   useEffect(() => {
     showNewOrderPopupRef.current = showNewOrderPopup;

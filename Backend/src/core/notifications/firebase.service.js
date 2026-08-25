@@ -214,19 +214,23 @@ const buildMessagePayload = (payload = {}, token) => {
     const defaultBrandIcon = 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png';
     const finalIcon = image || payload.icon || defaultBrandIcon;
 
-    // FlutterFire's standard high-importance channel. WebView/browser
-    // notifications ignore this; native Android uses it for lock-screen heads-up.
+    const isUserRole = role === 'USER';
+
     message.android = {
         priority: 'HIGH',
         notification: {
             title,
             body,
-            channel_id: 'high_importance_channel',
-            sound: 'default',
-            default_sound: true,
-            default_vibrate_timings: true,
-            default_light_settings: true,
-            notification_priority: 'PRIORITY_MAX',
+            channel_id: isUserRole ? 'default' : 'high_importance_channel',
+            ...(isUserRole
+                ? { default_sound: false, default_vibrate_timings: false }
+                : {
+                    sound: 'default',
+                    default_sound: true,
+                    default_vibrate_timings: true,
+                    default_light_settings: true,
+                    notification_priority: 'PRIORITY_MAX',
+                }),
             visibility: 'PUBLIC',
             click_action: 'FLUTTER_NOTIFICATION_CLICK'
         }
@@ -240,7 +244,7 @@ const buildMessagePayload = (payload = {}, token) => {
         payload: {
             aps: {
                 alert: { title, body },
-                sound: soundFile || 'default',
+                ...(isUserRole ? {} : { sound: soundFile || 'default' }),
                 contentAvailable: true
             }
         }
@@ -255,9 +259,8 @@ const buildMessagePayload = (payload = {}, token) => {
             body,
             icon: finalIcon,
             badge: defaultBrandIcon,
-            sound: soundFile,
-            data: data,
-            requireInteraction: true
+            ...(isUserRole ? {} : { sound: soundFile, requireInteraction: true }),
+            data: data
         },
         fcm_options: {
             link: clickAction

@@ -761,13 +761,37 @@ function showForegroundNotification(payload = {}) {
     payload?.data?.imageUrl ||
     undefined;
 
-  const isNewOrder =
-    title.toLowerCase().includes("order") ||
-    body.toLowerCase().includes("order") ||
-    payload?.data?.orderId ||
-    payload?.data?.type === 'RETURN_PICKUP';
+  const notificationType = String(payload?.data?.type || '').toLowerCase();
+  const orderStatus = String(payload?.data?.orderStatus || payload?.data?.status || '').toLowerCase();
+  const moduleName = normalizeModuleFromPath();
+  const payloadRole = String(
+    payload?.data?.role || payload?.data?.ownerType || payload?.data?.targetRole || ''
+  ).toLowerCase().trim();
 
-  if (isNewOrder && payload?.data) {
+  // STRICT AUDIENCE GUARD:
+  // If notification was generated specifically for a different role (e.g. sent to 'user' or 'restaurant'),
+  // do NOT render toast/sound on tabs of other roles!
+  if (payloadRole) {
+    if (moduleName === 'delivery' && !['delivery', 'delivery_partner'].includes(payloadRole)) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, `Dropping notification meant for ${payloadRole} on delivery tab`, { notificationKey });
+      return;
+    }
+    if (moduleName === 'restaurant' && !['restaurant', 'seller'].includes(payloadRole)) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, `Dropping notification meant for ${payloadRole} on restaurant tab`, { notificationKey });
+      return;
+    }
+    if (moduleName === 'user' && payloadRole !== 'user') {
+      pushDebugLog(PUSH_DEBUG_PREFIX, `Dropping notification meant for ${payloadRole} on user tab`, { notificationKey });
+      return;
+    }
+  }
+
+  // FCM delivery popup MUST ONLY be dispatched if orderStatus is explicitly ready_for_pickup or return_pickup!
+  const isNewOrderOffer =
+    moduleName === 'delivery' &&
+    (payload?.data?.type === 'RETURN_PICKUP' || ['ready_for_pickup', 'ready'].includes(orderStatus));
+
+  if (isNewOrderOffer && payload?.data) {
     if (typeof window !== 'undefined') {
       window.__fcmPendingDeliveryPopup = payload.data;
     }
@@ -784,6 +808,41 @@ function showForegroundNotification(payload = {}) {
         rawPayload: payload
       }
     }));
+  }
+
+  // Module Sound & Notification Rules:
+  // 1. User app: NEVER play ring/notification sound! Ring audio should ONLY play in restaurant and delivery apps.
+  if (moduleName === "user") {
+    return;
+  }
+
+  // 2. Delivery app: ONLY process notifications/sounds/toasts when order is explicitly ready_for_pickup, return pickup, or cancelled for this driver!
+  if (moduleName === "delivery") {
+    const isActionableForDelivery =
+      notificationType === "new_order" ||
+      notificationType === "return_pickup" ||
+      ["ready_for_pickup", "ready"].includes(orderStatus) ||
+      (String(orderStatus).includes("cancel") && payloadRole === "delivery");
+
+    if (!isActionableForDelivery) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Ignoring delivery FCM notification because order is not ready_for_pickup", { orderStatus, notificationType });
+      return;
+    }
+  }
+
+  // 3. Restaurant app: ONLY play sound for initial new unaccepted order notifications (NEVER ring for driver actions!).
+  if (moduleName === "restaurant") {
+    const isNewOrderType = notificationType === "new_order" || payload?.data?.type === "new_order";
+    const isUnacceptedStatus = ["placed", "created", "pending", "placed_pending"].includes(orderStatus);
+    const isDriverAction =
+      ["delivery_accepted", "rider_arrived", "picked_up", "order_status_update", "reached_pickup", "reached_drop", "delivered"].includes(notificationType) ||
+      ["delivery_accepted", "rider_arrived", "picked_up", "order_status_update", "reached_pickup", "reached_drop", "delivered"].includes(String(payload?.data?.type || '').toLowerCase()) ||
+      ["preparing", "ready_for_pickup", "ready", "picked_up", "on_the_way", "delivered"].includes(orderStatus);
+
+    if (!isNewOrderType || isDriverAction || !isUnacceptedStatus) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Ignoring restaurant push sound for driver action / non-new-order", { orderStatus, notificationType });
+      return;
+    }
   }
 
   playPushSound(payload);

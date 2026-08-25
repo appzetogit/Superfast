@@ -129,13 +129,16 @@ async function loadFirebaseWebConfig() {
       undefined;
     const notificationKey = getNotificationKey(payload);
     const clickAction = getTargetPathFromPayload(payload);
-    const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
+    const payloadRole = String(payload?.data?.role || payload?.data?.ownerType || '').toLowerCase();
+    const isUserRole = payloadRole === 'user';
+    const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
 
     pushDebugLog(PUSH_DEBUG_PREFIX, "Showing service worker notification", {
       title,
       body,
       image,
       notificationKey,
+      isUserRole,
     });
 
     const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
@@ -146,10 +149,10 @@ async function loadFirebaseWebConfig() {
       badge: iconUrl,
       image: image || undefined,
       tag: notificationKey,
-      renotify: true,
-      silent: false,
-      requireInteraction: true,
-      vibrate: [300, 100, 300, 100, 300, 100, 500],
+      renotify: !isUserRole,
+      silent: isUserRole,
+      requireInteraction: !isUserRole,
+      vibrate: isUserRole ? undefined : [300, 100, 300, 100, 300, 100, 500],
       data: {
         ...(payload?.data || {}),
         click_action: clickAction,
@@ -177,7 +180,9 @@ self.addEventListener("push", (event) => {
       const title = payload?.notification?.title || payload?.data?.title || "New Notification";
       const body = payload?.notification?.body || payload?.data?.body || "";
       const image = payload?.notification?.image || payload?.data?.image || payload?.data?.imageUrl;
-      const sound = payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3');
+      const payloadRole = String(payload?.data?.role || payload?.data?.ownerType || '').toLowerCase();
+      const isUserRole = payloadRole === 'user';
+      const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
       const notificationKey = getNotificationKey(payload);
       const clickAction = getTargetPathFromPayload(payload);
       const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
@@ -188,10 +193,10 @@ self.addEventListener("push", (event) => {
         badge: iconUrl,
         image: image || undefined,
         tag: notificationKey,
-        renotify: true,
-        silent: false,
-        requireInteraction: true,
-        vibrate: [300, 100, 300, 100, 300, 100, 500],
+        renotify: !isUserRole,
+        silent: isUserRole,
+        requireInteraction: !isUserRole,
+        vibrate: isUserRole ? undefined : [300, 100, 300, 100, 300, 100, 500],
         data: {
           ...(payload?.data || {}),
           click_action: clickAction,

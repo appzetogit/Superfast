@@ -76,6 +76,17 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 }
 
 
+const getStoredRestaurantId = () => {
+  try {
+    const storedUser = localStorage.getItem('restaurant_user') || localStorage.getItem('restaurantUser') || localStorage.getItem('user');
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      return parsed?._id?.toString() || parsed?.restaurantId?.toString() || parsed?.id?.toString() || null;
+    }
+  } catch {}
+  return null;
+};
+
 /**
  * Hook for restaurant to receive real-time order notifications with sound
  * @returns {object} - { newOrder, playSound, isConnected }
@@ -90,7 +101,7 @@ export const useRestaurantNotifications = () => {
   const alertLoopStartedAtRef = useRef(0);
   const userInteractedRef = useRef(false); // Track user interaction for autoplay policy
   const audioUnlockAttemptedRef = useRef(false);
-  const [restaurantId, setRestaurantId] = useState(null);
+  const [restaurantId, setRestaurantId] = useState(getStoredRestaurantId);
   const lastConnectErrorLogRef = useRef(0);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
@@ -245,7 +256,7 @@ export const useRestaurantNotifications = () => {
   useEffect(() => {
     if (!restaurantId) return;
 
-    const ALERT_POLL_MS = 8000;
+    const ALERT_POLL_MS = 3000;
     let isCancelled = false;
 
     const pollOrders = async () => {
@@ -258,12 +269,12 @@ export const useRestaurantNotifications = () => {
           response?.data?.data?.data?.orders ||
           [];
 
-        // We alert ONLY for unaccepted new orders waiting for restaurant review (status "confirmed", "placed", "created", or "pending").
+        // We alert ONLY for unaccepted new orders waiting for restaurant review (status "placed", "created", "pending", or "placed_pending").
         // Once restaurant accepts and status becomes "preparing", "ready_for_pickup", or "cancelled", NO alert sound should play!
         const unacceptedNewOrders = (rows || [])
           .filter((o) => {
             const st = String(o?.orderStatus || o?.status || "").toLowerCase();
-            return ["confirmed", "placed", "created", "pending", "placed_pending"].includes(st);
+            return ["placed", "created", "pending", "placed_pending"].includes(st);
           })
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || 0;
@@ -513,7 +524,7 @@ export const useRestaurantNotifications = () => {
     // Use polling only to avoid repeated "WebSocket connection failed" when backend is down
     socketRef.current = io(socketUrl, {
       path: '/socket.io/',
-      transports: ['polling'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -640,7 +651,7 @@ export const useRestaurantNotifications = () => {
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
       const newStatus = String(data?.orderStatus || data?.status || '').toLowerCase();
-      if (['confirmed', 'preparing', 'ready_for_pickup', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(newStatus) || newStatus.includes('cancel')) {
+      if (['accepted', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'on_the_way', 'delivered', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(newStatus) || newStatus.includes('cancel')) {
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -667,7 +678,14 @@ export const useRestaurantNotifications = () => {
     const handleFcmPushEvent = (event) => {
       const detail = event?.detail || {};
       debugLog('?? FCM push event received in restaurant hook:', detail);
-      if (detail.orderId || detail.orderMongoId || detail.type === 'new_order') {
+      const notifType = String(detail.type || '').toLowerCase();
+      const status = String(detail.orderStatus || detail.status || '').toLowerCase();
+      
+      const isNewOrder = notifType === 'new_order' || ['placed', 'created', 'pending', 'placed_pending'].includes(status);
+      const isDriverAction = ['delivery_accepted', 'rider_arrived', 'picked_up', 'order_status_update', 'reached_pickup', 'reached_drop', 'delivered'].includes(notifType) ||
+        ['preparing', 'ready_for_pickup', 'ready', 'picked_up', 'on_the_way', 'delivered'].includes(status);
+
+      if (isNewOrder && !isDriverAction) {
         handleIncomingOrderAlert(detail);
       }
     };

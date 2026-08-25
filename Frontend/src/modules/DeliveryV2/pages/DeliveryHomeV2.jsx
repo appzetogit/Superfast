@@ -539,6 +539,16 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     const rawId = newOrder?.orderId || newOrder?._id || newOrder?.orderMongoId || newOrder?.id;
     if (!rawId) return;
 
+    const orderStatus = String(
+      newOrder?.orderStatus || newOrder?.status || newOrder?.order?.orderStatus || ''
+    ).trim().toLowerCase();
+
+    // Guard: Delivery partner modal MUST ONLY open for ready_for_pickup status!
+    if (!['ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
+      setIncomingOrder(null);
+      return;
+    }
+
     const hasPopulatedName = Boolean(
       newOrder?.restaurantName || newOrder?.storeName || newOrder?.sellerName ||
       (typeof newOrder?.restaurantId === 'object' && (newOrder?.restaurantId?.restaurantName || newOrder?.restaurantId?.name)) ||
