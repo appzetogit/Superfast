@@ -136,75 +136,86 @@ export const verifyUserOtpAndLogin = async (
   const refRaw = typeof ref === "string" ? String(ref).trim() : "";
   if (isNewUser && refRaw) {
     try {
+      const queryCandidates = [];
       if (mongoose.Types.ObjectId.isValid(refRaw)) {
-        const referrerId = new mongoose.Types.ObjectId(refRaw);
-        if (String(referrerId) !== String(userDoc._id)) {
-          const [referrer, settingsDoc] = await Promise.all([
-            FoodUser.findById(referrerId).select("_id referralCount").lean(),
-            FoodReferralSettings.findOne({ isActive: true })
-              .sort({ createdAt: -1 })
-              .lean(),
+        queryCandidates.push({ _id: new mongoose.Types.ObjectId(refRaw) });
+      }
+      queryCandidates.push({ referralCode: refRaw });
+      queryCandidates.push({ referralCode: refRaw.toUpperCase() });
+
+      const digits = refRaw.replace(/\D/g, "");
+      if (digits.length >= 10) {
+        const last10 = digits.slice(-10);
+        queryCandidates.push({ phone: last10 });
+        queryCandidates.push({ phone: { $regex: new RegExp(last10 + "$") } });
+      }
+
+      const [referrer, settingsDoc] = await Promise.all([
+        FoodUser.findOne({ $or: queryCandidates }).select("_id referralCount").lean(),
+        FoodReferralSettings.findOne({ isActive: true })
+          .sort({ createdAt: -1 })
+          .lean(),
+      ]);
+
+      if (referrer && String(referrer._id) !== String(userDoc._id)) {
+        const referrerId = referrer._id;
+        const referrerReward = Math.max(0, Number(settingsDoc?.user?.referrerReward) || 0);
+        const refereeReward = Math.max(0, Number(settingsDoc?.user?.refereeReward) || 0);
+        const limit = Number(settingsDoc?.user?.limit || 0);
+
+        // If limit <= 0 or not set, treat as unlimited referrals.
+        const isLimitSatisfied = limit <= 0 || (Number(referrer.referralCount || 0) < limit);
+
+        if ((referrerReward > 0 || refereeReward > 0) && isLimitSatisfied) {
+          userDoc.referredBy = referrerId;
+          await userDoc.save();
+
+          const log = await FoodReferralLog.create({
+            referrerId,
+            refereeId: userDoc._id,
+            role: "USER",
+            rewardAmount: referrerReward,
+            referrerRewardAmount: referrerReward,
+            refereeRewardAmount: refereeReward,
+            status: "credited",
+          });
+
+          await Promise.all([
+            FoodUser.updateOne(
+              { _id: referrerId },
+              { $inc: { referralCount: 1 } },
+            ),
+            // Credit Referrer
+            referrerReward > 0
+              ? creditReferralReward(referrerId, referrerReward, {
+                role: "USER",
+                refereeId: String(userDoc._id),
+                referralLogId: String(log._id),
+                type: "referrer_reward",
+              })
+              : Promise.resolve(),
+            // Credit Referee (New User)
+            refereeReward > 0
+              ? creditReferralReward(userDoc._id, refereeReward, {
+                role: "USER",
+                referrerId: String(referrerId),
+                referralLogId: String(log._id),
+                type: "referee_reward",
+              })
+              : Promise.resolve(),
           ]);
-
-          if (referrer && settingsDoc) {
-            const referrerReward = Math.max(0, Number(settingsDoc.user?.referrerReward) || 0);
-            const refereeReward = Math.max(0, Number(settingsDoc.user?.refereeReward) || 0);
-            const limit = Math.max(0, Number(settingsDoc.user?.limit) || 0);
-
-            if (
-              (referrerReward > 0 || refereeReward > 0) &&
-              limit > 0 &&
-              Number(referrer.referralCount || 0) < limit
-            ) {
-              userDoc.referredBy = referrerId;
-              await userDoc.save();
-
-              const log = await FoodReferralLog.create({
-                referrerId,
-                refereeId: userDoc._id,
-                role: "USER",
-                rewardAmount: referrerReward,
-                referrerRewardAmount: referrerReward,
-                refereeRewardAmount: refereeReward,
-                status: "credited",
-              });
-
-              await Promise.all([
-                FoodUser.updateOne(
-                  { _id: referrerId },
-                  { $inc: { referralCount: 1 } },
-                ),
-                // Credit Referrer
-                referrerReward > 0 ? creditReferralReward(referrerId, referrerReward, {
-                  role: "USER",
-                  refereeId: String(userDoc._id),
-                  referralLogId: String(log._id),
-                  type: "referrer_reward"
-                }) : Promise.resolve(),
-                // Credit Referee (New User)
-                refereeReward > 0 ? creditReferralReward(userDoc._id, refereeReward, {
-                  role: "USER",
-                  referrerId: String(referrerId),
-                  referralLogId: String(log._id),
-                  type: "referee_reward"
-                }) : Promise.resolve(),
-              ]);
-            } else {
-              await FoodReferralLog.create({
-                referrerId,
-                refereeId: userDoc._id,
-                role: "USER",
-                rewardAmount: referrerReward,
-                status: "rejected",
-                reason:
-                  (referrerReward <= 0 && refereeReward <= 0)
-                    ? "reward_disabled"
-                    : limit <= 0
-                      ? "limit_disabled"
-                      : "limit_reached",
-              });
-            }
-          }
+        } else {
+          await FoodReferralLog.create({
+            referrerId,
+            refereeId: userDoc._id,
+            role: "USER",
+            rewardAmount: referrerReward,
+            status: "rejected",
+            reason:
+              referrerReward <= 0 && refereeReward <= 0
+                ? "reward_disabled"
+                : "limit_reached",
+          });
         }
       }
     } catch (e) {

@@ -17,8 +17,8 @@ export const config = {
     // JWT
     jwtAccessSecret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
-    jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES || '15m',
-    jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES || '7d',
+    jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES || '30d',
+    jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES || '90d',
 
     // OTP
     otpExpiry: process.env.OTP_EXPIRY || '5m',

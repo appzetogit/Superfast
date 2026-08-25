@@ -191,24 +191,17 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
 
   if (!order) return null;
 
-  // Calculate actual earnings based on distance & customer delivery fee
-  const delFee = Number(order?.pricing?.deliveryFee || order?.deliveryFee || order?.delivery_fee || 30);
-  const distNum = Number(order.distanceKm || order.deliveryDistanceKm || order.distance || order.deliveryDistance || distanceKm);
-  const validDist = Number.isFinite(distNum) && distNum > 0 ? distNum : (distanceKm !== '??' && Number.isFinite(Number(distanceKm)) ? Number(distanceKm) : 0);
-  
-  const calculatedEarning = validDist > 0
-    ? (validDist <= 3 ? Math.max(30, delFee) : Math.max(Math.round((30 + (validDist - 3) * 8) * 100) / 100, delFee))
-    : Math.max(30, delFee);
-
+  // Calculate actual earnings using backend riderEarning directly
+  const delFee = Number(order?.pricing?.deliveryFee || order?.deliveryFee || order?.delivery_fee || 0);
   const backendEarning = Number(
-    order.riderEarning ||
-    order.deliveryEarning ||
-    order.earningAmount ||
-    order.earnings ||
+    order.riderEarning ??
+    order.deliveryEarning ??
+    order.earningAmount ??
+    order.earnings ??
     0
   );
 
-  const earnings = Math.max(backendEarning, delFee, calculatedEarning, 30);
+  const earnings = backendEarning > 0 ? backendEarning : (delFee > 0 ? delFee : 30);
   const isQuickOrder = String(order?.orderType || order?.serviceType || order?.type || '').trim().toLowerCase() === 'quick';
   const restaurantName =
     order?.dispatchLeg?.sourceName ||

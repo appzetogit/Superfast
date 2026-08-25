@@ -104,11 +104,30 @@ export async function getActiveCommissionRules() {
 export async function getRiderEarning(distanceKm, customerDeliveryFee = 0) {
   const d = Number(distanceKm);
   const fee = Math.max(0, Number(customerDeliveryFee) || 0);
-  if (!Number.isFinite(d) || d < 0) return Math.max(30, fee);
+  const safeDist = Number.isFinite(d) && d >= 0 ? d : 0;
 
-  // Dynamic calculation based on distance and customer delivery fee:
-  // Base 30 for first 3km + 8 per km for distance beyond 3km, capped to at least customer delivery fee
-  const distanceEarning = d <= 3 ? 30 : Math.round((30 + (d - 3) * 8) * 100) / 100;
+  const rules = await getActiveCommissionRules();
+  if (Array.isArray(rules) && rules.length > 0) {
+    const sorted = [...rules].sort((a, b) => Number(a.minDistance || 0) - Number(b.minDistance || 0));
+    let matchedRule = null;
+    for (const rule of sorted) {
+      const min = Number(rule.minDistance || 0);
+      const max = rule.maxDistance == null ? Infinity : Number(rule.maxDistance);
+      if (safeDist >= min && safeDist <= max) {
+        matchedRule = rule;
+        break;
+      }
+    }
+    if (matchedRule) {
+      const basePayout = Number(matchedRule.basePayout || 0);
+      const perKmRate = Number(matchedRule.commissionPerKm || 0);
+      const earning = basePayout + (safeDist * perKmRate);
+      return Math.max(earning, fee);
+    }
+  }
+
+  // Fallback dynamic calculation if no active rules set
+  const distanceEarning = safeDist <= 3 ? 30 : Math.round((30 + (safeDist - 3) * 8) * 100) / 100;
   return Math.max(distanceEarning, fee, 30);
 }
 

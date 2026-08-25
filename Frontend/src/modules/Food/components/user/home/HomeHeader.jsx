@@ -343,10 +343,12 @@ export default function HomeHeader({
     }
   };
 
+  const hasBanner = isFood && Boolean(bannerComponent);
+
   return (
     <motion.div
       className={`relative transition-[min-height] duration-400 ${isFood
-        ? "min-h-[280px] overflow-hidden"
+        ? hasBanner ? "min-h-[250px] overflow-hidden" : "min-h-[140px] overflow-hidden"
         : "min-h-[120px] overflow-visible"
         }`}
       style={{ background: theme.topBg, color: theme.text }}

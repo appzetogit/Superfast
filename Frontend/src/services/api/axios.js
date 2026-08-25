@@ -242,8 +242,11 @@ apiClient.interceptors.response.use(
         original.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(original);
       }
-    } catch (_) {
-      onRefreshFailed(module);
+    } catch (refreshErr) {
+      const status = refreshErr?.response?.status;
+      if (status === 401 || status === 403) {
+        onRefreshFailed(module);
+      }
       return Promise.reject(err);
     } finally {
       isRefreshing = false;

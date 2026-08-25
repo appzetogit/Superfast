@@ -186,26 +186,26 @@ export default function Customers() {
 
   const handleToggleStatus = async (customerId) => {
     try {
-      // Find customer
-      const customer = customers.find(c => (c._id || c.id) === customerId)
+      const targetId = String(customerId || "")
+      const customer = customers.find(c => String(c._id || c.id) === targetId)
       if (!customer) return
 
-      const newStatus = !customer.status
+      const newStatus = !(customer.status ?? customer.isActive)
 
       // Optimistically update UI
       setCustomers(customers.map(c =>
-        c.id === customerId ? { ...c, status: newStatus } : c
+        String(c._id || c.id) === targetId ? { ...c, status: newStatus, isActive: newStatus } : c
       ))
 
       // Call API to update user status
-      await adminAPI.updateCustomerStatus(customerId, newStatus)
+      await adminAPI.updateCustomerStatus(targetId, newStatus)
       toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`)
     } catch (error) {
       debugError('Error updating status:', error)
       toast.error('Failed to update status')
       // Revert optimistic update
       setCustomers(customers.map(c =>
-        c.id === customerId ? { ...c, status: !c.status } : c
+        String(c._id || c.id) === customerId ? { ...c, status: !c.status, isActive: !c.status } : c
       ))
     }
   }
@@ -545,7 +545,7 @@ export default function Customers() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => handleToggleStatus(customer.id || customer.sl)}
+                          onClick={() => handleToggleStatus(customer._id || customer.id)}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${customer.status ? "bg-blue-600" : "bg-slate-300"
                             }`}
                         >

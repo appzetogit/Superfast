@@ -1512,12 +1512,6 @@ export async function getCustomerById(id) {
 
 export async function updateCustomerStatus(id, isActive) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
-    const customerObjectId = new mongoose.Types.ObjectId(id);
-    const hasFoodOrders = await FoodOrder.exists({
-        userId: customerObjectId,
-        orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES },
-    });
-    if (!hasFoodOrders) return null;
 
     const updatedDoc = await FoodUser.findByIdAndUpdate(
         id,
@@ -1529,7 +1523,12 @@ export async function updateCustomerStatus(id, isActive) {
     if (updated.isActive === false) {
         await FoodRefreshToken.deleteMany({ userId: updated._id });
     }
-    return updated;
+    return {
+        ...updated,
+        id: updated._id,
+        status: updated.isActive !== false,
+        isActive: updated.isActive !== false,
+    };
 }
 
 export async function updateCustomerCodBlock(id, isCodBlocked) {
@@ -5007,11 +5006,12 @@ export async function approveDeliveryPartner(id) {
 
                 const referrerReward = Math.max(0, Number(settingsDoc?.delivery?.referrerReward) || 0);
                 const refereeReward = Math.max(0, Number(settingsDoc?.delivery?.refereeReward) || 0);
-                const limit = Math.max(0, Number(settingsDoc?.delivery?.limit) || 0);
+                const limit = Number(settingsDoc?.delivery?.limit || 0);
 
                 const referrer = await FoodDeliveryPartner.findById(referrerId).select('_id referralCount status').lean();
+                const isLimitSatisfied = limit <= 0 || (Number(referrer?.referralCount || 0) < limit);
 
-                if (referrer && referrer.status === 'approved' && (referrerReward > 0 || refereeReward > 0) && limit > 0 && Number(referrer.referralCount || 0) < limit) {
+                if (referrer && referrer.status === 'approved' && (referrerReward > 0 || refereeReward > 0) && isLimitSatisfied) {
                     const log = await FoodReferralLog.create({
                         referrerId: referrer._id,
                         refereeId: partner._id,

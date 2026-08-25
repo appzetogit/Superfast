@@ -55,18 +55,11 @@ const BannerSection = memo(({
   useEffect(() => {
     if (bannerCount <= 1 || isHovered) return;
     const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => {
-        const nextIndex = (prev + 1) % bannerCount;
-        if (scrollRef.current) {
-          const width = scrollRef.current.offsetWidth;
-          scrollRef.current.scrollTo({ left: nextIndex * width, behavior: 'smooth' });
-        }
-        return nextIndex;
-      });
+      goToNext();
     }, 3500);
 
     return () => clearInterval(interval);
-  }, [bannerCount, isHovered, setCurrentBannerIndex]);
+  }, [bannerCount, isHovered, goToNext]);
 
   if (showBannerSkeleton) {
     return (
