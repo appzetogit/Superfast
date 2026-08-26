@@ -534,28 +534,46 @@ export async function rejectOrderDelivery(orderId, deliveryPartnerId) {
 
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
-  if (order.dispatch.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()) {
-    throw new ForbiddenError('Not your order');
+
+  const partnerIdStr = String(deliveryPartnerId || '');
+  const assignedPartnerIdStr = order.dispatch?.deliveryPartnerId ? String(order.dispatch.deliveryPartnerId) : null;
+
+  if (assignedPartnerIdStr && assignedPartnerIdStr !== partnerIdStr) {
+    throw new ForbiddenError('Order assigned to another delivery partner');
   }
+
+  if (!order.dispatch) order.dispatch = {};
+  if (!Array.isArray(order.dispatch.offeredTo)) order.dispatch.offeredTo = [];
 
   const offer = order.dispatch.offeredTo.find(
     (item) =>
-      String(item.partnerId) === String(deliveryPartnerId) &&
+      String(item.partnerId) === partnerIdStr &&
       item.action === 'offered',
   );
-  if (offer) offer.action = 'rejected';
+  if (offer) {
+    offer.action = 'rejected';
+  } else {
+    order.dispatch.offeredTo.push({
+      partnerId: new mongoose.Types.ObjectId(deliveryPartnerId),
+      action: 'rejected',
+      at: new Date(),
+    });
+  }
 
-  order.dispatch.status = 'unassigned';
-  order.dispatch.deliveryPartnerId = undefined;
-  order.dispatch.assignedAt = undefined;
-  order.dispatch.acceptedAt = undefined;
-  pushStatusHistory(order, {
-    byRole: 'DELIVERY_PARTNER',
-    byId: deliveryPartnerId,
-    from: 'assigned',
-    to: 'unassigned',
-    note: 'Rejected',
-  });
+  if (assignedPartnerIdStr === partnerIdStr) {
+    order.dispatch.status = 'unassigned';
+    order.dispatch.deliveryPartnerId = undefined;
+    order.dispatch.assignedAt = undefined;
+    order.dispatch.acceptedAt = undefined;
+    pushStatusHistory(order, {
+      byRole: 'DELIVERY_PARTNER',
+      byId: deliveryPartnerId,
+      from: 'assigned',
+      to: 'unassigned',
+      note: 'Rejected',
+    });
+  }
+
   await order.save();
 
   enqueueOrderEvent('delivery_rejected', {

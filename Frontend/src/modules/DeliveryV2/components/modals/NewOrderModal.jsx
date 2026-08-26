@@ -34,7 +34,7 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
             setFetchedDetails(details);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [rawOrderId]);
 
@@ -137,14 +137,14 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
     const deliveryAddress = order?.deliveryAddress || {};
     const geoCoords =
       Array.isArray(deliveryAddress?.location?.coordinates) &&
-      deliveryAddress.location.coordinates.length >= 2
+        deliveryAddress.location.coordinates.length >= 2
         ? {
-            lng: deliveryAddress.location.coordinates[0],
-            lat: deliveryAddress.location.coordinates[1],
-          }
+          lng: deliveryAddress.location.coordinates[0],
+          lat: deliveryAddress.location.coordinates[1],
+        }
         : (deliveryAddress.latitude && deliveryAddress.longitude
-            ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
-            : null);
+          ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+          : null);
     const customerLoc = order.customerLocation || order.deliveryLocation || geoCoords || null;
     const custLat = parseFloat(customerLoc?.lat);
     const custLng = parseFloat(customerLoc?.lng);
@@ -155,7 +155,7 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
         resLat, resLng,
         custLat, custLng
       );
-      
+
       let riderToRestM = 0;
       if (riderLocation?.lat && riderLocation?.lng) {
         riderToRestM = getHaversineDistance(
@@ -163,25 +163,25 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
           resLat, resLng
         );
       }
-      
+
       const totalDistM = restToCustM + riderToRestM;
       const km = totalDistM / 1000;
       // Assume 25km/h avg for estimate (roughly 416m/min)
       const mins = Math.ceil(totalDistM / 416) + (order.prepTime || 5);
-      
-      return { 
-        distanceKm: km.toFixed(1), 
-        etaMins: mins 
+
+      return {
+        distanceKm: km.toFixed(1),
+        etaMins: mins
       };
     }
 
     // Fallback to order provided total distance if locations are missing
     const rawDist = Number(order.distanceKm || order.deliveryDistanceKm || order.distance || order.deliveryDistance || order.totalDistance || 0);
     const rawEta = order.estimatedTime || order.duration || order.eta || order.deliveryTime;
-    
+
     if (rawDist > 0) {
-      return { 
-        distanceKm: Number(rawDist).toFixed(1), 
+      return {
+        distanceKm: Number(rawDist).toFixed(1),
         etaMins: rawEta && rawEta > 0 ? Math.ceil(rawEta) : Math.ceil((rawDist * 1000) / 416) + 5
       };
     }
@@ -217,14 +217,14 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
 
   const geoCoords =
     Array.isArray(deliveryAddress?.location?.coordinates) &&
-    deliveryAddress.location.coordinates.length >= 2
+      deliveryAddress.location.coordinates.length >= 2
       ? {
-          lng: deliveryAddress.location.coordinates[0],
-          lat: deliveryAddress.location.coordinates[1],
-        }
+        lng: deliveryAddress.location.coordinates[0],
+        lat: deliveryAddress.location.coordinates[1],
+      }
       : (deliveryAddress.latitude && deliveryAddress.longitude
-          ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
-          : null);
+        ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+        : null);
 
   const customerLocation = order.customerLocation || order.deliveryLocation || geoCoords || null;
 
@@ -252,8 +252,8 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
   const mapsLink =
     customerLocation?.lat != null && customerLocation?.lng != null
       ? `https://www.google.com/maps?q=${encodeURIComponent(
-          `${customerLocation.lat},${customerLocation.lng}`,
-        )}`
+        `${customerLocation.lat},${customerLocation.lng}`,
+      )}`
       : null;
 
   const restaurantPhone = isQuickOrder
@@ -264,25 +264,25 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
 
   const pickupStops = isReturnPickup
     ? [
-        {
-          id: 'return:pickup',
-          pickupType: 'return',
-          sourceName: order.customerName || 'Customer',
-          address: order.customerAddress || 'Customer Address',
-          phone: customerPhone
-        }
-      ]
+      {
+        id: 'return:pickup',
+        pickupType: 'return',
+        sourceName: order.customerName || 'Customer',
+        address: order.customerAddress || 'Customer Address',
+        phone: customerPhone
+      }
+    ]
     : (pickupPoints.length
       ? pickupPoints.map(p => ({ ...p, phone: p.phone || restaurantPhone }))
       : [
-          {
-            id: order?.dispatchLeg?.legId || 'food:primary',
-            pickupType: order?.dispatchLeg?.pickupType === 'quick' || isQuickOrder ? 'quick' : 'food',
-            sourceName: order?.dispatchLeg?.sourceName || restaurantName,
-            address: order?.dispatchLeg?.address || restaurantAddress,
-            phone: order?.dispatchLeg?.phone || restaurantPhone
-          },
-        ]);
+        {
+          id: order?.dispatchLeg?.legId || 'food:primary',
+          pickupType: order?.dispatchLeg?.pickupType === 'quick' || isQuickOrder ? 'quick' : 'food',
+          sourceName: order?.dispatchLeg?.sourceName || restaurantName,
+          address: order?.dispatchLeg?.address || restaurantAddress,
+          phone: order?.dispatchLeg?.phone || restaurantPhone
+        },
+      ]);
 
   return (
     <motion.div
@@ -291,7 +291,7 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-150 bg-black/60 flex items-end justify-center p-0"
     >
-      <motion.div 
+      <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -300,7 +300,7 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
         {/* Handle / Minimize */}
         <div className="w-full flex justify-center pb-1 pt-2 bg-white relative z-10 rounded-t-[2.5rem] shrink-0">
           <button onClick={onMinimize} className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center">
-             <ChevronDown className="w-5 h-5 text-gray-400 stroke-[3px]" />
+            <ChevronDown className="w-5 h-5 text-gray-400 stroke-[3px]" />
           </button>
         </div>
 
@@ -344,9 +344,9 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-gray-950 font-bold text-lg leading-tight">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
-                        <a 
-                          href={pickup.phone ? `tel:${pickup.phone}` : '#'} 
-                          className="ml-2 w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100 flex-shrink-0" 
+                        <a
+                          href={pickup.phone ? `tel:${pickup.phone}` : '#'}
+                          className="ml-2 w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100 flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!pickup.phone) e.preventDefault();
@@ -369,9 +369,9 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
                   <p className="text-gray-950 font-bold text-lg leading-tight">
                     {isReturnPickup ? (order.sellerName || 'Seller Store') : 'Customer Location'}
                   </p>
-                  <a 
-                    href={customerPhone ? `tel:${customerPhone}` : '#'} 
-                    className="ml-2 w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 flex-shrink-0" 
+                  <a
+                    href={customerPhone ? `tel:${customerPhone}` : '#'}
+                    className="ml-2 w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 flex-shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!customerPhone) e.preventDefault();
@@ -400,16 +400,16 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
             const rawItems = (Array.isArray(order?.items) && order.items.length > 0)
               ? order.items
               : ((Array.isArray(order?.products) && order.products.length > 0)
-                  ? order.products
-                  : ((Array.isArray(order?.foodItems) && order.foodItems.length > 0)
-                      ? order.foodItems
-                      : ((Array.isArray(order?.cartItems) && order.cartItems.length > 0)
-                          ? order.cartItems
-                          : ((Array.isArray(order?.orderItems) && order.orderItems.length > 0)
-                              ? order.orderItems
-                              : ((Array.isArray(order?.cart) && order.cart.length > 0)
-                                  ? order.cart
-                                  : (Array.isArray(order?.dispatchLeg?.items) ? order.dispatchLeg.items : []))))));
+                ? order.products
+                : ((Array.isArray(order?.foodItems) && order.foodItems.length > 0)
+                  ? order.foodItems
+                  : ((Array.isArray(order?.cartItems) && order.cartItems.length > 0)
+                    ? order.cartItems
+                    : ((Array.isArray(order?.orderItems) && order.orderItems.length > 0)
+                      ? order.orderItems
+                      : ((Array.isArray(order?.cart) && order.cart.length > 0)
+                        ? order.cart
+                        : (Array.isArray(order?.dispatchLeg?.items) ? order.dispatchLeg.items : []))))));
             const itemCount = rawItems.length || order?.itemCount || order?.totalItems || order?.totalQuantity || 0;
             const note = order?.note || order?.instructions || order?.deliveryInstructions || order?.userNote || '';
 
@@ -427,11 +427,13 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
                       </span>
                     </div>
 
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {rawItems.map((item, idx) => {
                         const itemName = item.name || item.itemName || item.title || item.productName || 'Item';
                         const qty = item.quantity || item.qty || item.count || 1;
                         const isVeg = item.isVeg !== undefined ? item.isVeg : true;
+                        const itemPrice = Number(item.price || item.unitPrice || item.itemPrice || item.pricePerItem || item.item_price || 0);
+                        const itemTotal = itemPrice > 0 ? itemPrice * qty : 0;
 
                         return (
                           <div key={idx} className="flex justify-between items-center text-xs font-bold text-slate-800 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
@@ -442,13 +444,79 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
                               </div>
                               <span className="truncate text-slate-900 leading-snug">{itemName}</span>
                             </div>
-                            <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md text-[11px] shrink-0">
-                              x{qty}
-                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {itemPrice > 0 ? (
+                                <span className="text-[11px] font-bold text-slate-500">₹{itemPrice} × {qty} = <span className="font-extrabold text-slate-900">₹{itemTotal}</span></span>
+                              ) : (
+                                <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md text-[11px]">
+                                  x{qty}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* Customer Bill Breakdown Card (Same as User Bill) */}
+                    {(() => {
+                      const p = order?.pricing || {};
+                      const subtotal = Number(p.subtotal ?? p.itemsTotal ?? order?.subtotal ?? order?.itemsTotal ?? 0);
+                      const deliveryFee = Number(p.deliveryFee ?? order?.deliveryFee ?? 0);
+                      const platformFee = Number(p.platformFee ?? order?.platformFee ?? 0);
+                      const tax = Number(p.tax ?? p.gst ?? order?.tax ?? 0);
+                      const discount = Number(p.discount ?? order?.discount ?? 0);
+                      const customerPaidTotal = Number(p.totalPrice ?? p.finalTotal ?? order?.totalPrice ?? order?.totalAmount ?? (subtotal + deliveryFee + platformFee + tax - discount));
+                      const payMethod = String(order?.paymentMethod || order?.paymentMode || order?.payment?.method || 'online').toLowerCase();
+                      const isCOD = payMethod === 'cash' || payMethod === 'cod';
+
+                      return (
+                        <div className="mt-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-xs font-semibold text-slate-700">
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-slate-500">Item Subtotal</span>
+                            <span className="font-bold text-slate-900">₹{subtotal.toFixed(2)}</span>
+                          </div>
+                          {deliveryFee > 0 && (
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="text-slate-500">Delivery Fee</span>
+                              <span className="font-bold text-slate-900">₹{deliveryFee.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {platformFee > 0 && (
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="text-slate-500">Platform Fee</span>
+                              <span className="font-bold text-slate-900">₹{platformFee.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {tax > 0 && (
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="text-slate-500">Taxes & Charges</span>
+                              <span className="font-bold text-slate-900">₹{tax.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {discount > 0 && (
+                            <div className="flex justify-between items-center text-[11px] text-emerald-600">
+                              <span>Discounts & Offers</span>
+                              <span className="font-bold">-₹{discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-sm font-black text-slate-900">
+                            <span>Customer Total Bill</span>
+                            <span className="text-emerald-700">₹{customerPaidTotal.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-1 pt-1">
+                            <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${isCOD ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
+                              {isCOD ? '💵 Cash On Delivery' : '✅ Online Paid'}
+                            </span>
+                            {isCOD ? (
+                              <span className="text-xs font-black text-amber-700">Collect ₹{customerPaidTotal.toFixed(2)}</span>
+                            ) : (
+                              <span className="text-xs font-bold text-emerald-700">Do Not Collect Cash</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : itemCount > 0 ? (
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-2.5 text-xs font-bold text-slate-800">
@@ -472,32 +540,32 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
           })()}
 
           <div className="grid grid-cols-2 gap-3">
-             <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-               <Clock className="w-4 h-4 text-[var(--primary-theme)]" />
-               <div className="flex flex-col">
-                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Time</span>
-                  <span className="text-xs font-bold text-gray-900">{etaMins} MINS</span>
-               </div>
-             </div>
-             <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-               <MapPin className="w-4 h-4 text-gray-400" />
-               <div className="flex flex-col">
-                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Distance</span>
-                  <span className="text-xs font-bold text-gray-900">{distanceKm} KM</span>
-               </div>
-             </div>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+              <Clock className="w-4 h-4 text-[var(--primary-theme)]" />
+              <div className="flex flex-col">
+                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Time</span>
+                <span className="text-xs font-bold text-gray-900">{etaMins} MINS</span>
+              </div>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+              <MapPin className="w-4 h-4 text-gray-400" />
+              <div className="flex flex-col">
+                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Distance</span>
+                <span className="text-xs font-bold text-gray-900">{distanceKm} KM</span>
+              </div>
+            </div>
           </div>
 
           {/* Action Area */}
           <div className="space-y-4">
-            <ActionSlider 
-              label="Slide to Accept" 
-              onConfirm={() => onAccept(order)} 
+            <ActionSlider
+              label="Slide to Accept"
+              onConfirm={() => onAccept(order)}
               color="bg-green-600"
               successLabel="Order Accepted ✓"
             />
 
-            <button 
+            <button
               onClick={onReject}
               className="w-full text-gray-400 font-bold text-[9px] uppercase tracking-widest hover:text-red-500 transition-colors py-1 active:scale-95"
             >

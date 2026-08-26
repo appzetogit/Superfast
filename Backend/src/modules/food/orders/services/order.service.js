@@ -4145,16 +4145,35 @@ export async function rejectOrderDelivery(orderId, deliveryPartnerId) {
     return getOrderById(order._id, { deliveryPartnerId });
   }
 
-  if (order.dispatch.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()) throw new ForbiddenError('Not your order');
+  const partnerIdStr = String(deliveryPartnerId || '');
+  const assignedPartnerIdStr = order.dispatch?.deliveryPartnerId ? String(order.dispatch.deliveryPartnerId) : null;
 
-  const offer = order.dispatch.offeredTo.find(o => String(o.partnerId) === String(deliveryPartnerId) && o.action === 'offered');
-  if (offer) offer.action = 'rejected';
+  if (assignedPartnerIdStr && assignedPartnerIdStr !== partnerIdStr) {
+    throw new ForbiddenError('Order assigned to another delivery partner');
+  }
 
-  order.dispatch.status = 'unassigned';
-  order.dispatch.deliveryPartnerId = undefined;
-  order.dispatch.assignedAt = undefined;
-  order.dispatch.acceptedAt = undefined;
-  pushStatusHistory(order, { byRole: 'DELIVERY_PARTNER', byId: deliveryPartnerId, from: 'assigned', to: 'unassigned', note: 'Rejected' });
+  if (!order.dispatch) order.dispatch = {};
+  if (!Array.isArray(order.dispatch.offeredTo)) order.dispatch.offeredTo = [];
+
+  const offer = order.dispatch.offeredTo.find(o => String(o.partnerId) === partnerIdStr && o.action === 'offered');
+  if (offer) {
+    offer.action = 'rejected';
+  } else {
+    order.dispatch.offeredTo.push({
+      partnerId: new mongoose.Types.ObjectId(deliveryPartnerId),
+      action: 'rejected',
+      at: new Date()
+    });
+  }
+
+  if (assignedPartnerIdStr === partnerIdStr) {
+    order.dispatch.status = 'unassigned';
+    order.dispatch.deliveryPartnerId = undefined;
+    order.dispatch.assignedAt = undefined;
+    order.dispatch.acceptedAt = undefined;
+    pushStatusHistory(order, { byRole: 'DELIVERY_PARTNER', byId: deliveryPartnerId, from: 'assigned', to: 'unassigned', note: 'Rejected' });
+  }
+
   await order.save();
 
   enqueueOrderEvent('delivery_rejected', {

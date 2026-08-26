@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChefHat, MapPin, Phone, 
-  ChevronDown, ChevronUp, Package, 
+import {
+  ChefHat, MapPin, Phone,
+  ChevronDown, ChevronUp, Package,
   Navigation, CheckCircle2, Camera, Loader2, Image as ImageIcon
 } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
@@ -15,13 +15,13 @@ import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/
  * PickupActionModal - Unified White/Green Theme with Slider Actions.
  * Includes Bill Upload feature prior to pickup.
  */
-export const PickupActionModal = ({ 
-  order, 
-  status, 
-  isWithinRange, 
+export const PickupActionModal = ({
+  order,
+  status,
+  isWithinRange,
   distanceToTarget,
   eta,
-  onReachedPickup, 
+  onReachedPickup,
   onPickedUp,
   onMinimize
 }) => {
@@ -44,14 +44,14 @@ export const PickupActionModal = ({
     try {
       sessionStorage.setItem(`${storageKey}_url`, url || '');
       sessionStorage.setItem(`${storageKey}_uploaded`, 'true');
-    } catch {}
+    } catch { }
   };
 
   const clearBillImage = () => {
     try {
       sessionStorage.removeItem(`${storageKey}_url`);
       sessionStorage.removeItem(`${storageKey}_uploaded`);
-    } catch {}
+    } catch { }
   };
 
 
@@ -65,7 +65,7 @@ export const PickupActionModal = ({
       let finalFile = file;
       if (file.type.startsWith('image/')) {
         const { compressImage } = await import('@/shared/utils/imageCompression');
-        finalFile = await compressImage(file, { 
+        finalFile = await compressImage(file, {
           maxSizeMB: 0.2, // 200KB max for bills
           maxWidthOrHeight: 1000,
           fileType: 'image/webp'
@@ -131,14 +131,14 @@ export const PickupActionModal = ({
   const pickupStops = pickupPoints.length
     ? pickupPoints
     : [
-        {
-          id: 'food:primary',
-          pickupType: isQuickOrder ? 'quick' : 'food',
-          sourceName: restaurantName,
-          address: restaurantAddress,
-          phone: restaurantPhone,
-        },
-      ];
+      {
+        id: 'food:primary',
+        pickupType: isQuickOrder ? 'quick' : 'food',
+        sourceName: restaurantName,
+        address: restaurantAddress,
+        phone: restaurantPhone,
+      },
+    ];
   const primaryStop = pickupStops[0] || null;
   const primaryPickupType = primaryStop?.pickupType === 'quick' ? 'quick' : 'food';
   const primaryName = primaryStop?.sourceName || restaurantName;
@@ -156,7 +156,7 @@ export const PickupActionModal = ({
         onClick={onMinimize}
       />
 
-      <motion.div 
+      <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         className="w-full max-w-lg bg-white rounded-t-[2rem] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] p-4 pb-8 pointer-events-auto max-h-[90dvh] max-h-[90vh] overflow-y-auto"
@@ -164,7 +164,7 @@ export const PickupActionModal = ({
         {/* Handle / Minimize */}
         <div className="w-full flex justify-center pb-4 pt-1">
           <button onClick={onMinimize} className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center">
-             <ChevronDown className="w-6 h-6 text-gray-400 stroke-[3]" />
+            <ChevronDown className="w-6 h-6 text-gray-400 stroke-[3]" />
           </button>
         </div>
 
@@ -202,7 +202,7 @@ export const PickupActionModal = ({
                 <Phone className="w-5 h-5" />
               </button>
             )}
-            <button 
+            <button
               onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(primaryAddress)}`, '_blank')}
               className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white shadow-lg"
             >
@@ -231,8 +231,8 @@ export const PickupActionModal = ({
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-base font-bold text-gray-950">{pickup.sourceName || (isQuickStore ? 'Seller store' : 'Restaurant')}</p>
-                  <a 
-                    href={pickupPhone ? `tel:${pickupPhone}` : '#'} 
+                  <a
+                    href={pickupPhone ? `tel:${pickupPhone}` : '#'}
                     className={`ml-2 w-8 h-8 rounded-full ${isQuickStore ? 'bg-orange-50 text-[var(--primary-theme)] border-orange-100' : 'bg-green-50 text-green-600 border-green-100'} flex items-center justify-center border flex-shrink-0`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -255,14 +255,13 @@ export const PickupActionModal = ({
         <div className="space-y-4">
           {!isAtPickup ? (
             <div>
-              <p className={`text-center text-[10px] font-bold uppercase tracking-widest mb-3 transition-colors ${
-                isWithinRange ? 'text-green-600' : 'text-[var(--primary-theme)] animate-pulse'
-              }`}>
+              <p className={`text-center text-[10px] font-bold uppercase tracking-widest mb-3 transition-colors ${isWithinRange ? 'text-green-600' : 'text-[var(--primary-theme)] animate-pulse'
+                }`}>
                 {isWithinRange ? 'Ready - Swipe to confirm arrival' : 'Get closer to pickup point'}
               </p>
-              <ActionSlider 
+              <ActionSlider
                 key="action-reach"
-                label="Slide to Reach" 
+                label="Slide to Reach"
                 successLabel="Reached!"
                 disabled={!isWithinRange}
                 onConfirm={onReachedPickup}
@@ -272,55 +271,55 @@ export const PickupActionModal = ({
           ) : (
             <div className="space-y-4">
               <div className="flex justify-center items-center gap-3 w-full">
-                 {!billImageUploaded && !isUploadingBill && (
-                   <>
-                      <button
-                        onClick={handleTakeCameraPhoto}
-                        className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-gray-900 text-white font-bold text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>Camera</span>
-                      </button>
-                      <button
-                        onClick={handlePickFromGallery}
-                        className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-orange-50 text-[var(--primary-theme)] border border-orange-100 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
-                      >
-                        <ImageIcon className="w-5 h-5" />
-                        <span>Gallery</span>
-                      </button>
-                   </>
-                 )}
+                {!billImageUploaded && !isUploadingBill && (
+                  <>
+                    <button
+                      onClick={handleTakeCameraPhoto}
+                      className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-gray-900 text-white font-bold text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                    >
+                      <Camera className="w-5 h-5" />
+                      <span>Camera</span>
+                    </button>
+                    <button
+                      onClick={handlePickFromGallery}
+                      className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-orange-50 text-[var(--primary-theme)] border border-orange-100 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                      <span>Gallery</span>
+                    </button>
+                  </>
+                )}
 
-                 {isUploadingBill && (
-                    <div className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gray-50 text-gray-400 font-bold text-xs uppercase tracking-widest">
-                       <Loader2 className="w-4 h-4 animate-spin" />
-                       <span>Uploading...</span>
-                    </div>
-                 )}
+                {isUploadingBill && (
+                  <div className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gray-50 text-gray-400 font-bold text-xs uppercase tracking-widest">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Uploading...</span>
+                  </div>
+                )}
 
-                 {billImageUploaded && (
-                    <div className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-green-100 text-green-700 font-bold text-xs uppercase tracking-widest">
-                       <CheckCircle2 className="w-4 h-4" />
-                       <span>Bill Uploaded</span>
-                    </div>
-                 )}
+                {billImageUploaded && (
+                  <div className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-green-100 text-green-700 font-bold text-xs uppercase tracking-widest">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Bill Uploaded</span>
+                  </div>
+                )}
 
-                 <input
-                   ref={cameraInputRef}
-                   type="file"
-                   accept="image/*"
-                   onChange={(e) => handleBillImageSelect(e.target.files[0])}
-                   className="hidden"
-                 />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleBillImageSelect(e.target.files[0])}
+                  className="hidden"
+                />
               </div>
 
               <div>
                 <p className={`text-center text-[10px] font-bold uppercase tracking-widest mb-3 ${billImageUploaded ? 'text-green-600' : 'text-gray-400'}`}>
                   {billImageUploaded ? "Check the restaurant logo - Swipe to pick up" : "Capture bill to unlock swipe"}
                 </p>
-                <ActionSlider 
+                <ActionSlider
                   key="action-pickup"
-                  label="Slide to Pick Up" 
+                  label="Slide to Pick Up"
                   successLabel="Picked Up!"
                   disabled={!billImageUploaded}
                   onConfirm={() => { clearBillImage(); return onPickedUp(billImageUrl); }}
@@ -342,7 +341,7 @@ export const PickupActionModal = ({
           )}
 
           {/* Collapsible Order Summary */}
-          <button 
+          <button
             onClick={() => setShowItems(!showItems)}
             className="w-full flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 hover:bg-slate-100 transition-colors"
           >
@@ -354,11 +353,13 @@ export const PickupActionModal = ({
           </button>
 
           {showItems && items.length > 0 && (
-            <div className="space-y-1.5 px-1 max-h-48 overflow-y-auto">
+            <div className="space-y-1.5 px-1 max-h-60 overflow-y-auto">
               {items.map((item, idx) => {
                 const itemName = item.name || item.itemName || item.title || item.productName || 'Item';
                 const qty = item.quantity || item.qty || item.count || 1;
                 const isVeg = item.isVeg !== undefined ? item.isVeg : true;
+                const itemPrice = Number(item.price || item.unitPrice || item.itemPrice || item.pricePerItem || item.item_price || 0);
+                const itemTotal = itemPrice > 0 ? itemPrice * qty : 0;
 
                 return (
                   <div key={idx} className="flex justify-between items-center text-xs font-bold text-slate-800 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
@@ -368,12 +369,78 @@ export const PickupActionModal = ({
                       </div>
                       <span className="truncate text-slate-900 leading-snug">{itemName}</span>
                     </div>
-                    <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md text-[11px] shrink-0">
-                      x{qty}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {itemPrice > 0 ? (
+                        <span className="text-[11px] font-bold text-slate-500">₹{itemPrice} × {qty} = <span className="font-extrabold text-slate-900">₹{itemTotal}</span></span>
+                      ) : (
+                        <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md text-[11px]">
+                          x{qty}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
+
+              {/* Customer Bill Breakdown Card (Same as User Bill) */}
+              {(() => {
+                const p = order?.pricing || {};
+                const subtotal = Number(p.subtotal ?? p.itemsTotal ?? order?.subtotal ?? order?.itemsTotal ?? 0);
+                const deliveryFee = Number(p.deliveryFee ?? order?.deliveryFee ?? 0);
+                const platformFee = Number(p.platformFee ?? order?.platformFee ?? 0);
+                const tax = Number(p.tax ?? p.gst ?? order?.tax ?? 0);
+                const discount = Number(p.discount ?? order?.discount ?? 0);
+                const customerPaidTotal = Number(p.totalPrice ?? p.finalTotal ?? order?.totalPrice ?? order?.totalAmount ?? (subtotal + deliveryFee + platformFee + tax - discount));
+                const payMethod = String(order?.paymentMethod || order?.paymentMode || order?.payment?.method || 'online').toLowerCase();
+                const isCOD = payMethod === 'cash' || payMethod === 'cod';
+
+                return (
+                  <div className="mt-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-xs font-semibold text-slate-700">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-500">Item Subtotal</span>
+                      <span className="font-bold text-slate-900">₹{subtotal.toFixed(2)}</span>
+                    </div>
+                    {deliveryFee > 0 && (
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-500">Delivery Fee</span>
+                        <span className="font-bold text-slate-900">₹{deliveryFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {platformFee > 0 && (
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-500">Platform Fee</span>
+                        <span className="font-bold text-slate-900">₹{platformFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {tax > 0 && (
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-500">Taxes & Charges</span>
+                        <span className="font-bold text-slate-900">₹{tax.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {discount > 0 && (
+                      <div className="flex justify-between items-center text-[11px] text-emerald-600">
+                        <span>Discounts & Offers</span>
+                        <span className="font-bold">-₹{discount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-sm font-black text-slate-900">
+                      <span>Customer Total Bill</span>
+                      <span className="text-emerald-700">₹{customerPaidTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1 pt-1">
+                      <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${isCOD ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
+                        {isCOD ? '💵 Cash On Delivery' : '✅ Online Paid'}
+                      </span>
+                      {isCOD ? (
+                        <span className="text-xs font-black text-amber-700">Collect ₹{customerPaidTotal.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-xs font-bold text-emerald-700">Do Not Collect Cash</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
