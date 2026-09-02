@@ -43,8 +43,38 @@ import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.j
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
 import { refundWalletBalance } from '../../user/services/userWallet.service.js';
+import { GlobalSettings } from '../../../common/models/settings.model.js';
 import * as foodTransactionService from '../../orders/services/foodTransaction.service.js';
 import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
+
+const syncBannedNumber = async (phone, isBanning) => {
+    if (!phone) return;
+    const cleanDigits = String(phone).replace(/\D/g, '').slice(-10);
+    if (!cleanDigits || cleanDigits.length < 10) return;
+
+    try {
+        const settings = await GlobalSettings.findOne();
+        if (!settings) return;
+
+        let banned = Array.isArray(settings.bannedNumbers) ? [...settings.bannedNumbers] : [];
+        if (isBanning) {
+            if (!banned.includes(cleanDigits)) {
+                banned.push(cleanDigits);
+                await GlobalSettings.updateOne({ _id: settings._id }, { $set: { bannedNumbers: banned } });
+            }
+        } else {
+            const updatedBanned = banned.filter(b => {
+                const bClean = String(b).replace(/\D/g, '').slice(-10);
+                return bClean !== cleanDigits;
+            });
+            if (updatedBanned.length !== banned.length) {
+                await GlobalSettings.updateOne({ _id: settings._id }, { $set: { bannedNumbers: updatedBanned } });
+            }
+        }
+    } catch (e) {
+        console.error('Error syncing banned number:', e);
+    }
+};
 import {
     backfillLegacyCategoryWorkflow,
     categoryAllowsFoodType,
@@ -1513,14 +1543,20 @@ export async function getCustomerById(id) {
 export async function updateCustomerStatus(id, isActive) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
 
+    const targetActive = Boolean(isActive);
     const updatedDoc = await FoodUser.findByIdAndUpdate(
         id,
-        { $set: { isActive: Boolean(isActive) } },
+        { $set: { isActive: targetActive } },
         { new: true }
     );
     if (!updatedDoc) return null;
     const updated = updatedDoc.toObject();
-    if (updated.isActive === false) {
+
+    if (updated.phone) {
+        await syncBannedNumber(updated.phone, !targetActive);
+    }
+
+    if (targetActive === false) {
         await FoodRefreshToken.deleteMany({ userId: updated._id });
     }
     return {
@@ -2720,7 +2756,7 @@ export async function updateRestaurantStatus(id, body = {}) {
     const isActive = parseBooleanLike(raw, 'status');
     const status = isActive ? 'approved' : 'rejected';
 
-    return FoodRestaurant.findByIdAndUpdate(
+    const updatedDoc = await FoodRestaurant.findByIdAndUpdate(
         id,
         {
             $set: {
@@ -2731,7 +2767,21 @@ export async function updateRestaurantStatus(id, body = {}) {
             }
         },
         { new: true, runValidators: false }
-    ).lean();
+    );
+
+    if (!updatedDoc) return null;
+    const updated = updatedDoc.toObject();
+
+    const phoneToSync = updated.ownerPhone || updated.primaryContactNumber;
+    if (phoneToSync) {
+        await syncBannedNumber(phoneToSync, !isActive);
+    }
+
+    if (!isActive) {
+        await FoodRefreshToken.deleteMany({ userId: updated._id });
+    }
+
+    return updated;
 }
 
 export async function updateRestaurantLocation(id, body = {}) {
@@ -5106,8 +5156,15 @@ export async function deleteDeliveryPartner(id) {
             }
         },
         { new: true }
-    ).lean();
-    return partner;
+    );
+    if (!partner) return null;
+
+    if (partner.phone) {
+        await syncBannedNumber(partner.phone, true);
+    }
+    await FoodRefreshToken.deleteMany({ userId: partner._id });
+
+    return partner.toObject();
 }
 
 export async function toggleDeliveryPartnerAccount(id) {
@@ -5125,12 +5182,17 @@ export async function toggleDeliveryPartnerAccount(id) {
         partner.isDeactivated = true;
         partner.deactivatedAt = new Date();
         partner.adminForceOffline = true;
+        await FoodRefreshToken.deleteMany({ userId: partner._id });
     } else {
         partner.isDeactivated = false;
         partner.deactivatedAt = undefined;
         partner.adminForceOffline = false;
     }
     await partner.save();
+
+    if (partner.phone) {
+        await syncBannedNumber(partner.phone, isCurrentlyActive); // if was active, now banning (true); if was suspended, now unbanning (false)
+    }
 
     // Notify partner via socket
     try {

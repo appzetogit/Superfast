@@ -1,0 +1,55 @@
+[
+  {
+    "_id": "6a44f5ee3f68731b548565e2",
+    "pageType": "home",
+    "__v": 0,
+    "banners": {
+      "items": [
+        {
+          "imageUrl": "images/quick-commerce/settings/experience/2026/07/7417aeca-4711-4dd4-bfbe-ec9ce7256c7c.webp",
+          "title": "",
+          "subtitle": "",
+          "linkType": "none",
+          "linkValue": "",
+          "status": "active",
+          "_id": "6a630ace6fc19fe9b1247df3"
+        },
+        {
+          "imageUrl": "images/quick-commerce/settings/experience/2026/07/0c8be0a4-f9a5-4c92-87cf-a8f7621e6244.webp",
+          "title": "",
+          "subtitle": "",
+          "linkType": "none",
+          "linkValue": "",
+          "status": "active",
+          "_id": "6a630ace6fc19fe9b1247df4"
+        }
+      ]
+    },
+    "categoryIds": [],
+    "createdAt": "2026-07-01T11:11:43.700Z",
+    "headerId": null,
+    "updatedAt": "2026-07-24T06:48:46.869Z"
+  },
+  {
+    "_id": "6a630aed86304198508c5826",
+    "headerId": "6a2bf8e22f671c6cfc3b78aa",
+    "pageType": "header",
+    "__v": 0,
+    "banners": {
+      "items": [
+        {
+          "imageUrl": "images/quick-commerce/settings/experience/2026/07/cfc5a942-d8ce-4fe3-98a1-0b862494e358.webp",
+          "title": "",
+          "subtitle": "",
+          "linkType": "none",
+          "linkValue": "",
+          "status": "active",
+          "_id": "6a630aed6fc19fe9b1247e31"
+        }
+      ]
+    },
+    "categoryIds": [],
+    "createdAt": "2026-07-24T06:49:17.546Z",
+    "updatedAt": "2026-07-24T06:49:17.546Z"
+  }
+]

@@ -1,0 +1,138 @@
+[
+  {
+    "_id": "6a4508afe1bad2c970f9f786",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "draft": {
+      "name": "coca cola",
+      "description": "",
+      "price": 20.04,
+      "image": "images/superfast/admin/addons/2026/07/acd61bc0-a1e0-42d7-8e37-250cc3a3fbba.webp",
+      "images": [
+        "images/superfast/admin/addons/2026/07/acd61bc0-a1e0-42d7-8e37-250cc3a3fbba.webp"
+      ],
+      "isVeg": true
+    },
+    "published": {
+      "name": "coca cola",
+      "description": "",
+      "price": 20.04,
+      "image": "images/superfast/admin/addons/2026/07/acd61bc0-a1e0-42d7-8e37-250cc3a3fbba.webp",
+      "images": [
+        "images/superfast/admin/addons/2026/07/acd61bc0-a1e0-42d7-8e37-250cc3a3fbba.webp"
+      ],
+      "isVeg": true
+    },
+    "approvalStatus": "approved",
+    "rejectionReason": "",
+    "requestedAt": "2026-07-01T12:31:43.207Z",
+    "approvedAt": "2026-07-01T12:32:55.033Z",
+    "rejectedAt": null,
+    "isAvailable": true,
+    "isDeleted": false,
+    "createdAt": "2026-07-01T12:31:43.218Z",
+    "updatedAt": "2026-07-22T07:15:29.230Z",
+    "__v": 2
+  },
+  {
+    "_id": "6a4514382dd96016c0ae424d",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "draft": {
+      "name": "test",
+      "description": "",
+      "price": 20,
+      "isVeg": false,
+      "image": "images/superfast/admin/addons/2026/07/55356d66-6dc8-46be-811c-82f26ece0769.webp",
+      "images": [
+        "images/superfast/admin/addons/2026/07/55356d66-6dc8-46be-811c-82f26ece0769.webp"
+      ]
+    },
+    "published": {
+      "name": "test",
+      "description": "",
+      "price": 20,
+      "isVeg": false,
+      "image": "images/superfast/admin/addons/2026/07/55356d66-6dc8-46be-811c-82f26ece0769.webp",
+      "images": [
+        "images/superfast/admin/addons/2026/07/55356d66-6dc8-46be-811c-82f26ece0769.webp"
+      ]
+    },
+    "approvalStatus": "approved",
+    "rejectionReason": "",
+    "requestedAt": "2026-07-02T06:43:28.219Z",
+    "approvedAt": "2026-07-02T06:45:29.930Z",
+    "rejectedAt": null,
+    "isAvailable": true,
+    "isDeleted": false,
+    "createdAt": "2026-07-01T13:20:56.835Z",
+    "updatedAt": "2026-07-22T07:15:19.376Z",
+    "__v": 1
+  },
+  {
+    "_id": "6a475986975c0ab891b1da6c",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "draft": {
+      "name": "maza",
+      "description": "",
+      "price": 20,
+      "isVeg": true,
+      "image": "images/superfast/admin/addons/2026/07/8c7c6613-206f-4c19-8473-96fa003e4b61.webp",
+      "images": [
+        "images/superfast/admin/addons/2026/07/8c7c6613-206f-4c19-8473-96fa003e4b61.webp"
+      ]
+    },
+    "published": {
+      "name": "maza",
+      "description": "",
+      "price": 20,
+      "isVeg": true,
+      "image": "images/superfast/admin/addons/2026/07/8c7c6613-206f-4c19-8473-96fa003e4b61.webp",
+      "images": [
+        "images/superfast/admin/addons/2026/07/8c7c6613-206f-4c19-8473-96fa003e4b61.webp"
+      ]
+    },
+    "approvalStatus": "approved",
+    "rejectionReason": "",
+    "requestedAt": "2026-07-03T06:41:10.517Z",
+    "approvedAt": "2026-07-03T06:47:04.686Z",
+    "rejectedAt": null,
+    "isAvailable": true,
+    "isDeleted": false,
+    "createdAt": "2026-07-03T06:41:10.522Z",
+    "updatedAt": "2026-07-22T07:14:21.989Z",
+    "__v": 1
+  },
+  {
+    "_id": "6a684c128979d0df57c89996",
+    "restaurantId": "6a6848268979d0df57c8922d",
+    "draft": {
+      "name": "Coke",
+      "description": "",
+      "price": 20,
+      "isVeg": true,
+      "image": "images/superfast/restaurant/addons/2026/07/36223da1-a6c1-40bd-8222-a56c8c514763.webp",
+      "images": [
+        "images/superfast/restaurant/addons/2026/07/36223da1-a6c1-40bd-8222-a56c8c514763.webp"
+      ]
+    },
+    "published": {
+      "name": "Coke",
+      "description": "",
+      "price": 20,
+      "isVeg": true,
+      "image": "images/superfast/restaurant/addons/2026/07/36223da1-a6c1-40bd-8222-a56c8c514763.webp",
+      "images": [
+        "images/superfast/restaurant/addons/2026/07/36223da1-a6c1-40bd-8222-a56c8c514763.webp"
+      ]
+    },
+    "approvalStatus": "approved",
+    "rejectionReason": "",
+    "requestedAt": "2026-07-28T06:28:34.469Z",
+    "approvedAt": "2026-07-28T06:32:30.087Z",
+    "rejectedAt": null,
+    "isAvailable": true,
+    "isDeleted": false,
+    "createdAt": "2026-07-28T06:28:34.471Z",
+    "updatedAt": "2026-07-28T06:53:25.986Z",
+    "__v": 0
+  }
+]

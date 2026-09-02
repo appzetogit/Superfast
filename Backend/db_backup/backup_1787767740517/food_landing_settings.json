@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "6a2bfcc5fb5e8a9af6aad4dc",
+    "exploreMoreHeading": "Explore more",
+    "headerVideoUrl": "https://res.cloudinary.com/dpojoqfyj/video/upload/v1782891748/food/landing/header-video/pwqm8uzia5rue1tltvoe.mp4",
+    "headerVideoPublicId": "food/landing/header-video/pwqm8uzia5rue1tltvoe",
+    "recommendedRestaurantIds": [],
+    "showHeroBanners": true,
+    "showUnder250": true,
+    "showDining": true,
+    "showExploreIcons": true,
+    "showTop10": true,
+    "showGourmet": true,
+    "createdAt": "2026-06-12T12:34:13.964Z",
+    "updatedAt": "2026-07-22T07:02:07.578Z",
+    "__v": 0
+  }
+]

@@ -1,0 +1,99 @@
+[
+  {
+    "_id": "6a50585846d87e08a360f0a3",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "amount": 430,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-07-10T02:26:32.399Z",
+    "updatedAt": "2026-07-10T02:27:50.838Z",
+    "__v": 0,
+    "processedAt": "2026-07-10T02:27:50.837Z"
+  },
+  {
+    "_id": "6a5058c446d87e08a360f178",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "amount": 430,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-07-10T02:28:20.796Z",
+    "updatedAt": "2026-07-10T02:28:36.518Z",
+    "__v": 0,
+    "processedAt": "2026-07-10T02:28:36.518Z"
+  },
+  {
+    "_id": "6a50932e967e651544c5c7b1",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "amount": 500,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-07-10T06:37:34.164Z",
+    "updatedAt": "2026-07-10T06:38:43.360Z",
+    "__v": 0,
+    "processedAt": "2026-07-10T06:38:43.356Z"
+  },
+  {
+    "_id": "6a5098e369ae16007777e0e2",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "amount": 200,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-07-10T07:01:55.825Z",
+    "updatedAt": "2026-07-10T07:02:10.883Z",
+    "__v": 0,
+    "processedAt": "2026-07-10T07:02:10.882Z"
+  },
+  {
+    "_id": "6a509abd462db7b496e0870a",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "amount": 200,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-07-10T07:09:49.988Z",
+    "updatedAt": "2026-07-10T07:10:04.562Z",
+    "__v": 0,
+    "processedAt": "2026-07-10T07:10:04.561Z"
+  },
+  {
+    "_id": "6a5496ce46d87e08a3612aa8",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "amount": 1290,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-07-13T07:42:06.190Z",
+    "updatedAt": "2026-07-13T07:43:15.156Z",
+    "__v": 0,
+    "processedAt": "2026-07-13T07:43:15.155Z"
+  },
+  {
+    "_id": "6a8989b98065d4a4563aa80e",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "amount": 1220,
+    "status": "approved",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-08-22T11:36:25.695Z",
+    "updatedAt": "2026-08-22T11:37:28.906Z",
+    "__v": 0,
+    "processedAt": "2026-08-22T11:37:28.906Z"
+  },
+  {
+    "_id": "6a8d3159567c259d0f63ca6f",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "amount": 250,
+    "status": "pending",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-08-25T06:08:25.299Z",
+    "updatedAt": "2026-08-25T06:08:25.299Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8e8dd7ba1183136dbee4e0",
+    "restaurantId": "6a6848268979d0df57c8922d",
+    "amount": 400,
+    "status": "pending",
+    "paymentMethod": "bank_transfer",
+    "createdAt": "2026-08-26T06:55:19.272Z",
+    "updatedAt": "2026-08-26T06:55:19.272Z",
+    "__v": 0
+  }
+]

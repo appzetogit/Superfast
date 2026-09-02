@@ -1,0 +1,89 @@
+[
+  {
+    "_id": "69b7d81bf5f15307df179d05",
+    "email": "admin@gmail.com",
+    "password": "$2a$10$9tXGi2zU3P./w.IFm2wX8.AE21f8hekS2hubTkyNxcO.Gxb3PIz1K",
+    "role": "ADMIN",
+    "servicesAccess": [
+      "food"
+    ],
+    "createdAt": "2026-03-16T10:14:51.433Z",
+    "updatedAt": "2026-08-26T08:36:07.223Z",
+    "__v": 192,
+    "name": "Shubham Jamliya#$%^",
+    "phone": "6261387233345678945678",
+    "profileImage": "upload/admin-profiles-1786950040513-7689ec.webp",
+    "isActive": true,
+    "fcmTokenMobile": [],
+    "fcmTokens": [
+      "e-0UmFKwV828I6npIbaqIA:APA91bFkdu_BFH80GNL_pSEbuwesDx7ByZD0cKyOnMVdIdqeiHahdmMPgOJd0cZ84YeZx2MxK2GcrX4q86-7QbeLKETX3olk5poASoS69beu2LzjCJAl-RU",
+      "eppFq9JfiVnOHhXamGBFZg:APA91bGw91v7I1V5OQoTaTwERv2barudHXWG4DkmEg5LTMfTqqGhck1rG9f16qj8vH-NlOMM2OnE0R48s4riuAd-l1IGbGyYNtkBJgyzxYNhFqk8fF_Cbik",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bHRS3KJVrLKq9osM2m4muyps7QqS3or8oV2mxGsGaWx7K0DbOeGYpHUbNdb_a9BI9XrhZT4xetAQcuarD1s6UZelzeT48kADBupcz9YDtDdObcfwuw",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bHVI6B37YSwB6wpzrXo3x9neHsJyB8MMkiXKu-r5I4AjaN88qHsry6pYl9olrG-uc32iNU6abWsBwa-_jrrJFe84ErpQSrOAr7329-7CcovS138sTQ",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bHHuI7derQf0zjQwPOZe7UZtXRShVS8MfrG6UP2eS1west4tJzTZRl8DZ9VmCdmV7FXeTh2Ih_d37y9dB_uNTioGywFVL4Ujdgv6Fs8XFLizvI4TE8",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bGDYRNec_-1XY2W63bXbS4mYtYlgS_ovoWAsvX-SRf3l1BdzJGSaZx3U32e930uGu4zUp_a6JanuhtVn1Xat6J07AeLnReAJ-FMGoLPKHoT_3elaGA",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bGzYnQeMD0yFKGVTq1zAi3gm966BJk6HFsmFk7oBiIoH3PuS9b0UOK2aYLV6-6hC-BVYi5jzUcbWtvS1Ua3Vjh4EbS5DunIklpuPrL4wzNFjqLPYPw",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bGvn_6pae5BaVXaoIS55H2LuCeauyYypl9-1du2oN2YuqG8n-46lnRdlaOKftp3Cv1VX5uj9nSvgAuiwgqeeuJcrurHWv059f445gV0wzmhMXwv7SU",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bHONegc6bRAjpru__cNhySMiDBMdpFbw-fRAHaqaMZ0ASavoJY00ASvADtjl058seOoQs7oYBSv_nxXyli_lqGuPP4l97hb0Xrdtl0Gy9PiKfCfy70",
+      "cIydo8PfVucEcDJRbtF9Lf:APA91bFBnv6DUrrAwnW0y2KaHQTgM3Gt6bsoD1pPSuIRLoZvpxC4Fa3H3_WTXtYuO19WxAaocFXuI53OOW09IxiGiK04ei42Z14IcoWfFUpahqVpckdBkqw"
+    ],
+    "hotelFcmTokens": {
+      "web": "fRvth71z0PU69tLjZ7gHPQ:APA91bGCKo18YV4ynUk2naBnTNUNBO9cwvf_PaV50QeAfB8k0CvXJIC-F8z2sPZDUVAE1oOtPnyjvMylmknF1vsFaNWL0xeTbvqtS_GR5bj18ud0GYVABQo"
+    },
+    "adminLevel": "PLATFORM_SUPERADMIN",
+    "permissions": [
+      "*"
+    ],
+    "food_zone_ids": [],
+    "quick_commerce_zone_ids": []
+  },
+  {
+    "_id": "6a54cc6fc6ffbc9bed089b81",
+    "email": "subadmin@gmail.com",
+    "password": "$2a$10$NRP7M.jJZ/okoDQo/JmcKOwtlSyI23WEMUVw6Bs/zeuGvDEOGCHPC",
+    "name": "subadmin",
+    "phone": "",
+    "profileImage": "",
+    "fcmTokens": [],
+    "fcmTokenMobile": [],
+    "role": "SUB_ADMIN",
+    "isActive": true,
+    "servicesAccess": [
+      "food"
+    ],
+    "createdAt": "2026-07-13T11:30:55.949Z",
+    "updatedAt": "2026-07-13T11:30:55.949Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a55e6e95e04e40d4a987d4f",
+    "email": "hello@gmail.com",
+    "password": "$2a$10$WrGiHwuZJZVhQl.Sd0ppZelUCFbFJi7DpE6ZVVQx5AjX613vrD0D2",
+    "name": "hello",
+    "phone": "",
+    "profileImage": "",
+    "fcmTokens": [],
+    "fcmTokenMobile": [],
+    "role": "SUB_ADMIN",
+    "isActive": true,
+    "servicesAccess": [
+      "food"
+    ],
+    "createdAt": "2026-07-14T07:36:09.223Z",
+    "updatedAt": "2026-07-14T07:42:04.329Z",
+    "__v": 2,
+    "adminLevel": "SUB_ADMIN",
+    "food_zone_ids": [
+      "6a3e2b3838beb106b5e02e6d"
+    ],
+    "permissions": [
+      "dashboard.write",
+      "subadmins.write",
+      "pos.write",
+      "foods.write",
+      "orders.write",
+      "restaurants.read"
+    ],
+    "quick_commerce_zone_ids": []
+  }
+]

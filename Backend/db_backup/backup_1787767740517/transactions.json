@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "6a4e3861a700d8556ec27e23",
+    "paymentId": null,
+    "orderId": "6a4e16c86177ca1fb8cb7263",
+    "entityType": "deliveryBoy",
+    "entityId": "6a36915bd7dbc483c0206bf5",
+    "type": "credit",
+    "amount": 20,
+    "balanceAfter": 20,
+    "currency": "INR",
+    "status": "completed",
+    "description": "Earnings for Return Pickup: 6a4e19eb6177ca1fb8cb7916",
+    "category": "delivery_earning",
+    "module": "quickCommerce",
+    "createdAt": "2026-07-08T11:45:37.889Z",
+    "updatedAt": "2026-07-08T11:45:37.889Z",
+    "__v": 0
+  }
+]

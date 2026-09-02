@@ -1,0 +1,3145 @@
+[
+  {
+    "_id": "6a36960bd7dbc483c0206caf",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:42"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      }
+    ],
+    "createdAt": "2026-06-20T13:30:51.986Z",
+    "updatedAt": "2026-07-07T06:36:02.981Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a3a0ec02824f1de8919595c",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "07:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "07:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "21:00"
+      }
+    ],
+    "createdAt": "2026-06-23T04:42:40.514Z",
+    "updatedAt": "2026-07-18T15:33:39.087Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a3d1d38a66ba313c76e1a55",
+    "restaurantId": "6a3d1d38a66ba313c76e1a53",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": false,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      }
+    ],
+    "createdAt": "2026-06-25T12:21:12.219Z",
+    "updatedAt": "2026-07-10T15:35:13.020Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a3e5a853bd56f9a5434034d",
+    "restaurantId": "6a3e5a853bd56f9a5434034b",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      }
+    ],
+    "createdAt": "2026-06-26T10:55:01.207Z",
+    "updatedAt": "2026-06-26T10:55:01.207Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a5b61f00cc2efb2d6f3840a",
+    "restaurantId": "6a5b61f00cc2efb2d6f38408",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": false,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2026-07-18T11:22:24.947Z",
+    "updatedAt": "2026-07-18T11:22:24.947Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a5df2d929471c4874e0034e",
+    "restaurantId": "6a5b6a690cc2efb2d6f38c67",
+    "__v": 0,
+    "createdAt": "2026-07-20T10:05:13.612Z",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "updatedAt": "2026-07-20T10:05:28.381Z"
+  },
+  {
+    "_id": "6a632da36fc19fe9b124a97e",
+    "restaurantId": "6a632da36fc19fe9b124a97c",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "13:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": false,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2026-07-24T09:17:23.177Z",
+    "updatedAt": "2026-07-25T06:48:34.715Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a6848268979d0df57c8922f",
+    "restaurantId": "6a6848268979d0df57c8922d",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2026-07-28T06:11:50.355Z",
+    "updatedAt": "2026-07-28T06:11:50.355Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a71b74e5a89e146113fbe74",
+    "restaurantId": "6a71b74e5a89e146113fbe71",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2026-08-04T09:56:30.502Z",
+    "updatedAt": "2026-08-04T09:56:30.502Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0f8",
+    "restaurantId": "434bcb4f3699e895f8999ecf",
+    "timings": [
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "18:30"
+      }
+    ],
+    "createdAt": "2025-10-16T12:45:17.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0f9",
+    "restaurantId": "d06f261c71c2ca2c33ee5320",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:29"
+      }
+    ],
+    "createdAt": "2025-10-18T09:23:36.000Z",
+    "updatedAt": "2026-08-07T15:23:16.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0fa",
+    "restaurantId": "24e57b2ef218024f7a957282",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "12:30"
+      }
+    ],
+    "createdAt": "2025-10-25T06:52:04.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea100",
+    "restaurantId": "ad4eb7c909e49a34c06b7a9d",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2025-10-27T04:02:37.000Z",
+    "updatedAt": "2026-08-08T06:05:28.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea10c",
+    "restaurantId": "6b45e5032810db9fb7dca071",
+    "timings": [
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2025-10-29T12:31:57.000Z",
+    "updatedAt": "2026-07-30T11:45:04.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea10d",
+    "restaurantId": "03540511739c547a718c2a14",
+    "timings": [
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:00"
+      }
+    ],
+    "createdAt": "2025-10-29T12:32:50.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea10a",
+    "restaurantId": "5c2ba243de7bab7fb12f5124",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "18:30"
+      }
+    ],
+    "createdAt": "2025-10-29T07:15:15.000Z",
+    "updatedAt": "2026-08-07T15:22:04.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea10e",
+    "restaurantId": "a17f802e69233d33ac64f21c",
+    "timings": [
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "21:30"
+      }
+    ],
+    "createdAt": "2025-10-29T12:44:31.000Z",
+    "updatedAt": "2026-08-08T09:40:33.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea103",
+    "restaurantId": "30bea9beaf22a7f5a36eb03e",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-27T08:56:04.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea107",
+    "restaurantId": "a791d06f14b8cf6fe1d21f3b",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-27T13:11:44.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea106",
+    "restaurantId": "43ea057b7ff27aa131e1fecd",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:45"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "21:50"
+      }
+    ],
+    "createdAt": "2025-10-27T12:59:14.000Z",
+    "updatedAt": "2026-08-08T08:03:46.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea109",
+    "restaurantId": "50fbf688e2723068afafd44f",
+    "timings": [
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "06:00",
+        "closingTime": "23:55"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "06:00",
+        "closingTime": "23:55"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "06:00",
+        "closingTime": "23:55"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "06:00",
+        "closingTime": "23:55"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "07:00",
+        "closingTime": "23:55"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "07:00",
+        "closingTime": "23:55"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "07:00",
+        "closingTime": "23:55"
+      }
+    ],
+    "createdAt": "2025-10-29T03:50:29.000Z",
+    "updatedAt": "2026-07-31T16:32:07.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea102",
+    "restaurantId": "75946789a13c0971ff12d650",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-27T05:23:58.000Z",
+    "updatedAt": "2026-08-07T07:53:08.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea104",
+    "restaurantId": "4bd16aba56ff898d7cdaa586",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-27T09:30:34.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0fc",
+    "restaurantId": "83000fd6a448397a109f94e7",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "20:30"
+      }
+    ],
+    "createdAt": "2025-10-26T07:58:11.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0ff",
+    "restaurantId": "4bd8675bdc3de2cf8166830c",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:00"
+      }
+    ],
+    "createdAt": "2025-10-27T04:00:54.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0fe",
+    "restaurantId": "1406720d922e68a393333821",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2025-10-26T11:26:17.000Z",
+    "updatedAt": "2026-08-07T08:24:12.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea108",
+    "restaurantId": "9dde53afc40f26a9bb7f411e",
+    "timings": [
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "20:00"
+      }
+    ],
+    "createdAt": "2025-10-28T04:01:02.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea105",
+    "restaurantId": "8aa5d84ed1b7c0722e549610",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-27T09:50:45.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0fb",
+    "restaurantId": "5d33250dc98ceeccb0d71594",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "15:01"
+      }
+    ],
+    "createdAt": "2025-10-25T14:12:13.000Z",
+    "updatedAt": "2026-08-06T11:18:22.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea10b",
+    "restaurantId": "bcf7810f3e0e06f07cc9155d",
+    "timings": [
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2025-10-29T12:14:41.000Z",
+    "updatedAt": "2026-08-03T15:05:54.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea10f",
+    "restaurantId": "360d3223b8bd6f3bbc74cfe8",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T05:45:07.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea0fd",
+    "restaurantId": "e99878d3807d179dc67c4b96",
+    "timings": [
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "17:43",
+        "closingTime": "17:47"
+      }
+    ],
+    "createdAt": "2025-10-26T08:42:29.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea101",
+    "restaurantId": "154bfbd0c329beb93e3eec4b",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-27T05:06:13.000Z",
+    "updatedAt": "2026-07-30T08:47:19.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea110",
+    "restaurantId": "0e8f320c929705970dac1869",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T05:59:00.000Z",
+    "updatedAt": "2026-08-07T07:30:10.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea111",
+    "restaurantId": "6c50d9bc2a875ceb91e6d89c",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T06:19:51.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea113",
+    "restaurantId": "3cc0362fc118a6b292f523c9",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T06:25:30.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea112",
+    "restaurantId": "6e1e4e4d004019c40613b59c",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T06:23:50.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea114",
+    "restaurantId": "33a8a1a7ea6e8645f1e7d6e1",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "10:30",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2025-10-30T06:35:57.000Z",
+    "updatedAt": "2026-08-06T11:18:09.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea116",
+    "restaurantId": "d83acff643e9d5b71df61459",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "10:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2025-10-30T06:52:33.000Z",
+    "updatedAt": "2026-08-01T12:46:24.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea115",
+    "restaurantId": "a38415d8b42886c3b0f2183a",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "14:00",
+        "closingTime": "21:30"
+      }
+    ],
+    "createdAt": "2025-10-30T06:44:24.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea119",
+    "restaurantId": "fce31920de526cae872cd42b",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T08:58:30.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea117",
+    "restaurantId": "27c49232fb6d624a6a26c6f1",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T07:14:44.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea118",
+    "restaurantId": "51538d1a59adf8f38afb3e22",
+    "timings": [
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2025-10-30T07:16:10.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea11d",
+    "restaurantId": "bc812c8021cfd461f3966de0",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T09:55:08.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea11e",
+    "restaurantId": "2e11c8d88797c3947fc844e4",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "07:30",
+        "closingTime": "20:00"
+      }
+    ],
+    "createdAt": "2025-10-30T10:06:19.000Z",
+    "updatedAt": "2026-08-03T05:30:08.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea11b",
+    "restaurantId": "610adfa299d07780d17b19c0",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T09:23:59.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea11a",
+    "restaurantId": "69a7c49362ea14a3d5427d67",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T08:58:45.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea11c",
+    "restaurantId": "7af30000f70262973bbbad4e",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "06:30",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T09:44:06.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea121",
+    "restaurantId": "1a5e32c35b2da4da2f721ec9",
+    "timings": [
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2025-10-30T11:38:26.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea120",
+    "restaurantId": "8e0e8d858db97b5a7d9a8a09",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "21:30"
+      }
+    ],
+    "createdAt": "2025-10-30T10:38:30.000Z",
+    "updatedAt": "2026-08-07T09:11:55.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea122",
+    "restaurantId": "06f0132776164481fb86e8ce",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "21:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "16:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2026-01-05T15:05:44.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea11f",
+    "restaurantId": "74af88911ca386f637413934",
+    "timings": [
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2025-10-30T10:28:39.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea123",
+    "restaurantId": "88ce6fd0badc02d3a319117f",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2026-02-03T09:52:29.000Z",
+    "updatedAt": "2026-08-07T07:53:15.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea125",
+    "restaurantId": "f20dc4b5aab28785939671f1",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "21:00"
+      }
+    ],
+    "createdAt": "2026-02-11T07:23:00.000Z",
+    "updatedAt": "2026-08-05T08:35:25.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea127",
+    "restaurantId": "0dddcee339931a76d3d8a06f",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:20"
+      }
+    ],
+    "createdAt": "2026-02-13T05:14:50.000Z",
+    "updatedAt": "2026-08-07T16:19:54.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea124",
+    "restaurantId": "ad3d2ecdcb8d88832d6b6ba0",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2026-02-09T09:33:41.000Z",
+    "updatedAt": "2026-08-08T07:41:36.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea126",
+    "restaurantId": "002e7ae7839638e9ff185952",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "23:00"
+      }
+    ],
+    "createdAt": "2026-02-12T05:55:46.000Z",
+    "updatedAt": "2026-08-06T14:37:54.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea128",
+    "restaurantId": "19dc95cf4fc817bf520103ed",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "12:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:30",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2026-02-13T14:24:47.000Z",
+    "updatedAt": "2026-08-08T06:32:13.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea129",
+    "restaurantId": "f188b66128c697fd205c06ad",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2026-02-24T10:56:46.000Z",
+    "updatedAt": "2026-08-07T15:13:00.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea12a",
+    "restaurantId": "87cd86b87dc61d8fd27f4f93",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "11:00",
+        "closingTime": "22:30"
+      }
+    ],
+    "createdAt": "2026-02-26T10:20:46.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea12b",
+    "restaurantId": "65c8487ab92f043487792b05",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:00",
+        "closingTime": "22:00"
+      }
+    ],
+    "createdAt": "2026-03-13T07:11:27.000Z",
+    "updatedAt": "2026-07-10T03:19:57.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea12c",
+    "restaurantId": "86777331e99c288c0f3846b7",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "15:00",
+        "closingTime": "23:00"
+      }
+    ],
+    "createdAt": "2026-03-18T15:49:52.000Z",
+    "updatedAt": "2026-08-08T06:32:33.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea12d",
+    "restaurantId": "8eb821acd5a07fed73d184e0",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "08:30",
+        "closingTime": "10:30"
+      }
+    ],
+    "createdAt": "2026-04-10T03:24:21.000Z",
+    "updatedAt": "2026-07-04T16:24:44.000Z"
+  },
+  {
+    "_id": "6a7a25b64d5ce60a4e6ea12e",
+    "restaurantId": "078035f39af3dd34be788240",
+    "timings": [
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      },
+      {
+        "day": "Unknown",
+        "isOpen": true,
+        "openingTime": "09:30",
+        "closingTime": "23:30"
+      }
+    ],
+    "createdAt": "2026-04-11T06:55:13.000Z",
+    "updatedAt": "2026-08-08T08:22:25.000Z"
+  }
+]

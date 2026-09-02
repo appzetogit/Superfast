@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "6a44d98c6321dbda29f6214a",
+    "label": "Offers",
+    "iconUrl": "images/food/explore-icons/2026/07/5133ab68-d3ea-4f77-af62-7c7fed95248d.webp",
+    "publicId": "images/food/explore-icons/2026/07/5133ab68-d3ea-4f77-af62-7c7fed95248d.webp",
+    "linkType": "custom",
+    "targetPath": "/user/offers",
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-07-01T09:10:36.958Z",
+    "updatedAt": "2026-07-22T07:01:47.029Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a44da0d6321dbda29f62216",
+    "label": "Gourmet",
+    "iconUrl": "images/food/explore-icons/2026/07/7e89a07a-efa8-4b35-a7c6-2b76d2f45de0.webp",
+    "publicId": "images/food/explore-icons/2026/07/7e89a07a-efa8-4b35-a7c6-2b76d2f45de0.webp",
+    "linkType": "custom",
+    "targetPath": "/user/gourmet",
+    "sortOrder": 1,
+    "isActive": true,
+    "createdAt": "2026-07-01T09:12:45.954Z",
+    "updatedAt": "2026-07-22T07:01:57.754Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a44da4e6321dbda29f6225e",
+    "label": "Collections",
+    "iconUrl": "images/food/explore-icons/2026/07/16beeaa0-bdbd-414a-8141-b7d81f59e2b0.webp",
+    "publicId": "images/food/explore-icons/2026/07/16beeaa0-bdbd-414a-8141-b7d81f59e2b0.webp",
+    "linkType": "custom",
+    "targetPath": "/user/profile/favorites",
+    "sortOrder": 2,
+    "isActive": true,
+    "createdAt": "2026-07-01T09:13:50.467Z",
+    "updatedAt": "2026-07-22T07:02:05.841Z",
+    "__v": 0
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "6a671f8c38239b682c336dbb",
+    "name": "0-2",
+    "minDistance": 0,
+    "maxDistance": 2,
+    "commissionPerKm": 3,
+    "basePayout": 25,
+    "status": true,
+    "createdAt": "2026-07-27T09:06:20.394Z",
+    "updatedAt": "2026-07-27T09:06:59.731Z",
+    "__v": 0
+  }
+]

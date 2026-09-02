@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "6a566a4e81307544efaeb8ca",
+    "deliveryFeeRanges": [],
+    "platformFee": 10,
+    "returnDeliveryCommission": 0,
+    "isActive": true,
+    "createdAt": "2026-07-14T16:56:46.300Z",
+    "updatedAt": "2026-07-14T16:58:31.382Z",
+    "__v": 0,
+    "deliveryFee": 0,
+    "gstRate": 10
+  }
+]

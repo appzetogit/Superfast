@@ -1,0 +1,29 @@
+[
+  {
+    "_id": "6a8d3097567c259d0f63c8f3",
+    "title": "Daily Target Bonus",
+    "period": "daily",
+    "tiers": [
+      {
+        "ordersCount": 5,
+        "bonusAmount": 50,
+        "title": "Tier 1"
+      },
+      {
+        "ordersCount": 10,
+        "bonusAmount": 120,
+        "title": "Tier 2"
+      },
+      {
+        "ordersCount": 15,
+        "bonusAmount": 200,
+        "title": "Tier 3"
+      }
+    ],
+    "isActive": true,
+    "description": "Complete orders today to earn extra bonus rewards!",
+    "createdAt": "2026-08-25T06:05:11.217Z",
+    "updatedAt": "2026-08-25T06:05:11.217Z",
+    "__v": 0
+  }
+]

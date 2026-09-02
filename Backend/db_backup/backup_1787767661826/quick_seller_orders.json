@@ -1,0 +1,902 @@
+[
+  {
+    "_id": "6a43b3403f68731b54855860",
+    "sellerId": "6a43a4a8f381e6a65c0235fe",
+    "orderId": "QC21695861",
+    "__v": 0,
+    "address": {
+      "address": "Corporate House",
+      "city": "Indore",
+      "location": {
+        "lat": 22.717601894145478,
+        "lng": 75.87197852835905
+      }
+    },
+    "createdAt": "2026-06-30T12:14:56.449Z",
+    "customer": {
+      "name": "hello",
+      "phone": "9407120329"
+    },
+    "deliveredAt": "2026-06-30T12:17:34.806Z",
+    "items": [
+      {
+        "productId": "6a43a753f381e6a65c023b25",
+        "name": "test product (test)",
+        "price": 450,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a43b3408e8b35dde082cf1e",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 450,
+      "commission": 0,
+      "total": 475,
+      "receivable": 450
+    },
+    "sellerPendingExpiresAt": "2026-06-30T12:16:56.365Z",
+    "status": "delivered",
+    "updatedAt": "2026-06-30T12:17:46.921Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a4cd3d050c78b31e1c4be47",
+    "orderId": "QC19854670",
+    "sellerId": "6a43a4a8f381e6a65c0235fe",
+    "__v": 0,
+    "address": {
+      "address": "Rajwada Palace",
+      "city": "Indore",
+      "location": {
+        "lat": 22.718016000000006,
+        "lng": 75.85476320000001
+      }
+    },
+    "createdAt": "2026-07-07T10:24:15.542Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a43a753f381e6a65c023b25",
+        "name": "test product (test)",
+        "price": 450,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a4cd3cf5f8c3881e548802e",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 450,
+      "commission": 0,
+      "total": 475,
+      "receivable": 450
+    },
+    "sellerPendingExpiresAt": "2026-07-07T10:26:15.383Z",
+    "status": "cancelled",
+    "updatedAt": "2026-07-07T11:39:28.786Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a4cda3d50c78b31e1c4be79",
+    "sellerId": "6a3696eaab735b9a83e84280",
+    "orderId": "QC21500130",
+    "__v": 0,
+    "address": {
+      "address": "Rajwada Palace",
+      "city": "Indore",
+      "location": {
+        "lat": 22.718016000000006,
+        "lng": 75.85476320000001
+      }
+    },
+    "createdAt": "2026-07-07T10:51:40.491Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a3d30ac166f04b36bbe99bc",
+        "name": "pav (Default)",
+        "price": 400,
+        "quantity": 1,
+        "image": "uploads/seller/products/zovqwpuvglo7sj6cosvm.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a4cda3c8f35d2522f3bd2dd",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 400,
+      "commission": 0,
+      "total": 425,
+      "receivable": 400
+    },
+    "sellerPendingExpiresAt": "2026-07-07T10:53:40.413Z",
+    "status": "confirmed",
+    "updatedAt": "2026-07-07T10:51:46.341Z",
+    "workflowStatus": "SELLER_ACCEPTED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a4e15fc50c78b31e1c6acd8",
+    "orderId": "QC02329693",
+    "sellerId": "6a43a4a8f381e6a65c0235fe",
+    "__v": 0,
+    "address": {
+      "address": "Rajwada Palace",
+      "city": "Indore",
+      "location": {
+        "lat": 22.718016000000006,
+        "lng": 75.85476320000001
+      }
+    },
+    "createdAt": "2026-07-08T09:18:50.426Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a43a753f381e6a65c023b25",
+        "name": "test product (test)",
+        "price": 450,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a4e15f96177ca1fb8cb7029",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 450,
+      "commission": 0,
+      "total": 475,
+      "receivable": 450
+    },
+    "sellerPendingExpiresAt": "2026-07-08T09:20:50.011Z",
+    "status": "cancelled",
+    "updatedAt": "2026-07-08T09:19:22.616Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a4e16ca50c78b31e1c6ace0",
+    "sellerId": "6a3696eaab735b9a83e84280",
+    "orderId": "QC02536211",
+    "__v": 0,
+    "address": {
+      "address": "Rajwada Palace",
+      "city": "Indore",
+      "location": {
+        "lat": 22.718016000000006,
+        "lng": 75.85476320000001
+      }
+    },
+    "createdAt": "2026-07-08T09:22:16.561Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": "2026-07-08T09:23:39.524Z",
+    "items": [
+      {
+        "productId": "6a3d30ac166f04b36bbe99bc",
+        "name": "pav (Default)",
+        "price": 400,
+        "quantity": 1,
+        "image": "uploads/seller/products/zovqwpuvglo7sj6cosvm.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a4e16c86177ca1fb8cb7263",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 400,
+      "commission": 0,
+      "total": 425,
+      "receivable": 400
+    },
+    "sellerPendingExpiresAt": "2026-07-08T09:24:16.480Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-08T09:23:45.713Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a4e4a7a50c78b31e1c6aeb6",
+    "sellerId": "6a43a4a8f381e6a65c0235fe",
+    "orderId": "QC15769314",
+    "__v": 0,
+    "address": {
+      "address": "Rajwada Palace",
+      "city": "Indore",
+      "location": {
+        "lat": 22.718016000000006,
+        "lng": 75.85476320000001
+      }
+    },
+    "createdAt": "2026-07-08T13:02:51.024Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a43a753f381e6a65c023b25",
+        "name": "test product (test)",
+        "price": 450,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a4e4a797611117d3fafaed3",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 450,
+      "commission": 0,
+      "total": 475,
+      "receivable": 450
+    },
+    "sellerPendingExpiresAt": "2026-07-08T13:04:50.190Z",
+    "status": "cancelled",
+    "updatedAt": "2026-07-08T13:03:26.994Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a566ace6ef2e686ae90dc80",
+    "orderId": "QC48334418",
+    "sellerId": "6a3696eaab735b9a83e84280",
+    "__v": 0,
+    "address": {
+      "address": "Indore Juni Indore Tahsil Indore Madhya Pradesh 452001 India",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7203616,
+        "lng": 75.8681996
+      }
+    },
+    "createdAt": "2026-07-14T16:58:54.832Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": "2026-07-14T17:00:12.491Z",
+    "items": [
+      {
+        "productId": "6a465d847a2a35a4fafc276f",
+        "name": "Haldiram's Frozen Aloo Tikki",
+        "price": 140,
+        "quantity": 1,
+        "image": "uploads/quick-commerce/products/main/qseh9cnff0m0lomfs2hz.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a566ace81307544efaeba61",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 140,
+      "commission": 0,
+      "total": 140,
+      "receivable": 140
+    },
+    "sellerPendingExpiresAt": "2026-07-14T17:00:54.749Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-14T17:00:15.663Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a634e9286304198508c599c",
+    "orderId": "QC93073931",
+    "sellerId": "6a634285daead71a3de89e9d",
+    "__v": 0,
+    "address": {
+      "address": "Block",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7173523,
+        "lng": 75.8716451
+      }
+    },
+    "createdAt": "2026-07-24T11:37:54.192Z",
+    "customer": {
+      "name": "Hy",
+      "phone": "1234567890"
+    },
+    "deliveredAt": "2026-07-24T11:43:01.793Z",
+    "items": [
+      {
+        "productId": "6a6348aedaead71a3de8a643",
+        "name": "Aesthetic wooden chair (Light brown)",
+        "price": 8000,
+        "quantity": 1,
+        "image": "images/seller/products/2026/07/3517c55d-af04-48aa-a380-e8f57ce9187a.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a634e91daead71a3de8ae34",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 8000,
+      "commission": 0,
+      "total": 8000,
+      "receivable": 8000
+    },
+    "sellerPendingExpiresAt": "2026-07-24T11:39:53.980Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-24T11:53:33.630Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a63520486304198508c59da",
+    "sellerId": "6a634285daead71a3de89e9d",
+    "orderId": "QC93956740",
+    "__v": 0,
+    "address": {
+      "address": "Block",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7173523,
+        "lng": 75.8716451
+      }
+    },
+    "createdAt": "2026-07-24T11:52:36.797Z",
+    "customer": {
+      "name": "Hy",
+      "phone": "1234567890"
+    },
+    "deliveredAt": "2026-07-24T12:06:04.598Z",
+    "items": [
+      {
+        "productId": "6a6348aedaead71a3de8a643",
+        "name": "Aesthetic wooden chair (Dark brown)",
+        "price": 7500,
+        "quantity": 1,
+        "image": "images/seller/products/2026/07/3517c55d-af04-48aa-a380-e8f57ce9187a.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a635204daead71a3de8b48b",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 7500,
+      "commission": 0,
+      "total": 7500,
+      "receivable": 7500
+    },
+    "sellerPendingExpiresAt": "2026-07-24T11:54:36.787Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-24T12:06:26.173Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a63569a86304198508c70e3",
+    "sellerId": "6a634285daead71a3de89e9d",
+    "orderId": "QC95130533",
+    "__v": 0,
+    "address": {
+      "address": "Block",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7173523,
+        "lng": 75.8716451
+      }
+    },
+    "createdAt": "2026-07-24T12:12:10.573Z",
+    "customer": {
+      "name": "Hy",
+      "phone": "1234567890"
+    },
+    "deliveredAt": "2026-07-24T12:13:39.263Z",
+    "items": [
+      {
+        "productId": "6a6348aedaead71a3de8a643",
+        "name": "Aesthetic wooden chair (Dark brown)",
+        "price": 7500,
+        "quantity": 1,
+        "image": "images/seller/products/2026/07/3517c55d-af04-48aa-a380-e8f57ce9187a.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a63569adaead71a3de8bdc4",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 7500,
+      "commission": 0,
+      "total": 7500,
+      "receivable": 7500
+    },
+    "sellerPendingExpiresAt": "2026-07-24T12:14:10.565Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-24T12:13:43.366Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a64585886304198508cc9c8",
+    "orderId": "QC61111796",
+    "sellerId": "6a634285daead71a3de89e9d",
+    "__v": 0,
+    "address": {
+      "address": "Block",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7173523,
+        "lng": 75.8716451
+      }
+    },
+    "createdAt": "2026-07-25T06:31:52.064Z",
+    "customer": {
+      "name": "Hy",
+      "phone": "1234567890"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a6348aedaead71a3de8a643",
+        "name": "Aesthetic wooden chair (Dark brown)",
+        "price": 7500,
+        "quantity": 1,
+        "image": "images/seller/products/2026/07/3517c55d-af04-48aa-a380-e8f57ce9187a.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a6458571fc1ac1bd13587c3",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 7500,
+      "commission": 0,
+      "total": 7500,
+      "receivable": 7500
+    },
+    "sellerPendingExpiresAt": "2026-07-25T06:33:51.831Z",
+    "status": "confirmed",
+    "updatedAt": "2026-07-25T06:33:39.537Z",
+    "workflowStatus": "SELLER_ACCEPTED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a67199f05700332ca760877",
+    "orderId": "QC41664505",
+    "sellerId": "6a3696eaab735b9a83e84280",
+    "__v": 0,
+    "address": {
+      "address": "Select location",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7203616,
+        "lng": 75.8681996
+      }
+    },
+    "createdAt": "2026-07-27T08:41:04.730Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a465d837a2a35a4fafc275a",
+        "name": "Act II Classic Salted Popcorn",
+        "price": 45,
+        "quantity": 1,
+        "image": "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=300/app/images/products/sliding_image/125a.jpg"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a6719a0b6a99688a9f98dec",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 45,
+      "commission": 0,
+      "total": 45,
+      "receivable": 45
+    },
+    "sellerPendingExpiresAt": "2026-07-27T08:43:04.683Z",
+    "status": "cancelled",
+    "updatedAt": "2026-07-27T08:43:15.511Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a671ad205700332ca76087e",
+    "orderId": "QC41971825",
+    "sellerId": "6a3696eaab735b9a83e84280",
+    "__v": 0,
+    "address": {
+      "address": "Indore Madhya Pradesh 451225 India",
+      "city": "Indore",
+      "location": {
+        "lat": 22.6666672,
+        "lng": 75.749998
+      }
+    },
+    "createdAt": "2026-07-27T08:46:12.002Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a465d847a2a35a4fafc276f",
+        "name": "Haldiram's Frozen Aloo Tikki",
+        "price": 140,
+        "quantity": 1,
+        "image": "uploads/quick-commerce/products/main/qseh9cnff0m0lomfs2hz.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a671ad3b6a99688a9f99212",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 140,
+      "commission": 0,
+      "total": 140,
+      "receivable": 140
+    },
+    "sellerPendingExpiresAt": "2026-07-27T08:48:11.960Z",
+    "status": "cancelled",
+    "updatedAt": "2026-07-27T08:47:44.960Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a671b6d05700332ca760884",
+    "orderId": "QC42126318",
+    "sellerId": "6a43a4a8f381e6a65c0235fe",
+    "__v": 0,
+    "address": {
+      "address": "Indore Madhya Pradesh 451225 India",
+      "city": "Indore",
+      "location": {
+        "lat": 22.6666672,
+        "lng": 75.749998
+      }
+    },
+    "createdAt": "2026-07-27T08:48:46.690Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": "2026-07-27T08:51:08.122Z",
+    "items": [
+      {
+        "productId": "6a43a753f381e6a65c023b25",
+        "name": "test product (test)",
+        "price": 450,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a671b6eb6a99688a9f9948a",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 450,
+      "commission": 0,
+      "total": 450,
+      "receivable": 450
+    },
+    "sellerPendingExpiresAt": "2026-07-27T08:50:46.576Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-27T08:51:17.947Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a671fe205700332ca760895",
+    "orderId": "QC43268234",
+    "sellerId": "6a43a4a8f381e6a65c0235fe",
+    "__v": 0,
+    "address": {
+      "address": "Indore Madhya Pradesh 451225 India",
+      "city": "Indore",
+      "location": {
+        "lat": 22.6666672,
+        "lng": 75.749998
+      }
+    },
+    "createdAt": "2026-07-27T09:07:48.560Z",
+    "customer": {
+      "name": "siddhi",
+      "phone": "7067933005"
+    },
+    "deliveredAt": "2026-07-27T09:15:24.031Z",
+    "items": [
+      {
+        "productId": "6a43a753f381e6a65c023b25",
+        "name": "test product (test)",
+        "price": 450,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a671fe438239b682c336f0d",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 450,
+      "commission": 0,
+      "total": 450,
+      "receivable": 450
+    },
+    "sellerPendingExpiresAt": "2026-07-27T09:09:48.469Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-27T09:15:34.296Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a68804305700332ca7613b4",
+    "orderId": "QC33475528",
+    "sellerId": "6a68757f8280fcaa380e203c",
+    "__v": 0,
+    "address": {
+      "address": "7",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7177444,
+        "lng": 75.871625
+      }
+    },
+    "createdAt": "2026-07-28T10:11:15.565Z",
+    "customer": {
+      "name": "Himanshi Sharma 66",
+      "phone": "8989931140"
+    },
+    "deliveredAt": "2026-07-28T10:16:30.983Z",
+    "items": [
+      {
+        "productId": "6a687a538280fcaa380e26df",
+        "name": "Cake (half)",
+        "price": 400,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a6880438280fcaa380e3308",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 400,
+      "commission": 0,
+      "total": 400,
+      "receivable": 400
+    },
+    "sellerPendingExpiresAt": "2026-07-28T10:13:15.557Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-28T10:17:02.522Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a68831205700332ca7613d2",
+    "sellerId": "6a68757f8280fcaa380e203c",
+    "orderId": "QC34194230",
+    "__v": 0,
+    "address": {
+      "address": "7",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7177444,
+        "lng": 75.871625
+      }
+    },
+    "createdAt": "2026-07-28T10:23:14.414Z",
+    "customer": {
+      "name": "Himanshi Sharma 66",
+      "phone": "8989931140"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a6882cc8280fcaa380e3867",
+        "name": "Laptops (Coding)",
+        "price": 6000,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a6883128280fcaa380e391c",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 6000,
+      "commission": 0,
+      "total": 6000,
+      "receivable": 6000
+    },
+    "sellerPendingExpiresAt": "2026-07-28T10:25:14.264Z",
+    "status": "cancelled",
+    "updatedAt": "2026-07-28T10:24:29.460Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a68841505700332ca7613e7",
+    "sellerId": "6a68757f8280fcaa380e203c",
+    "orderId": "QC34453828",
+    "__v": 0,
+    "address": {
+      "address": "7",
+      "city": "Indore",
+      "location": {
+        "lat": 22.7177444,
+        "lng": 75.871625
+      }
+    },
+    "createdAt": "2026-07-28T10:27:33.975Z",
+    "customer": {
+      "name": "Himanshi Sharma 66",
+      "phone": "8989931140"
+    },
+    "deliveredAt": "2026-07-28T10:33:48.615Z",
+    "items": [
+      {
+        "productId": "6a6882cc8280fcaa380e3867",
+        "name": "Laptops (Gaming)",
+        "price": 4000,
+        "quantity": 1,
+        "image": ""
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a6884158280fcaa380e3a8b",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 4000,
+      "commission": 0,
+      "total": 4000,
+      "receivable": 4000
+    },
+    "sellerPendingExpiresAt": "2026-07-28T10:29:33.857Z",
+    "status": "delivered",
+    "updatedAt": "2026-07-28T11:00:37.430Z",
+    "workflowStatus": "DELIVERED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a8bf8458e0f4e63d84ea88d",
+    "sellerId": "6a8ac35f8065d4a4563af5e4",
+    "orderId": "QC57957641",
+    "__v": 0,
+    "address": {
+      "address": "Ashapurna Colony",
+      "city": "Sanchore",
+      "location": {
+        "lat": 24.7543784,
+        "lng": 71.7742408
+      }
+    },
+    "createdAt": "2026-08-24T07:52:37.708Z",
+    "customer": {
+      "name": "Manoj Gehlot",
+      "phone": "9610318024"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a8ad3568065d4a4563b06ee",
+        "name": "Lock (Default)",
+        "price": 599,
+        "quantity": 1,
+        "image": "upload/seller-products-1787482965467-d36269.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a8bf845d874ad7924842456",
+    "payment": {
+      "method": "cash"
+    },
+    "pricing": {
+      "subtotal": 599,
+      "commission": 0,
+      "total": 599,
+      "receivable": 599
+    },
+    "sellerPendingExpiresAt": "2026-08-24T07:54:37.697Z",
+    "status": "cancelled",
+    "updatedAt": "2026-08-24T09:08:53.227Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  },
+  {
+    "_id": "6a8db58aaa3ae0747070f1e2",
+    "sellerId": "6a8ac35f8065d4a4563af5e4",
+    "orderId": "QC71946360",
+    "__v": 0,
+    "address": {
+      "address": "QQ3F+QHW",
+      "city": "Sanchore",
+      "location": {
+        "lat": 24.7544652,
+        "lng": 71.7738906
+      }
+    },
+    "createdAt": "2026-08-25T15:32:26.599Z",
+    "customer": {
+      "name": "Bharmal ram",
+      "phone": "8094672379"
+    },
+    "deliveredAt": null,
+    "items": [
+      {
+        "productId": "6a8ad3568065d4a4563b06ee",
+        "name": "Lock (Default)",
+        "price": 599,
+        "quantity": 2,
+        "image": "upload/seller-products-1787482965467-d36269.webp"
+      }
+    ],
+    "orderType": "quick",
+    "parentOrderId": "6a8db58a3f78e47fe9bbf469",
+    "payment": {
+      "method": "online"
+    },
+    "pricing": {
+      "subtotal": 1198,
+      "commission": 0,
+      "total": 1198,
+      "receivable": 1198
+    },
+    "sellerPendingExpiresAt": "2026-08-25T15:34:26.433Z",
+    "status": "cancelled",
+    "updatedAt": "2026-08-26T05:11:10.385Z",
+    "workflowStatus": "CANCELLED",
+    "workflowVersion": 1
+  }
+]

@@ -18,6 +18,7 @@
     "migrate:global-auth": "node scripts/migrate-global-auth-collections.js",
     "migrate:seller-quick-shared": "node scripts/migrate-seller-quick-commerce-to-shared.js",
     "cleanup:legacy-collections": "node scripts/cleanup-legacy-collections.js",
+    "backup:db": "node scripts/exportDbBackup.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

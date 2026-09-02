@@ -209,6 +209,8 @@ export async function updateGlobalSettings(req, res, next) {
             }
         }
 
+        const previousBannedNumbers = settings?.bannedNumbers ? [...settings.bannedNumbers] : [];
+
         // Execute reliable update with upsert to ensure document creation
         settings = await GlobalSettings.findOneAndUpdate(
             { _id: settings._id },
@@ -216,25 +218,52 @@ export async function updateGlobalSettings(req, res, next) {
             { new: true, upsert: true, lean: true }
         );
 
-        // Auto-logout for newly banned numbers
-        if (bannedNumbers && Array.isArray(bannedNumbers) && bannedNumbers.length > 0) {
-
+        // Sync account statuses for newly banned / newly unbanned numbers
+        if (bannedNumbers !== undefined && Array.isArray(bannedNumbers)) {
             try {
-                const users = await FoodUser.find({ phone: { $in: bannedNumbers } }).select('_id');
-                const restaurants = await FoodRestaurant.find({ ownerPhone: { $in: bannedNumbers } }).select('_id');
-                const dps = await FoodDeliveryPartner.find({ phone: { $in: bannedNumbers } }).select('_id');
-                const sellers = await Seller.find({ phone: { $in: bannedNumbers } }).select('_id');
+                const cleanPhone = (num) => String(num || '').replace(/\D/g, '').slice(-10);
+                const prevCleanList = previousBannedNumbers.map(cleanPhone).filter(Boolean);
+                const newCleanList = bannedNumbers.map(cleanPhone).filter(Boolean);
 
-                const idsToLogout = [
-                    ...users.map(u => u._id),
-                    ...restaurants.map(r => r._id),
-                    ...dps.map(d => d._id),
-                    ...sellers.map(s => s._id)
-                ];
+                const newlyBannedClean = Array.from(new Set(newCleanList.filter(n => !prevCleanList.includes(n))));
+                const newlyUnbannedClean = Array.from(new Set(prevCleanList.filter(n => !newCleanList.includes(n))));
 
-                if (idsToLogout.length > 0) {
-                    await FoodRefreshToken.deleteMany({ userId: { $in: idsToLogout } });
-                    // Deactivate them so auth middleware catches it
+                const makePhoneFilter = (field, cleanNumbers) => {
+                    if (!cleanNumbers || cleanNumbers.length === 0) return null;
+                    const regexParts = cleanNumbers.map(num => `${num}$`);
+                    const regex = new RegExp(`(${regexParts.join('|')})`);
+                    return {
+                        $or: [
+                            { [field]: { $in: cleanNumbers } },
+                            { [field]: { $regex: regex } }
+                        ]
+                    };
+                };
+
+                // Handle Newly Banned Numbers -> Deactivate & Logout
+                if (newlyBannedClean.length > 0) {
+                    const userFilter = makePhoneFilter('phone', newlyBannedClean);
+                    const restFilter = makePhoneFilter('ownerPhone', newlyBannedClean);
+                    const dpFilter = makePhoneFilter('phone', newlyBannedClean);
+                    const sellerFilter = makePhoneFilter('phone', newlyBannedClean);
+
+                    const [users, restaurants, dps, sellers] = await Promise.all([
+                        userFilter ? FoodUser.find(userFilter).select('_id') : [],
+                        restFilter ? FoodRestaurant.find(restFilter).select('_id') : [],
+                        dpFilter ? FoodDeliveryPartner.find(dpFilter).select('_id') : [],
+                        sellerFilter ? Seller.find(sellerFilter).select('_id') : []
+                    ]);
+
+                    const idsToLogout = [
+                        ...users.map(u => u._id),
+                        ...restaurants.map(r => r._id),
+                        ...dps.map(d => d._id),
+                        ...sellers.map(s => s._id)
+                    ];
+
+                    if (idsToLogout.length > 0) {
+                        await FoodRefreshToken.deleteMany({ userId: { $in: idsToLogout } });
+                    }
                     if (users.length > 0) {
                         await FoodUser.updateMany({ _id: { $in: users.map(u => u._id) } }, { isActive: false });
                     }
@@ -242,14 +271,42 @@ export async function updateGlobalSettings(req, res, next) {
                         await FoodRestaurant.updateMany({ _id: { $in: restaurants.map(r => r._id) } }, { status: 'rejected' });
                     }
                     if (dps.length > 0) {
-                        await FoodDeliveryPartner.updateMany({ _id: { $in: dps.map(d => d._id) } }, { status: 'rejected' });
+                        await FoodDeliveryPartner.updateMany({ _id: { $in: dps.map(d => d._id) } }, { status: 'rejected', isDeactivated: true, adminForceOffline: true });
                     }
                     if (sellers.length > 0) {
-                        await Seller.updateMany({ _id: { $in: sellers.map(s => s._id) } }, { isActive: false });
+                        await Seller.updateMany({ _id: { $in: sellers.map(s => s._id) } }, { isActive: false, approved: false });
+                    }
+                }
+
+                // Handle Newly Unbanned Numbers -> Reactivate
+                if (newlyUnbannedClean.length > 0) {
+                    const userFilter = makePhoneFilter('phone', newlyUnbannedClean);
+                    const restFilter = makePhoneFilter('ownerPhone', newlyUnbannedClean);
+                    const dpFilter = makePhoneFilter('phone', newlyUnbannedClean);
+                    const sellerFilter = makePhoneFilter('phone', newlyUnbannedClean);
+
+                    const [users, restaurants, dps, sellers] = await Promise.all([
+                        userFilter ? FoodUser.find(userFilter).select('_id') : [],
+                        restFilter ? FoodRestaurant.find(restFilter).select('_id') : [],
+                        dpFilter ? FoodDeliveryPartner.find(dpFilter).select('_id') : [],
+                        sellerFilter ? Seller.find(sellerFilter).select('_id') : []
+                    ]);
+
+                    if (users.length > 0) {
+                        await FoodUser.updateMany({ _id: { $in: users.map(u => u._id) } }, { isActive: true });
+                    }
+                    if (restaurants.length > 0) {
+                        await FoodRestaurant.updateMany({ _id: { $in: restaurants.map(r => r._id) } }, { status: 'approved' });
+                    }
+                    if (dps.length > 0) {
+                        await FoodDeliveryPartner.updateMany({ _id: { $in: dps.map(d => d._id) } }, { status: 'approved', isDeactivated: false, adminForceOffline: false });
+                    }
+                    if (sellers.length > 0) {
+                        await Seller.updateMany({ _id: { $in: sellers.map(s => s._id) } }, { isActive: true, approved: true });
                     }
                 }
             } catch (err) {
-                console.error("Error auto-logging out banned numbers:", err);
+                console.error("Error updating account statuses for banned/unbanned numbers:", err);
             }
         }
 

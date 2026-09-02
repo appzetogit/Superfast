@@ -1,0 +1,366 @@
+[
+  {
+    "_id": "6a4f498c0e2eebf06224ef46",
+    "restaurantId": "6a3d1d38a66ba313c76e1a53",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 10
+    },
+    "notes": "restaurant commission",
+    "status": true,
+    "createdAt": "2026-07-09T07:11:08.208Z",
+    "updatedAt": "2026-07-09T07:11:08.208Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a4f49bd0e2eebf06224ef71",
+    "restaurantId": "6a36960bd7dbc483c0206cad",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 10
+    },
+    "notes": "restaurant comm.",
+    "status": true,
+    "createdAt": "2026-07-09T07:11:57.554Z",
+    "updatedAt": "2026-07-09T07:17:08.117Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a635f30daead71a3de8d25e",
+    "restaurantId": "6a632da36fc19fe9b124a97c",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 10
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-07-24T12:48:48.654Z",
+    "updatedAt": "2026-07-24T12:48:48.654Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8852b752663077b5010cd4",
+    "restaurantId": "078035f39af3dd34be788240",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:29:27.215Z",
+    "updatedAt": "2026-08-21T13:29:27.215Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8852d252663077b5010d16",
+    "restaurantId": "86777331e99c288c0f3846b7",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:29:54.506Z",
+    "updatedAt": "2026-08-21T13:29:54.506Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8852df52663077b5010d1d",
+    "restaurantId": "f188b66128c697fd205c06ad",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:30:07.153Z",
+    "updatedAt": "2026-08-21T13:30:07.153Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8852eb52663077b5010d22",
+    "restaurantId": "0dddcee339931a76d3d8a06f",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:30:19.187Z",
+    "updatedAt": "2026-08-21T13:30:19.187Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8852fd52663077b5010d64",
+    "restaurantId": "002e7ae7839638e9ff185952",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:30:37.860Z",
+    "updatedAt": "2026-08-21T13:30:37.860Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88530b52663077b5010d69",
+    "restaurantId": "ad3d2ecdcb8d88832d6b6ba0",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:30:51.638Z",
+    "updatedAt": "2026-08-21T13:30:51.638Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88531f52663077b5010d70",
+    "restaurantId": "88ce6fd0badc02d3a319117f",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:31:11.274Z",
+    "updatedAt": "2026-08-21T13:31:11.274Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88538552663077b5010e06",
+    "restaurantId": "33a8a1a7ea6e8645f1e7d6e1",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:32:53.976Z",
+    "updatedAt": "2026-08-21T13:32:53.976Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88539652663077b5010e0d",
+    "restaurantId": "a17f802e69233d33ac64f21c",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:33:10.730Z",
+    "updatedAt": "2026-08-21T13:33:10.730Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8853a552663077b5010e12",
+    "restaurantId": "50fbf688e2723068afafd44f",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:33:25.126Z",
+    "updatedAt": "2026-08-21T13:33:25.126Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8853b152663077b5010e54",
+    "restaurantId": "0e8f320c929705970dac1869",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:33:37.465Z",
+    "updatedAt": "2026-08-21T13:33:37.465Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8853bb52663077b5010e59",
+    "restaurantId": "bcf7810f3e0e06f07cc9155d",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:33:47.739Z",
+    "updatedAt": "2026-08-21T13:33:47.739Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8853c452663077b5010e5e",
+    "restaurantId": "2e11c8d88797c3947fc844e4",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:33:56.325Z",
+    "updatedAt": "2026-08-21T13:33:56.325Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8853e352663077b5010e67",
+    "restaurantId": "d83acff643e9d5b71df61459",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:34:27.115Z",
+    "updatedAt": "2026-08-21T13:34:27.115Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8853ed52663077b5010ea9",
+    "restaurantId": "5c2ba243de7bab7fb12f5124",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:34:37.280Z",
+    "updatedAt": "2026-08-21T13:34:37.280Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88540652663077b5010eb1",
+    "restaurantId": "d06f261c71c2ca2c33ee5320",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 35
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:35:02.957Z",
+    "updatedAt": "2026-08-21T13:35:02.957Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88541552663077b5010eb6",
+    "restaurantId": "ad4eb7c909e49a34c06b7a9d",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:35:17.897Z",
+    "updatedAt": "2026-08-21T13:35:17.897Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88542152663077b5010ef8",
+    "restaurantId": "f20dc4b5aab28785939671f1",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:35:29.537Z",
+    "updatedAt": "2026-08-21T13:35:29.537Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88544752663077b5010f65",
+    "restaurantId": "5d33250dc98ceeccb0d71594",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:36:07.578Z",
+    "updatedAt": "2026-08-21T13:36:07.578Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88545252663077b5010f6a",
+    "restaurantId": "43ea057b7ff27aa131e1fecd",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:36:18.966Z",
+    "updatedAt": "2026-08-21T13:36:18.966Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88549b52663077b5010fb1",
+    "restaurantId": "8e0e8d858db97b5a7d9a8a09",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:37:31.621Z",
+    "updatedAt": "2026-08-21T13:37:31.621Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8854a652663077b5010fb6",
+    "restaurantId": "154bfbd0c329beb93e3eec4b",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": false,
+    "createdAt": "2026-08-21T13:37:42.431Z",
+    "updatedAt": "2026-08-25T06:08:10.072Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8854b252663077b5010ff8",
+    "restaurantId": "1406720d922e68a393333821",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 25
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:37:54.926Z",
+    "updatedAt": "2026-08-21T13:37:54.926Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8854f052663077b5011066",
+    "restaurantId": "75946789a13c0971ff12d650",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-21T13:38:56.817Z",
+    "updatedAt": "2026-08-21T13:38:56.817Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8d3146567c259d0f63ca36",
+    "restaurantId": "6a3a0ec02824f1de8919595a",
+    "defaultCommission": {
+      "type": "percentage",
+      "value": 20
+    },
+    "notes": "",
+    "status": true,
+    "createdAt": "2026-08-25T06:08:06.274Z",
+    "updatedAt": "2026-08-25T06:08:06.274Z",
+    "__v": 0
+  }
+]

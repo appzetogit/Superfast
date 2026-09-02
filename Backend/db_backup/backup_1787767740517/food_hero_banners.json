@@ -1,0 +1,98 @@
+[
+  {
+    "_id": "6a67288a8979d0df57c871a9",
+    "imageUrl": "images/food/hero-banners/2026/07/368cc54f-b0fa-4cbe-bdb6-1d0a23c3dcb9.webp",
+    "publicId": "images/food/hero-banners/2026/07/368cc54f-b0fa-4cbe-bdb6-1d0a23c3dcb9.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-07-27T09:44:42.393Z",
+    "updatedAt": "2026-08-21T13:21:11.331Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a6728948979d0df57c871ac",
+    "imageUrl": "images/food/hero-banners/2026/07/fefe06ef-292c-449c-9f23-29e406b049cb.webp",
+    "publicId": "images/food/hero-banners/2026/07/fefe06ef-292c-449c-9f23-29e406b049cb.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-07-27T09:44:52.469Z",
+    "updatedAt": "2026-08-21T13:21:12.896Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a67289a8979d0df57c871af",
+    "imageUrl": "images/food/hero-banners/2026/07/43ae801d-bd98-44a1-af3b-9914dab5e6fd.webp",
+    "publicId": "images/food/hero-banners/2026/07/43ae801d-bd98-44a1-af3b-9914dab5e6fd.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-07-27T09:44:58.165Z",
+    "updatedAt": "2026-08-21T13:21:14.079Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a884fe052663077b50109a3",
+    "imageUrl": "upload/food-hero-banners-1787318240588-693ace.webp",
+    "publicId": "upload/food-hero-banners-1787318240588-693ace.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-08-21T13:17:20.696Z",
+    "updatedAt": "2026-08-21T13:20:51.647Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88504252663077b5010a22",
+    "imageUrl": "upload/food-hero-banners-1787318338317-8daf8a.webp",
+    "publicId": "upload/food-hero-banners-1787318338317-8daf8a.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-08-21T13:18:58.426Z",
+    "updatedAt": "2026-08-21T13:18:58.426Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88509b52663077b5010a66",
+    "imageUrl": "upload/food-hero-banners-1787318427146-d6b2e6.webp",
+    "publicId": "upload/food-hero-banners-1787318427146-d6b2e6.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-08-21T13:20:27.419Z",
+    "updatedAt": "2026-08-21T13:21:02.747Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a88509b52663077b5010a68",
+    "imageUrl": "upload/food-hero-banners-1787318427428-5eb7f6.webp",
+    "publicId": "upload/food-hero-banners-1787318427428-5eb7f6.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-08-21T13:20:27.651Z",
+    "updatedAt": "2026-08-21T13:21:07.866Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8d5f1092f8a6a38fb08cf3",
+    "imageUrl": "upload/food-hero-banners-1787649808399-f8deb3.webp",
+    "publicId": "upload/food-hero-banners-1787649808399-f8deb3.webp",
+    "zoneId": "",
+    "linkedRestaurantIds": [],
+    "sortOrder": 0,
+    "isActive": true,
+    "createdAt": "2026-08-25T09:23:28.609Z",
+    "updatedAt": "2026-08-25T09:23:28.609Z",
+    "__v": 0
+  }
+]
