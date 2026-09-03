@@ -6,6 +6,7 @@ import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { Seller } from '../../quick-commerce/seller/models/seller.model.js';
 import { FoodRefreshToken } from '../../../core/refreshTokens/refreshToken.model.js';
+import { FoodOtp } from '../../../core/otp/otp.model.js';
 import { transformImageFields } from '../../../utils/urlHelper.js';
 
 export async function getGlobalSettings(req, res, next) {
@@ -303,6 +304,12 @@ export async function updateGlobalSettings(req, res, next) {
                     }
                     if (sellers.length > 0) {
                         await Seller.updateMany({ _id: { $in: sellers.map(s => s._id) } }, { isActive: true, approved: true });
+                    }
+
+                    // Clear rate limiting / old OTPs for unbanned numbers
+                    const otpFilter = makePhoneFilter('phone', newlyUnbannedClean);
+                    if (otpFilter) {
+                        await FoodOtp.deleteMany(otpFilter);
                     }
                 }
             } catch (err) {

@@ -44,6 +44,7 @@ import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashD
 import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
 import { refundWalletBalance } from '../../user/services/userWallet.service.js';
 import { GlobalSettings } from '../../../common/models/settings.model.js';
+import { FoodOtp } from '../../../../core/otp/otp.model.js';
 import * as foodTransactionService from '../../orders/services/foodTransaction.service.js';
 import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
 
@@ -54,22 +55,32 @@ const syncBannedNumber = async (phone, isBanning) => {
 
     try {
         const settings = await GlobalSettings.findOne();
-        if (!settings) return;
+        if (settings) {
+            let banned = Array.isArray(settings.bannedNumbers) ? [...settings.bannedNumbers] : [];
+            if (isBanning) {
+                if (!banned.includes(cleanDigits)) {
+                    banned.push(cleanDigits);
+                    await GlobalSettings.updateOne({ _id: settings._id }, { $set: { bannedNumbers: banned } });
+                }
+            } else {
+                const updatedBanned = banned.filter(b => {
+                    const bClean = String(b).replace(/\D/g, '').slice(-10);
+                    return bClean !== cleanDigits;
+                });
+                if (updatedBanned.length !== banned.length) {
+                    await GlobalSettings.updateOne({ _id: settings._id }, { $set: { bannedNumbers: updatedBanned } });
+                }
+            }
+        }
 
-        let banned = Array.isArray(settings.bannedNumbers) ? [...settings.bannedNumbers] : [];
-        if (isBanning) {
-            if (!banned.includes(cleanDigits)) {
-                banned.push(cleanDigits);
-                await GlobalSettings.updateOne({ _id: settings._id }, { $set: { bannedNumbers: banned } });
-            }
-        } else {
-            const updatedBanned = banned.filter(b => {
-                const bClean = String(b).replace(/\D/g, '').slice(-10);
-                return bClean !== cleanDigits;
+        if (!isBanning) {
+            const phoneCandidates = [cleanDigits, `91${cleanDigits}`, `+91${cleanDigits}`, `+91 ${cleanDigits}`];
+            await FoodOtp.deleteMany({
+                $or: [
+                    { phone: { $in: phoneCandidates } },
+                    { phone: { $regex: new RegExp(cleanDigits + '$') } }
+                ]
             });
-            if (updatedBanned.length !== banned.length) {
-                await GlobalSettings.updateOne({ _id: settings._id }, { $set: { bannedNumbers: updatedBanned } });
-            }
         }
     } catch (e) {
         console.error('Error syncing banned number:', e);
