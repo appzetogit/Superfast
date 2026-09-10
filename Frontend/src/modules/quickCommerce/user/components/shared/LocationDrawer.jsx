@@ -17,7 +17,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
     isFetchingLocation,
     locationError,
   } = useLocation();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [placePredictions, setPlacePredictions] = useState([]);
@@ -267,7 +267,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
             </div>
 
             <div className="px-4 flex flex-col gap-3">
-              <button 
+              <button
                 onClick={handleSelectCurrentLocation}
                 className="flex items-center gap-4 bg-gray-50 dark:bg-slate-900/50 p-4 rounded-2xl text-left w-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
               >
@@ -278,7 +278,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
                 </div>
               </button>
 
-              <button 
+              <button
                 onClick={handleAddAddress}
                 className="flex items-center gap-4 bg-gray-50 dark:bg-slate-900/50 p-4 rounded-2xl text-left w-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
               >
@@ -291,7 +291,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
                   <h4 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase mb-3">Saved addresses</h4>
                   <div className="flex flex-col gap-3">
                     {savedAddresses.map(addr => (
-                      <button 
+                      <button
                         key={addr.id}
                         onClick={() => handleSelectAddress(addr)}
                         className="flex items-center gap-4 bg-white dark:bg-slate-900/40 border border-gray-100 dark:border-white/5 p-4 rounded-2xl text-left hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
@@ -312,7 +312,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
                   <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Search results</h4>
                   <div className="flex flex-col gap-2">
                     {placePredictions.map(p => (
-                      <button 
+                      <button
                         key={p.place_id}
                         onClick={() => handleSelectPlace(p)}
                         className="p-3 text-left hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg text-sm border-b border-gray-50 dark:border-white/5 transition-colors"

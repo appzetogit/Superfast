@@ -7,14 +7,14 @@ import fallbackNotificationSound from "@food/assets/audio/alert.mp3";
 const pushNotificationSoundPath = "/zomato_sms.mp3";
 
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAYOU6SqSltWXs0qPcTZr-4BiU8EhmT1Z8",
-  authDomain: "superfast-9fb35.firebaseapp.com",
-  projectId: "superfast-9fb35",
-  storageBucket: "superfast-9fb35.firebasestorage.app",
-  messagingSenderId: "983730882946",
-  appId: "1:983730882946:web:de18e0398ac793c52a279b",
-  measurementId: "G-50D5FK55YN",
-  vapidKey: "BKgheoJbnS9r_ln95WM6GYz674cXnMQFK8g7g7QVu9866ouMXrEY5XkOje8DlAg2MbGT3tm5eBi7vsnZ7GI0nDM",
+  apiKey: "AIzaSyBM6_j3q46mziCe31PzLhxYvgxUVXAZ-yg",
+  authDomain: "superfast-1c0d2.firebaseapp.com",
+  projectId: "superfast-1c0d2",
+  storageBucket: "superfast-1c0d2.firebasestorage.app",
+  messagingSenderId: "429602583301",
+  appId: "1:429602583301:web:ad419bdcd2ef139311fd6c",
+  measurementId: "G-RZMWCFRN29",
+  vapidKey: "BIwoSjtwv48UEjf87IB1yYU3UTeskPMWp98nkHDH5ALxIEf31WoJQDcrfi4ask1Hnoxoxeu2dpobctkBLuVHj14",
 };
 
 const tokenCachePrefix = "fcm_web_registered_token_";

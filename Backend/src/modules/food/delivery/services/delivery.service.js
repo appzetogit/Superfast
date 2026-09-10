@@ -11,9 +11,9 @@ import { QuickReturnRequest } from '../../../quick-commerce/models/ReturnRequest
 
 export const checkVehicleNumber = async (vehicleNumber) => {
     if (!vehicleNumber) return false;
-    const existing = await FoodDeliveryPartner.findOne({ 
+    const existing = await FoodDeliveryPartner.findOne({
         vehicleNumber: { $regex: new RegExp(`^${vehicleNumber}$`, 'i') },
-        status: { $ne: 'rejected' } 
+        status: { $ne: 'rejected' }
     }).select('_id').lean();
     return !!existing;
 };

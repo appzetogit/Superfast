@@ -13,9 +13,9 @@ import AnimatedPage from "@food/components/user/AnimatedPage"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { loadGoogleMaps } from "@/core/services/googleMapsLoader"
 
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 // Enable Maps if API Key is available, otherwise fallback to coordinates-only mode
 const MAPS_ENABLED = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -168,7 +168,7 @@ export default function AddressSelectorPage() {
   const [baseMapHeight, setBaseMapHeight] = useState(320)
   const formBodyRef = useRef(null)
   const manualFieldRefs = useRef({})
-  
+
   const ENABLE_LOCATION_REVERSE_GEOCODE = import.meta.env.VITE_ENABLE_LOCATION_REVERSE_GEOCODE !== "false"
   const ENABLE_NOMINATIM_SEARCH = import.meta.env.VITE_ENABLE_NOMINATIM_SEARCH !== "false"
   const getAddressId = (address) => address?.id || address?._id || null
@@ -192,7 +192,7 @@ export default function AddressSelectorPage() {
 
     try {
       sessionStorage.removeItem("address_selector_from")
-    } catch {}
+    } catch { }
 
     const targetRoute = (explicitFrom && !explicitFrom.includes("address-selector")) ? explicitFrom : "/food/user"
     navigate(targetRoute, { replace: true })
@@ -359,7 +359,7 @@ export default function AddressSelectorPage() {
         if (!isMounted || !mapContainerRef.current) return
 
         const initialPos = { lat: mapPosition[0], lng: mapPosition[1] }
-        
+
         const map = new google.maps.Map(mapContainerRef.current, {
           center: initialPos,
           zoom: 16,
@@ -388,7 +388,7 @@ export default function AddressSelectorPage() {
             const center = map.getCenter()
             const lat = center.lat()
             const lng = center.lng()
-            
+
             // Only update if moved more than ~5 meters (roughly 0.00005 degrees)
             const dist = Math.sqrt(Math.pow(lat - lastLat, 2) + Math.pow(lng - lastLng, 2))
             if (dist > 0.00005) {
@@ -415,26 +415,26 @@ export default function AddressSelectorPage() {
     try {
       toast.loading("Getting location...", { id: "geo" })
       const loc = await requestLocation(true, true)
-      
+
       if (loc?.latitude) {
         // Update state
         const newPos = [loc.latitude, loc.longitude]
         setMapPosition(newPos)
         setCurrentAddress(loc.formattedAddress || loc.address || "")
-        
+
         // Persist
         persistSelectedLocation(loc)
-        try { 
+        try {
           localStorage.setItem("deliveryAddressMode", "current");
           window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-        } catch {}
-        
+        } catch { }
+
         // Update map
         if (googleMapRef.current) {
           googleMapRef.current.panTo({ lat: loc.latitude, lng: loc.longitude })
           googleMapRef.current.setZoom(17)
         }
-        
+
         // Update form data if form is open
         if (showAddressForm) {
           setAddressFormData(prev => ({
@@ -476,12 +476,12 @@ export default function AddressSelectorPage() {
     const locationPayload = buildLocationPayloadFromAddress(address)
     if (locationPayload) {
       persistSelectedLocation(locationPayload)
-      try { 
+      try {
         localStorage.setItem("deliveryAddressMode", "saved");
         window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-      } catch {}
+      } catch { }
       toast.success("Address selected")
-      
+
       const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
       const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
       setTimeout(() => {
@@ -515,7 +515,7 @@ export default function AddressSelectorPage() {
     const lat = addr.latitude || addr.location?.coordinates?.[1]
     const lng = addr.longitude || addr.location?.coordinates?.[0]
     if (lat && lng) {
-       setMapPosition([lat, lng])
+      setMapPosition([lat, lng])
     }
     setEditingAddressId(getAddressId(addr))
     setShowAddressForm(true)
@@ -576,7 +576,7 @@ export default function AddressSelectorPage() {
 
   const handleMapMoveEnd = async (lat, lng) => {
     if (!ENABLE_LOCATION_REVERSE_GEOCODE || ignoreReverseGeocodeRef.current) return
-    
+
     // Prevent redundant calls for the same coordinates
     const coordKey = `${lat.toFixed(5)},${lng.toFixed(5)}`
     if (manualFieldRefs.current._lastCoords === coordKey) return
@@ -630,18 +630,18 @@ export default function AddressSelectorPage() {
 
       // 2. Fallback to Nominatim Reverse Geocoding
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
-      const response = await fetch(url, { 
-        headers: { 
+      const response = await fetch(url, {
+        headers: {
           "Accept-Language": "en",
-          "User-Agent": "superfast-food-App" 
-        } 
+          "User-Agent": "superfast-food-App"
+        }
       })
       const json = await response.json()
-      
+
       if (json && json.address) {
         const addr = json.address
         const formatted = json.display_name
-        
+
         const street = [
           addr.road,
           addr.suburb,
@@ -692,16 +692,16 @@ export default function AddressSelectorPage() {
         const id = getAddressId(savedAddress) || getAddressId(payload) || editingAddressId
         if (id) await setDefaultAddress(id)
         persistSelectedLocation(buildLocationPayloadFromAddress(savedAddress || payload))
-        try { 
+        try {
           localStorage.setItem("deliveryAddressMode", "saved");
           window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-        } catch {}
+        } catch { }
         toast.success(editingAddressId ? "Address updated" : "Address saved")
         setShowAddressForm(false)
         setEditingAddressId(null)
         setAddressAutocompleteValue("")
         setKeywordAddressSuggestions([])
-        
+
         const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
         const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
         setTimeout(() => {
@@ -800,7 +800,7 @@ export default function AddressSelectorPage() {
   }
 
   if (showAddressForm) {
-    const mapHeight = baseMapHeight 
+    const mapHeight = baseMapHeight
     return (
       <AnimatedPage
         className="fixed inset-0 z-50 bg-white dark:bg-[#0a0a0a] flex flex-col overflow-hidden"
@@ -823,7 +823,7 @@ export default function AddressSelectorPage() {
           {/* Map Section - Parallax enabled */}
           <div
             className="flex-shrink-0 relative z-0"
-            style={{ 
+            style={{
               height: `${mapHeight}px`,
               transform: `translateY(${formScrollTop * 0.4}px)`,
               opacity: clamp(1 - (formScrollTop / 500), 0.4, 1)
@@ -843,7 +843,7 @@ export default function AddressSelectorPage() {
                 />
                 {isKeywordSearching && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--primary-theme)] border-t-transparent" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--primary-theme)] border-t-transparent" />
                   </div>
                 )}
 
@@ -875,17 +875,17 @@ export default function AddressSelectorPage() {
                 Map preview could not load here. You can still enter and save the address manually below.
               </div>
             )}
-            
+
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-               <div className="relative mb-8 flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center p-2 mb-[-6px] shadow-sm animate-bounce-short">
-                     <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center border-2 border-white">
-                        <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                     </div>
+              <div className="relative mb-8 flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center p-2 mb-[-6px] shadow-sm animate-bounce-short">
+                  <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center border-2 border-white">
+                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                   </div>
-                  <div className="w-1.5 h-6 bg-green-600 border-x border-white shadow-xl rounded-b-full shadow-green-900/40" />
-                  <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[1px] transform scale-x-150 absolute bottom-[-4px]" />
-               </div>
+                </div>
+                <div className="w-1.5 h-6 bg-green-600 border-x border-white shadow-xl rounded-b-full shadow-green-900/40" />
+                <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[1px] transform scale-x-150 absolute bottom-[-4px]" />
+              </div>
             </div>
 
             {mapLoading && (
@@ -893,11 +893,11 @@ export default function AddressSelectorPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-theme)]" />
               </div>
             )}
-            
+
             <div className="absolute bottom-10 right-4 z-10">
-              <Button 
-                  onClick={handleUseCurrentLocation} 
-                  className="bg-white text-black hover:bg-gray-100 shadow-xl border border-gray-200 rounded-full h-12 px-6"
+              <Button
+                onClick={handleUseCurrentLocation}
+                className="bg-white text-black hover:bg-gray-100 shadow-xl border border-gray-200 rounded-full h-12 px-6"
               >
                 <Navigation className="h-4 w-4 mr-2 text-[var(--primary-theme)]" /> Use My Location
               </Button>
@@ -906,22 +906,22 @@ export default function AddressSelectorPage() {
 
           <div className="relative bg-white dark:bg-[#0a0a0a] rounded-t-[32px] -mt-8 z-10 p-4 space-y-6 shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.1)]">
             <div className="bg-orange-50/50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/20 rounded-xl p-4 flex gap-3">
-               <MapPin className="h-5 w-5 text-[var(--primary-theme)] mt-0.5" />
-               <div className="min-w-0">
-                  <p className="text-xs font-bold text-orange-800 dark:text-orange-200 uppercase mb-1">Pinnned Location</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{currentAddress || "Select a location on map"}</p>
-               </div>
+              <MapPin className="h-5 w-5 text-[var(--primary-theme)] mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-orange-800 dark:text-orange-200 uppercase mb-1">Pinnned Location</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{currentAddress || "Select a location on map"}</p>
+              </div>
             </div>
 
             <div className="relative">
               <Label className="text-sm font-bold mb-2 block">Primary Address (Street / Area / Landmark)</Label>
               <div className="relative">
-                <Input 
-                  placeholder="Search or drag to update street/area" 
-                  value={addressFormData.street} 
+                <Input
+                  placeholder="Search or drag to update street/area"
+                  value={addressFormData.street}
                   onChange={e => {
                     skipStreetSearchRef.current = false
-                    setAddressFormData({...addressFormData, street: e.target.value.replace(/[^a-zA-Z0-9\s]/g, "")})
+                    setAddressFormData({ ...addressFormData, street: e.target.value.replace(/[^a-zA-Z0-9\s]/g, "") })
                   }}
                   onFocus={() => scrollFieldIntoView("street")}
                   ref={(el) => { manualFieldRefs.current.street = el }}
@@ -930,7 +930,7 @@ export default function AddressSelectorPage() {
                 />
                 {isStreetSearching && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 -mt-2">
-                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--primary-theme)] border-t-transparent" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--primary-theme)] border-t-transparent" />
                   </div>
                 )}
               </div>
@@ -979,10 +979,10 @@ export default function AddressSelectorPage() {
 
             <div>
               <Label className="text-sm font-bold mb-2 block text-[var(--primary-theme)] dark:text-orange-400">Secondary Address (House No. / Flat / Floor)</Label>
-              <Input 
-                placeholder="E.g. Flat 402, 4th Floor, SUPERFAST Building" 
-                value={addressFormData.additionalDetails} 
-                onChange={e => setAddressFormData({...addressFormData, additionalDetails: e.target.value.replace(/[^a-zA-Z0-9\s]/g, "")})}
+              <Input
+                placeholder="E.g. Flat 402, 4th Floor, SUPERFAST Building"
+                value={addressFormData.additionalDetails}
+                onChange={e => setAddressFormData({ ...addressFormData, additionalDetails: e.target.value.replace(/[^a-zA-Z0-9\s]/g, "") })}
                 onFocus={() => scrollFieldIntoView("additionalDetails")}
                 ref={(el) => { manualFieldRefs.current.additionalDetails = el }}
                 className="h-12 rounded-xl border-orange-200 dark:border-orange-900/40 focus:ring-[var(--primary-theme)]"
@@ -992,34 +992,34 @@ export default function AddressSelectorPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs mb-1 block">City</Label>
-                <Input 
-                  value={addressFormData.city} 
-                  onChange={e => setAddressFormData({...addressFormData, city: e.target.value.replace(/[^a-zA-Z\s]/g, "")})} 
+                <Input
+                  value={addressFormData.city}
+                  onChange={e => setAddressFormData({ ...addressFormData, city: e.target.value.replace(/[^a-zA-Z\s]/g, "") })}
                   onFocus={() => scrollFieldIntoView("city")}
                   ref={(el) => { manualFieldRefs.current.city = el }}
                   className="h-12 rounded-xl"
-                  required 
+                  required
                 />
               </div>
               <div>
                 <Label className="text-xs mb-1 block">State</Label>
-                <Input 
-                  value={addressFormData.state} 
-                  onChange={e => setAddressFormData({...addressFormData, state: e.target.value.replace(/[^a-zA-Z\s]/g, "")})} 
+                <Input
+                  value={addressFormData.state}
+                  onChange={e => setAddressFormData({ ...addressFormData, state: e.target.value.replace(/[^a-zA-Z\s]/g, "") })}
                   onFocus={() => scrollFieldIntoView("state")}
                   ref={(el) => { manualFieldRefs.current.state = el }}
                   className="h-12 rounded-xl"
-                  required 
+                  required
                 />
               </div>
             </div>
 
             <div>
               <Label className="text-xs mb-1 block">Pincode / ZIP</Label>
-              <Input 
-                placeholder="Pincode" 
-                value={addressFormData.zipCode || ""} 
-                onChange={e => setAddressFormData({...addressFormData, zipCode: e.target.value.replace(/\D/g, "").slice(0, 6)})} 
+              <Input
+                placeholder="Pincode"
+                value={addressFormData.zipCode || ""}
+                onChange={e => setAddressFormData({ ...addressFormData, zipCode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
                 onFocus={() => scrollFieldIntoView("zipCode")}
                 ref={(el) => { manualFieldRefs.current.zipCode = el }}
                 className="h-12 rounded-xl"
@@ -1027,20 +1027,20 @@ export default function AddressSelectorPage() {
             </div>
 
             <div>
-               <Label className="text-sm font-bold mb-2 block">Save address as</Label>
-               <div className="flex gap-2">
-                 {["Home", "Work", "Other"].map(l => (
-                   <Button 
-                     key={l}
-                     variant={addressFormData.label === l ? "default" : "outline"}
-                     onClick={() => setAddressFormData({...addressFormData, label: l})}
-                     className="flex-1"
-                     style={addressFormData.label === l ? {backgroundColor: 'var(--primary-theme, #cc2532)', color: 'white'} : {}}
-                   >
-                     {l}
-                   </Button>
-                 ))}
-               </div>
+              <Label className="text-sm font-bold mb-2 block">Save address as</Label>
+              <div className="flex gap-2">
+                {["Home", "Work", "Other"].map(l => (
+                  <Button
+                    key={l}
+                    variant={addressFormData.label === l ? "default" : "outline"}
+                    onClick={() => setAddressFormData({ ...addressFormData, label: l })}
+                    className="flex-1"
+                    style={addressFormData.label === l ? { backgroundColor: 'var(--primary-theme, #cc2532)', color: 'white' } : {}}
+                  >
+                    {l}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1049,9 +1049,9 @@ export default function AddressSelectorPage() {
           className="absolute left-0 right-0 px-4 pt-4 pb-8 bg-white dark:bg-[#1a1a1a] z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] rounded-t-3xl transition-[bottom] duration-150 border-t border-gray-100 dark:border-gray-800"
           style={{ bottom: `${keyboardInset}px` }}
         >
-          <Button 
-            className="w-full h-14 text-white font-bold text-lg rounded-xl shadow-lg" 
-            style={{backgroundColor: 'var(--primary-theme, #cc2532)'}}
+          <Button
+            className="w-full h-14 text-white font-bold text-lg rounded-xl shadow-lg"
+            style={{ backgroundColor: 'var(--primary-theme, #cc2532)' }}
             onClick={handleAddressFormSubmit}
             disabled={loadingAddress}
           >
@@ -1073,7 +1073,7 @@ export default function AddressSelectorPage() {
 
       <div className="flex-1 overflow-y-auto pb-10">
         <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-800">
-          <button 
+          <button
             onClick={handleUseCurrentLocation}
             className="w-full flex items-center gap-4 p-4 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm hover:shadow-md transition-all group"
           >

@@ -69,6 +69,17 @@ function RestaurantGlobalNotificationListener() {
   return <RestaurantGlobalNotificationListenerInner />
 }
 
+import { getCorrectedPath } from "@core/utils/smartUrlCorrector"
+
+function SmartFoodFallbackRedirect() {
+  const location = useLocation()
+  const correctedPath = getCorrectedPath(location.pathname)
+  if (correctedPath) {
+    return <Navigate to={`${correctedPath}${location.search}`} replace />
+  }
+  return <Navigate to="/food/user" replace />
+}
+
 export default function App() {
   const location = useLocation()
 
@@ -105,7 +116,7 @@ export default function App() {
 
           {/* Legacy Redirects & Fallbacks - use absolute path to avoid /user appended in a loop */}
           <Route path="/" element={<Navigate to="/food/user" replace />} />
-          <Route path="*" element={<Navigate to="/food/user" replace />} />
+          <Route path="*" element={<SmartFoodFallbackRedirect />} />
         </Routes>
       </Suspense>
     </>

@@ -9,9 +9,9 @@ import { useProfile } from "@food/context/ProfileContext"
 import { toast } from "sonner"
 import { locationAPI, userAPI } from "@food/api"
 import { Loader } from '@googlemaps/js-api-loader'
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 // Enable Maps if API Key is available, otherwise fallback to coordinates-only mode
 const MAPS_ENABLED = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -971,7 +971,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
       try {
         localStorage.setItem("deliveryAddressMode", "current");
         window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-      } catch {}
+      } catch { }
       syncSelectedLocation({
         ...locationData,
         address:
@@ -1685,7 +1685,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
               formattedAddress = coordLabel
             }
           } catch (nomError) {
-             formattedAddress = coordLabel
+            formattedAddress = coordLabel
           }
         }
 
@@ -2055,7 +2055,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         try {
           localStorage.setItem("deliveryAddressMode", "saved");
           window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-        } catch {}
+        } catch { }
       }
 
       // Reset form
@@ -2198,7 +2198,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
       try {
         localStorage.setItem("deliveryAddressMode", "saved");
         window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-      } catch {}
+      } catch { }
       onClose()
     } catch (error) {
       debugError("Error selecting saved address:", error)
@@ -2269,11 +2269,11 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         if (greenMarkerRef.current) {
           greenMarkerRef.current.setPosition({ lat: latitude, lng: longitude })
         }
-      } catch {}
+      } catch { }
     }
     try {
       await handleMapMoveEnd(latitude, longitude)
-    } catch {}
+    } catch { }
   }
 
   const handleAddressInputKeyDown = async (e) => {
@@ -2393,69 +2393,69 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
 
                 {addressAutocompleteValue.trim().length > 0 &&
                   (keywordAddressSuggestions.length > 0 || addressAutocompleteSuggestions.length > 0) && (
-                  <div className="absolute z-50 left-0 right-0 mt-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] shadow-xl overflow-hidden">
-                    {isKeywordSearching && (
-                      <div className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
-                        Searching…
-                      </div>
-                    )}
-                    {keywordAddressSuggestions.length > 0 && (
-                      <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                        Suggestions & Similar Locations (Click to jump & zoom map)
-                      </div>
-                    )}
+                    <div className="absolute z-50 left-0 right-0 mt-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] shadow-xl overflow-hidden">
+                      {isKeywordSearching && (
+                        <div className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          Searching…
+                        </div>
+                      )}
+                      {keywordAddressSuggestions.length > 0 && (
+                        <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                          Suggestions & Similar Locations (Click to jump & zoom map)
+                        </div>
+                      )}
 
-                    {keywordAddressSuggestions.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => selectLocationSuggestion(p, true)}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-b-0"
-                      >
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                          {p.display}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                          {p.address?.city || p.address?.town || p.address?.village || p.address?.state || " "}
-                        </p>
-                      </button>
-                    ))}
+                      {keywordAddressSuggestions.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectLocationSuggestion(p, true)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+                        >
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {p.display}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            {p.address?.city || p.address?.town || p.address?.village || p.address?.state || " "}
+                          </p>
+                        </button>
+                      ))}
 
-                    {/* Fallback: saved addresses matching the keyword */}
-                    {keywordAddressSuggestions.length === 0 &&
-                      addressAutocompleteSuggestions.map((addr) => {
-                        const id = getAddressId(addr) || `${addr?.label}-${addr?.street}-${addr?.city}`
-                        const title = addr?.label || "Saved address"
-                        const subtitle = [
-                          addr?.additionalDetails,
-                          addr?.street,
-                          addr?.city,
-                          addr?.state,
-                          addr?.zipCode,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")
-                        return (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => {
-                              setAddressAutocompleteValue("")
-                              handleSelectSavedAddress(addr)
-                            }}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-b-0"
-                          >
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                              {title}
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                              {subtitle}
-                            </p>
-                          </button>
-                        )
-                      })}
-                  </div>
-                )}
+                      {/* Fallback: saved addresses matching the keyword */}
+                      {keywordAddressSuggestions.length === 0 &&
+                        addressAutocompleteSuggestions.map((addr) => {
+                          const id = getAddressId(addr) || `${addr?.label}-${addr?.street}-${addr?.city}`
+                          const title = addr?.label || "Saved address"
+                          const subtitle = [
+                            addr?.additionalDetails,
+                            addr?.street,
+                            addr?.city,
+                            addr?.state,
+                            addr?.zipCode,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => {
+                                setAddressAutocompleteValue("")
+                                handleSelectSavedAddress(addr)
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+                            >
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                {title}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                {subtitle}
+                              </p>
+                            </button>
+                          )
+                        })}
+                    </div>
+                  )}
               </div>
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Search by keyword to get address suggestions; selecting one will pin it on the map.

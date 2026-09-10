@@ -1,8 +1,9 @@
 node_modules/
 .env
+.env.*
 *.log
 dist/
 coverage/
 .DS_Store
-uploads
-config/*.json
+uploads/
+Backend/config/*.json

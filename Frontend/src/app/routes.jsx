@@ -11,6 +11,7 @@ import RoleGuard from '@core/guards/RoleGuard'
 import { UserRole } from '@core/constants/roles'
 import SellerAuthPage from '../modules/seller/pages/Auth'
 import OnboardingGuard from '../modules/Food/components/user/OnboardingGuard'
+import { getCorrectedPath } from '@core/utils/smartUrlCorrector'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
@@ -106,6 +107,15 @@ const RedirectLegacyQuickCommerce = () => {
   );
 };
 
+const SmartFallbackRedirect = () => {
+  const location = useLocation();
+  const correctedPath = getCorrectedPath(location.pathname);
+  if (correctedPath) {
+    return <Navigate to={`${correctedPath}${location.search}`} replace />;
+  }
+  return <Navigate to="/" replace />;
+};
+
 const SellerAuthEntry = () => {
   return <SellerAuthPage />
 }
@@ -145,14 +155,6 @@ const AppRoutes = () => {
     if (route.startsWith('/food/') || route.startsWith('/admin')) {
       localStorage.setItem(NATIVE_LAST_ROUTE_KEY, route)
     }
-
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    const scrollContainers = document.querySelectorAll('main, #root, .overflow-y-auto, [data-scroll-container]')
-    scrollContainers.forEach((el) => {
-      if (el && typeof el.scrollTop === 'number') {
-        el.scrollTop = 0
-      }
-    })
   }, [location.pathname, location.search])
 
   return (
@@ -299,8 +301,8 @@ const AppRoutes = () => {
         <Route path="/profile/*" element={<Navigate to="/profile" replace />} />
         <Route path="/orders/*" element={<RedirectToFood />} />
 
-        {/* Fallback 404 */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Fallback 404 & Smart Typo Redirection */}
+        <Route path="*" element={<SmartFallbackRedirect />} />
       </Routes>
   )
 }
