@@ -1754,9 +1754,9 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, area: e.target.value },
               })
             }
-            className="bg-gray-100 text-sm cursor-not-allowed"
+            className="bg-white text-sm"
             placeholder="Area / Sector / Locality*"
-            readOnly
+            disabled={!isEditing}
           />
           <Input
             value={step1.location?.city || ""}
@@ -1766,9 +1766,9 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, city: e.target.value.replace(/[^A-Za-z ]/g, "") },
               })
             }
-            className="bg-gray-100 text-sm cursor-not-allowed"
-            placeholder="City"
-            readOnly
+            className="bg-white text-sm"
+            placeholder="City*"
+            disabled={!isEditing}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
@@ -1779,9 +1779,9 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, state: e.target.value.replace(/[^A-Za-z ]/g, "") },
                 })
               }
-              className="bg-gray-100 text-sm cursor-not-allowed"
-              placeholder="State"
-              readOnly
+              className="bg-white text-sm"
+              placeholder="State*"
+              disabled={!isEditing}
             />
             <Input
               value={step1.location?.pincode || ""}
@@ -1791,9 +1791,11 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) },
                 })
               }
-              className="bg-gray-100 text-sm cursor-not-allowed"
-              placeholder="Pincode"
-              readOnly
+              className="bg-white text-sm"
+              placeholder="Pincode* (6 digits)"
+              maxLength={6}
+              inputMode="numeric"
+              disabled={!isEditing}
             />
           </div>
           {step1.location?.latitude && step1.location?.longitude && !step1.zoneId && (
@@ -1855,7 +1857,17 @@ export default function RestaurantOnboarding() {
 
       const ok = await ensureGoogleMapsLoaded()
       if (!ok || cancelled || !locationSearchInputRef.current) return
-      if (placesAutocompleteRef.current) return
+
+      if (placesAutocompleteRef.current) {
+        try {
+          if (window.google?.maps?.event) {
+            window.google.maps.event.clearInstanceListeners(placesAutocompleteRef.current)
+          }
+        } catch (e) {
+          // ignore
+        }
+        placesAutocompleteRef.current = null
+      }
 
       placesAutocompleteRef.current = new window.google.maps.places.Autocomplete(
         locationSearchInputRef.current,
@@ -1866,7 +1878,8 @@ export default function RestaurantOnboarding() {
       )
 
       placesAutocompleteRef.current.addListener("place_changed", () => {
-        const place = placesAutocompleteRef.current.getPlace()
+        const place = placesAutocompleteRef.current?.getPlace()
+        if (!place) return
         const parsed = parsePlace(place)
 
         if (parsed.latitude && parsed.longitude) {
@@ -1875,7 +1888,7 @@ export default function RestaurantOnboarding() {
 
           setStep1((prev) => ({
             ...prev,
-            zoneId: matchedZoneId,
+            zoneId: matchedZoneId || prev.zoneId,
             location: {
               ...prev.location,
               formattedAddress: parsed.formattedAddress || prev.location.formattedAddress,
@@ -1917,7 +1930,14 @@ export default function RestaurantOnboarding() {
 
     return () => {
       cancelled = true
-      placesAutocompleteRef.current = null
+      if (placesAutocompleteRef.current) {
+        try {
+          if (window.google?.maps?.event) {
+            window.google.maps.event.clearInstanceListeners(placesAutocompleteRef.current)
+          }
+        } catch (e) {}
+        placesAutocompleteRef.current = null
+      }
     }
   }, [step])
 
