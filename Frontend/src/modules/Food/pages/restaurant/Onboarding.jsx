@@ -25,6 +25,7 @@ import { clearModuleAuth, clearAuthData } from "@food/utils/auth"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { convertBase64ToFile, isFlutterBridgeAvailable, openCamera, openGallery } from "@food/utils/imageUploadUtils"
 import { getCachedSettings } from "@common/utils/businessSettings"
+import { loadGoogleMaps } from "@core/services/googleMapsLoader"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -454,6 +455,12 @@ export default function RestaurantOnboarding() {
   const [zones, setZones] = useState([])
   const [zonesLoading, setZonesLoading] = useState(false)
   const [fetchingCurrentLocation, setFetchingCurrentLocation] = useState(false)
+  const [locationSearchText, setLocationSearchText] = useState("")
+  const [locationSuggestions, setLocationSuggestions] = useState([])
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+  const autocompleteServiceRef = useRef(null)
+  const searchDebounceTimerRef = useRef(null)
 
   const findMatchingZone = (lat, lng, zonesList) => {
     if (!lat || !lng || !Array.isArray(zonesList)) return null
@@ -475,39 +482,29 @@ export default function RestaurantOnboarding() {
     const apiKey = await getGoogleMapsApiKey()
     if (!apiKey) return false
 
-    const existing = document.getElementById("restaurant-onboarding-maps-script")
-    if (existing) {
-      for (let i = 0; i < 30; i += 1) {
+    try {
+      await loadGoogleMaps(apiKey)
+      for (let i = 0; i < 40; i += 1) {
         if (window.google?.maps?.places?.Autocomplete) {
           mapsScriptLoadedRef.current = true
           return true
         }
+        if (window.google?.maps?.importLibrary) {
+          try {
+            await window.google.maps.importLibrary("places")
+            if (window.google?.maps?.places?.Autocomplete) {
+              mapsScriptLoadedRef.current = true
+              return true
+            }
+          } catch (e) {}
+        }
         await new Promise((r) => setTimeout(r, 100))
       }
-      return false
+    } catch (err) {
+      debugError("Failed to load Google Maps:", err)
     }
 
-    await new Promise((resolve, reject) => {
-      const script = document.createElement("script")
-      script.id = "restaurant-onboarding-maps-script"
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly`
-      script.async = true
-      script.defer = true
-      script.onload = resolve
-      script.onerror = reject
-      document.head.appendChild(script)
-    })
-
-    // Double check that autocomplete has loaded
-    for (let i = 0; i < 30; i += 1) {
-      if (window.google?.maps?.places?.Autocomplete) {
-        mapsScriptLoadedRef.current = true
-        return true
-      }
-      await new Promise((r) => setTimeout(r, 100))
-    }
-
-    return false
+    return Boolean(window.google?.maps?.places?.Autocomplete)
   }
 
   const handleUseCurrentLocation = () => {
@@ -591,6 +588,194 @@ export default function RestaurantOnboarding() {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
+  }
+
+  const fetchNominatimSuggestions = async (query) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query
+        )}&countrycodes=in&addressdetails=1&limit=5`,
+        { headers: { "Accept-Language": "en" } }
+      )
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        const formatted = data.map((item, idx) => {
+          const parts = (item.display_name || "").split(",")
+          const mainText = parts[0]?.trim() || item.display_name
+          const secondaryText = parts.slice(1).join(",").trim()
+          return {
+            id: `nom-${item.place_id || idx}`,
+            placeId: null,
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+            description: item.display_name,
+            mainText,
+            secondaryText,
+            addressDetails: item.address,
+            source: "nominatim",
+          }
+        })
+        setLocationSuggestions(formatted)
+      } else {
+        setLocationSuggestions([])
+      }
+    } catch {
+      setLocationSuggestions([])
+    } finally {
+      setIsSearchingLocation(false)
+    }
+  }
+
+  const handleSearchTextChange = (text) => {
+    setLocationSearchText(text)
+    setShowLocationSuggestions(true)
+
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current)
+    }
+
+    if (!text || text.trim().length < 2) {
+      setLocationSuggestions([])
+      setIsSearchingLocation(false)
+      return
+    }
+
+    setIsSearchingLocation(true)
+
+    searchDebounceTimerRef.current = setTimeout(async () => {
+      try {
+        const loaded = await ensureGoogleMapsLoaded()
+        if (loaded && window.google?.maps?.places?.AutocompleteService) {
+          if (!autocompleteServiceRef.current) {
+            autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+          }
+          autocompleteServiceRef.current.getPlacePredictions(
+            {
+              input: text,
+              componentRestrictions: { country: "in" },
+            },
+            (predictions, status) => {
+              if (
+                status === window.google.maps.places.PlacesServiceStatus.OK &&
+                Array.isArray(predictions) &&
+                predictions.length > 0
+              ) {
+                const formatted = predictions.map((p) => ({
+                  id: p.place_id,
+                  placeId: p.place_id,
+                  description: p.description,
+                  mainText: p.structured_formatting?.main_text || p.description,
+                  secondaryText: p.structured_formatting?.secondary_text || "",
+                  source: "google",
+                }))
+                setLocationSuggestions(formatted)
+                setIsSearchingLocation(false)
+              } else {
+                fetchNominatimSuggestions(text)
+              }
+            }
+          )
+        } else {
+          fetchNominatimSuggestions(text)
+        }
+      } catch (err) {
+        fetchNominatimSuggestions(text)
+      }
+    }, 300)
+  }
+
+  const handleSelectLocationSuggestion = async (suggestion) => {
+    setShowLocationSuggestions(false)
+    setLocationSearchText(suggestion.description || suggestion.mainText)
+
+    if (suggestion.source === "google" && suggestion.placeId) {
+      try {
+        const loaded = await ensureGoogleMapsLoaded()
+        if (loaded && window.google?.maps?.Geocoder) {
+          const geocoder = new window.google.maps.Geocoder()
+          geocoder.geocode({ placeId: suggestion.placeId }, (results, status) => {
+            if (status === "OK" && results[0]) {
+              const place = results[0]
+              const formattedAddress = place.formatted_address || suggestion.description
+              const comps = Array.isArray(place.address_components) ? place.address_components : []
+              const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+
+              const area = get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"])
+              const city = get(["locality"]) || get(["administrative_area_level_2"])
+              const state = get(["administrative_area_level_1"])
+              const pincode = get(["postal_code"])
+              const lat = place.geometry?.location?.lat()
+              const lng = place.geometry?.location?.lng()
+
+              const matchedZone = findMatchingZone(lat, lng, zonesRef.current)
+              const matchedZoneId = matchedZone ? String(matchedZone._id || matchedZone.id) : ""
+
+              setStep1((prev) => ({
+                ...prev,
+                zoneId: matchedZoneId || prev.zoneId,
+                location: {
+                  ...prev.location,
+                  formattedAddress,
+                  addressLine1: formattedAddress,
+                  area: area || prev.location.area,
+                  city: city || prev.location.city,
+                  state: state || prev.location.state,
+                  pincode: pincode || prev.location.pincode,
+                  latitude: lat ? Number(lat.toFixed(6)) : prev.location.latitude,
+                  longitude: lng ? Number(lng.toFixed(6)) : prev.location.longitude,
+                },
+              }))
+
+              if (!matchedZoneId) {
+                toast.warning("Selected location is outside Superfast service zones.")
+              } else {
+                toast.success("Zone auto-selected based on address!")
+              }
+            }
+          })
+          return
+        }
+      } catch (err) {
+        debugError("Error geocoding place ID:", err)
+      }
+    }
+
+    if (suggestion.lat && suggestion.lng) {
+      const lat = suggestion.lat
+      const lng = suggestion.lng
+      const addr = suggestion.addressDetails || {}
+
+      const area = addr.suburb || addr.neighbourhood || addr.residential || addr.locality || addr.county || ""
+      const city = addr.city || addr.town || addr.village || addr.state_district || ""
+      const state = addr.state || ""
+      const pincode = addr.postcode || ""
+
+      const matchedZone = findMatchingZone(lat, lng, zonesRef.current)
+      const matchedZoneId = matchedZone ? String(matchedZone._id || matchedZone.id) : ""
+
+      setStep1((prev) => ({
+        ...prev,
+        zoneId: matchedZoneId || prev.zoneId,
+        location: {
+          ...prev.location,
+          formattedAddress: suggestion.description,
+          addressLine1: suggestion.description,
+          area: area || prev.location.area,
+          city: city || prev.location.city,
+          state: state || prev.location.state,
+          pincode: pincode || prev.location.pincode,
+          latitude: Number(lat.toFixed(6)),
+          longitude: Number(lng.toFixed(6)),
+        },
+      }))
+
+      if (!matchedZoneId) {
+        toast.warning("Selected location is outside Superfast service zones.")
+      } else {
+        toast.success("Zone auto-selected based on address!")
+      }
+    }
   }
 
   const [step1, setStep1] = useState({
@@ -1669,7 +1854,7 @@ export default function RestaurantOnboarding() {
               Choose the service zone where your restaurant will be available.
             </p>
           </div>
-          <div>
+          <div className="relative">
             <div className="flex justify-between items-center mb-1">
               <Label className="text-xs text-gray-700">Search location</Label>
               <button
@@ -1697,13 +1882,54 @@ export default function RestaurantOnboarding() {
                 )}
               </button>
             </div>
-            <Input
-              ref={locationSearchInputRef}
-              className="mt-1 bg-white text-sm text-black! dark:text-white! placeholder:text-gray-500 dark:placeholder:text-gray-400 caret-black dark:caret-white"
-              style={{ color: "#000", WebkitTextFillColor: "#000" }}
-              placeholder="Start typing your restaurant address..."
-              disabled={fetchingCurrentLocation}
-            />
+            <div className="relative">
+              <Input
+                ref={locationSearchInputRef}
+                value={locationSearchText}
+                onChange={(e) => handleSearchTextChange(e.target.value)}
+                onFocus={() => {
+                  if (locationSuggestions.length > 0) setShowLocationSuggestions(true)
+                }}
+                className="mt-1 bg-white text-sm text-black! dark:text-white! placeholder:text-gray-500 dark:placeholder:text-gray-400 caret-black dark:caret-white pr-8"
+                style={{ color: "#000", WebkitTextFillColor: "#000" }}
+                placeholder="Start typing your restaurant address (e.g. Disa, Gujarat)..."
+                disabled={fetchingCurrentLocation || !isEditing}
+              />
+              {isSearchingLocation && (
+                <div className="absolute right-2.5 top-3 text-gray-400">
+                  <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Suggestions Dropdown */}
+            {showLocationSuggestions && locationSuggestions.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto divide-y divide-gray-100">
+                {locationSuggestions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSelectLocationSuggestion(item)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex items-start gap-2.5 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{item.mainText}</p>
+                      {item.secondaryText && (
+                        <p className="text-[11px] text-gray-500 truncate">{item.secondaryText}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <p className="text-[11px] text-gray-500 mt-1">
               Select a suggestion to auto-fill area/city/state/pincode and coordinates.
             </p>
