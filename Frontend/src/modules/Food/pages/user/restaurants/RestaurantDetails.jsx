@@ -90,6 +90,8 @@ function RestaurantDetailsContent() {
   const [showItemDetail, setShowItemDetail] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   const [selectedVariantId, setSelectedVariantId] = useState("")
+  const [cookingRequest, setCookingRequest] = useState("")
+  const [selectedAddonIds, setSelectedAddonIds] = useState(new Set())
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [showLocationSheet, setShowLocationSheet] = useState(false)
   const [showScheduleSheet, setShowScheduleSheet] = useState(false)
@@ -3186,249 +3188,297 @@ function RestaurantDetailsContent() {
           document.body
         )}
 
-      {/* Item Detail Modal */}
+      {/* Item Detail Modal - Customization Sheet matching Photo 2 */}
       {typeof window !== "undefined" &&
         createPortal(
           <AnimatePresence>
-            {showItemDetail && selectedItem && (
-              <>
-                {/* Backdrop */}
-                <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => setShowItemDetail(false)}
-                />
+            {showItemDetail && selectedItem && (() => {
+              const variants = getFoodVariants(selectedItem);
+              const currentVariant = getVariantForDish(selectedItem, selectedVariantId);
+              const basePrice = currentVariant ? currentVariant.price : (selectedItem.price || 0);
+              const qty = getDishQuantity(selectedItem, selectedVariantId) || 1;
+              const totalPrice = Math.round(basePrice * qty);
+              const isVeg = selectedItem.foodType === "Veg" || selectedItem.isVeg !== false;
 
-                {/* Item Detail Bottom Sheet */}
-                <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] md:max-w-2xl lg:max-w-3xl w-full md:w-auto flex flex-col"
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ duration: 0.15, type: "spring", damping: 30, stiffness: 400 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Close Button - Top Center Above Popup with 4px gap */}
-                  <div className="absolute -top-[44px] left-1/2 -translate-x-1/2 z-[10001]">
-                    <motion.button
-                      onClick={() => setShowItemDetail(false)}
-                      className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-900 transition-colors shadow-lg"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <X className="h-5 w-5 text-white" />
-                    </motion.button>
-                  </div>
+              return (
+                <>
+                  {/* Backdrop */}
+                  <motion.div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[9999]"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => setShowItemDetail(false)}
+                  />
 
-                  {/* Image Section */}
-                  <div className="relative w-full h-64 overflow-hidden rounded-t-3xl bg-gray-100 dark:bg-gray-800">
-                    {selectedItem.image ? (
-                      <img
-                        src={selectedItem.image}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                        <span className="text-sm text-gray-400">No image available</span>
-                      </div>
-                    )}
-                    {/* Bookmark and Share Icons Overlay */}
-                    <div className="absolute bottom-4 right-4 flex items-center gap-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleBookmarkClick(selectedItem)
-                        }}
-                        className={`h-10 w-10 rounded-full border flex items-center justify-center transition-all duration-300 ${isDishFavorite(selectedItem.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
-                          ? "border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400"
-                          : "border-white dark:border-gray-800 bg-white/90 dark:bg-[#1a1a1a]/90 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#2a2a2a]"
-                          }`}
+                  {/* Item Detail Customization Sheet */}
+                  <motion.div
+                    className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-4 md:top-auto z-[10000] bg-[#f4f5f7] dark:bg-[#121212] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[88vh] md:max-w-md w-full flex flex-col overflow-hidden"
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ duration: 0.2, type: "spring", damping: 28, stiffness: 350 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Floating Close Button */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[10001]">
+                      <motion.button
+                        onClick={() => setShowItemDetail(false)}
+                        className="h-9 w-9 rounded-full bg-gray-900/80 hover:bg-gray-900 text-white flex items-center justify-center shadow-md backdrop-blur-sm transition-transform active:scale-95"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
                       >
-                        <Bookmark
-                          className={`h-5 w-5 transition-all duration-300 ${isDishFavorite(selectedItem.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500 dark:fill-red-400" : ""
-                            }`}
+                        <X className="h-5 w-5 stroke-[2.5]" />
+                      </motion.button>
+                    </div>
+
+                    {/* Banner Image (if available) */}
+                    {selectedItem.image && (
+                      <div className="relative w-full h-48 overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-800">
+                        <img
+                          src={selectedItem.image}
+                          alt={selectedItem.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
                         />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleShareClick(selectedItem)
-                        }}
-                        className="h-10 w-10 rounded-full border border-white dark:border-gray-800 bg-white/90 dark:bg-[#1a1a1a]/90 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#2a2a2a] flex items-center justify-center transition-colors"
-                      >
-                        <Share2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Content Section */}
-                  <div className="flex-1 overflow-y-auto px-4 py-4">
-                    {/* Item Name and Indicator */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        {selectedItem.foodType === "Veg" ? (
-                          <div className="h-5 w-5 rounded border-2 border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                            <div className="h-2.5 w-2.5 rounded-full bg-green-600 dark:bg-green-500" />
-                          </div>
-                        ) : (
-                          <div className="h-5 w-5 rounded border-2 border-red-600 dark:border-red-500 bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                            <div className="h-2.5 w-2.5 rounded-full bg-red-600 dark:bg-red-500" />
-                          </div>
-                        )}
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                          {selectedItem.name}
-                        </h2>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                      {selectedItem.description}
-                    </p>
-
-                    {/* Highly Reordered Progress Bar */}
-                    {isRecommendedItem(selectedItem) && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div className="rounded-full" style={{ width: '50%', height: '100%', backgroundColor: 'var(--primary-theme, #ed840c)' }} />
-                        </div>
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
-                          highly reordered
-                        </span>
                       </div>
                     )}
 
-                    {/* Not Eligible for Coupons */}
-                    {selectedItem.notEligibleForCoupons && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-4">
-                        NOT ELIGIBLE FOR COUPONS
-                      </p>
-                    )}
+                    {/* Scrollable Content Container */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3.5 pt-10">
+                      {/* Card 1: Dish Overview */}
+                      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-xs border border-gray-100 dark:border-gray-800/80">
+                        <div className="flex items-start justify-between gap-3">
+                          {/* Veg / Non-Veg Indicator Badge */}
+                          <div className="flex items-center gap-2">
+                            {isVeg ? (
+                              <div className="h-4.5 w-4.5 rounded border-2 border-green-600 dark:border-green-500 bg-white dark:bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
+                                <div className="h-2 w-2 rounded-full bg-green-600 dark:bg-green-500" />
+                              </div>
+                            ) : (
+                              <div className="h-4.5 w-4.5 rounded border-2 border-red-600 dark:border-red-500 bg-white dark:bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
+                                <div className="h-2 w-2 rounded-full bg-red-600 dark:bg-red-500" />
+                              </div>
+                            )}
+                          </div>
 
-                    {hasFoodVariants(selectedItem) && (
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Choose a variant</p>
-                        <div className="flex flex-wrap gap-2">
-                          {getFoodVariants(selectedItem).map((variant) => (
+                          {/* Action Buttons: Bookmark & Share */}
+                          <div className="flex items-center gap-2">
                             <button
-                              key={variant.id}
                               type="button"
-                              onClick={() => setSelectedVariantId(variant.id)}
-                              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                                String(selectedVariantId || "") === String(variant.id)
-                                  ? "border-red-500 bg-red-50 text-red-600 dark:border-red-400 dark:bg-red-900/30 dark:text-red-200"
-                                  : "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-[#2a2a2a] dark:text-gray-300"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleBookmarkClick(selectedItem);
+                              }}
+                              className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all ${
+                                isDishFavorite(selectedItem.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
+                                  ? "border-red-500 bg-red-50 text-red-500 dark:bg-red-900/30"
+                                  : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 hover:bg-gray-100"
                               }`}
                             >
-                              {variant.name} · {RUPEE_SYMBOL}{Math.round(variant.price)}
+                              <Bookmark
+                                className={`h-4 w-4 ${
+                                  isDishFavorite(selectedItem.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500 text-red-500" : ""
+                                }`}
+                              />
                             </button>
-                          ))}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareClick(selectedItem);
+                              }}
+                              className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Bottom Action Bar */}
-                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 pt-3 pb-8 md:pb-4 bg-white dark:bg-[#1a1a1a] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-                    <div className="flex items-center gap-4">
-                      {/* Quantity Selector */}
-                      <div className={`flex items-center gap-3 border-2 rounded-lg px-3 h-[44px] bg-white dark:bg-[#2a2a2a] ${shouldShowGrayscale
-                        ? 'border-gray-300 dark:border-gray-700 opacity-50'
-                        : 'border-gray-300 dark:border-gray-700'
-                        }`}>
+                        {/* Dish Name */}
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mt-1.5 leading-snug">
+                          {selectedItem.name}
+                        </h2>
+
+                        {/* Highly Reordered Progress Indicator */}
+                        {isRecommendedItem(selectedItem) && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="w-10 h-1.5 bg-emerald-500 rounded-full" />
+                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                              Highly reordered
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Subtitle / Portion Size */}
+                        {(selectedItem.portion || selectedItem.size) && (
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
+                            {selectedItem.portion || selectedItem.size}
+                          </p>
+                        )}
+
+                        {/* Description */}
+                        {selectedItem.description && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">
+                            {selectedItem.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Card 2: Variants Selection (Extra / Size options) */}
+                      {hasFoodVariants(selectedItem) && (
+                        <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-xs border border-gray-100 dark:border-gray-800/80">
+                          <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                            Choose a variant
+                          </h3>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-3">
+                            Select 1 option
+                          </p>
+
+                          <div className="space-y-1">
+                            {variants.map((variant) => {
+                              const isSelected = String(selectedVariantId || variants[0]?.id) === String(variant.id);
+                              return (
+                                <div
+                                  key={variant.id}
+                                  onClick={() => setSelectedVariantId(variant.id)}
+                                  className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    {isVeg ? (
+                                      <div className="h-4 w-4 rounded border-2 border-green-600 dark:border-green-500 bg-white dark:bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-green-600 dark:bg-green-500" />
+                                      </div>
+                                    ) : (
+                                      <div className="h-4 w-4 rounded border-2 border-red-600 dark:border-red-500 bg-white dark:bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-500" />
+                                      </div>
+                                    )}
+                                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                      {variant.name}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                      {RUPEE_SYMBOL}{Math.round(variant.price)}
+                                    </span>
+                                    <div
+                                      className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                        isSelected
+                                          ? "border-green-600 dark:border-green-500 bg-white dark:bg-[#1c1c1e]"
+                                          : "border-gray-300 dark:border-gray-600"
+                                      }`}
+                                    >
+                                      {isSelected && (
+                                        <div className="h-2.5 w-2.5 rounded-full bg-green-600 dark:bg-green-500" />
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Card 3: Cooking Request Card */}
+                      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-xs border border-gray-100 dark:border-gray-800/80">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">
+                          Add a cooking request (optional)
+                        </h3>
+                        <input
+                          type="text"
+                          value={cookingRequest}
+                          onChange={(e) => setCookingRequest(e.target.value)}
+                          placeholder="e.g. Don't add onion, make extra spicy"
+                          className="w-full bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom Action Bar */}
+                    <div className="bg-white dark:bg-[#1c1c1e] border-t border-gray-100 dark:border-gray-800/80 p-3.5 px-4 flex items-center gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+                      {/* Quantity Stepper */}
+                      <div className="flex items-center gap-3 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-xl px-3 py-2 flex-shrink-0">
                         <button
+                          type="button"
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
+                              const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                               updateItemQuantity(
                                 selectedItem,
-                                Math.max(0, getDishQuantity(selectedItem, selectedVariantId) - 1),
+                                Math.max(0, currentQty - 1),
                                 e,
-                                getVariantForDish(selectedItem, selectedVariantId),
-                              )
+                                getVariantForDish(selectedItem, selectedVariantId)
+                              );
                             }
                           }}
-                          disabled={getDishQuantity(selectedItem, selectedVariantId) === 0 || shouldShowGrayscale}
-                          className={`${shouldShowGrayscale
-                            ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
-                            }`}
+                          disabled={shouldShowGrayscale || (getDishQuantity(selectedItem, selectedVariantId) === 0)}
+                          className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold disabled:opacity-40"
                         >
-                          <Minus className="h-5 w-5" />
+                          <Minus className="h-4 w-4 stroke-[3]" />
                         </button>
-                        <span className={`text-lg font-semibold min-w-[2rem] text-center ${shouldShowGrayscale
-                          ? 'text-gray-400 dark:text-gray-600'
-                          : 'text-gray-900 dark:text-white'
-                          }`}>
-                          {getDishQuantity(selectedItem, selectedVariantId)}
+                        <span className="text-base font-extrabold text-emerald-800 dark:text-emerald-300 min-w-[1.2rem] text-center">
+                          {getDishQuantity(selectedItem, selectedVariantId) || 1}
                         </span>
                         <button
+                          type="button"
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
+                              const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                               updateItemQuantity(
                                 selectedItem,
-                                getDishQuantity(selectedItem, selectedVariantId) + 1,
+                                (currentQty || 0) + 1,
                                 e,
-                                getVariantForDish(selectedItem, selectedVariantId),
-                              )
+                                getVariantForDish(selectedItem, selectedVariantId)
+                              );
                             }
                           }}
                           disabled={shouldShowGrayscale}
-                          className={shouldShowGrayscale
-                            ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                          }
+                          className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold"
                         >
-                          <Plus className="h-5 w-5" />
+                          <Plus className="h-4 w-4 stroke-[3]" />
                         </button>
                       </div>
 
-                      {/* Add Item Button */}
-                      <Button
-                        className={`flex-1 h-[44px] rounded-lg font-semibold flex items-center justify-center gap-2 ${shouldShowGrayscale
-                          ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-600 cursor-not-allowed opacity-50'
-                          : 'bg-red-500 hover:bg-red-600 text-white'
-                          }`}
+                      {/* Main Add Button */}
+                      <button
+                        type="button"
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-base flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98] ${
+                          shouldShowGrayscale
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-[#0e8345] hover:bg-[#0c723c] text-white"
+                        }`}
                         onClick={(e) => {
                           if (!shouldShowGrayscale) {
-                            updateItemQuantity(
-                              selectedItem,
-                              getDishQuantity(selectedItem, selectedVariantId) + 1,
-                              e,
-                              getVariantForDish(selectedItem, selectedVariantId),
-                            )
-                            setShowItemDetail(false)
+                            const currentQty = getDishQuantity(selectedItem, selectedVariantId);
+                            if (currentQty === 0) {
+                              updateItemQuantity(
+                                selectedItem,
+                                1,
+                                e,
+                                getVariantForDish(selectedItem, selectedVariantId)
+                              );
+                            }
+                            setShowItemDetail(false);
                           }
                         }}
                         disabled={shouldShowGrayscale}
                       >
                         <span>Add item</span>
-                        <div className="flex items-center gap-1">
-                          {selectedItem.originalPrice && selectedItem.originalPrice > selectedItem.price && (
-                            <span className="text-sm line-through text-red-200">
-                              {RUPEE_SYMBOL}{Math.round(selectedItem.originalPrice)}
-                            </span>
-                          )}
-                          <span className="text-base font-bold">
-                            {hasFoodVariants(selectedItem)
-                              ? `${getVariantForDish(selectedItem, selectedVariantId)?.name || "Default"} · ${RUPEE_SYMBOL}${Math.round(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price)}`
-                              : `${RUPEE_SYMBOL}${Math.round(selectedItem.price)}`}
-                          </span>
-                        </div>
-                      </Button>
+                        <span>-</span>
+                        <span>{RUPEE_SYMBOL}{totalPrice}</span>
+                      </button>
                     </div>
-                  </div>
-                </motion.div>
-              </>
-            )}
+                  </motion.div>
+                </>
+              );
+            })()}
           </AnimatePresence>,
           document.body
         )}
