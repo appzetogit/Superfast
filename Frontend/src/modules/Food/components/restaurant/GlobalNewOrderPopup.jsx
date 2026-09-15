@@ -261,91 +261,97 @@ export default function GlobalNewOrderPopup() {
       window.removeEventListener("keydown", unlockAudio);
     };
   }, []);
-
+  const checkOrdersToPopupRef = useRef(null);
 
   // Check for confirmed orders that haven't been shown in popup yet, or scheduled orders whose time has come
-  useEffect(() => {
-    const checkOrdersToPopup = async () => {
-      // Skip if popup is already showing or Socket.IO order exists
-      if (showNewOrderPopupRef.current || newOrderRef.current) return;
+  const checkOrdersToPopup = async () => {
+    // Skip if popup is already showing
+    if (showNewOrderPopupRef.current) return;
 
-      try {
-        const response = await restaurantAPI.getOrders();
-        if (response.data?.success && response.data.data?.orders) {
-          const now = Date.now();
+    try {
+      const response = await restaurantAPI.getOrders();
+      if (response.data?.success && response.data.data?.orders) {
+        const now = Date.now();
 
-          // Find orders that should trigger the popup
-          const targetOrders = response.data.data.orders.filter((order) => {
-            if (hasOrderBeenShown(order)) return false;
+        // Find orders that should trigger the popup
+        const targetOrders = response.data.data.orders.filter((order) => {
+          if (hasOrderBeenShown(order)) return false;
 
-            const isConfirmed = order.status === "confirmed";
-            const isCreatedScheduled =
-              order.status === "created" && order.scheduledAt;
+          const isConfirmed = order.status === "confirmed";
 
-            if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed fallback
+          if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed fallback
 
-            if (
-              order.scheduledAt &&
-              (order.status === "created" || order.status === "confirmed")
-            ) {
-              const scheduledTime = new Date(order.scheduledAt).getTime();
-              // Show popup if scheduled time is <= 15 mins from now
-              if (scheduledTime <= now + 15 * 60000) return true;
-            }
-
-            return false;
-          });
-
-          // Show the most recent matching order in popup
           if (
-            targetOrders.length > 0 &&
-            !showNewOrderPopupRef.current &&
-            !newOrderRef.current
+            order.scheduledAt &&
+            (order.status === "created" || order.status === "confirmed")
           ) {
-            const orderToPopup = targetOrders[0];
-            const orderId = orderToPopup.orderId || orderToPopup._id;
-
-            // Transform order to match newOrder format (include payment so COD shows correctly)
-            const orderForPopup = {
-              orderId: orderToPopup.orderId,
-              orderMongoId: orderToPopup._id,
-              restaurantId: orderToPopup.restaurantId,
-              restaurantName: orderToPopup.restaurantName,
-              items: getRestaurantVisibleItems(orderToPopup.items || []),
-              total: orderToPopup.pricing?.total || 0,
-              customerAddress: orderToPopup.address,
-              status: orderToPopup.status,
-              createdAt: orderToPopup.createdAt,
-              scheduledAt: orderToPopup.scheduledAt,
-              estimatedDeliveryTime: orderToPopup.estimatedDeliveryTime || 30,
-              note: orderToPopup.note || "",
-              sendCutlery: orderToPopup.sendCutlery,
-              paymentMethod:
-                orderToPopup.paymentMethod ||
-                orderToPopup.payment?.method ||
-                null,
-              payment: orderToPopup.payment,
-            };
-
-            debugLog("?? Found order ready for popup:", orderForPopup);
-            markOrderAsShown({ orderId, _id: orderToPopup._id });
-            setPopupOrder(orderForPopup);
-            setShowNewOrderPopup(true);
-            setCountdown(getInitialCountdown(orderId));
+            const scheduledTime = new Date(order.scheduledAt).getTime();
+            // Show popup if scheduled time is <= 15 mins from now
+            if (scheduledTime <= now + 15 * 60000) return true;
           }
-        }
-      } catch (error) {
-        if (error.response?.status !== 401) {
-          debugError("Error checking orders to popup:", error);
+
+          return false;
+        });
+
+        // Show the most recent matching order in popup
+        if (
+          targetOrders.length > 0 &&
+          !showNewOrderPopupRef.current
+        ) {
+          const orderToPopup = targetOrders[0];
+          const orderId = orderToPopup.orderId || orderToPopup._id;
+
+          // Transform order to match newOrder format (include payment so COD shows correctly)
+          const orderForPopup = {
+            orderId: orderToPopup.orderId,
+            orderMongoId: orderToPopup._id,
+            restaurantId: orderToPopup.restaurantId,
+            restaurantName: orderToPopup.restaurantName,
+            items: getRestaurantVisibleItems(orderToPopup.items || []),
+            total: orderToPopup.pricing?.total || 0,
+            customerAddress: orderToPopup.address,
+            status: orderToPopup.status,
+            createdAt: orderToPopup.createdAt,
+            scheduledAt: orderToPopup.scheduledAt,
+            estimatedDeliveryTime: orderToPopup.estimatedDeliveryTime || 30,
+            note: orderToPopup.note || "",
+            sendCutlery: orderToPopup.sendCutlery,
+            paymentMethod:
+              orderToPopup.paymentMethod ||
+              orderToPopup.payment?.method ||
+              null,
+            payment: orderToPopup.payment,
+          };
+
+          debugLog("Found order ready for popup:", orderForPopup);
+          markOrderAsShown({ orderId, _id: orderToPopup._id });
+          setPopupOrder(orderForPopup);
+          setShowNewOrderPopup(true);
+          setCountdown(getInitialCountdown(orderId));
         }
       }
-    };
+    } catch (error) {
+      if (error.response?.status !== 401) {
+        debugError("Error checking orders to popup:", error);
+      }
+    }
+  };
 
-    // Check once on mount, and then every minute
+  useEffect(() => {
+    checkOrdersToPopupRef.current = checkOrdersToPopup;
+  });
+
+  useEffect(() => {
+    // Check once on mount, listen to ordersRefresh, and poll every 5s
     checkOrdersToPopup();
-    const intervalId = setInterval(checkOrdersToPopup, 60000);
+    const intervalId = setInterval(checkOrdersToPopup, 5000);
+    const handleRefresh = () => checkOrdersToPopup();
+    window.addEventListener('ordersRefresh', handleRefresh);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('ordersRefresh', handleRefresh);
+    };
   }, []);
 
   // Play audio when popup opens
@@ -451,6 +457,9 @@ export default function GlobalNewOrderPopup() {
       setPrepTime(11);
       setAcceptSwipeProgress(0);
       setIsAcceptingOrder(false);
+      setTimeout(() => {
+        checkOrdersToPopupRef.current?.();
+      }, 300);
     }
   };
 
@@ -515,6 +524,9 @@ export default function GlobalNewOrderPopup() {
     setPrepTime(11);
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
+    setTimeout(() => {
+      checkOrdersToPopupRef.current?.();
+    }, 300);
   };
 
   // Handle reject order
@@ -556,6 +568,9 @@ export default function GlobalNewOrderPopup() {
     setRejectReason("");
     setCountdown(240);
     setPrepTime(11);
+    setTimeout(() => {
+      checkOrdersToPopupRef.current?.();
+    }, 300);
   };
 
   const handleRejectCancel = () => {

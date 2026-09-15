@@ -409,7 +409,7 @@ export default function EditFoodPage() {
     // Prepare food data for saving
     const foodDataToSave = {
       ...formData,
-      price: hasVariations ? undefined : parsedBasePrice,
+      price: parsedBasePrice > 0 ? parsedBasePrice : (hasVariations ? undefined : parsedBasePrice),
       variations: normalizedVariations.map((variation) => ({
         ...(variation.id && !variation.id.startsWith("variant-") ? { _id: variation.id } : {}),
         name: variation.name,
@@ -630,26 +630,20 @@ export default function EditFoodPage() {
               <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Price Information</h2>
               
               <div className="space-y-4">
-                {formData.variations.length === 0 ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Base Price (₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.price}
-                      onChange={(e) => handleInputChange("price", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
-                      required
-                    />
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-700">
-                    This item uses variants. Customers will see the lowest variant price as "Starting from".
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Base Price (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) => handleInputChange("price", e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

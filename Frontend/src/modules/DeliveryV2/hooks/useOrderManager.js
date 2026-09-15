@@ -11,10 +11,15 @@ import { useNavigate } from 'react-router-dom';
 export const useOrderManager = () => {
   const navigate = useNavigate();
   const { 
-    activeOrder, tripStatus, updateTripStatus, clearActiveOrder, setActiveOrder, riderLocation 
+    activeOrder, activeOrders, maxSlots, tripStatus, updateTripStatus, clearActiveOrder, setActiveOrder, addActiveOrder, removeActiveOrder, riderLocation 
   } = useDeliveryStore();
 
   const acceptOrder = async (order) => {
+    if (activeOrders && activeOrders.length >= (maxSlots || 2)) {
+      toast.error('All active slots are in use. Complete an active order first.');
+      throw new Error('Slots full');
+    }
+
     if (order?.type === 'RETURN_PICKUP') {
       const returnId = order?.returnId || order?._id || order?.id;
       if (!returnId) {
@@ -56,27 +61,21 @@ export const useOrderManager = () => {
         // Robustly determine locations from multiple possible formats (Populated API vs Socket)
         const getLoc = (ref, keysLat, keysLng) => {
           if (!ref) return null;
-          // Handle nested populated objects
           if (ref.location) {
-            // Handle GeoJSON format: location: { type: 'Point', coordinates: [lng, lat] }
             if (Array.isArray(ref.location.coordinates) && ref.location.coordinates.length >= 2) {
               return {
-                lat: ref.location.coordinates[1], // Latitude is second in GeoJSON [lng, lat]
-                lng: ref.location.coordinates[0]  // Longitude is first
+                lat: ref.location.coordinates[1],
+                lng: ref.location.coordinates[0]
               };
             }
-            // Handle standard object format: location: { latitude: 12.3, longitude: 45.6 }
             return {
               lat: ref.location.latitude || ref.location.lat,
               lng: ref.location.longitude || ref.location.lng
             };
           }
-          // Handle flat objects or direct lat/lng keys
           for (const k of keysLat) { if (ref[k] != null) return { lat: ref[k], lng: ref[keysLng[keysLat.indexOf(k)]] }; }
           return null;
         };
-
-        console.log('[OrderManager] Raw Full Order Data:', fullOrder);
 
         const resLoc = getLoc(fullOrder.restaurantId, ['latitude', 'lat'], ['longitude', 'lng']) || 
                        getLoc(fullOrder, ['restaurant_lat', 'restaurantLat', 'latitude'], ['restaurant_lng', 'restaurantLng', 'longitude']);
@@ -88,9 +87,7 @@ export const useOrderManager = () => {
           getPrimaryPickupLocation(fullOrder) ||
           normalizeLocationPoint(resLoc);
 
-        console.log('[OrderManager] Locations Mapped Result:', { resLoc, cusLoc });
-
-        setActiveOrder({
+        addActiveOrder({
           ...fullOrder,
           orderId: orderId,
           pickupPoints,
@@ -99,7 +96,6 @@ export const useOrderManager = () => {
         });
 
         updateTripStatus('PICKING_UP');
-        // toast.success('Order Accepted! Opening Map...');
       } else {
         toast.error(response?.data?.message || 'Order already taken or unavailable');
         throw new Error('Accept failed');
@@ -270,7 +266,12 @@ export const useOrderManager = () => {
   };
 
   const resetTrip = () => {
-    clearActiveOrder();
+    if (activeOrder) {
+      const orderId = activeOrder.orderId || activeOrder._id || activeOrder.id;
+      removeActiveOrder(orderId);
+    } else {
+      clearActiveOrder();
+    }
   };
 
   return {

@@ -77,11 +77,18 @@ export const serializeFoodVariants = (value = []) =>
 export const hasFoodVariants = (value = {}) => serializeFoodVariants(value?.variants || value?.variations || []).length > 0;
 
 export const getFoodDisplayPrice = (value = {}) => {
+    const price = Number(value?.price);
     const variants = serializeFoodVariants(value?.variants || value?.variations || []);
+    const minVariantPrice = variants.length > 0
+        ? Math.min(...variants.map((entry) => Number(entry.price) || 0))
+        : 0;
+
     if (variants.length > 0) {
-        return Math.min(...variants.map((entry) => Number(entry.price) || 0));
+        if (Number.isFinite(price) && price > minVariantPrice) {
+            return price;
+        }
+        return minVariantPrice;
     }
 
-    const price = Number(value?.price);
-    return Number.isFinite(price) ? price : 0;
+    return Number.isFinite(price) && price > 0 ? price : 0;
 };

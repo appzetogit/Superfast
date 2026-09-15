@@ -119,7 +119,12 @@ function RestaurantDetailsContent() {
   const getVariantForDish = (item, preferredVariantId = "") => {
     const variants = getFoodVariants(item)
     if (variants.length === 0) return null
-    return variants.find((variant) => String(variant.id) === String(preferredVariantId || "")) || variants[0]
+
+    if (preferredVariantId) {
+      return variants.find((variant) => String(variant.id) === String(preferredVariantId)) || null
+    }
+
+    return null
   }
 
   const getDishQuantity = (item, preferredVariantId = "") => {
@@ -1156,16 +1161,32 @@ function RestaurantDetailsContent() {
       restaurant_restaurantId: restaurant.restaurantId
     });
 
+    // Calculate correct unit price (Base Price + Variant Price if base price exists)
+    const rawPrice = Number(item.price || 0);
+    const variants = getFoodVariants(item);
+    const minVariantPrice = variants.length > 0
+      ? Math.min(...variants.map((v) => Number(v.price) || 0))
+      : 0;
+    const hasDistinctBasePrice = variants.length > 0
+      ? (rawPrice > 0 && rawPrice > minVariantPrice)
+      : (rawPrice > 0);
+    const dishBasePrice = hasDistinctBasePrice ? rawPrice : 0;
+    const variantPrice = resolvedVariant ? Number(resolvedVariant.price || 0) : 0;
+    const cartUnitPrice = hasDistinctBasePrice
+      ? (dishBasePrice + variantPrice)
+      : (resolvedVariant ? variantPrice : getFoodDisplayPrice(item));
+
     // Prepare cart item with all required properties
     const cartItem = {
       id: lineItemId,
       lineItemId,
       itemId: item.id,
       name: item.name,
-      price: resolvedVariant?.price ?? item.price,
+      price: cartUnitPrice,
+      basePrice: dishBasePrice,
       variantId: resolvedVariant?.id || "",
       variantName: resolvedVariant?.name || "",
-      variantPrice: resolvedVariant?.price ?? item.price,
+      variantPrice: resolvedVariant?.price ?? 0,
       image: item.image,
       restaurant: restaurant.name, // Use restaurant.name directly (already validated)
       restaurantId: validRestaurantId, // Use validated restaurantId
@@ -1618,6 +1639,7 @@ function RestaurantDetailsContent() {
   // Handle item card click
   const handleItemClick = (item) => {
     setSelectedItem(item)
+    setSelectedVariantId("")
     setShowItemDetail(true)
   }
 
@@ -3195,9 +3217,18 @@ function RestaurantDetailsContent() {
             {showItemDetail && selectedItem && (() => {
               const variants = getFoodVariants(selectedItem);
               const currentVariant = getVariantForDish(selectedItem, selectedVariantId);
-              const basePrice = currentVariant ? currentVariant.price : (selectedItem.price || 0);
+              const rawPrice = Number(selectedItem.price || 0);
+              const minVariantPrice = variants.length > 0
+                ? Math.min(...variants.map((v) => Number(v.price) || 0))
+                : 0;
+
+              const hasDistinctBasePrice = rawPrice > 0;
+              const dishBasePrice = rawPrice > 0 ? rawPrice : minVariantPrice;
+              const variantPrice = currentVariant ? Number(currentVariant.price || 0) : 0;
+              const unitPrice = dishBasePrice + variantPrice;
+
               const qty = getDishQuantity(selectedItem, selectedVariantId) || 1;
-              const totalPrice = Math.round(basePrice * qty);
+              const totalPrice = Math.round(unitPrice * qty);
               const isVeg = selectedItem.foodType === "Veg" || selectedItem.isVeg !== false;
 
               return (
@@ -3299,10 +3330,15 @@ function RestaurantDetailsContent() {
                           </div>
                         </div>
 
-                        {/* Dish Name */}
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mt-1.5 leading-snug">
-                          {selectedItem.name}
-                        </h2>
+                        {/* Dish Name & Price */}
+                        <div className="flex items-baseline justify-between gap-2 mt-1.5">
+                          <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">
+                            {selectedItem.name}
+                          </h2>
+                          <span className="text-base font-bold text-gray-900 dark:text-white flex-shrink-0">
+                            {hasDistinctBasePrice ? `${RUPEE_SYMBOL}${Math.round(dishBasePrice)}` : getFoodPriceLabel(selectedItem)}
+                          </span>
+                        </div>
 
                         {/* Highly Reordered Progress Indicator */}
                         {isRecommendedItem(selectedItem) && (
@@ -3336,16 +3372,22 @@ function RestaurantDetailsContent() {
                             Choose a variant
                           </h3>
                           <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-3">
-                            Select 1 option
+                            {hasDistinctBasePrice ? "Select option (optional)" : "Select 1 option"}
                           </p>
 
                           <div className="space-y-1">
                             {variants.map((variant) => {
-                              const isSelected = String(selectedVariantId || variants[0]?.id) === String(variant.id);
+                              const isSelected = String(currentVariant?.id || "") === String(variant.id);
                               return (
                                 <div
                                   key={variant.id}
-                                  onClick={() => setSelectedVariantId(variant.id)}
+                                  onClick={() => {
+                                    if (selectedVariantId && String(selectedVariantId) === String(variant.id)) {
+                                      setSelectedVariantId("");
+                                    } else {
+                                      setSelectedVariantId(variant.id);
+                                    }
+                                  }}
                                   className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                                 >
                                   <div className="flex items-center gap-2.5">
@@ -3365,7 +3407,9 @@ function RestaurantDetailsContent() {
 
                                   <div className="flex items-center gap-3">
                                     <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                      {RUPEE_SYMBOL}{Math.round(variant.price)}
+                                      {hasDistinctBasePrice
+                                        ? `+${RUPEE_SYMBOL}${Math.round(variant.price)}`
+                                        : `${RUPEE_SYMBOL}${Math.round(variant.price)}`}
                                     </span>
                                     <div
                                       className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${

@@ -32,6 +32,15 @@ const normalizeFoodType = (v) => {
 
 const getCreateFoodPricing = (body = {}) => {
     const variants = normalizeFoodVariantsInput(extractRawFoodVariants(body));
+    const sentPrice = Number(body.price);
+
+    if (Number.isFinite(sentPrice) && sentPrice >= 0) {
+        return {
+            price: sentPrice,
+            variants
+        };
+    }
+
     if (variants.length > 0) {
         return {
             price: getFoodDisplayPrice({ variants }),
@@ -39,43 +48,30 @@ const getCreateFoodPricing = (body = {}) => {
         };
     }
 
-    const price = Number(body.price);
-    if (!Number.isFinite(price) || price < 0) throw new ValidationError('Price is invalid');
+    if (!Number.isFinite(sentPrice) || sentPrice < 0) throw new ValidationError('Price is invalid');
     return {
-        price,
+        price: sentPrice,
         variants: []
     };
 };
 
 const getUpdatedFoodPricing = (existing = {}, body = {}) => {
     const variantsTouched = body.variants !== undefined || body.variations !== undefined;
-    const existingHasVariants = hasFoodVariants(existing);
     const update = {};
 
     if (variantsTouched) {
         const variants = normalizeFoodVariantsInput(extractRawFoodVariants(body));
         update.variants = variants;
-
-        if (variants.length > 0) {
-            update.price = getFoodDisplayPrice({ variants });
-            return update;
-        }
-
-        const nextBasePrice = body.price !== undefined ? Number(body.price) : Number(existingHasVariants ? NaN : existing.price);
-        if (!Number.isFinite(nextBasePrice) || nextBasePrice < 0) {
-            throw new ValidationError('Base price is required when variants are removed');
-        }
-        update.price = nextBasePrice;
-        return update;
     }
 
     if (body.price !== undefined) {
-        if (existingHasVariants) {
-            throw new ValidationError('Update variants instead of base price for foods with variants');
-        }
         const price = Number(body.price);
-        if (!Number.isFinite(price) || price < 0) throw new ValidationError('Price is invalid');
+        if (!Number.isFinite(price) || price < 0) {
+            throw new ValidationError('Price is invalid');
+        }
         update.price = price;
+    } else if (variantsTouched && update.variants.length > 0 && (existing.price === undefined || existing.price === null)) {
+        update.price = getFoodDisplayPrice({ variants: update.variants });
     }
 
     return update;

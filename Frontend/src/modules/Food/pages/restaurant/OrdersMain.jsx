@@ -738,6 +738,7 @@ function AllOrders({ onSelectOrder, onCancel , searchTerm = "" }) {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [markingReadyOrderIds, setMarkingReadyOrderIds] = useState({});
+  const [acceptingOrderIds, setAcceptingOrderIds] = useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -811,6 +812,35 @@ function AllOrders({ onSelectOrder, onCancel , searchTerm = "" }) {
       if (countdownIntervalId) clearInterval(countdownIntervalId);
     };
   }, []);
+
+  const handleAcceptOrder = async ({ orderId, mongoId }) => {
+    const orderKey = mongoId || orderId;
+    if (!orderKey || acceptingOrderIds[orderKey]) return;
+
+    try {
+      setAcceptingOrderIds((prev) => ({ ...prev, [orderKey]: true }));
+      await restaurantAPI.acceptOrder(orderKey);
+      toast.success(`Order #${orderId} accepted successfully`);
+      setOrders((prev) =>
+        prev.map((order) =>
+          (order.mongoId || order.orderId) === orderKey
+            ? {
+                ...order,
+                status: "preparing",
+                preparingTimestamp: new Date(),
+                sortTimestamp: Date.now(),
+              }
+            : order,
+        ),
+      );
+      window.dispatchEvent(new Event("ordersRefresh"));
+    } catch (error) {
+      debugError("Error accepting order in All orders:", error);
+      toast.error(error.response?.data?.message || "Failed to accept order");
+    } finally {
+      setAcceptingOrderIds((prev) => ({ ...prev, [orderKey]: false }));
+    }
+  };
 
   const handleMarkReady = async ({ orderId, mongoId }) => {
     const orderKey = mongoId || orderId;
@@ -896,14 +926,18 @@ function AllOrders({ onSelectOrder, onCancel , searchTerm = "" }) {
               }
             }
 
+            const isPendingOrConfirmed = normalizedStatus === "confirmed" || normalizedStatus === "pending";
+
             return (
               <OrderCard
                 key={order.orderId || order.mongoId}
                 {...order}
                 eta={etaDisplay}
                 onSelect={onSelectOrder}
+                onAccept={isPendingOrConfirmed ? handleAcceptOrder : undefined}
+                isAccepting={Boolean(acceptingOrderIds[order.mongoId || order.orderId])}
                 onCancel={
-                  normalizedStatus === "preparing" ? onCancel : undefined
+                  (isPendingOrConfirmed || normalizedStatus === "preparing") ? onCancel : undefined
                 }
                 onMarkReady={
                   normalizedStatus === "preparing" ? handleMarkReady : undefined
@@ -1773,11 +1807,39 @@ export default function OrdersMain() {
                 })()}
               </div>
 
-              <button
-                className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
-                onClick={() => setIsSheetOpen(false)}>
-                Close
-              </button>
+              {(String(selectedOrder.status || "").toLowerCase() === "confirmed" || String(selectedOrder.status || "").toLowerCase() === "pending") ? (
+                <div className="flex gap-3">
+                  <button
+                    className="flex-1 bg-[#49AB14] text-white py-3 rounded-2xl text-sm font-bold hover:bg-[#3d8f11] transition-all shadow-sm uppercase tracking-wide"
+                    onClick={async () => {
+                      try {
+                        const id = selectedOrder.mongoId || selectedOrder.orderId;
+                        await restaurantAPI.acceptOrder(id);
+                        toast.success(`Order #${selectedOrder.orderId} accepted successfully`);
+                        setIsSheetOpen(false);
+                        window.dispatchEvent(new Event("ordersRefresh"));
+                      } catch (err) {
+                        toast.error(err.response?.data?.message || "Failed to accept order");
+                      }
+                    }}>
+                    ACCEPT ORDER
+                  </button>
+                  <button
+                    className="flex-1 bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl text-sm font-semibold hover:bg-red-100 transition-all uppercase tracking-wide"
+                    onClick={() => {
+                      setIsSheetOpen(false);
+                      handleCancelClick(selectedOrder);
+                    }}>
+                    DECLINE
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
+                  onClick={() => setIsSheetOpen(false)}>
+                  Close
+                </button>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -1808,12 +1870,15 @@ function OrderCard({
   dispatchStatus,
   onSelect,
   onCancel,
+  onAccept,
+  isAccepting = false,
   onMarkReady,
   isMarkingReady = false,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
   const isReady = normalizedStatus === "ready";
   const isPreparing = normalizedStatus === "preparing";
+  const isPendingOrConfirmed = normalizedStatus === "confirmed" || normalizedStatus === "pending";
   const statusLabel = String(status || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -1845,6 +1910,7 @@ function OrderCard({
             eta,
             itemsSummary,
             paymentMethod,
+            mongoId,
           })
         }
         className="w-full text-left flex gap-3 items-stretch cursor-pointer">
@@ -1881,11 +1947,13 @@ function OrderCard({
                 className={`inline-flex items-start gap-1 px-2 py-1 rounded-full text-[11px] font-medium border text-right whitespace-normal break-words max-w-[140px] leading-tight ${
                   isReady
                     ? "border-green-500 text-green-600"
-                    : "border-gray-800 text-gray-900"
+                    : isPendingOrConfirmed
+                      ? "border-amber-500 text-amber-600 bg-amber-50"
+                      : "border-gray-800 text-gray-900"
                 }`}>
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
-                    isReady ? "bg-green-500" : "bg-gray-800"
+                    isReady ? "bg-green-500" : isPendingOrConfirmed ? "bg-amber-500" : "bg-gray-800"
                   }`}
                 />
                 {statusLabel}
@@ -1935,6 +2003,31 @@ function OrderCard({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {isPendingOrConfirmed && onAccept && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAccept({ orderId, mongoId, customerName });
+                    }}
+                    disabled={isAccepting}
+                    className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-[#49AB14] text-white hover:bg-[#3d8f11] disabled:opacity-60 transition-colors shadow-sm uppercase tracking-wide">
+                    {isAccepting ? "Accepting..." : "Accept"}
+                  </button>
+                  {onCancel && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCancel({ orderId, mongoId, customerName });
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors uppercase tracking-wide">
+                      Decline
+                    </button>
+                  )}
+                </>
+              )}
               {isPreparing && onMarkReady && (
                 <button
                   type="button"
@@ -1948,7 +2041,7 @@ function OrderCard({
                 </button>
               )}
               {/* Hide ETA for ready orders */}
-              {!isReady && eta && (
+              {!isReady && !isPendingOrConfirmed && eta && (
                 <div className="flex items-baseline gap-1">
                   <span className="text-[11px] text-gray-500">ETA</span>
                   <span className="text-xs font-medium text-black">{eta}</span>

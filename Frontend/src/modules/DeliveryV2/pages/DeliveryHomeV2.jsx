@@ -22,6 +22,7 @@ import ActionSlider from '@/modules/DeliveryV2/components/ui/ActionSlider';
 import PocketV2 from '@/modules/DeliveryV2/pages/PocketV2';
 import HistoryV2 from '@/modules/DeliveryV2/pages/HistoryV2';
 import ProfileV2 from '@/modules/DeliveryV2/pages/ProfileV2';
+import DeliveryOrdersTabV2 from '@/modules/DeliveryV2/components/DeliveryOrdersTabV2';
 
 // Icons
 import {
@@ -69,7 +70,7 @@ function BottomPopup({ isOpen, onClose, title, children }) {
  */
 export default function DeliveryHomeV2({ tab = 'feed' }) {
   const navigate = useNavigate();
-  const { isOnline, toggleOnline, activeOrder, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
+  const { isOnline, toggleOnline, activeOrder, activeOrders, maxSlots, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
   const { isWithinRange, distanceToTarget } = useProximityCheck();
   const { acceptOrder, rejectOrder, reachPickup, pickUpOrder, reachDrop, completeDelivery, resetTrip } = useOrderManager();
   const { newOrder, clearNewOrder, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
@@ -77,6 +78,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
 
   const [incomingOrder, setIncomingOrder] = useState(null);
+  const [availableOrdersList, setAvailableOrdersList] = useState([]);
   const [currentTab, setCurrentTab] = useState(tab);
   const [codLimitReached, setCodLimitReached] = useState(false);
   const rejectedOrderIdsRef = useRef(new Set());
@@ -681,6 +683,24 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
   }, [isOnline]);
 
+  // Poll available orders for NEW ORDERS tab
+  useEffect(() => {
+    if (!isOnline) return;
+    const fetchAvailableOrders = async () => {
+      try {
+        const response = await deliveryAPI.getOrders({ limit: 20, page: 1 });
+        const payload = response?.data?.data || response?.data || {};
+        const docs = Array.isArray(payload.docs) ? payload.docs : (Array.isArray(payload) ? payload : []);
+        setAvailableOrdersList(docs);
+      } catch (err) {
+        // quiet error
+      }
+    };
+    fetchAvailableOrders();
+    const interval = setInterval(fetchAvailableOrders, 8000);
+    return () => clearInterval(interval);
+  }, [isOnline]);
+
   useEffect(() => {
     if (orderStatusUpdate) {
       if (orderStatusUpdate.status === 'cancelled') {
@@ -941,6 +961,33 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               </button>
             </div>
           </div>
+        ) : currentTab === 'orders' ? (
+          <DeliveryOrdersTabV2
+            activeOrders={activeOrders}
+            activeOrder={activeOrder}
+            maxSlots={maxSlots || 2}
+            incomingOrder={incomingOrder}
+            availableOrders={availableOrdersList}
+            onAccept={(o) => {
+              acceptOrder(o);
+              setIncomingOrder(null);
+              clearNewOrder();
+            }}
+            onReject={(o) => {
+              const targetId = String(o?.orderId || o?._id || o?.id || '');
+              if (targetId) rejectedOrderIdsRef.current.add(targetId);
+              rejectOrder(o);
+              if (incomingOrder && String(incomingOrder?.orderId || incomingOrder?._id) === targetId) {
+                setIncomingOrder(null);
+                clearNewOrder();
+              }
+              setAvailableOrdersList((prev) => prev.filter((item) => String(item.orderId || item._id || item.id) !== targetId));
+            }}
+            onSelectActiveOrder={(o) => {
+              setActiveOrder(o);
+              navigate('/food/delivery/feed');
+            }}
+          />
         ) : currentTab === 'pocket' ? (
           <PocketV2 />
         ) : currentTab === 'history' ? (
@@ -965,7 +1012,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               className="fixed inset-x-0 top-0 bottom-[92px] z-[300] pointer-events-none flex items-end"
             >
               <div className="w-full pointer-events-auto relative">
-                {incomingOrder && (
+                {incomingOrder && currentTab !== 'orders' && (
                   <NewOrderModal
                     order={incomingOrder}
                     onAccept={(o) => { acceptOrder(o); setIncomingOrder(null); clearNewOrder(); }}
@@ -1151,19 +1198,30 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         </motion.div>
       )}
 
-      {/* ─── 3. BOTTOM NAV (Fixed - Compact Pro) ─── */}
-      <div className="bg-white border-t border-gray-100 px-8 py-3 pb-6 flex justify-between items-center z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-        <button onClick={() => navigate('/food/delivery/feed')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'feed' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-          <LayoutGrid className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Feed</span>
+      {/* ─── 3. BOTTOM NAV (Fixed 5-Item Bar matching screenshots) ─── */}
+      <div className="bg-white border-t border-gray-100 px-4 py-3 pb-6 flex justify-between items-center z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+        <button onClick={() => navigate('/food/delivery/feed')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'feed' ? 'text-[#f94e10] scale-105 font-bold' : 'text-gray-400 opacity-70'}`}>
+          <LayoutGrid className="w-6 h-6" /><span className="text-[10px] font-medium font-sans">Feed</span>
         </button>
-        <button onClick={() => navigate('/food/delivery/pocket')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'pocket' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-          <Wallet className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Pocket</span>
+        <button onClick={() => navigate('/food/delivery/orders')} className={`flex flex-col items-center gap-1 transition-all relative ${currentTab === 'orders' ? 'text-[#f94e15] scale-105 font-bold' : 'text-gray-400 opacity-70'}`}>
+          <div className="relative">
+            <Package className="w-6 h-6 text-[#f94e10]" />
+            {(activeOrders.length > 0 || incomingOrder || availableOrdersList.length > 0) && (
+              <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-sm">
+                {activeOrders.length || (incomingOrder ? 1 : availableOrdersList.length)}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-medium font-sans">Orders</span>
         </button>
-        <button onClick={() => navigate('/food/delivery/history')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'history' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-          <History className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Trip History</span>
+        <button onClick={() => navigate('/food/delivery/pocket')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'pocket' ? 'text-[#f94e10] scale-105 font-bold' : 'text-gray-400 opacity-70'}`}>
+          <Wallet className="w-6 h-6" /><span className="text-[10px] font-medium font-sans">Pocket</span>
         </button>
-        <button onClick={() => navigate('/food/delivery/profile')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'profile' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
-          <UserIcon className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Profile</span>
+        <button onClick={() => navigate('/food/delivery/history')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'history' ? 'text-[#f94e10] scale-105 font-bold' : 'text-gray-400 opacity-70'}`}>
+          <History className="w-6 h-6" /><span className="text-[10px] font-medium font-sans">Trip History</span>
+        </button>
+        <button onClick={() => navigate('/food/delivery/profile')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'profile' ? 'text-[#f94e10] scale-105 font-bold' : 'text-gray-400 opacity-70'}`}>
+          <UserIcon className="w-6 h-6" /><span className="text-[10px] font-medium font-sans">Profile</span>
         </button>
       </div>
     </div>

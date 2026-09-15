@@ -271,21 +271,31 @@ async function syncItemsWithDatabase(items = []) {
       item.isVeg = dbItem.foodType === 'Veg';
       item.isAvailable = dbItem.isAvailable !== false;
 
+      const rawPrice = Number(dbItem.price || 0);
+      const variants = Array.isArray(dbItem.variants) ? dbItem.variants : [];
+      const minVariantPrice = variants.length > 0
+        ? Math.min(...variants.map(v => Number(v.price) || 0))
+        : 0;
+      const hasDistinctBasePrice = variants.length > 0
+        ? (rawPrice > 0 && rawPrice > minVariantPrice)
+        : (rawPrice > 0);
+
       if (item.variantId && mongoose.Types.ObjectId.isValid(item.variantId)) {
         const variantIdStr = String(item.variantId);
-        const dbVariant = dbItem.variants?.find(v => String(v._id) === variantIdStr);
+        const dbVariant = variants.find(v => String(v._id) === variantIdStr);
         if (dbVariant) {
+          const vPrice = Number(dbVariant.price || 0);
           item.variantName = dbVariant.name;
-          item.variantPrice = dbVariant.price;
-          item.price = dbVariant.price;
+          item.variantPrice = vPrice;
+          item.price = hasDistinctBasePrice ? (rawPrice + vPrice) : vPrice;
         } else {
-          item.variantPrice = dbItem.price;
-          item.price = dbItem.price;
+          item.variantPrice = rawPrice;
+          item.price = rawPrice;
         }
       } else {
-        item.price = dbItem.price;
+        item.price = rawPrice;
         if (item.variantPrice) {
-          item.variantPrice = dbItem.price;
+          item.variantPrice = rawPrice;
         }
       }
     } else {
@@ -3876,6 +3886,27 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
       throw new ForbiddenError("Order already accepted by another driver");
     }
     throw new NotFoundError("Order not found");
+  }
+
+  // Multi-Slot Check: Max 2 active accepted orders per delivery partner
+  const activeOrdersCount = await FoodOrder.countDocuments({
+    "dispatch.deliveryPartnerId": partnerId,
+    "dispatch.status": "accepted",
+    orderStatus: {
+      $nin: [
+        "delivered",
+        "cancelled_by_user",
+        "cancelled_by_restaurant",
+        "cancelled_by_admin",
+      ],
+    },
+  });
+
+  const MAX_RIDER_ACTIVE_SLOTS = 2;
+  const isAlreadyAssignedThisOrder = String(order.dispatch?.deliveryPartnerId || "") === String(deliveryPartnerId);
+
+  if (activeOrdersCount >= MAX_RIDER_ACTIVE_SLOTS && !isAlreadyAssignedThisOrder) {
+    throw new ValidationError(`All ${MAX_RIDER_ACTIVE_SLOTS} active delivery slots in use. Complete an active order before accepting more.`);
   }
 
   if (

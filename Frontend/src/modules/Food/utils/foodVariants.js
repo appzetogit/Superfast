@@ -22,21 +22,48 @@ export const getFoodVariants = (item = {}) =>
 
 export const hasFoodVariants = (item = {}) => getFoodVariants(item).length > 0
 
-export const getDefaultFoodVariant = (item = {}) => getFoodVariants(item)[0] || null
+export const getDefaultFoodVariant = (item = {}) => {
+  const variants = getFoodVariants(item)
+  if (variants.length === 0) return null
+  const price = Number(item?.price || 0)
+  const minVariantPrice = Math.min(...variants.map((v) => Number(v.price) || 0))
+  const hasDistinctBasePrice = price > 0 && price > minVariantPrice
+  return hasDistinctBasePrice ? null : variants[0]
+}
 
 export const getFoodDisplayPrice = (item = {}) => {
+  const price = Number(item?.price)
   const variants = getFoodVariants(item)
+  const minVariantPrice = variants.length > 0
+    ? Math.min(...variants.map((variant) => Number(variant.price) || 0))
+    : 0
+
   if (variants.length > 0) {
-    return Math.min(...variants.map((variant) => Number(variant.price) || 0))
+    if (Number.isFinite(price) && price > minVariantPrice) {
+      return price
+    }
+    return minVariantPrice
   }
 
-  const price = Number(item?.price)
-  return Number.isFinite(price) ? price : 0
+  return Number.isFinite(price) && price > 0 ? price : 0
 }
 
 export const getFoodPriceLabel = (item = {}) => {
-  const price = getFoodDisplayPrice(item)
-  return hasFoodVariants(item) ? `Starting from ₹${Math.round(price)}` : `₹${Math.round(price)}`
+  const displayPrice = getFoodDisplayPrice(item)
+  const price = Number(item?.price)
+  const variants = getFoodVariants(item)
+  const minVariantPrice = variants.length > 0
+    ? Math.min(...variants.map((variant) => Number(variant.price) || 0))
+    : 0
+
+  const hasDistinctBasePrice = variants.length > 0
+    ? (Number.isFinite(price) && price > minVariantPrice)
+    : (Number.isFinite(price) && price > 0)
+
+  if (variants.length > 0 && !hasDistinctBasePrice) {
+    return `Starting from ₹${Math.round(displayPrice)}`
+  }
+  return `₹${Math.round(displayPrice)}`
 }
 
 export const buildCartLineId = (itemId, variantId = "") =>

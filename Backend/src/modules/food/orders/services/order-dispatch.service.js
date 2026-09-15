@@ -35,16 +35,26 @@ async function listNearbyOnlineDeliveryPartners(
     source = await FoodRestaurant.findById(sId).lean();
   }
 
-  // Find all delivery partners currently busy with an active accepted trip
+  // Find all delivery partners currently busy with active accepted trips
+  // Rider can accept up to 2 orders simultaneously (MAX_RIDER_ACTIVE_SLOTS = 2)
+  const MAX_RIDER_ACTIVE_SLOTS = 2;
   const busyPartnerDocs = await FoodOrder.find({
     "dispatch.status": "accepted",
     orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }
   }).select("dispatch.deliveryPartnerId").lean();
 
+  const activeCountByPartner = {};
+  for (const doc of busyPartnerDocs) {
+    const pid = doc.dispatch?.deliveryPartnerId?.toString();
+    if (pid) {
+      activeCountByPartner[pid] = (activeCountByPartner[pid] || 0) + 1;
+    }
+  }
+
   const busyPartnerIds = new Set(
-    busyPartnerDocs
-      .map((o) => o.dispatch?.deliveryPartnerId?.toString())
-      .filter(Boolean)
+    Object.keys(activeCountByPartner).filter(
+      (pid) => activeCountByPartner[pid] >= MAX_RIDER_ACTIVE_SLOTS
+    )
   );
 
   if (!source?.location?.coordinates?.length) {

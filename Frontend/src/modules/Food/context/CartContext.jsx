@@ -100,6 +100,13 @@ const normalizeCartData = (rawCart) => {
       const parsedVariantPrice = Number(
         item.variantPrice ?? item.variant?.price ?? item.price,
       )
+      const rawBasePrice = Number(item.basePrice ?? item.dishBasePrice ?? item.product?.price ?? 0)
+      const rawVariantPrice = Number(item.variantPrice ?? item.variant?.price ?? 0)
+      let resolvedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0
+      if (rawBasePrice > 0 && rawVariantPrice > 0 && rawBasePrice > rawVariantPrice && variantId) {
+        resolvedPrice = rawBasePrice + rawVariantPrice
+      }
+
       const orderType = item.orderType === "quick" ? "quick" : "food"
       const sourceId = getItemSourceId(item, orderType)
       const lineItemId =
@@ -129,7 +136,7 @@ const normalizeCartData = (rawCart) => {
           Number.isFinite(parsedQuantity) && parsedQuantity > 0
             ? Math.floor(parsedQuantity)
             : 1,
-        price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
+        price: resolvedPrice,
         restaurant: normalizedRestaurantName,
         restaurantId: normalizedRestaurantId,
         image: normalizedImage,
@@ -316,7 +323,9 @@ export function CartProvider({ children }) {
           setTimeout(() => setLastAddEvent(null), 1500)
         }
         return safePrev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === resolvedItemId || i.id === item.id
+            ? { ...i, ...item, quantity: i.quantity + (item.quantity || 1) }
+            : i
         )
       }
       

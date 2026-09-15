@@ -389,7 +389,7 @@ export default function FoodsList() {
         categoryId: validCategoryId,
         categoryName: String(foodForm.categoryName || "").trim(),
         name: foodForm.name.trim(),
-        price: hasVariants ? (normalizedVariants[0]?.price || 0) : parsedPrice,
+        price: parsedPrice > 0 ? parsedPrice : (hasVariants ? (normalizedVariants[0]?.price || 0) : 0),
         variants: normalizedVariants.map((variant) => ({
           ...(variant.id && !variant.id.startsWith("variant-") ? { _id: variant.id } : {}),
           name: variant.name,
@@ -818,12 +818,8 @@ export default function FoodsList() {
                   step="0.01"
                   value={foodForm.price}
                   onChange={(e) => setFoodForm((prev) => ({ ...prev, price: e.target.value }))}
-                  disabled={(foodForm.variants || []).length > 0}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white disabled:bg-slate-100 disabled:text-slate-400"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white"
                 />
-                {(foodForm.variants || []).length > 0 ? (
-                  <p className="mt-1 text-xs text-slate-500">Variants are active, so customers will see the lowest variant price as the starting price.</p>
-                ) : null}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Food Type</label>
