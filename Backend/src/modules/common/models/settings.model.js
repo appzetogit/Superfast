@@ -83,7 +83,10 @@ const globalSettingsSchema = new mongoose.Schema(
             demoOtp: { type: String, default: '123456' },
             bypassLocationRestriction: { type: Boolean, default: true },
             allowTestPayment: { type: Boolean, default: true },
-            hideLiveRestaurantsInReview: { type: Boolean, default: true }
+            hideLiveRestaurantsInReview: { type: Boolean, default: true },
+            showAllMenuItemsInDevMode: { type: Boolean, default: true },
+            demoMenuItemIds: [{ type: String }],
+            demoLandingCategoryIds: [{ type: String }]
         }
     },
     { timestamps: true }

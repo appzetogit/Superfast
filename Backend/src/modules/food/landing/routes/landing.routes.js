@@ -53,6 +53,14 @@ import {
     updateGourmetOrderAdmin,
     toggleGourmetStatusAdmin
 } from '../controllers/top10GourmetAdmin.controller.js';
+import {
+    listLandingCategoriesController,
+    listPublicLandingCategoriesController,
+    createLandingCategoryController,
+    deleteLandingCategoryController,
+    toggleLandingCategoryStatusController,
+    updateLandingCategoryOrderController
+} from '../controllers/landingCategory.controller.js';
 import { getPublicPageController } from '../../admin/controllers/pageContent.controller.js';
 import { getPublicReferralSettingsController } from '../controllers/publicReferralSettings.controller.js';
 
@@ -120,8 +128,20 @@ router.delete('/hero-banners/gourmet/:id', deleteGourmetAdmin);
 router.patch('/hero-banners/gourmet/:id/order', updateGourmetOrderAdmin);
 router.patch('/hero-banners/gourmet/:id/status', toggleGourmetStatusAdmin);
 
+// Admin Landing Categories (What's on your mind?)
+router.get('/hero-banners/landing/categories', listLandingCategoriesController);
+router.post(
+    '/hero-banners/landing/categories',
+    upload.single('image'),
+    createLandingCategoryController
+);
+router.delete('/hero-banners/landing/categories/:id', deleteLandingCategoryController);
+router.patch('/hero-banners/landing/categories/:id/status', toggleLandingCategoryStatusController);
+router.patch('/hero-banners/landing/categories/:id/order', updateLandingCategoryOrderController);
+
 // Public landing endpoints (Food user app)
 router.get('/hero-banners/public', getPublicHeroBannersController);
+router.get('/hero-banners/landing/categories/public', listPublicLandingCategoriesController);
 router.get('/hero-banners/under-250/public', getPublicUnder250BannersController);
 router.get('/hero-banners/dining/public', getPublicDiningBannersController);
 router.get('/explore-icons/public', getPublicExploreIconsController);

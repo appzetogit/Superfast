@@ -16,45 +16,55 @@ export async function getDeveloperModeFilter() {
         const settings = await GlobalSettings.findOne().lean();
         const devMode = settings?.developerMode;
         if (!devMode?.enabled) {
-            return { isDevMode: false, demoIds: null, demoStoreIds: null, bypassLocation: false };
+            return { isDevMode: false, demoIds: null, demoStoreIds: null, bypassLocation: false, showAllMenuItems: false };
         }
 
-        let validDemoIds = [];
-        if (Array.isArray(devMode.demoRestaurantIds) && devMode.demoRestaurantIds.length > 0) {
-            validDemoIds = devMode.demoRestaurantIds
-                .map(id => String(id).trim())
-                .filter(id => mongoose.Types.ObjectId.isValid(id))
-                .map(id => new mongoose.Types.ObjectId(id));
+        const hideLive = devMode.hideLiveRestaurantsInReview !== false;
+
+        let validDemoIds = null;
+        if (hideLive) {
+            if (Array.isArray(devMode.demoRestaurantIds) && devMode.demoRestaurantIds.length > 0) {
+                validDemoIds = devMode.demoRestaurantIds
+                    .map(id => String(id).trim())
+                    .filter(id => mongoose.Types.ObjectId.isValid(id))
+                    .map(id => new mongoose.Types.ObjectId(id));
+            } else {
+                const fallback = await FoodRestaurant.find().select('_id').limit(10).lean();
+                if (fallback.length > 0) {
+                    validDemoIds = fallback.map(r => r._id);
+                }
+            }
         }
 
-        // If Developer Mode is enabled but no specific demo restaurants were selected,
-        // fallback to up to 2 restaurants so live production restaurants are not exposed unexpectedly.
-        if (validDemoIds.length === 0) {
-            const fallback = await FoodRestaurant.find().select('_id').limit(2).lean();
-            validDemoIds = fallback.map(r => r._id);
+        let validDemoStoreIds = null;
+        if (hideLive) {
+            if (Array.isArray(devMode.demoStoreIds) && devMode.demoStoreIds.length > 0) {
+                validDemoStoreIds = devMode.demoStoreIds
+                    .map(id => String(id).trim())
+                    .filter(id => mongoose.Types.ObjectId.isValid(id))
+                    .map(id => new mongoose.Types.ObjectId(id));
+            } else {
+                const fallbackStore = await Seller.find().select('_id').limit(10).lean();
+                if (fallbackStore.length > 0) {
+                    validDemoStoreIds = fallbackStore.map(s => s._id);
+                }
+            }
         }
 
-        let validDemoStoreIds = [];
-        if (Array.isArray(devMode.demoStoreIds) && devMode.demoStoreIds.length > 0) {
-            validDemoStoreIds = devMode.demoStoreIds
-                .map(id => String(id).trim())
-                .filter(id => mongoose.Types.ObjectId.isValid(id))
-                .map(id => new mongoose.Types.ObjectId(id));
-        }
-
-        if (validDemoStoreIds.length === 0) {
-            const fallbackStore = await Seller.find().select('_id').limit(2).lean();
-            validDemoStoreIds = fallbackStore.map(s => s._id);
-        }
+        const demoMenuItemIds = Array.isArray(devMode.demoMenuItemIds) ? devMode.demoMenuItemIds.map(String) : [];
+        const demoLandingCategoryIds = Array.isArray(devMode.demoLandingCategoryIds) ? devMode.demoLandingCategoryIds.map(String) : [];
 
         return {
             isDevMode: true,
             demoIds: validDemoIds,
             demoStoreIds: validDemoStoreIds,
-            bypassLocation: devMode.bypassLocationRestriction ?? true
+            bypassLocation: devMode.bypassLocationRestriction ?? true,
+            showAllMenuItems: devMode.showAllMenuItemsInDevMode ?? true,
+            demoMenuItemIds,
+            demoLandingCategoryIds
         };
     } catch (error) {
         console.error('Error in getDeveloperModeFilter:', error);
-        return { isDevMode: false, demoIds: null, demoStoreIds: null, bypassLocation: false };
+        return { isDevMode: false, demoIds: null, demoStoreIds: null, bypassLocation: false, showAllMenuItems: false };
     }
 }

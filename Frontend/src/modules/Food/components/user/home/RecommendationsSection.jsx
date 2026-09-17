@@ -132,7 +132,7 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
           const isOffline = !availabilityStatus.isOpen;
           const isNew = !(rating > 0);
 
-          const offer = restaurant.offer || restaurant.discount || (index % 2 === 0 ? "₹120 OFF above ₹199" : "50% OFF select items");
+          const offer = (restaurant.offer || restaurant.discount || "").trim();
           const deliveryTimeStr = restaurant.deliveryTime || restaurant.estimatedDeliveryTime || (index % 3 === 0 ? "15-20 mins" : index % 3 === 1 ? "25-30 mins" : "20-25 mins");
           const isFast = !deliveryTimeStr.includes("20-25");
 
@@ -160,13 +160,6 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                     backendOrigin={BACKEND_ORIGIN}
                   />
-                  
-                  {/* Offer Badge Overlay on Top */}
-                  {offer && (
-                    <div className="absolute top-0 left-0 right-0 bg-black/60 text-white px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold leading-tight truncate">
-                      {offer}
-                    </div>
-                  )}
 
                   {/* Rating or New badge */}
                   <div className={`absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded-md text-[8px] sm:text-[9px] font-bold shadow-md flex items-center gap-0.5 text-white ${
@@ -184,6 +177,13 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
                   <p className="text-[11px] font-bold text-slate-800 dark:text-white truncate">
                     {name}
                   </p>
+                  
+                  {/* Dynamic Offer Badge (outside image) */}
+                  {offer && (
+                    <div className="inline-flex items-center text-[9px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded-md max-w-full truncate">
+                      <span className="truncate">{offer}</span>
+                    </div>
+                  )}
                   
                   {/* Delivery time with icon */}
                   <div className="flex items-center gap-1">

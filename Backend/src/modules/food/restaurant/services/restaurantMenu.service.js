@@ -4,6 +4,7 @@ import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
 import { getFoodDisplayPrice, serializeFoodVariants } from '../../admin/services/foodVariant.service.js';
+import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
 
 const buildMenuFromFoods = async (foods = []) => {
     const categoryIds = Array.from(
@@ -122,22 +123,39 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     const value = String(restaurantIdOrSlug || '').trim();
     if (!value) throw new ValidationError('Restaurant id is required');
 
+    const devFilter = await getDeveloperModeFilter();
+
     let restaurant = null;
-    if (/^[0-9a-fA-F]{24}$/.test(value)) {
-        restaurant = await FoodRestaurant.findOne({ _id: value, status: 'approved' })
-            .select('_id status')
-            .lean();
-    } else {
-        const normalized = value.trim().toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ');
-        restaurant = await FoodRestaurant.findOne({ restaurantNameNormalized: normalized, status: 'approved' })
-            .select('_id status')
-            .lean();
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(value);
+    const restQuery = isMongoId
+        ? { _id: value }
+        : { restaurantNameNormalized: value.trim().toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ') };
+
+    if (!devFilter.isDevMode) {
+        restQuery.status = 'approved';
     }
+
+    restaurant = await FoodRestaurant.findOne(restQuery)
+        .select('_id status')
+        .lean();
 
     if (!restaurant?._id) {
         return null;
     }
-    const foods = await FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved' })
+
+    const foodQuery = { restaurantId: restaurant._id };
+    if (devFilter.isDevMode && Array.isArray(devFilter.demoMenuItemIds) && devFilter.demoMenuItemIds.length > 0) {
+        const itemObjIds = devFilter.demoMenuItemIds
+            .map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null)
+            .filter(Boolean);
+        if (itemObjIds.length > 0) {
+            foodQuery._id = { $in: itemObjIds };
+        }
+    } else if (!devFilter.isDevMode || !devFilter.showAllMenuItems) {
+        foodQuery.approvalStatus = 'approved';
+    }
+
+    const foods = await FoodItem.find(foodQuery)
         .sort({ createdAt: -1 })
         .limit(2000)
         .lean();

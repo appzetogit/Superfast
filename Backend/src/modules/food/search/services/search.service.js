@@ -404,6 +404,7 @@ export const searchUnified = async (query = {}, options = {}) => {
  * Fetch Admin-only categories
  */
 export const getAdminCategories = async (query = {}) => {
+    const devFilter = await getDeveloperModeFilter();
     const filter = { 
         isActive: true, 
         isApproved: true,
@@ -414,11 +415,24 @@ export const getAdminCategories = async (query = {}) => {
         ]
     };
 
+    if (devFilter.isDevMode && Array.isArray(devFilter.demoLandingCategoryIds) && devFilter.demoLandingCategoryIds.length > 0) {
+        const catObjIds = devFilter.demoLandingCategoryIds
+            .map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null)
+            .filter(Boolean);
+        if (catObjIds.length > 0) {
+            filter._id = { $in: catObjIds };
+        }
+    }
+
     if (query.zoneId && mongoose.Types.ObjectId.isValid(query.zoneId)) {
-        filter.$or = [
-            { zoneId: new mongoose.Types.ObjectId(query.zoneId) },
-            { zoneId: { $exists: false } },
-            { zoneId: null }
+        filter.$and = [
+            {
+                $or: [
+                    { zoneId: new mongoose.Types.ObjectId(query.zoneId) },
+                    { zoneId: { $exists: false } },
+                    { zoneId: null }
+                ]
+            }
         ];
     }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { publicGetOnce, adminAPI } from "@food/api";
+import api, { publicGetOnce, adminAPI } from "@food/api";
 import { adminApi as quickAdminApi } from "@/modules/quickCommerce/admin/services/adminApi";
 import { clearGlobalHomeCache } from "@food/hooks/useFoodHomeData";
 import { Button } from "@food/components/ui/button";
@@ -30,7 +30,10 @@ import {
   Copy,
   Sparkles,
   Store,
-  Building2
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  ListFilter
 } from "lucide-react";
 
 export default function DeveloperSettings() {
@@ -42,6 +45,10 @@ export default function DeveloperSettings() {
   const [activeTab, setActiveTab] = useState(isMartPath ? "mart" : "food");
   const [approvedRestaurants, setApprovedRestaurants] = useState([]);
   const [supermartStores, setSupermartStores] = useState([]);
+  const [landingCategories, setLandingCategories] = useState([]);
+  const [restaurantFoodsMap, setRestaurantFoodsMap] = useState({});
+  const [expandedRestaurantId, setExpandedRestaurantId] = useState(null);
+  const [loadingFoodsForId, setLoadingFoodsForId] = useState(null);
 
   // Developer / Reviewer Mode State
   const [developerMode, setDeveloperMode] = useState({
@@ -53,6 +60,9 @@ export default function DeveloperSettings() {
     bypassLocationRestriction: true,
     allowTestPayment: true,
     hideLiveRestaurantsInReview: true,
+    showAllMenuItemsInDevMode: true,
+    demoMenuItemIds: [],
+    demoLandingCategoryIds: [],
   });
 
   useEffect(() => {
@@ -60,12 +70,15 @@ export default function DeveloperSettings() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch Settings, Approved Restaurants, Supermart Sellers & Public Stores in parallel
-        const [settingsRes, restaurantsRes, sellersRes, storesRes] = await Promise.all([
+        // Fetch Settings, Restaurants (all & approved), Supermart Sellers, Stores & Categories in parallel
+        const [settingsRes, restaurantsRes, approvedRestRes, sellersRes, storesRes, landingCatsRes, mainCategoriesRes] = await Promise.all([
           adminAPI.getBusinessSettings().catch(() => null),
-          adminAPI.getApprovedRestaurants().catch(() => null),
+          adminAPI.getRestaurants({ limit: 1000 }).catch(() => null),
+          adminAPI.getApprovedRestaurants({ limit: 1000 }).catch(() => null),
           quickAdminApi.getSellers().catch(() => null),
           publicGetOnce("/quick-commerce/stores").catch(() => null),
+          api.get('/food/hero-banners/landing/categories').catch(() => null),
+          adminAPI.getCategories({ limit: 1000 }).catch(() => null),
         ]);
 
         if (isMounted) {
@@ -82,13 +95,50 @@ export default function DeveloperSettings() {
               bypassLocationRestriction: dev.bypassLocationRestriction !== false,
               allowTestPayment: dev.allowTestPayment !== false,
               hideLiveRestaurantsInReview: dev.hideLiveRestaurantsInReview !== false,
+              showAllMenuItemsInDevMode: dev.showAllMenuItemsInDevMode !== false,
+              demoMenuItemIds: Array.isArray(dev.demoMenuItemIds) ? dev.demoMenuItemIds.map(String) : [],
+              demoLandingCategoryIds: Array.isArray(dev.demoLandingCategoryIds) ? dev.demoLandingCategoryIds.map(String) : [],
             });
           }
 
-          // Process Restaurants
-          const restList = restaurantsRes?.data?.data?.restaurants || 
-                           restaurantsRes?.data?.restaurants || 
-                           restaurantsRes?.data?.data || [];
+          // Process & Merge Landing Categories + Standard Food Categories
+          let landingList = [];
+          if (landingCatsRes?.data?.success && Array.isArray(landingCatsRes.data.data?.categories)) {
+            landingList = landingCatsRes.data.data.categories.map((c) => ({
+              _id: String(c._id || c.id),
+              label: c.label || c.name || "Category",
+              imageUrl: c.imageUrl || c.image || "",
+            }));
+          }
+
+          const mainCatsList = mainCategoriesRes?.data?.data?.categories || mainCategoriesRes?.data?.categories || [];
+          const normalizedMainCats = (Array.isArray(mainCatsList) ? mainCatsList : []).map((c) => ({
+            _id: String(c._id || c.id),
+            label: c.name || c.label || "Category",
+            imageUrl: c.image || c.imageUrl || "",
+          }));
+
+          const combinedMap = new Map();
+          landingList.forEach((c) => combinedMap.set(c._id, c));
+          normalizedMainCats.forEach((c) => {
+            if (!combinedMap.has(c._id)) {
+              combinedMap.set(c._id, c);
+            }
+          });
+
+          setLandingCategories(Array.from(combinedMap.values()));
+
+          // Process Restaurants with multi-level fallback
+          let restList = restaurantsRes?.data?.data?.restaurants || 
+                         restaurantsRes?.data?.restaurants || 
+                         (Array.isArray(restaurantsRes?.data?.data) ? restaurantsRes.data.data : null);
+
+          if (!Array.isArray(restList) || restList.length === 0) {
+            restList = approvedRestRes?.data?.data?.restaurants || 
+                       approvedRestRes?.data?.restaurants || 
+                       (Array.isArray(approvedRestRes?.data?.data) ? approvedRestRes.data.data : []);
+          }
+
           if (Array.isArray(restList)) {
             setApprovedRestaurants(restList);
           }
@@ -97,9 +147,13 @@ export default function DeveloperSettings() {
           const sellerItems = sellersRes?.data?.result?.items ||
                               sellersRes?.data?.data?.items ||
                               sellersRes?.data?.result ||
-                              sellersRes?.data?.data || [];
+                              sellersRes?.data?.data ||
+                              sellersRes?.data?.items || [];
 
-          const publicStoreList = storesRes?.data?.results || storesRes?.data?.data || storesRes?.data || [];
+          const publicStoreList = storesRes?.data?.results || 
+                                  storesRes?.data?.data?.items || 
+                                  storesRes?.data?.data || 
+                                  (Array.isArray(storesRes?.data) ? storesRes.data : []);
 
           const combinedStoresMap = new Map();
 
@@ -165,10 +219,85 @@ export default function DeveloperSettings() {
   const handleRestaurantSelect = (restaurantId) => {
     setDeveloperMode((prev) => {
       const exists = prev.demoRestaurantIds.includes(restaurantId);
-      const newIds = exists
+      const updated = exists
         ? prev.demoRestaurantIds.filter((id) => id !== restaurantId)
         : [...prev.demoRestaurantIds, restaurantId];
-      return { ...prev, demoRestaurantIds: newIds };
+      return {
+        ...prev,
+        demoRestaurantIds: updated,
+      };
+    });
+  };
+
+  const handleToggleLandingCategory = (catId) => {
+    const idStr = String(catId);
+    setDeveloperMode((prev) => {
+      const current = prev.demoLandingCategoryIds || [];
+      const exists = current.includes(idStr);
+      const next = exists ? current.filter((id) => id !== idStr) : [...current, idStr];
+      return { ...prev, demoLandingCategoryIds: next };
+    });
+  };
+
+  const handleSelectAllLandingCategories = () => {
+    setDeveloperMode((prev) => {
+      const allIds = landingCategories.map((c) => String(c._id));
+      const isAllSelected = allIds.every((id) => (prev.demoLandingCategoryIds || []).includes(id));
+      return {
+        ...prev,
+        demoLandingCategoryIds: isAllSelected ? [] : allIds,
+      };
+    });
+  };
+
+  const handleToggleExpandRestaurant = async (e, restId) => {
+    e.stopPropagation();
+    const idStr = String(restId);
+    if (expandedRestaurantId === idStr) {
+      setExpandedRestaurantId(null);
+      return;
+    }
+    setExpandedRestaurantId(idStr);
+
+    if (!restaurantFoodsMap[idStr]) {
+      try {
+        setLoadingFoodsForId(idStr);
+        const res = await adminAPI.getFoods({ restaurantId: idStr, limit: 500 });
+        const foods = res?.data?.data?.foods || res?.data?.foods || res?.data?.data || (Array.isArray(res?.data) ? res.data : []);
+        setRestaurantFoodsMap((prev) => ({ ...prev, [idStr]: Array.isArray(foods) ? foods : [] }));
+      } catch (err) {
+        console.error("Failed to load restaurant foods:", err);
+        setRestaurantFoodsMap((prev) => ({ ...prev, [idStr]: [] }));
+      } finally {
+        setLoadingFoodsForId(null);
+      }
+    }
+  };
+
+  const handleToggleMenuItem = (itemId) => {
+    const idStr = String(itemId);
+    setDeveloperMode((prev) => {
+      const current = prev.demoMenuItemIds || [];
+      const exists = current.includes(idStr);
+      const next = exists ? current.filter((id) => id !== idStr) : [...current, idStr];
+      return { ...prev, demoMenuItemIds: next };
+    });
+  };
+
+  const handleSelectAllRestaurantFoods = (restId) => {
+    const idStr = String(restId);
+    const foods = restaurantFoodsMap[idStr] || [];
+    const foodIds = foods.map((f) => String(f._id || f.id));
+    setDeveloperMode((prev) => {
+      const current = prev.demoMenuItemIds || [];
+      const allSelected = foodIds.every((id) => current.includes(id));
+      let next;
+      if (allSelected) {
+        next = current.filter((id) => !foodIds.includes(id));
+      } else {
+        next = Array.from(new Set([...current, ...foodIds]));
+      }
+      return { ...prev, demoMenuItemIds: next };
     });
   };
 
@@ -203,6 +332,9 @@ export default function DeveloperSettings() {
           bypassLocationRestriction: developerMode.bypassLocationRestriction,
           allowTestPayment: developerMode.allowTestPayment,
           hideLiveRestaurantsInReview: developerMode.hideLiveRestaurantsInReview,
+          showAllMenuItemsInDevMode: developerMode.showAllMenuItemsInDevMode,
+          demoMenuItemIds: developerMode.demoMenuItemIds,
+          demoLandingCategoryIds: developerMode.demoLandingCategoryIds,
         },
       };
 
@@ -467,6 +599,32 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
                 />
               </button>
             </div>
+
+            {/* Show Full Restaurant Menu & Categories */}
+            <div className="flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 font-medium text-sm text-neutral-900">
+                  <UtensilsCrossed className="w-4 h-4 text-purple-600" />
+                  Show Full Restaurant Menu Items & Categories in Dev Mode
+                </div>
+                <p className="text-xs text-neutral-500">
+                  Exposes all menu items, dishes, and categories for demo restaurants so app reviewers see complete menus.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggle("showAllMenuItemsInDevMode")}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  developerMode.showAllMenuItemsInDevMode ? "bg-emerald-600" : "bg-neutral-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    developerMode.showAllMenuItemsInDevMode ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -568,73 +726,249 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
         </Card>
       )}
 
-      {/* Demo Restaurant Selection */}
+      {/* Demo Restaurant Selection & Per-Restaurant Menu Configuration */}
       {activeTab === "food" && (
-        <Card className="border-purple-200">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-neutral-800">
-              <UtensilsCrossed className="w-5 h-5 text-purple-600" />
-              <CardTitle className="text-base font-bold">Select Demo Restaurant(s) for App Reviewers</CardTitle>
-            </div>
-            <CardDescription>
-              Choose which approved restaurant(s) should be visible to reviewers when Developer Mode is ON.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {approvedRestaurants.length === 0 ? (
-              <p className="text-sm text-neutral-500 italic p-4 text-center bg-neutral-50 rounded-lg">
-                No approved restaurants found. Please approve or register a restaurant first.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {approvedRestaurants.map((rest) => {
-                  const isSelected = developerMode.demoRestaurantIds.includes(String(rest._id));
-                  return (
-                    <div
-                      key={rest._id}
-                      onClick={() => handleRestaurantSelect(String(rest._id))}
-                      className={`cursor-pointer p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
-                        isSelected
-                          ? "border-purple-600 bg-purple-50/60 ring-2 ring-purple-500/20 shadow-sm"
-                          : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
-                          {rest.profileImage?.url || rest.profileImage ? (
+        <div className="space-y-6">
+          {/* Demo "What's on Your Mind" Items Selection Card */}
+          <Card className="border-blue-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-neutral-800">
+                  <UtensilsCrossed className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <CardTitle className="text-base font-bold">Select "What's on Your Mind" Categories for Dev Mode</CardTitle>
+                    <CardDescription>
+                      Choose which category icons (e.g. Biryani, Pizza, Burger) should be visible on user home in Developer Mode. If none selected, all active items show by default.
+                    </CardDescription>
+                  </div>
+                </div>
+                {landingCategories.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllLandingCategories}
+                    className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
+                  >
+                    {landingCategories.every((c) => (developerMode.demoLandingCategoryIds || []).includes(String(c._id)))
+                      ? "Deselect All"
+                      : "Select All Categories"}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {landingCategories.length === 0 ? (
+                <p className="text-sm text-neutral-500 italic p-4 text-center bg-neutral-50 rounded-lg">
+                  No food categories found. Create categories in Category Management or Landing Page Management.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {landingCategories.map((cat) => {
+                    const catIdStr = String(cat._id);
+                    const isSelected = (developerMode.demoLandingCategoryIds || []).includes(catIdStr);
+                    const hasImage = Boolean(cat.imageUrl || cat.image);
+
+                    return (
+                      <div
+                        key={catIdStr}
+                        onClick={() => handleToggleLandingCategory(catIdStr)}
+                        className={`cursor-pointer p-3 rounded-xl border transition-all flex flex-col items-center ${
+                          isSelected
+                            ? "border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20 shadow-sm"
+                            : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                        }`}
+                      >
+                        <div className="relative w-14 h-14 rounded-full overflow-hidden border border-neutral-200 bg-neutral-100 mb-2 flex items-center justify-center text-blue-700 font-bold text-base shrink-0">
+                          {hasImage ? (
                             <img
-                              src={rest.profileImage?.url || rest.profileImage}
-                              alt={rest.restaurantName}
+                              src={cat.imageUrl || cat.image}
+                              alt={cat.label}
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <UtensilsCrossed className="w-5 h-5 text-neutral-400 m-2.5" />
+                            <span>{cat.label ? cat.label.slice(0, 2).toUpperCase() : "CAT"}</span>
+                          )}
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-blue-600/40 flex items-center justify-center">
+                              <CheckCircle2 className="w-6 h-6 text-white drop-shadow-md" />
+                            </div>
                           )}
                         </div>
-                        <div className="truncate">
-                          <p className="font-semibold text-sm text-neutral-900 truncate">
-                            {rest.restaurantName || "Unnamed Store"}
-                          </p>
-                          <p className="text-xs text-neutral-500 truncate">
-                            {rest.location?.city || rest.city || rest.location?.area || "Demo Outlet"}
-                          </p>
-                        </div>
+                        <p className="font-bold text-xs text-neutral-900 text-center truncate w-full">
+                          {cat.label}
+                        </p>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                      <div className="ml-2 shrink-0">
-                        {isSelected ? (
-                          <CheckCircle2 className="w-5 h-5 text-purple-600 fill-purple-100" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border border-neutral-300" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Demo Restaurant Selection Card */}
+          <Card className="border-purple-200">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-neutral-800">
+                <UtensilsCrossed className="w-5 h-5 text-purple-600" />
+                <CardTitle className="text-base font-bold">Select Demo Restaurant(s) & Dishes for App Reviewers</CardTitle>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <CardDescription>
+                Choose which approved restaurant(s) and specific menu items/dishes should be visible to reviewers when Developer Mode is ON.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {approvedRestaurants.length === 0 ? (
+                <p className="text-sm text-neutral-500 italic p-4 text-center bg-neutral-50 rounded-lg">
+                  No approved restaurants found. Please approve or register a restaurant first.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {approvedRestaurants.map((rest) => {
+                      const restIdStr = String(rest._id);
+                      const isSelected = developerMode.demoRestaurantIds.includes(restIdStr);
+                      const isExpanded = expandedRestaurantId === restIdStr;
+                      const foods = restaurantFoodsMap[restIdStr] || [];
+                      const selectedFoodsCount = foods.filter((f) => (developerMode.demoMenuItemIds || []).includes(String(f._id || f.id))).length;
+
+                      return (
+                        <div
+                          key={rest._id}
+                          className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                            isSelected
+                              ? "border-purple-600 bg-purple-50/60 ring-2 ring-purple-500/20 shadow-sm"
+                              : "border-neutral-200 bg-white hover:border-neutral-300"
+                          }`}
+                        >
+                          <div
+                            onClick={() => handleRestaurantSelect(restIdStr)}
+                            className="cursor-pointer p-3.5 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
+                                {rest.profileImage?.url || rest.profileImage ? (
+                                  <img
+                                    src={rest.profileImage?.url || rest.profileImage}
+                                    alt={rest.restaurantName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <UtensilsCrossed className="w-5 h-5 text-neutral-400 m-2.5" />
+                                )}
+                              </div>
+                              <div className="truncate">
+                                <p className="font-semibold text-sm text-neutral-900 truncate">
+                                  {rest.restaurantName || "Unnamed Store"}
+                                </p>
+                                <p className="text-xs text-neutral-500 truncate">
+                                  {rest.location?.city || rest.city || rest.location?.area || "Demo Outlet"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleExpandRestaurant(e, restIdStr)}
+                                className="px-2 py-1 text-xs font-semibold text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-lg flex items-center gap-1 cursor-pointer"
+                                title="Configure Dishes"
+                              >
+                                <ListFilter className="w-3.5 h-3.5" />
+                                <span>Menu ({selectedFoodsCount > 0 ? selectedFoodsCount : "All"})</span>
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
+
+                              {isSelected ? (
+                                <CheckCircle2 className="w-5 h-5 text-purple-600 fill-purple-100" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border border-neutral-300" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expanded Menu Items Selector Drawer */}
+                          {isExpanded && (
+                            <div className="border-t border-purple-200 bg-white p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-neutral-700">
+                                  Select Dishes for {rest.restaurantName} ({foods.length} items available)
+                                </span>
+                                {foods.length > 0 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSelectAllRestaurantFoods(restIdStr)}
+                                    className="h-7 text-[11px] border-purple-200 text-purple-700 hover:bg-purple-50 cursor-pointer"
+                                  >
+                                    {foods.every((f) => (developerMode.demoMenuItemIds || []).includes(String(f._id || f.id)))
+                                      ? "Deselect All Dishes"
+                                      : "Select All Dishes"}
+                                  </Button>
+                                )}
+                              </div>
+
+                              {loadingFoodsForId === restIdStr ? (
+                                <div className="flex items-center justify-center py-6 text-xs text-neutral-500">
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin text-purple-600" />
+                                  Loading menu items...
+                                </div>
+                              ) : foods.length === 0 ? (
+                                <p className="text-xs text-neutral-400 italic py-3 text-center bg-neutral-50 rounded">
+                                  No food items created for this restaurant yet.
+                                </p>
+                              ) : (
+                                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                                  {foods.map((food) => {
+                                    const foodIdStr = String(food._id || food.id);
+                                    const isFoodSelected = (developerMode.demoMenuItemIds || []).includes(foodIdStr);
+                                    return (
+                                      <div
+                                        key={foodIdStr}
+                                        onClick={() => handleToggleMenuItem(foodIdStr)}
+                                        className={`p-2 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-colors ${
+                                          isFoodSelected
+                                            ? "border-purple-500 bg-purple-50 text-purple-900 font-medium"
+                                            : "border-neutral-100 bg-neutral-50 text-neutral-700 hover:bg-neutral-100"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 truncate">
+                                          {food.image && (
+                                            <img
+                                              src={food.image}
+                                              alt={food.name}
+                                              className="w-7 h-7 rounded object-cover border border-neutral-200 shrink-0"
+                                            />
+                                          )}
+                                          <div className="truncate">
+                                            <span className="truncate block font-semibold">{food.name}</span>
+                                            <span className="text-[10px] text-neutral-500">₹{food.price} • {food.categoryName || food.category || "General"}</span>
+                                          </div>
+                                        </div>
+                                        <div className="shrink-0 ml-2">
+                                          {isFoodSelected ? (
+                                            <CheckCircle2 className="w-4 h-4 text-purple-600 fill-purple-100" />
+                                          ) : (
+                                            <div className="w-4 h-4 rounded-full border border-neutral-300" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* App Store Connect & Play Console Reviewer Notes Copy Box */}

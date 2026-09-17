@@ -229,6 +229,15 @@ export async function updateGlobalSettings(req, res, next) {
             if (data.developerMode.hideLiveRestaurantsInReview !== undefined) {
                 updateQuery.$set['developerMode.hideLiveRestaurantsInReview'] = Boolean(data.developerMode.hideLiveRestaurantsInReview);
             }
+            if (data.developerMode.showAllMenuItemsInDevMode !== undefined) {
+                updateQuery.$set['developerMode.showAllMenuItemsInDevMode'] = Boolean(data.developerMode.showAllMenuItemsInDevMode);
+            }
+            if (data.developerMode.demoMenuItemIds !== undefined && Array.isArray(data.developerMode.demoMenuItemIds)) {
+                updateQuery.$set['developerMode.demoMenuItemIds'] = data.developerMode.demoMenuItemIds;
+            }
+            if (data.developerMode.demoLandingCategoryIds !== undefined && Array.isArray(data.developerMode.demoLandingCategoryIds)) {
+                updateQuery.$set['developerMode.demoLandingCategoryIds'] = data.developerMode.demoLandingCategoryIds;
+            }
         }
 
         const previousBannedNumbers = settings?.bannedNumbers ? [...settings.bannedNumbers] : [];

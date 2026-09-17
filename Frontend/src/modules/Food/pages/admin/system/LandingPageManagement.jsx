@@ -194,6 +194,7 @@ export default function LandingPageManagement() {
   useEffect(() => {
     fetchBanners()
     fetchZones()
+    fetchCategories()
     fetchUnder250Banners()
     fetchDiningBanners()
     fetchAllRestaurants()
@@ -202,7 +203,9 @@ export default function LandingPageManagement() {
 
   // Fetch Top 10 and Gourmet when Explore More tab is active; refetch restaurants so dropdown is populated
   useEffect(() => {
-    if (activeTab === 'explore-more') {
+    if (activeTab === 'categories') {
+      fetchCategories()
+    } else if (activeTab === 'explore-more') {
       if (allRestaurants.length === 0) {
         fetchAllRestaurants()
       }
@@ -1375,6 +1378,7 @@ export default function LandingPageManagement() {
   // ==================== RENDER ====================
   const tabs = [
     { id: 'banners', label: 'Hero Banners', icon: ImageIcon },
+    { id: 'categories', label: "What's on Your Mind", icon: UtensilsCrossed },
     { id: 'under-250', label: '250 Banner', icon: Tag },
     { id: 'dining', label: 'Dining', icon: UtensilsCrossed },
     { id: 'homepage-video', label: 'Homepage Video', icon: Layout },
@@ -1625,6 +1629,171 @@ export default function LandingPageManagement() {
                             <p className="mt-2 text-xs text-slate-500">Loading available zones...</p>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* What's on Your Mind Categories Tab */}
+        {activeTab === 'categories' && (
+          <>
+            {/* Upload Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-1">Add "What's on Your Mind" Items</h2>
+              <p className="text-sm text-slate-500 mb-4">
+                Upload custom category images and set title labels. Users will see these items in the top circular rail on the Food homepage.
+              </p>
+
+              <div
+                className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const files = Array.from(e.dataTransfer.files)
+                  if (files.length > 0) handleCategoryFileSelect({ files })
+                }}
+                onClick={() => categoriesFileInputRef.current?.click()}
+              >
+                <input
+                  ref={categoriesFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleCategoryFileSelect}
+                  className="hidden"
+                  disabled={categoriesUploading}
+                />
+                <div className="flex flex-col items-center gap-3">
+                  <Upload className="w-8 h-8 text-blue-600" />
+                  <div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); categoriesFileInputRef.current?.click(); }}
+                      className="text-blue-600 font-medium hover:text-blue-700 underline"
+                    >
+                      Click to choose category images
+                    </button>
+                    <span className="text-slate-600"> or drag and drop</span>
+                  </div>
+                  <p className="text-xs text-slate-500">PNG, JPG, WEBP up to 5MB each</p>
+                </div>
+              </div>
+
+              {/* Pending Items Draft List before upload */}
+              {pendingCategories.length > 0 && (
+                <div className="mt-6 border-t border-slate-200 pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-slate-900 text-sm">Selected Items ({pendingCategories.length})</h3>
+                    <Button
+                      onClick={handleUploadPendingCategories}
+                      disabled={categoriesUploading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {categoriesUploading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        `Save & Upload All (${pendingCategories.length})`
+                      )}
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {pendingCategories.map((item) => (
+                      <div key={item.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex flex-col gap-3">
+                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-200 border border-slate-300">
+                          <img src={item.previewUrl} alt={item.label} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePendingCategory(item.id)}
+                            className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 shadow"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-600 font-medium">Category Name / Title</Label>
+                          <Input
+                            type="text"
+                            placeholder="e.g. Biryani, Pizza, Burger"
+                            value={item.label}
+                            onChange={(e) => handlePendingCategoryLabelChange(item.id, e.target.value)}
+                            className="mt-1 h-9 bg-white text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Categories List */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">What's on Your Mind List ({categories.length})</h2>
+              {categoriesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <UtensilsCrossed className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                  <p>No custom categories added yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">Upload images above to create custom "What's on your mind?" items.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {categories.map((category, index) => (
+                    <div key={category._id} className="border border-slate-200 rounded-xl p-3 bg-white hover:shadow-md transition-shadow flex flex-col items-center">
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border border-slate-200 bg-slate-100 mb-2">
+                        <img src={getImageUrl(category.imageUrl || category.image)} alt={category.label} className="w-full h-full object-cover" />
+                        <div className="absolute top-0 right-0">
+                          <span className={`px-1.5 py-0.5 rounded-bl text-[9px] font-bold uppercase ${category.isActive ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'}`}>
+                            {category.isActive ? 'Active' : 'Off'}
+                          </span>
+                        </div>
+                      </div>
+                      <h3 className="font-bold text-slate-900 text-sm text-center truncate w-full mb-1">{category.label}</h3>
+                      <span className="text-[10px] font-medium text-slate-500 mb-3">Order: {category.order ?? index}</span>
+                      
+                      <div className="flex items-center justify-center gap-1 w-full pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => handleCategoryOrderChange(category._id, 'up')}
+                          disabled={index === 0}
+                          className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
+                          title="Move Up"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5 text-slate-600" />
+                        </button>
+                        <button
+                          onClick={() => handleCategoryOrderChange(category._id, 'down')}
+                          disabled={index === categories.length - 1}
+                          className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
+                          title="Move Down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5 text-slate-600" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleCategoryStatus(category._id, category.isActive)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${category.isActive ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                        >
+                          {category.isActive ? 'Disable' : 'Enable'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(category._id)}
+                          disabled={categoriesDeleting === category._id}
+                          className="p-1 rounded hover:bg-red-100 text-red-600 disabled:opacity-30"
+                          title="Delete"
+                        >
+                          {categoriesDeleting === category._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
                       </div>
                     </div>
                   ))}

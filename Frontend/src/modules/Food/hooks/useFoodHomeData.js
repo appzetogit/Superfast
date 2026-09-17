@@ -119,12 +119,23 @@ export const useFoodHomeData = ({
           : "/food/hero-banners/public"
         ),
         (async () => {
-          const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
-          const list = res?.data?.data?.categories || res?.data?.categories || [];
+          let list = [];
+          try {
+            const resCat = await publicGetOnce("/food/hero-banners/landing/categories/public");
+            if (resCat?.data?.success && Array.isArray(resCat?.data?.data?.categories) && resCat.data.data.categories.length > 0) {
+              list = resCat.data.data.categories;
+            }
+          } catch (e) {
+            // fallback if error
+          }
+          if (!list || list.length === 0) {
+            const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
+            list = res?.data?.data?.categories || res?.data?.categories || [];
+          }
           return list.map((cat, idx) => ({
             id: String(cat?.id || cat?._id || cat?.slug || idx),
-            name: cat?.name || "",
-            slug: cat?.slug || String(cat?.name || "").toLowerCase().replace(/\s+/g, "-"),
+            name: cat?.name || cat?.label || "",
+            slug: cat?.slug || String(cat?.name || cat?.label || "").toLowerCase().replace(/\s+/g, "-"),
             image: normalizeImageUrl(cat?.image || cat?.imageUrl) || "",
           }));
         })(),
