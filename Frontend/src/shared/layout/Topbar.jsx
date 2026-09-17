@@ -5,11 +5,14 @@ import {
     HiOutlineUserCircle,
     HiOutlineBell,
     HiOutlineSearch,
-    HiOutlineMenu
+    HiOutlineMenu,
+    HiOutlineCode
 } from 'react-icons/hi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { sellerApi } from '@/modules/seller/services/sellerApi';
+import { adminAPI } from '@food/api';
+import { clearGlobalHomeCache } from '@food/hooks/useFoodHomeData';
 import { AnimatePresence } from 'framer-motion';
 import NotificationPopup from './NotificationPopup';
 import { toast } from 'sonner';
@@ -23,9 +26,60 @@ const Topbar = ({ onMenuClick }) => {
     const [notifications, setNotifications] = React.useState([]);
     const [unreadCount, setUnreadCount] = React.useState(0);
     const [showNotifications, setShowNotifications] = React.useState(false);
+    const [devModeEnabled, setDevModeEnabled] = React.useState(false);
+    const [updatingDevMode, setUpdatingDevMode] = React.useState(false);
     const notificationRef = React.useRef(null);
 
     const isSeller = location.pathname.startsWith('/seller');
+    const isAdmin = location.pathname.startsWith('/admin') || role === 'admin' || user?.role === 'admin';
+
+    const fetchDevModeStatus = React.useCallback(async () => {
+        if (!isAdmin) return;
+        try {
+            const res = await adminAPI.getBusinessSettings().catch(() => null);
+            const data = res?.data?.data || res?.data || {};
+            if (data.developerMode) {
+                setDevModeEnabled(Boolean(data.developerMode.enabled));
+            }
+        } catch (err) {
+            console.error("Error fetching dev mode status in topbar:", err);
+        }
+    }, [isAdmin]);
+
+    React.useEffect(() => {
+        fetchDevModeStatus();
+        const handleSettingsUpdated = (e) => {
+            if (e?.detail?.developerMode?.enabled !== undefined) {
+                setDevModeEnabled(Boolean(e.detail.developerMode.enabled));
+            } else {
+                fetchDevModeStatus();
+            }
+        };
+        window.addEventListener('businessSettingsUpdated', handleSettingsUpdated);
+        return () => window.removeEventListener('businessSettingsUpdated', handleSettingsUpdated);
+    }, [fetchDevModeStatus]);
+
+    const handleToggleDevMode = async () => {
+        try {
+            setUpdatingDevMode(true);
+            const nextStatus = !devModeEnabled;
+            await adminAPI.updateBusinessSettings({
+                developerMode: { enabled: nextStatus }
+            });
+            setDevModeEnabled(nextStatus);
+            clearGlobalHomeCache();
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("businessSettingsUpdated", {
+                    detail: { developerMode: { enabled: nextStatus } }
+                }));
+            }
+            toast.success(nextStatus ? "Developer Mode ENABLED (Demo Data Mode)" : "Developer Mode DISABLED (Live Mode)");
+        } catch (err) {
+            toast.error("Failed to update Developer Mode");
+        } finally {
+            setUpdatingDevMode(false);
+        }
+    };
 
     const handleSearchSubmit = (e) => {
         e?.preventDefault();
@@ -122,7 +176,31 @@ const Topbar = ({ onMenuClick }) => {
                 </form>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 md:space-x-4">
+                {isAdmin && (
+                    <button
+                        type="button"
+                        onClick={handleToggleDevMode}
+                        disabled={updatingDevMode}
+                        title={devModeEnabled ? "Developer Mode is ON - Click to switch to Live Mode" : "Developer Mode is OFF - Click to enable Demo Reviewer Mode"}
+                        className={cn(
+                            "flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all duration-300 shadow-sm cursor-pointer",
+                            devModeEnabled
+                                ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 ring-2 ring-amber-400/30"
+                                : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        )}
+                    >
+                        <HiOutlineCode className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline font-semibold">Dev Mode</span>
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider",
+                            devModeEnabled ? "bg-white text-amber-800" : "bg-slate-200 text-slate-700"
+                        )}>
+                            {devModeEnabled ? "ON" : "OFF"}
+                        </span>
+                    </button>
+                )}
+
                 <div className="relative" ref={notificationRef}>
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}

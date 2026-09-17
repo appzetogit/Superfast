@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, Loader2, Search, Send, Trash2 } from "lucide-react";
+import { Bell, BellRing, Loader2, Search, Send, Trash2 } from "lucide-react";
 import { adminAPI } from "@food/api";
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging";
+import { toast } from "sonner";
 
 const TARGET_OPTIONS = [
   { value: "ALL", label: "All" },
@@ -53,10 +55,68 @@ export default function NotificationBroadcast() {
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isTestingFcm, setIsTestingFcm] = useState(false);
   const [recipientLoading, setRecipientLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [allRecipients, setAllRecipients] = useState([]);
   const [selectedRecipients, setSelectedRecipients] = useState([]);
+
+  const handleTestFcm = async () => {
+    if (isTestingFcm) return;
+    setIsTestingFcm(true);
+    toast.info("Preparing push token & testing notification...");
+    try {
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        toast.error("Notification permission is BLOCKED in your browser. Please allow notifications in site settings.");
+        return;
+      }
+
+      localStorage.removeItem("fcm_web_registered_token_admin");
+      const regPromise = registerWebPushForCurrentModule("/admin/food/broadcast-notification", { forceRefresh: true }).catch(() => null);
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ success: false, reason: "timeout" }), 8000));
+      const regResult = await Promise.race([regPromise, timeoutPromise]);
+
+      if (regResult && regResult.success === false) {
+        if (regResult.reason === "permission_denied" || regResult.reason === "permission_not_granted") {
+          toast.warning("Notification permission not granted. Please allow notifications when prompted.");
+          return;
+        }
+      }
+
+      const testPromise = adminAPI.testFcmNotification();
+      const testTimeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout (10s)")), 10000));
+      const res = await Promise.race([testPromise, testTimeoutPromise]);
+
+      const resData = res?.data?.data || res?.data || {};
+      const successCount = resData?.successCount ?? 0;
+      const failureCount = resData?.failureCount ?? 0;
+      const results = resData?.results || [];
+
+      if (successCount > 0) {
+        toast.success(`Test FCM Push Notification sent! Delivered to ${successCount} device(s).`);
+      } else if (failureCount > 0 && results.length > 0) {
+        const errorMsg = results.find((item) => !item.ok)?.error || "FCM delivery failed";
+        toast.error(`Push test failed (${errorMsg}). Stale tokens purged from database, please click once more to retry.`);
+      } else if (successCount === 0 && failureCount === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const retryRes = await adminAPI.testFcmNotification().catch(() => null);
+        const retryData = retryRes?.data?.data || retryRes?.data || {};
+        const retrySuccess = retryData?.successCount ?? 0;
+        if (retrySuccess > 0) {
+          toast.success(`Test FCM Push Notification sent! Delivered to ${retrySuccess} device(s).`);
+        } else {
+          toast.warning("Token registration refreshed. Click 'Test FCM Notification' to send!");
+        }
+      } else {
+        toast.warning(res?.data?.message || "Push test completed.");
+      }
+    } catch (err) {
+      console.error("Test FCM error:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to send test FCM notification.");
+    } finally {
+      setIsTestingFcm(false);
+    }
+  };
 
   const loadHistory = async () => {
     try {
@@ -183,11 +243,15 @@ export default function NotificationBroadcast() {
               }))
             : [],
       });
+      toast.success("Broadcast notification sent successfully!");
       setForm({ title: "", message: "", targetType: "ALL" });
       setSelectedRecipients([]);
       setSearch("");
       window.dispatchEvent(new Event("adminBroadcastUpdated"));
       await loadHistory();
+    } catch (err) {
+      console.error("Create broadcast error:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to send broadcast notification.");
     } finally {
       setSubmitting(false);
     }
@@ -312,11 +376,20 @@ export default function NotificationBroadcast() {
             </div>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-3">
+            <button
+              type="button"
+              onClick={handleTestFcm}
+              disabled={isTestingFcm}
+              className="inline-flex items-center gap-2 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60 transition-all cursor-pointer"
+            >
+              {isTestingFcm ? <Loader2 className="w-4 h-4 animate-spin text-amber-600" /> : <Bell className="w-4 h-4 text-amber-600" />}
+              Test FCM Notification
+            </button>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 cursor-pointer"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Send Broadcast

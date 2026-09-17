@@ -425,9 +425,16 @@ export const useDeliveryNotifications = () => {
       return;
     }
 
-    activeOrderRef.current = orderData || { id: Date.now() };
-    playNotificationSound(orderData);
-    startAlertLoop(playNotificationSound);
+    const { activeOrder, activeOrders } = useDeliveryStore.getState();
+    const hasActiveTrip = Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
+
+    // Only ring & loop if rider has no active trip yet.
+    // If rider is already on a trip, new multi-orders trigger silent/push notification without ringing.
+    if (!hasActiveTrip) {
+      activeOrderRef.current = orderData || { id: Date.now() };
+      playNotificationSound(orderData);
+      startAlertLoop(playNotificationSound);
+    }
 
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       showBackgroundOrderNotification(orderData);
@@ -1132,7 +1139,6 @@ export const useDeliveryNotifications = () => {
       }
     });
 
-    // (admin_notification listener removed)
     socketRef.current.on('admin_status_update', (data) => {
       if (data && data.status) {
         try {
@@ -1143,10 +1149,25 @@ export const useDeliveryNotifications = () => {
             localStorage.setItem("app:isOnline", "true");
           } else {
             localStorage.removeItem("app:isOnline");
+            useDeliveryStore.getState().clearActiveOrder();
           }
         } catch (err) {
           console.warn('Could not update online status in store directly:', err);
         }
+      }
+    });
+
+    socketRef.current.on('handover_processed', (data) => {
+      debugLog('🚨 Handover processed event received:', data);
+      stopAlertLoop();
+      activeOrderRef.current = null;
+      setNewOrder(null);
+      try {
+        useDeliveryStore.getState().setOnline(false);
+        useDeliveryStore.getState().clearActiveOrder();
+        localStorage.removeItem("app:isOnline");
+      } catch (err) {
+        console.warn('Could not clear active order store directly:', err);
       }
     });
 
@@ -1274,6 +1295,7 @@ export const useDeliveryNotifications = () => {
   return {
     newOrder,
     clearNewOrder,
+    stopAlertLoop,
     orderReady,
     clearOrderReady,
     orderStatusUpdate,

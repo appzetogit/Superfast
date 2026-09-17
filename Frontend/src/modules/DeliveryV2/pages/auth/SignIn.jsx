@@ -188,16 +188,13 @@ export default function DeliverySignIn() {
   const isSubmitDisabled = isSending || !isValidPhone
 
   return (
-    <div className="h-[100dvh] bg-[#fafafa] flex flex-col relative font-sans overflow-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-[#fafafa] flex flex-col relative font-sans overflow-y-auto">
       <AuthBrandHeader
         portalType="delivery"
         subtitle="Delivery Partner Portal"
       />
 
-      <div
-        className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col mt-6 relative z-20 pb-4 overflow-y-auto"
-        style={keyboardInset > 0 ? { maxHeight: `${window.visualViewport.height - 80}px` } : undefined}
-      >
+      <div className="flex-1 w-full max-w-[420px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center relative z-20">
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 shrink-0 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center mb-5">
             <div className="flex items-center justify-center gap-3 mb-1.5">
@@ -265,11 +262,8 @@ export default function DeliverySignIn() {
         </div>
       </div>
 
-      {/* Footer - Fixed at bottom */}
-      <div
-        className="shrink-0 z-30 bg-white pt-3 border-t border-gray-100/80 shadow-sm"
-        style={{ paddingBottom: keyboardInset > 0 ? '4px' : '16px', display: (keyboardInset > 0 || isFocused) ? 'none' : 'block' }}
-      >
+      {/* Footer */}
+      <div className="shrink-0 w-full mt-auto z-30 pt-3 pb-4">
         <div className="text-center pb-2">
           <p className="text-slate-400 text-xs font-medium">
             By continuing, you agree to our <br />

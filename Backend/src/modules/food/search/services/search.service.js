@@ -2,6 +2,7 @@ import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
+import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
 import mongoose from 'mongoose';
 
 const zoneToPolygon = (zoneDoc) => {
@@ -68,14 +69,23 @@ export const searchUnified = async (query = {}, options = {}) => {
     const term = String(q || '').trim();
     const regex = term ? new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null;
 
+    // Developer / Reviewer Mode Filter
+    const devFilter = await getDeveloperModeFilter();
+
     // 1. Initial Filter (approved status or active)
     const restaurantFilter = { status: { $ne: 'rejected' } };
+
+    if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+        restaurantFilter._id = { $in: devFilter.demoIds };
+    }
     
     console.log(`[Search-Service] Querying with term: "${term}", categoryId: "${categoryId}", zoneId: "${zoneId}"`);
 
-    const zoneConstraint = await buildZoneRestaurantConstraint(zoneId);
-    if (zoneConstraint) {
-        restaurantFilter.$and = [...(restaurantFilter.$and || []), zoneConstraint];
+    if (!devFilter.isDevMode || !devFilter.bypassLocation) {
+        const zoneConstraint = await buildZoneRestaurantConstraint(zoneId);
+        if (zoneConstraint) {
+            restaurantFilter.$and = [...(restaurantFilter.$and || []), zoneConstraint];
+        }
     }
 
     if (isVeg === 'true') {
@@ -144,6 +154,9 @@ export const searchUnified = async (query = {}, options = {}) => {
         // B. Search Food Items Collection
         const foodFilters = { approvalStatus: { $ne: 'rejected' } };
         if (isVeg === 'true') foodFilters.foodType = 'Veg';
+        if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+            foodFilters.restaurantId = { $in: devFilter.demoIds };
+        }
         
         const matchedFoods = await FoodItem.find({
             ...foodFilters,

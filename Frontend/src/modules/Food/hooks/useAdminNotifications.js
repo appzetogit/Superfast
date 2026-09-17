@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { adminAPI, supportAPI } from "@food/api";
+import { adminAPI, supportAPI, gigAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import io from "socket.io-client";
 
@@ -236,6 +236,23 @@ const mapDiningApprovalRequests = (response) => {
     });
 };
 
+const mapHandoverRequests = (response) => {
+  const payload = response?.data?.data;
+  const rows = payload?.requests || payload?.items || response?.data?.requests || [];
+
+  return (Array.isArray(rows) ? rows : []).map((item) => ({
+    id: `handover-${String(item?._id || item?.id || "")}`,
+    title: "🚨 Emergency Handover Request",
+    message: `Delivery Partner ${item?.deliveryPartnerId?.name || "Partner"} (${item?.deliveryPartnerId?.phone || ""}) requested emergency handover: "${item?.reason || "Emergency"}".`,
+    type: "approval",
+    category: "handover_approval",
+    path: "/admin/food/delivery-partners/gigs",
+    createdAt: item?.createdAt || item?.updatedAt,
+    timeLabel: toDateLabel(item?.createdAt || item?.updatedAt),
+    metaLabel: joinMeta(item?.deliveryPartnerId?.name, item?.deliveryPartnerId?.phone, item?.reason),
+  }));
+};
+
 const resolveSocketOrigin = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -285,6 +302,7 @@ export const useAdminNotifications = (options = {}) => {
         deliverySupportRes,
         fssaiExpiredRes,
         diningApprovalRes,
+        handoversRes,
       ] = await Promise.all([
         adminAPI.getPendingRestaurants(),
         adminAPI.getDeliveryPartnerJoinRequests({ page: 1, limit: 50 }),
@@ -293,6 +311,7 @@ export const useAdminNotifications = (options = {}) => {
         adminAPI.getDeliverySupportTickets({ page: 1, limit: 50 }),
         adminAPI.getExpiredFssaiNotifications(),
         adminAPI.getDiningRestaurants(),
+        gigAPI.adminGetHandovers().catch(() => ({ data: { success: false } })),
       ]);
 
       const restaurantRows =
@@ -308,6 +327,7 @@ export const useAdminNotifications = (options = {}) => {
         ...mapDeliverySupport(deliverySupportRes),
         ...mapExpiredFssai(fssaiExpiredRes),
         ...mapDiningApprovalRequests(diningApprovalRes),
+        ...mapHandoverRequests(handoversRes),
       ])
         .filter((item) => !dismissed.has(item.id))
         .sort((a, b) => toDateValue(b.createdAt) - toDateValue(a.createdAt));

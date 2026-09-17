@@ -45,14 +45,13 @@ const SellerCommission = React.lazy(() => import("../pages/SellerCommission"))
 const ReturnSettings = React.lazy(() => import("../pages/ReturnSettings"))
 const ReturnsList = React.lazy(() => import("../pages/ReturnsList"))
 const ReturnDetails = React.lazy(() => import("../pages/ReturnDetails"))
-
-
-
+const DeveloperSettings = React.lazy(() => import("@food/pages/admin/settings/DeveloperSettings"))
 
 function QuickCommerceAdminRoutesInner() {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/settings" element={<DeveloperSettings />} />
       <Route path="/profile" element={<AdminProfile />} />
       <Route path="/categories" element={<Navigate to="/admin/quick-commerce/categories/header" replace />} />
       <Route path="/categories/header" element={<HeaderCategories />} />

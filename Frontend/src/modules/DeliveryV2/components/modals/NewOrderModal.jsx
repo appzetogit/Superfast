@@ -8,10 +8,10 @@ import { getHaversineDistance, calculateETA } from '@/modules/DeliveryV2/utils/g
 import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
 
 /**
- * NewOrderModal - Ported to Original 1:1 Theme with Slider Accept.
+ * NewOrderModal - Direct Accept/Reject Buttons + Click-to-Redirect on Card.
  * Matches the Zomato/Swiggy style Green Header + White Card.
  */
-export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeout, onMinimize }) => {
+export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeout, onMinimize, onCardClick }) => {
   const { riderLocation } = useDeliveryStore();
   const [fetchedDetails, setFetchedDetails] = useState(null);
 
@@ -284,22 +284,36 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
         },
       ]);
 
+  const handleCardClick = () => {
+    if (onCardClick) {
+      onCardClick(order);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-150 bg-black/60 flex items-end justify-center p-0"
+      onClick={handleCardClick}
     >
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        className="w-full max-w-lg bg-white rounded-t-[2.5rem] overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.5)] flex flex-col max-h-[90dvh] max-h-[90vh]"
+        className="w-full max-w-lg bg-white rounded-t-[2.5rem] overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.5)] flex flex-col max-h-[90dvh] max-h-[90vh] cursor-pointer"
+        onClick={handleCardClick}
       >
         {/* Handle / Minimize */}
         <div className="w-full flex justify-center pb-1 pt-2 bg-white relative z-10 rounded-t-[2.5rem] shrink-0">
-          <button onClick={onMinimize} className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onMinimize) onMinimize();
+            }} 
+            className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center"
+          >
             <ChevronDown className="w-5 h-5 text-gray-400 stroke-[3px]" />
           </button>
         </div>
@@ -557,7 +571,7 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
           </div>
 
           {/* Action Area */}
-          <div className="space-y-4">
+          <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
             <ActionSlider
               label="Slide to Accept"
               onConfirm={() => onAccept(order)}
@@ -566,8 +580,11 @@ export const NewOrderModal = ({ order: initialOrder, onAccept, onReject, onTimeo
             />
 
             <button
-              onClick={onReject}
-              className="w-full text-gray-400 font-bold text-[9px] uppercase tracking-widest hover:text-red-500 transition-colors py-1 active:scale-95"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onReject) onReject(order);
+              }}
+              className="w-full text-gray-400 font-bold text-[9px] uppercase tracking-widest hover:text-red-500 transition-colors py-1 active:scale-95 cursor-pointer"
             >
               Pass this task
             </button>

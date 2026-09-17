@@ -56,6 +56,7 @@ import {
   IndianRupee,
   PiggyBank,
   Lock,
+  Code2,
 
   ClipboardCheck,
   CircleHelp,
@@ -81,6 +82,7 @@ const debugError = (...args) => { }
 
 // Icon mapping
 const iconMap = {
+  Code2,
   LayoutDashboard,
   UtensilsCrossed,
   Building2,

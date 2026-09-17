@@ -5,6 +5,8 @@ import {
   Phone, Navigation2, Clock, MapPin, ChevronRight, AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getHaversineDistance } from '@/modules/DeliveryV2/utils/geo';
+import { normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
 
 /**
  * DeliveryOrdersTabV2 - Multi-Order / Multi-Slot UI Component
@@ -24,23 +26,60 @@ export default function DeliveryOrdersTabV2({
   const [isMuted, setIsMuted] = useState(false);
   const [isCardExpanded, setIsCardExpanded] = useState(true);
 
-  const usedSlots = activeOrders.length > 0 ? activeOrders.length : (activeOrder ? 1 : 0);
+  // Helper to check if order is completed / handed over / cancelled / reassigned
+  const isFinishedOrHandedOver = (ord) => {
+    if (!ord) return true;
+    const status = String(
+      ord.deliveryStatus || ord.orderState?.status || ord.orderStatus || ord.status || ''
+    ).toLowerCase();
+    const dispatchStatus = String(ord.dispatch?.status || '').toLowerCase();
+    const handoverStatus = String(ord.handoverStatus || ord.handover?.status || ord.handoverRequest?.status || '').toLowerCase();
+
+    const finishedList = [
+      'delivered', 'completed', 'cancelled', 'cancelled_by_user', 
+      'cancelled_by_restaurant', 'cancelled_by_admin', 'handed_over', 
+      'handover_requested', 'handover_pending', 'handover_completed', 'transferred', 'reassigned'
+    ];
+
+    return finishedList.includes(status) || 
+           finishedList.includes(dispatchStatus) || 
+           finishedList.includes(handoverStatus);
+  };
+
+  const validActiveOrders = (activeOrders || []).filter((ord) => !isFinishedOrHandedOver(ord));
+  const validActiveOrder = (activeOrder && !isFinishedOrHandedOver(activeOrder)) ? activeOrder : null;
+
+  const usedSlots = validActiveOrders.length > 0 ? validActiveOrders.length : (validActiveOrder ? 1 : 0);
   const isSlotsFull = usedSlots >= maxSlots;
 
   // Combine available orders (incoming socket order + API list)
   const displayNewOrders = [];
+  const activeIds = new Set(
+    validActiveOrders.concat(validActiveOrder ? [validActiveOrder] : []).map((a) => String(a.orderId || a._id || a.id || ''))
+  );
+
   if (incomingOrder) {
-    displayNewOrders.push(incomingOrder);
+    const incId = String(incomingOrder.orderId || incomingOrder._id || incomingOrder.id || '');
+    const incStatus = String(
+      incomingOrder.orderStatus || incomingOrder.status || incomingOrder.deliveryStatus || incomingOrder.dispatch?.status || ''
+    ).toLowerCase();
+    const incFinished = ['delivered', 'completed', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin', 'accepted', 'handover_requested', 'handed_over', 'reassigned'].includes(incStatus);
+    if (!activeIds.has(incId) && !incFinished) {
+      displayNewOrders.push(incomingOrder);
+    }
   }
+
   (availableOrders || []).forEach((ord) => {
     const ordId = String(ord.orderId || ord._id || ord.id || '');
+    const ordStatus = String(
+      ord.orderStatus || ord.status || ord.deliveryStatus || ord.dispatch?.status || ''
+    ).toLowerCase();
+    const isFinished = ['delivered', 'completed', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin', 'accepted', 'handover_requested', 'handed_over', 'reassigned'].includes(ordStatus);
     const alreadyInList = displayNewOrders.some(
       (d) => String(d.orderId || d._id || d.id || '') === ordId
     );
-    const alreadyAccepted = activeOrders.some(
-      (a) => String(a.orderId || a._id || a.id || '') === ordId
-    );
-    if (!alreadyInList && !alreadyAccepted) {
+    const alreadyAccepted = activeIds.has(ordId);
+    if (!alreadyInList && !alreadyAccepted && !isFinished) {
       displayNewOrders.push(ord);
     }
   });
@@ -104,7 +143,7 @@ export default function DeliveryOrdersTabV2({
                 subTab === 'accepted' ? 'bg-[#f94e10] text-white' : 'bg-white/20 text-white'
               }`}
             >
-              {activeOrders.length || (activeOrder ? 1 : 0)}
+              {validActiveOrders.length || (validActiveOrder ? 1 : 0)}
             </span>
           </button>
         </div>
@@ -163,10 +202,45 @@ export default function DeliveryOrdersTabV2({
                   order.total || order.pricing?.total || order.expectedEarning || 40
                 );
 
-                const resLat = order.restaurantLocation?.lat || order.restaurantId?.location?.coordinates?.[1];
-                const resLng = order.restaurantLocation?.lng || order.restaurantId?.location?.coordinates?.[0];
-                const cusLat = order.customerLocation?.lat || order.deliveryAddress?.location?.coordinates?.[1];
-                const cusLng = order.customerLocation?.lng || order.deliveryAddress?.location?.coordinates?.[0];
+                const pickupPoints = normalizePickupPoints(order);
+                const primaryPickup = pickupPoints[0] || null;
+                const rest = primaryPickup?.location || order.restaurantLocation || order.restaurantId?.location || {};
+                const resLat = parseFloat(order.restaurant_lat || order.restaurantLat || rest.latitude || rest.lat || (Array.isArray(rest.coordinates) ? rest.coordinates[1] : NaN));
+                const resLng = parseFloat(order.restaurant_lng || order.restaurantLng || rest.longitude || rest.lng || (Array.isArray(rest.coordinates) ? rest.coordinates[0] : NaN));
+
+                const deliveryAddress = order?.deliveryAddress || {};
+                const geoCoords =
+                  Array.isArray(deliveryAddress?.location?.coordinates) &&
+                    deliveryAddress.location.coordinates.length >= 2
+                    ? {
+                      lng: deliveryAddress.location.coordinates[0],
+                      lat: deliveryAddress.location.coordinates[1],
+                    }
+                    : (deliveryAddress.latitude && deliveryAddress.longitude
+                      ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+                      : null);
+
+                const customerLoc = order.customerLocation || order.deliveryLocation || geoCoords || null;
+                const cusLat = parseFloat(customerLoc?.lat);
+                const cusLng = parseFloat(customerLoc?.lng);
+
+                let distanceKm = '2.5';
+                let etaMins = order.prepTime || 15;
+
+                if (!isNaN(resLat) && !isNaN(resLng) && !isNaN(cusLat) && !isNaN(cusLng)) {
+                  const restToCustM = getHaversineDistance(resLat, resLng, cusLat, cusLng);
+                  const km = restToCustM / 1000;
+                  const mins = Math.ceil(restToCustM / 416) + (order.prepTime || 5);
+                  distanceKm = km > 0 ? km.toFixed(1) : '2.5';
+                  etaMins = mins > 0 ? mins : 15;
+                } else {
+                  const rawDist = Number(order.distanceKm || order.deliveryDistanceKm || order.distance || order.deliveryDistance || order.totalDistance || 0);
+                  const rawEta = order.estimatedTime || order.duration || order.eta || order.deliveryTime;
+                  if (rawDist > 0) {
+                    distanceKm = rawDist.toFixed(1);
+                    etaMins = rawEta && rawEta > 0 ? Math.ceil(rawEta) : Math.ceil((rawDist * 1000) / 416) + 5;
+                  }
+                }
 
                 return (
                   <motion.div
@@ -189,7 +263,7 @@ export default function DeliveryOrdersTabV2({
                             {restaurantName}
                           </h2>
                           <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                            ₹{orderTotal.toFixed(2)} · <span className="text-gray-400 font-medium">Locating route...</span>
+                            ₹{orderTotal.toFixed(2)} · <span className="text-gray-500 font-bold">{distanceKm} KM ({etaMins} MINS)</span>
                           </span>
                         </div>
                       </div>
@@ -312,14 +386,14 @@ export default function DeliveryOrdersTabV2({
                             <Clock className="w-5 h-5 text-gray-400" />
                             <div>
                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">TIME</span>
-                              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Locating...</span>
+                              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{etaMins} MINS</span>
                             </div>
                           </div>
                           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-3 border border-gray-100 dark:border-gray-700/50 flex items-center gap-3">
                             <MapPin className="w-5 h-5 text-gray-400" />
                             <div>
                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">DISTANCE</span>
-                              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Locating...</span>
+                              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{distanceKm} KM</span>
                             </div>
                           </div>
                         </div>
@@ -362,7 +436,7 @@ export default function DeliveryOrdersTabV2({
         ) : (
           /* --- ACCEPTED ORDERS TAB --- */
           <div className="space-y-3">
-            {activeOrders.length === 0 && !activeOrder ? (
+            {validActiveOrders.length === 0 && !validActiveOrder ? (
               <div className="bg-white dark:bg-[#1c1c1e] rounded-3xl p-8 text-center border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col items-center justify-center my-6">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center mb-3">
                   <Package className="w-8 h-8" />
@@ -373,7 +447,7 @@ export default function DeliveryOrdersTabV2({
                 </p>
               </div>
             ) : (
-              (activeOrders.length > 0 ? activeOrders : (activeOrder ? [activeOrder] : [])).map((ord, idx) => {
+              (validActiveOrders.length > 0 ? validActiveOrders : (validActiveOrder ? [validActiveOrder] : [])).map((ord, idx) => {
                 const ordId = ord.displayOrderId || ord.orderId || ord._id || 'FOD-1001';
                 const merchantName =
                   ord.restaurantName ||

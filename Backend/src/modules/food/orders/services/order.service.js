@@ -3717,72 +3717,20 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
 export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
+
   const filter = {
     createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    "dispatch.status": { $in: ["unassigned", "assigned"] },
+    "dispatch.acceptedAt": { $exists: false },
+    orderStatus: {
+      $in: ["created", "confirmed", "preparing", "ready_for_pickup", "ready"],
+    },
     $or: [
-      {
-        "dispatch.status": "unassigned",
-        orderStatus: { $in: ["ready_for_pickup", "ready"] },
-      },
-      {
-        "dispatch.deliveryPartnerId": partnerObjectId,
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
-        },
-      },
-      {
-        "dispatchPlan.legs": {
-          $elemMatch: {
-            deliveryPartnerId: partnerObjectId,
-          },
-        },
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
-        },
-      },
-      {
-        "dispatchPlan.legs": {
-          $elemMatch: {
-            deliveryPartnerId: null,
-            partnerCandidates: {
-              $elemMatch: {
-                partnerId: partnerObjectId,
-              },
-            },
-          },
-        },
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
-        },
-      },
-      {
-        reassignmentStatus: "pending",
-        pendingDriverId: partnerObjectId,
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
-        },
-      },
-    ],
+      { "dispatch.offeredTo.partnerId": partnerObjectId },
+      { "dispatch.status": "unassigned" },
+      { "dispatchPlan.legs.partnerCandidates.partnerId": partnerObjectId },
+      { reassignmentStatus: "pending", pendingDriverId: partnerObjectId }
+    ]
   };
 
   const orders = await FoodOrder.find(filter)
@@ -3795,49 +3743,18 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
 
   const docs = [];
   for (const order of orders) {
-    const assignedLeg = getAssignedDispatchLeg(order, deliveryPartnerId);
-    const assignedWholeOrder =
-      toIdString(order?.dispatch?.deliveryPartnerId) === toIdString(deliveryPartnerId);
-    const eligibleLegs = isSplitDispatchOrder(order)
-      ? getEligibleDispatchLegs(order, deliveryPartnerId)
-      : [];
-    const isMarketplaceOrder = isSplitDispatchOrder(order)
-      ? eligibleLegs.length > 0
-      : order?.dispatch?.status === "unassigned" &&
-      ["ready_for_pickup", "ready"].includes(order?.orderStatus);
-
-    if (assignedLeg) {
-      docs.push(
-        buildDeliveryOrderView(order, deliveryPartnerId, {
-          assignedDispatchLeg: assignedLeg,
-          dispatchLeg: assignedLeg,
-        }),
-      );
+    // Guard: Exclude if already accepted or marked delivered/completed
+    if (order?.dispatch?.acceptedAt || order?.dispatch?.status === "accepted") {
       continue;
     }
-
-    if (isSplitDispatchOrder(order)) {
-      if (!isMarketplaceOrder) continue;
-      for (const leg of eligibleLegs) {
-        docs.push(
-          buildDeliveryOrderView(order, deliveryPartnerId, {
-            dispatchLeg: leg,
-          }),
-        );
-      }
-      continue;
-    }
-
     const isReassignedToMe = order.reassignmentStatus === "pending" &&
       toIdString(order.pendingDriverId) === toIdString(deliveryPartnerId);
 
-    if (isMarketplaceOrder || assignedWholeOrder || isReassignedToMe) {
-      const view = buildDeliveryOrderView(order, deliveryPartnerId);
-      if (isReassignedToMe) {
-        view.isReassignment = true;
-      }
-      docs.push(view);
+    const view = buildDeliveryOrderView(order, deliveryPartnerId);
+    if (isReassignedToMe) {
+      view.isReassignment = true;
     }
+    docs.push(view);
   }
 
   return buildPaginatedResult({

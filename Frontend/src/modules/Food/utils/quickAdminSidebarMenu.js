@@ -100,4 +100,12 @@ export const quickAdminSidebarMenu = [
       { type: "link", label: "My Profile", path: "/admin/quick-commerce/profile", icon: "User", permissionKey: "settings" },
     ],
   },
+  {
+    type: "section",
+    label: "SYSTEM SETTINGS",
+    permissionKey: "settings",
+    items: [
+      { type: "link", label: "Developer & App Review Mode", path: "/admin/quick-commerce/settings", icon: "Code2", permissionKey: "settings" },
+    ],
+  },
 ];

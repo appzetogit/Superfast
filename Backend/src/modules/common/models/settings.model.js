@@ -74,7 +74,17 @@ const globalSettingsSchema = new mongoose.Schema(
         onlinePaymentEnabled: { type: Boolean, default: true },
         showLocationPopup: { type: Boolean, default: true },
         bannedNumbers: { type: [String], default: [] },
-        dynamicModuleThemes: { type: Boolean, default: true }
+        dynamicModuleThemes: { type: Boolean, default: true },
+        developerMode: {
+            enabled: { type: Boolean, default: false },
+            demoRestaurantIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant' }],
+            demoStoreIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Seller' }],
+            demoPhoneNumbers: { type: [String], default: ['9999999999', '8888888888'] },
+            demoOtp: { type: String, default: '123456' },
+            bypassLocationRestriction: { type: Boolean, default: true },
+            allowTestPayment: { type: Boolean, default: true },
+            hideLiveRestaurantsInReview: { type: Boolean, default: true }
+        }
     },
     { timestamps: true }
 );

@@ -22,6 +22,7 @@ import webhookRoutes from '../core/payments/routes/webhook.routes.js';
 import sellerRoutes from '../modules/quick-commerce/seller/routes/seller.routes.js';
 import searchRoutes from '../modules/food/search/routes/search.routes.js';
 import returnRoutes from '../modules/quick-commerce/routes/return.routes.js';
+import gigRoutes from '../modules/food/delivery/routes/gig.routes.js';
 
 import commonSettingsRoutes from '../modules/common/routes/settings.routes.js';
 import { getGlobalSettings as getPublicSettings } from '../modules/common/controllers/settings.controller.js';
@@ -33,31 +34,6 @@ router.get('/v1/health', (req, res) => {
     res.status(200).json({ status: 'UP', message: 'Server is healthy' });
 });
 
-router.get('/v1/migrate-test', async (req, res) => {
-    try {
-        const { Seller } = await import('../modules/quick-commerce/seller/models/seller.model.js');
-        const { QuickProduct } = await import('../modules/quick-commerce/models/product.model.js');
-        
-        const testSeller = await Seller.findOne({ name: /test/i });
-        const allProducts = await QuickProduct.find({});
-        
-        let updatedCount = 0;
-        for (const p of allProducts) {
-            // If the seller is "Admin", it either means sellerId is not present, or it points to a non-existent seller, or it points to an admin seller
-            const sellerExists = p.sellerId ? await Seller.findById(p.sellerId) : null;
-            if (!sellerExists || sellerExists.name === 'Admin' || sellerExists.shopName === 'Admin') {
-                if (testSeller) {
-                    await QuickProduct.updateOne({ _id: p._id }, { $set: { sellerId: testSeller._id } });
-                    updatedCount++;
-                }
-            }
-        }
-        res.json({ message: 'Success', updated: updatedCount, testSellerId: testSeller?._id, sampleSellerId: allProducts[0]?.sellerId });
-    } catch (e) {
-        res.status(500).send(e.message);
-    }
-});
-
 // Category A — Auth Routes
 // Food-prefixed auth routes (preferred)
 router.use('/v1/food/auth', authRoutes);
@@ -65,6 +41,7 @@ router.use('/v1/food/auth', authRoutes);
 router.use('/v1/auth', authRoutes);
 
 // Category B — Public Routes (Unrestricted)
+router.use('/v1/food/delivery/gigs', gigRoutes);
 router.use('/v1/food/delivery', deliveryRoutes);
 router.use('/v1/food/restaurant', restaurantRoutes);
 // Landing & hero-banners for Food user app (paths start with /food/hero-banners/...)

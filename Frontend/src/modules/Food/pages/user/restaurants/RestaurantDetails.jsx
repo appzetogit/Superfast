@@ -193,6 +193,55 @@ function RestaurantDetailsContent() {
     setSelectedMenuCategory("all")
   }, [slug])
 
+  // Handle mobile hardware/gesture back button for item detail modal
+  useEffect(() => {
+    if (!showItemDetail) return
+
+    const currentState = window.history.state
+    window.history.pushState({ ...currentState, itemDetailModal: true }, "")
+
+    const handlePopState = () => {
+      setShowItemDetail(false)
+    }
+
+    window.addEventListener("popstate", handlePopState)
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+      if (window.history.state?.itemDetailModal) {
+        window.history.back()
+      }
+    }
+  }, [showItemDetail])
+
+  // Handle back button for other sheets (menu, filter, offers, schedule, location, etc.)
+  useEffect(() => {
+    const isAnySheetOpen = showMenuSheet || showFilterSheet || showOffersSheet || showLocationSheet || showScheduleSheet || showShareModal || showMenuOptionsSheet
+    if (!isAnySheetOpen) return
+
+    const currentState = window.history.state
+    window.history.pushState({ ...currentState, sheetModal: true }, "")
+
+    const handlePopState = () => {
+      setShowMenuSheet(false)
+      setShowFilterSheet(false)
+      setShowOffersSheet(false)
+      setShowLocationSheet(false)
+      setShowScheduleSheet(false)
+      setShowShareModal(false)
+      setShowMenuOptionsSheet(false)
+    }
+
+    window.addEventListener("popstate", handlePopState)
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+      if (window.history.state?.sheetModal) {
+        window.history.back()
+      }
+    }
+  }, [showMenuSheet, showFilterSheet, showOffersSheet, showLocationSheet, showScheduleSheet, showShareModal, showMenuOptionsSheet])
+
   // Fetch restaurant data from API
   useEffect(() => {
     const fetchRestaurant = async () => {
@@ -1123,7 +1172,7 @@ function RestaurantDetailsContent() {
       return
     }
 
-    const resolvedVariant = preferredVariant || getDefaultFoodVariant(item)
+    const resolvedVariant = preferredVariant !== undefined ? preferredVariant : getDefaultFoodVariant(item)
     const lineItemId = getLineItemIdForDish(item, resolvedVariant)
 
     // Update local state
@@ -1167,14 +1216,11 @@ function RestaurantDetailsContent() {
     const minVariantPrice = variants.length > 0
       ? Math.min(...variants.map((v) => Number(v.price) || 0))
       : 0;
-    const hasDistinctBasePrice = variants.length > 0
-      ? (rawPrice > 0 && rawPrice > minVariantPrice)
-      : (rawPrice > 0);
-    const dishBasePrice = hasDistinctBasePrice ? rawPrice : 0;
+    const dishBasePrice = rawPrice > 0 ? rawPrice : minVariantPrice;
     const variantPrice = resolvedVariant ? Number(resolvedVariant.price || 0) : 0;
-    const cartUnitPrice = hasDistinctBasePrice
-      ? (dishBasePrice + variantPrice)
-      : (resolvedVariant ? variantPrice : getFoodDisplayPrice(item));
+    const cartUnitPrice = rawPrice > 0
+      ? (rawPrice + variantPrice)
+      : (resolvedVariant ? variantPrice : minVariantPrice);
 
     // Prepare cart item with all required properties
     const cartItem = {

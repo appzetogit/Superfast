@@ -583,14 +583,16 @@ export default function HomeHeader({
             </video>
           </div>
         )}
-        <div className={cn("relative z-10 pb-0 px-3 overflow-visible", isFood ? "pt-3" : "pt-0")}>
-          {isFood && isSticky && <div className="h-[46px] mb-2" />}
+        <div className={cn("relative z-20 pb-0 px-0 overflow-visible", isFood ? "pt-1" : "pt-0")}>
           {isFood && !hideExtras && (
             <div
-              className={cn("flex items-center gap-2 mb-2",
-                isSticky ? "fixed top-0 left-0 right-0 z-[100] px-4 py-2 pb-3 shadow-md backdrop-blur-xl border-b border-black/5 dark:border-white/5" : "relative w-full px-0"
+              className={cn(
+                "sticky top-0 z-[50] flex items-center gap-2 px-3 py-2 transition-all backdrop-blur-xl border-b border-black/5 dark:border-white/5",
+                isSticky ? "shadow-md" : ""
               )}
-              style={{ backgroundColor: isSticky ? withAlpha(theme.accent, 0.85) : "transparent" }}
+              style={{
+                backgroundColor: theme.secondaryBg || theme.topBg,
+              }}
             >
               <div
                 className="flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-white shadow-[0_6px_18px_rgba(15,23,42,0.10)] border-0 text-left"

@@ -366,7 +366,7 @@ export default function RestaurantOTP() {
   }
 
   return (
-    <div className="h-[100dvh] bg-[#fafafa] flex flex-col relative font-sans overflow-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-[#fafafa] flex flex-col relative font-sans overflow-y-auto">
       <AuthBrandHeader
         portalType="restaurant"
         subtitle="Restaurant Partner Portal"
@@ -374,10 +374,7 @@ export default function RestaurantOTP() {
         onBack={() => navigate("/food/restaurant/login")}
       />
 
-      <div
-        className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col mt-16 md:mt-20 relative z-20 pb-4 overflow-y-auto"
-        style={keyboardOffset > 0 ? { maxHeight: `${window.visualViewport.height - 80}px` } : undefined}
-      >
+      <div className="flex-1 w-full max-w-[420px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center relative z-20">
         {/* Main Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 shrink-0 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center mb-5">
@@ -484,7 +481,7 @@ export default function RestaurantOTP() {
         </div>
       </div>
       {/* Footer */}
-      <div className={`shrink-0 z-20 bg-[#fafafa] py-4 text-center border-t border-gray-100 ${keyboardOffset > 0 || focusedIndex !== null ? "hidden" : "block"}`}>
+      <div className="w-full shrink-0 mt-auto py-4 text-center border-t border-gray-100 z-20">
         <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] uppercase">
           SECURE VERIFICATION SYSTEM &bull; {companyName.toUpperCase()}
         </p>

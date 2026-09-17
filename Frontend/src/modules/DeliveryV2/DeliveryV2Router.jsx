@@ -32,6 +32,7 @@ import TermsAndConditionsV2 from './pages/TermsAndConditionsV2';
 import SupportPageV2 from './pages/SupportPageV2';
 import PrivacyPolicyV2 from './pages/PrivacyPolicyV2';
 import NotificationsV2 from './pages/NotificationsV2';
+import GigsV2 from './pages/GigsV2';
 
 
 const ReturnPickups = lazy(() => import('../quickCommerce/delivery/pages/ReturnPickups'));
@@ -67,6 +68,7 @@ const DeliveryV2Router = () => {
         <Route path="pocket" element={<ProtectedRoute><DeliveryHomeV2 tab="pocket" /></ProtectedRoute>} />
         <Route path="history" element={<ProtectedRoute><DeliveryHomeV2 tab="history" /></ProtectedRoute>} />
         <Route path="profile" element={<ProtectedRoute><DeliveryHomeV2 tab="profile" /></ProtectedRoute>} />
+        <Route path="gigs" element={<ProtectedRoute><GigsV2 /></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute><NotificationsV2 /></ProtectedRoute>} />
         <Route path="profile/details" element={<ProtectedRoute><ProfileDetailsV2 /></ProtectedRoute>} />
         <Route path="profile/bank" element={<ProtectedRoute><ProfileBankV2 /></ProtectedRoute>} />

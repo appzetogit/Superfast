@@ -8,6 +8,7 @@ import { FoodItem } from '../modules/food/admin/models/food.model.js';
 import { buildZoneRestaurantFilter } from '../modules/food/restaurant/services/restaurant.service.js';
 import { haversineKm } from '../modules/food/orders/services/order.helpers.js';
 import { sendResponse, sendError } from '../utils/response.js';
+import { getDeveloperModeFilter } from '../modules/common/utils/developerMode.js';
 
 const router = express.Router();
 
@@ -117,15 +118,22 @@ router.get('/recommendations', authMiddleware, async (req, res, next) => {
 
         let recommendedRestaurants = [];
 
-        const userLat = Number(req.query.lat);
-        const userLng = Number(req.query.lng);
-        const hasCoords = Number.isFinite(userLat) && Number.isFinite(userLng);
+        const devFilter = await getDeveloperModeFilter();
+        if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+            recommendedRestaurants = await FoodRestaurant.find({
+                _id: { $in: devFilter.demoIds },
+                status: 'approved'
+            }).lean();
+        } else {
+            const userLat = Number(req.query.lat);
+            const userLng = Number(req.query.lng);
+            const hasCoords = Number.isFinite(userLat) && Number.isFinite(userLng);
 
-        const activeZoneId = req.query.zoneId || req.query.zone_id || '';
-        let zoneFilter = null;
-        if (activeZoneId) {
-            zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
-        }
+            const activeZoneId = req.query.zoneId || req.query.zone_id || '';
+            let zoneFilter = null;
+            if (activeZoneId) {
+                zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
+            }
 
         if (hasSet) {
             const categoryNames = preferences.map(p => p.name);
@@ -202,6 +210,7 @@ router.get('/recommendations', authMiddleware, async (req, res, next) => {
                 const d = haversineKm(rLat, rLng, userLat, userLng);
                 return d <= 25;
             }).slice(0, 12);
+        }
         }
 
         // Helper to escape regex special characters

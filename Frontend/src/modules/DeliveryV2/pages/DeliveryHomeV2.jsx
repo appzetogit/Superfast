@@ -5,7 +5,7 @@ import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { useProximityCheck } from '@/modules/DeliveryV2/hooks/useProximityCheck';
 import { useOrderManager } from '@/modules/DeliveryV2/hooks/useOrderManager';
 import { useDeliveryNotifications } from '@food/hooks/useDeliveryNotifications';
-import { deliveryAPI } from '@food/api';
+import { deliveryAPI, gigAPI } from '@food/api';
 import { toast } from 'sonner';
 import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
@@ -16,6 +16,7 @@ import { NewOrderModal } from '@/modules/DeliveryV2/components/modals/NewOrderMo
 import { PickupActionModal } from '@/modules/DeliveryV2/components/modals/PickupActionModal';
 import { DeliveryVerificationModal } from '@/modules/DeliveryV2/components/modals/DeliveryVerificationModal';
 import { OrderSummaryModal } from '@/modules/DeliveryV2/components/modals/OrderSummaryModal';
+import { BookGigModal } from '@/modules/DeliveryV2/components/modals/BookGigModal';
 import ActionSlider from '@/modules/DeliveryV2/components/ui/ActionSlider';
 
 // Sub Pages
@@ -29,7 +30,7 @@ import {
   Bell, HelpCircle, AlertTriangle,
   Wallet, History, User as UserIcon, LayoutGrid,
   Plus, Minus, Navigation2, Target, Play, CheckCircle2, Clock, ChevronDown,
-  Contact, Package
+  Contact, Package, Calendar, X, Loader2
 } from 'lucide-react';
 
 import { getHaversineDistance, calculateETA, calculateHeading } from '@/modules/DeliveryV2/utils/geo';
@@ -73,7 +74,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const { isOnline, toggleOnline, activeOrder, activeOrders, maxSlots, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
   const { isWithinRange, distanceToTarget } = useProximityCheck();
   const { acceptOrder, rejectOrder, reachPickup, pickUpOrder, reachDrop, completeDelivery, resetTrip } = useOrderManager();
-  const { newOrder, clearNewOrder, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
+  const { newOrder, clearNewOrder, stopAlertLoop, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
   const companyName = useCompanyName();
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
 
@@ -94,6 +95,10 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
   const [showVerification, setShowVerification] = useState(false);
   const [showEmergencyPopup, setShowEmergencyPopup] = useState(false);
+  const [showBookGigModal, setShowBookGigModal] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [handoverReason, setHandoverReason] = useState('Vehicle Breakdown / Flat Tyre');
+  const [submittingHandover, setSubmittingHandover] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [emergencyNumbers, setEmergencyNumbers] = useState({
     medicalEmergency: "",
@@ -105,6 +110,30 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const [isModalMinimized, setIsModalMinimized] = useState(false);
   const [eta, setEta] = useState(null);
   const [activeReturn, setActiveReturn] = useState(null);
+
+  const handleHandoverSubmit = async () => {
+    if (!activeOrder) return;
+    setSubmittingHandover(true);
+    try {
+      const res = await gigAPI.createHandoverRequest({
+        orderId: activeOrder._id || activeOrder.orderId,
+        reason: handoverReason,
+      });
+      if (res?.data?.success) {
+        toast.success('🚨 Handover submitted! Order reassigned to other drivers.');
+        setShowHandoverModal(false);
+        useDeliveryStore.getState().setOnline(false);
+        resetTrip();
+        deliveryAPI.updateOnlineStatus(false).catch(() => {});
+      } else {
+        toast.error(res?.data?.message || 'Failed to submit handover request');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Handover submission failed');
+    } finally {
+      setSubmittingHandover(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOnline) return;
@@ -380,10 +409,20 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
           setActiveOrder(syncedOrder);
 
-          const backendStatus = serverData.deliveryStatus || serverData.orderState?.status || serverData.orderStatus || serverData.status;
+          const backendStatus = String(serverData.deliveryStatus || serverData.orderState?.status || serverData.orderStatus || serverData.status || '').toLowerCase();
+          const dispatchStatus = String(serverData.dispatch?.status || '').toLowerCase();
+          const handoverStatus = String(serverData.handoverStatus || serverData.handover?.status || serverData.handoverRequest?.status || '').toLowerCase();
           const currentPhase = serverData.deliveryState?.currentPhase;
 
-          if (['delivered', 'completed', 'DELIVERED'].includes(backendStatus)) {
+          const isFinishedOrHandedOver = [
+            'delivered', 'completed', 'cancelled', 'cancelled_by_user', 
+            'cancelled_by_restaurant', 'cancelled_by_admin', 'handed_over', 
+            'handover_requested', 'handover_pending', 'handover_completed', 'transferred', 'reassigned'
+          ].some(st => backendStatus === st || dispatchStatus === st || handoverStatus === st);
+
+          if (isHandedOverOrFinished) {
+            clearActiveOrder();
+          } else if (['delivered', 'completed'].includes(backendStatus)) {
             updateTripStatus('COMPLETED');
           } else if (currentPhase === 'at_drop' || ['reached_drop', 'REACHED_DROP'].includes(backendStatus)) {
             updateTripStatus('REACHED_DROP');
@@ -421,9 +460,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
   // 2. Online/Offline Status Sync & FCM Push Registration
   useEffect(() => {
-    deliveryAPI.updateOnlineStatus(isOnline).catch(() => { });
     if (isOnline) {
-      registerWebPushForCurrentModule('/food/delivery').catch(console.error);
+      gigAPI.getMyGigs().then((res) => {
+        const bookings = res?.data?.data?.bookings || [];
+        const activeBooking = bookings.find(b => b.status === 'booked' || b.status === 'checked_in');
+        if (!activeBooking) {
+          useDeliveryStore.getState().setOnline(false);
+          deliveryAPI.updateOnlineStatus(false).catch(() => {});
+          toast.error('Gig shift required! Please book a gig shift first to go online.');
+        } else {
+          registerWebPushForCurrentModule('/food/delivery').catch(console.error);
+        }
+      }).catch(() => {
+        deliveryAPI.updateOnlineStatus(isOnline).catch(() => { });
+      });
+    } else {
+      deliveryAPI.updateOnlineStatus(false).catch(() => { });
     }
   }, [isOnline]);
 
@@ -545,9 +597,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       newOrder?.orderStatus || newOrder?.status || newOrder?.order?.orderStatus || ''
     ).trim().toLowerCase();
 
-    // Guard: Delivery partner modal MUST ONLY open for ready_for_pickup status!
+    // Guard: Delivery partner modal/list MUST ONLY accept ready_for_pickup status!
     if (!['ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
-      setIncomingOrder(null);
       return;
     }
 
@@ -557,23 +608,40 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       (typeof newOrder?.seller === 'object' && (newOrder?.seller?.shopName || newOrder?.seller?.name))
     );
 
+    const processOrder = (ord) => {
+      const socketOrd = { ...ord, _receivedAt: Date.now() };
+      // 1. Add order to availableOrdersList (Order List / Feed)
+      setAvailableOrdersList((prev) => {
+        const id = String(socketOrd._id || socketOrd.orderId || socketOrd.id);
+        const exists = prev.some((item) => String(item._id || item.orderId || item.id) === id);
+        if (!exists) return [socketOrd, ...prev];
+        return prev;
+      });
+
+      // 2. Only show full-screen ringing popup modal if rider currently has NO active trip!
+      const hasActiveTrip = Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
+      if (!hasActiveTrip) {
+        setIncomingOrder(socketOrd);
+      }
+    };
+
     if (hasPopulatedName) {
-      setIncomingOrder(newOrder);
+      processOrder(newOrder);
     } else {
       deliveryAPI.getOrderDetails(rawId)
         .then((res) => {
           const fullData = res?.data?.data?.order || res?.data?.order || res?.data?.data;
           if (fullData && (fullData._id || fullData.orderId)) {
-            setIncomingOrder({ ...newOrder, ...fullData });
+            processOrder({ ...newOrder, ...fullData });
           } else {
-            setIncomingOrder(newOrder);
+            processOrder(newOrder);
           }
         })
         .catch(() => {
-          setIncomingOrder(newOrder);
+          processOrder(newOrder);
         });
     }
-  }, [newOrder]);
+  }, [newOrder, activeOrder, activeOrders]);
 
   useEffect(() => {
     if (activeOrder && incomingOrder) {
@@ -596,17 +664,29 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           null;
 
         if (!cancelled && currentPayload && (currentPayload._id || currentPayload.orderId)) {
+          const backendStatus = String(currentPayload.deliveryStatus || currentPayload.orderState?.status || currentPayload.orderStatus || currentPayload.status || '').toLowerCase();
+          const dispatchStatus = String(currentPayload.dispatch?.status || '').toLowerCase();
+          const handoverStatus = String(currentPayload.handoverStatus || currentPayload.handover?.status || currentPayload.handoverRequest?.status || '').toLowerCase();
+          const currentPhase = currentPayload.deliveryState?.currentPhase;
+
+          const isFinishedOrHandedOver = [
+            'delivered', 'completed', 'cancelled', 'cancelled_by_user', 
+            'cancelled_by_restaurant', 'cancelled_by_admin', 'handed_over', 
+            'handover_requested', 'handover_pending', 'handover_completed', 'transferred', 'reassigned'
+          ].some(st => backendStatus === st || dispatchStatus === st || handoverStatus === st);
+
+          if (isFinishedOrHandedOver) {
+            clearActiveOrder();
+            return;
+          }
+
           setActiveOrder({
             ...currentPayload,
             pickupPoints: normalizePickupPoints(currentPayload),
             restaurantLocation: getPrimaryPickupLocation(currentPayload) || currentPayload.restaurantLocation,
           });
 
-          // Fix: Ensure tripStatus is synchronized so the UI renders the ActiveTripDelivery panel
-          const backendStatus = currentPayload.deliveryStatus || currentPayload.orderState?.status || currentPayload.orderStatus || currentPayload.status;
-          const currentPhase = currentPayload.deliveryState?.currentPhase;
-
-          if (['delivered', 'completed', 'DELIVERED'].includes(backendStatus)) {
+          if (['delivered', 'completed'].includes(backendStatus)) {
             updateTripStatus('COMPLETED');
           } else if (currentPhase === 'at_drop' || ['reached_drop', 'REACHED_DROP'].includes(backendStatus)) {
             updateTripStatus('REACHED_DROP');
@@ -691,7 +771,49 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         const response = await deliveryAPI.getOrders({ limit: 20, page: 1 });
         const payload = response?.data?.data || response?.data || {};
         const docs = Array.isArray(payload.docs) ? payload.docs : (Array.isArray(payload) ? payload : []);
-        setAvailableOrdersList(docs);
+        setAvailableOrdersList((prev) => {
+          const apiMap = new Map();
+          docs.forEach((d) => {
+            const id = String(d._id || d.orderId || d.id || '');
+            if (id) apiMap.set(id, d);
+          });
+
+          const activeIds = new Set(
+            (activeOrders || []).concat(activeOrder ? [activeOrder] : []).map((a) => String(a._id || a.orderId || a.id || ''))
+          );
+          const now = Date.now();
+
+          // Merge: Only keep pending socket orders in prev state if received within the last 20 seconds and not completed/accepted
+          const merged = [...docs];
+          (prev || []).forEach((prevOrd) => {
+            const pid = String(prevOrd._id || prevOrd.orderId || prevOrd.id || '');
+            const ordStatus = String(
+              prevOrd.orderStatus || prevOrd.status || prevOrd.deliveryStatus || prevOrd.dispatch?.status || ''
+            ).toLowerCase();
+            const isFinished = [
+              'delivered',
+              'completed',
+              'cancelled',
+              'cancelled_by_user',
+              'cancelled_by_restaurant',
+              'cancelled_by_admin',
+              'accepted',
+            ].includes(ordStatus);
+
+            if (
+              pid &&
+              !apiMap.has(pid) &&
+              !rejectedOrderIdsRef.current.has(pid) &&
+              !activeIds.has(pid) &&
+              !isFinished &&
+              prevOrd._receivedAt &&
+              now - prevOrd._receivedAt < 20000
+            ) {
+              merged.unshift(prevOrd);
+            }
+          });
+          return merged;
+        });
       } catch (err) {
         // quiet error
       }
@@ -699,7 +821,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     fetchAvailableOrders();
     const interval = setInterval(fetchAvailableOrders, 8000);
     return () => clearInterval(interval);
-  }, [isOnline]);
+  }, [isOnline, activeOrders, activeOrder]);
 
   useEffect(() => {
     if (orderStatusUpdate) {
@@ -747,13 +869,34 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               <button
                 onClick={async () => {
                   const nextState = !isOnline;
-                  toggleOnline(); // Store action
                   if (nextState) {
-                    // Try to get location and sync immediately so we are visible for dispatch right away
-                    navigator.geolocation.getCurrentPosition((pos) => {
-                      deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => { });
-                    }, (err) => console.warn('Online sync position failed:', err), { enableHighAccuracy: true });
+                    try {
+                      // Check if rider has a booked gig shift
+                      const res = await gigAPI.getMyGigs();
+                      const bookings = res?.data?.data?.bookings || [];
+                      const activeBooking = bookings.find(b => b.status === 'booked' || b.status === 'checked_in');
+
+                      if (!activeBooking) {
+                        toast.error('Gig shift required! Please book a gig shift first to go online.');
+                        setShowBookGigModal(true);
+                        return;
+                      }
+
+                      if (activeBooking.status === 'booked') {
+                        await gigAPI.checkInGig({ bookingId: activeBooking._id });
+                      }
+
+                      toggleOnline();
+                      navigator.geolocation.getCurrentPosition((pos) => {
+                        deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => { });
+                      }, (err) => console.warn('Online sync position failed:', err), { enableHighAccuracy: true });
+                      toast.success('Online! Checked-in to your Gig shift.');
+                    } catch (err) {
+                      toast.error(err?.response?.data?.message || 'Please book a gig shift first to go online.');
+                      setShowBookGigModal(true);
+                    }
                   } else {
+                    toggleOnline();
                     deliveryAPI.updateOnlineStatus(false).catch(() => { });
                   }
                 }}
@@ -766,14 +909,18 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 <motion.div animate={{ x: isOnline ? 59 : 0 }} className="absolute left-1 w-6 h-6 bg-white rounded-full shadow-sm" />
               </button>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setShowEmergencyPopup(true)} className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20 active:scale-95 transition-all shadow-lg"><AlertTriangle className="w-4 h-4" /></button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowBookGigModal(true)} className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-[#00A669] to-[#008f5a] flex items-center gap-1 text-white text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-lg border border-white/20">
+                <Calendar className="w-3 h-3 text-emerald-200" />
+                <span>Gigs</span>
+              </button>
+              <button onClick={() => setShowEmergencyPopup(true)} className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20 active:scale-95 transition-all shadow-lg"><AlertTriangle className="w-3.5 h-3.5" /></button>
               <button onClick={() => navigate('/food/delivery/help/id-card')} className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20 active:scale-95 transition-all shadow-lg"><Contact className="w-4 h-4" /></button>
               <button onClick={() => navigate('/food/delivery/notifications')} className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-95 transition-all shadow-lg"><Bell className="w-4 h-4" />{notificationUnreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-orange-400 border border-[#1f1f1f]" />}</button>
             </div>
           </div>
 
-          {/* ─── LIVE STATUS / PROGRESS BADGE (MATCHED PRO) ─── */}
+          {/* ─── LIVE STATUS / PROGRESS BADGE (MATCHED PRO SCREENSHOT 3) ─── */}
           <AnimatePresence>
             {currentTab === 'feed' && (
               <motion.div
@@ -817,19 +964,24 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white/5 rounded-2xl p-3 px-4 flex items-center justify-between border border-white/5 shadow-sm backdrop-blur-md">
+                  <div className="bg-[#1c1c1e] rounded-2xl p-3 px-4 flex items-center justify-between border border-white/10 shadow-lg backdrop-blur-md">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-green-500/10 rounded-full flex items-center justify-center">
-                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                      <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center border border-white/10">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-emerald-500'}`} />
                       </div>
                       <div>
-                        <h3 className="text-white font-black text-[11px] uppercase tracking-widest leading-none mb-1">{isOnline ? 'System Online' : 'System Offline'}</h3>
-                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-tight">{isOnline ? 'Waiting for order requests' : 'Go online to receive jobs'}</p>
+                        <h3 className="text-white font-black text-[11px] uppercase tracking-widest leading-none mb-1">{isOnline ? 'SYSTEM ONLINE' : 'SYSTEM OFFLINE'}</h3>
+                        <p className="text-gray-400 text-[9.5px] font-bold uppercase tracking-tight">{isOnline ? 'WAITING FOR ORDER REQUESTS' : 'BOOK A SHIFT TO START WORKING'}</p>
                       </div>
                     </div>
 
-                    {/* Dynamic Target Bonus Light Pill */}
-                    <TargetProgressCardV2 activeOrder={activeOrder} />
+                    <button
+                      onClick={() => setShowBookGigModal(true)}
+                      className="px-3.5 py-2 bg-[#00C897] hover:bg-[#00B588] text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>BOOK GIG</span>
+                    </button>
                   </div>
                 )}
               </motion.div>
@@ -969,6 +1121,10 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             incomingOrder={incomingOrder}
             availableOrders={availableOrdersList}
             onAccept={(o) => {
+              const targetId = String(o?.orderId || o?._id || o?.id || '');
+              if (targetId) {
+                setAvailableOrdersList((prev) => prev.filter((item) => String(item.orderId || item._id || item.id) !== targetId));
+              }
               acceptOrder(o);
               setIncomingOrder(null);
               clearNewOrder();
@@ -1000,7 +1156,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       </div>
 
       {/* OVERLAYS (Persistent if active) - Outside flex container to avoid clipping and z-index issues */}
-      {(currentTab === 'feed' || activeOrder || incomingOrder) && (
+      {isOnline && (currentTab === 'feed' || activeOrder || incomingOrder) && (
         <AnimatePresence>
           {!isModalMinimized && (
             <motion.div
@@ -1015,22 +1171,37 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 {incomingOrder && currentTab !== 'orders' && (
                   <NewOrderModal
                     order={incomingOrder}
-                    onAccept={(o) => { acceptOrder(o); setIncomingOrder(null); clearNewOrder(); }}
+                    onAccept={(o) => { 
+                      if (stopAlertLoop) stopAlertLoop();
+                      clearNewOrder(); 
+                      setIncomingOrder(null); 
+                      acceptOrder(o); 
+                    }}
                     onReject={(o) => {
+                      if (stopAlertLoop) stopAlertLoop();
+                      clearNewOrder();
                       const target = o || incomingOrder;
                       const targetId = String(target?.orderId || target?._id || target?.id || '');
                       if (targetId) rejectedOrderIdsRef.current.add(targetId);
                       rejectOrder(target);
                       setIncomingOrder(null);
-                      clearNewOrder();
                     }}
                     onTimeout={(o) => {
+                      if (stopAlertLoop) stopAlertLoop();
+                      clearNewOrder();
                       const target = o || incomingOrder;
                       const targetId = String(target?.orderId || target?._id || target?.id || '');
                       if (targetId) timedOutOrdersMapRef.current.set(targetId, Date.now());
                       rejectOrder(target);
                       setIncomingOrder(null);
+                    }}
+                    onCardClick={(o) => {
+                      if (stopAlertLoop) stopAlertLoop();
                       clearNewOrder();
+                      setIncomingOrder(null);
+                      setCurrentTab('feed');
+                      setIsModalMinimized(false);
+                      navigate('/food/delivery/feed');
                     }}
                     onMinimize={() => setIsModalMinimized(true)}
                   />
@@ -1051,8 +1222,16 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   <div className="absolute bottom-4 inset-x-0 z-[120] px-4">
                     {tripStatus === 'PICKED_UP' ? (
                       <div className="bg-white rounded-[3rem] p-8 shadow-[0_-20px_80px_rgba(0,0,0,0.4)] border border-gray-100 flex flex-col items-center">
-                        {/* Handle / Minimize */}
-                        <div className="w-full flex justify-center pb-4 pt-0 -mt-2">
+                        {/* Header with Handover button & Minimize handle */}
+                        <div className="w-full flex items-center justify-between pb-4 pt-0 -mt-2">
+                          <button
+                            onClick={() => setShowHandoverModal(true)}
+                            className="px-2.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all shadow-xs"
+                            title="Request Order Handover"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                            <span>HANDOVER</span>
+                          </button>
                           <button onClick={() => setIsModalMinimized(true)} className="p-1 hover:bg-gray-100 active:scale-95 transition-all rounded-full flex flex-col items-center">
                             <ChevronDown className="w-6 h-6 text-gray-400 stroke-[3]" />
                           </button>
@@ -1154,8 +1333,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         </div>
       </BottomPopup>
 
-      {/* Floating Minimize/Restore Toggle - Above navbar */}
-      {isModalMinimized && (activeOrder || incomingOrder || showVerification) && (
+      {/* Floating Minimize/Restore Toggle - Only visible when ONLINE */}
+      {isOnline && isModalMinimized && (activeOrder || incomingOrder || showVerification) && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -1176,8 +1355,71 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         </motion.div>
       )}
 
+      {/* Emergency Handover Modal Popup */}
+      <AnimatePresence>
+        {showHandoverModal && (
+          <div className="fixed inset-0 z-[700] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 pointer-events-auto">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-sm bg-white dark:bg-[#1c1c1e] rounded-3xl p-5 shadow-2xl space-y-4 border border-rose-100 dark:border-rose-950"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2 text-rose-600 font-black text-sm">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  <span>EMERGENCY HANDOVER</span>
+                </div>
+                <button
+                  onClick={() => setShowHandoverModal(false)}
+                  className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="bg-rose-50 dark:bg-rose-950/40 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-800 dark:text-rose-300 leading-relaxed">
+                Facing an emergency or breakdown? Requesting a handover will set your duty Offline and immediately reassign this order to available nearby drivers.
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Select Reason</label>
+                <select
+                  value={handoverReason}
+                  onChange={(e) => setHandoverReason(e.target.value)}
+                  className="w-full text-xs font-bold p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-rose-500"
+                >
+                  <option value="Vehicle Breakdown / Flat Tyre">Vehicle Breakdown / Flat Tyre</option>
+                  <option value="Accident / Health Emergency">Accident / Health Emergency</option>
+                  <option value="Personal Emergency">Personal Emergency</option>
+                  <option value="Severe Weather / Flooding">Severe Weather / Flooding</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowHandoverModal(false)}
+                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-black text-xs py-3 rounded-2xl active:scale-95 transition-all"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleHandoverSubmit}
+                  disabled={submittingHandover}
+                  className="flex-[1.5] bg-rose-600 hover:bg-rose-700 text-white font-black text-xs py-3 rounded-2xl shadow-lg shadow-rose-600/30 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                >
+                  {submittingHandover ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                  <span>{submittingHandover ? 'SENDING...' : 'REQUEST HANDOVER'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Floating Return Tracker - Above navbar */}
-      {activeReturn && !activeOrder && !incomingOrder && (
+      {isOnline && activeReturn && !activeOrder && !incomingOrder && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -1197,6 +1439,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           </button>
         </motion.div>
       )}
+
+      {/* Driver App Gig Booking Bottom Sheet Modal */}
+      <BookGigModal isOpen={showBookGigModal} onClose={() => setShowBookGigModal(false)} />
 
       {/* ─── 3. BOTTOM NAV (Fixed 5-Item Bar matching screenshots) ─── */}
       <div className="bg-white border-t border-gray-100 px-4 py-3 pb-6 flex justify-between items-center z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">

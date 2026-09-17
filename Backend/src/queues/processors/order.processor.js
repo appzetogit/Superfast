@@ -19,7 +19,7 @@ export const processOrderJob = async (job) => {
     // Handle Smart Dispatch Timeout
     if (action === 'DISPATCH_TIMEOUT_CHECK') {
         try {
-            const { processDispatchTimeout } = await import('../../../modules/food/orders/services/order.service.js');
+            const { processDispatchTimeout } = await import('../../modules/food/orders/services/order.service.js');
             // Pass full data object to allow attempt count and other options
             await processDispatchTimeout(orderMongoId, data.partnerId, data);
         } catch (err) {
@@ -30,7 +30,7 @@ export const processOrderJob = async (job) => {
     // Handle Reassignment Timeout
     if (action === 'REASSIGNMENT_TIMEOUT') {
         try {
-            const { processReassignmentTimeout } = await import('../../../modules/food/orders/services/order.service.js');
+            const { processReassignmentTimeout } = await import('../../modules/food/orders/services/order.service.js');
             await processReassignmentTimeout(orderMongoId, data.pendingDriverId);
         } catch (err) {
             logger.error(`[BullMQ:order] REASSIGNMENT_TIMEOUT failed: ${err.message}`);
@@ -40,7 +40,7 @@ export const processOrderJob = async (job) => {
     // Handle Scheduled Order Activation
     if (action === 'NOTIFY_SCHEDULED_ORDER') {
         try {
-            const { processScheduledOrderNotification } = await import('../../../modules/food/orders/services/order.service.js');
+            const { processScheduledOrderNotification } = await import('../../modules/food/orders/services/order.service.js');
             await processScheduledOrderNotification(orderMongoId);
         } catch (err) {
             logger.error(`[BullMQ:order] NOTIFY_SCHEDULED_ORDER failed: ${err.message}`);

@@ -295,13 +295,16 @@ export default function CategoryPage() {
           restaurantsByName.get(restaurantName.toLowerCase()) ||
           null
 
+        // If the food item's restaurant is not in the allowed/filtered restaurants list, skip it
+        if (!matchedRestaurant) return null
+
         const fallbackRestaurantName = restaurantName || "Restaurant"
         const fallbackSlug = slugify(fallbackRestaurantName)
         const fallbackImage = normalizeImageUrl(food?.image)
 
         return {
-          ...(matchedRestaurant || {}),
-          isFallbackOffline: !matchedRestaurant,
+          ...matchedRestaurant,
+          isFallbackOffline: false,
           id: `${restaurantId || fallbackSlug || "restaurant"}-${String(food?.id || food?._id || index)}`,
           restaurantId: restaurantId || matchedRestaurant?.restaurantId || matchedRestaurant?.id || null,
           mongoId: matchedRestaurant?.mongoId || matchedRestaurant?.id || null,
@@ -327,6 +330,7 @@ export default function CategoryPage() {
           categoryDishFoodType: food?.foodType || "Non-Veg",
         }
       })
+      .filter(Boolean)
   }
 
   const normalizeImageUrl = (value) => {

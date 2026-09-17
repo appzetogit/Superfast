@@ -66,12 +66,6 @@ export default function RestaurantLogin() {
     }
   }, [])
 
-  useEffect(() => {
-    if (keyboardInset > 0) {
-      ensurePhoneFieldVisible()
-    }
-  }, [keyboardInset])
-
   const validatePhone = (phone, countryCode) => {
     if (!phone || phone.trim() === "") return "Phone number is required"
 
@@ -95,16 +89,6 @@ export default function RestaurantLogin() {
     if (error) {
       setError(validatePhone(value, formData.countryCode))
     }
-  }
-
-  const ensurePhoneFieldVisible = () => {
-    // Wait for keyboard to animate in
-    window.setTimeout(() => {
-      phoneInputRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      })
-    }, 300)
   }
 
   const handleSendOTP = async () => {
@@ -142,17 +126,14 @@ export default function RestaurantLogin() {
 
   return (
     <div
-      className="h-[100dvh] bg-[#fafafa] flex flex-col relative font-sans overflow-hidden"
+      className="min-h-screen min-h-[100dvh] bg-[#fafafa] flex flex-col relative font-sans overflow-y-auto"
     >
       <AuthBrandHeader
         portalType="restaurant"
         subtitle="Restaurant Partner Portal"
       />
 
-      <div
-        className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col mt-16 md:mt-20 relative z-20 pb-4 overflow-y-auto"
-        style={keyboardInset > 0 ? { maxHeight: `${window.visualViewport.height - 80}px` } : undefined}
-      >
+      <div className="flex-1 w-full max-w-[420px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center relative z-20">
         {/* Main Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 shrink-0 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center mb-5">
@@ -194,7 +175,6 @@ export default function RestaurantLogin() {
                   onChange={handlePhoneChange}
                   onFocus={() => {
                     setIsFocused(true)
-                    ensurePhoneFieldVisible()
                   }}
                   onBlur={() => {
                     setIsFocused(false)
@@ -230,8 +210,8 @@ export default function RestaurantLogin() {
       </div>
 
       {/* Footer */}
-      <div className={keyboardInset > 0 || isFocused ? "hidden" : "block"}>
-        <div className="text-center pt-4 pb-2">
+      <div className="w-full shrink-0 mt-auto pt-2 pb-4">
+        <div className="text-center pb-2">
           <p className="text-slate-400 text-xs font-medium">
             By logging in, you agree to our <br />
             <button
@@ -260,7 +240,7 @@ export default function RestaurantLogin() {
           </p>
         </div>
 
-        <div className="pb-8 text-center">
+        <div className="text-center">
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
             &copy; {new Date().getFullYear()} {companyName.toUpperCase()} RESTAURANT PARTNER
           </p>

@@ -9,6 +9,7 @@ import * as notificationBroadcastController from '../controllers/notificationBro
 import * as diningAdminController from '../../dining/controllers/diningAdmin.controller.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
 import * as subAdminController from '../controllers/subAdmin.controller.js';
+import * as gigController from '../../delivery/controllers/gig.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import { requireSuperAdmin, requireAdminManager } from '../../../../core/auth/auth.middleware.js';
@@ -191,6 +192,15 @@ router.get('/zones/:id', adminController.getZoneById);
 router.post('/zones', adminController.createZone);
 router.patch('/zones/:id', adminController.updateZone);
 router.delete('/zones/:id', adminController.deleteZone);
+
+// ----- Admin Gigs Management -----
+router.get('/gigs', gigController.adminListGigsController);
+router.post('/gigs', gigController.adminCreateGigController);
+router.patch('/gigs/:id', gigController.adminUpdateGigController);
+router.delete('/gigs/:id', gigController.adminDeleteGigController);
+router.get('/gigs/handovers', gigController.adminGetHandoverRequestsController);
+router.post('/gigs/handovers/:id/approve', gigController.adminApproveHandoverRequestController);
+router.post('/gigs/handovers/:id/reject', gigController.adminRejectHandoverRequestController);
 
 // ----- Dining -----
 router.get('/dining/categories', diningAdminController.getDiningCategories);

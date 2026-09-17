@@ -444,7 +444,7 @@ export default function Home() {
         <>
           <div className={cn("bg-white dark:bg-[#0a0a0a]", activeTab === "food" ? "block" : "hidden")}>
             <Suspense fallback={<CategoryChipRowSkeleton className="py-1" />}>
-              <div className="sticky top-[66px] z-[40] md:relative md:top-auto bg-white dark:bg-[#0a0a0a] border-b border-slate-100 dark:border-white/5 transition-all">
+              <div className="relative z-10 bg-white dark:bg-[#0a0a0a] border-b border-slate-100 dark:border-white/5 transition-all">
                 <CategoryRail
                   displayCategories={userPreferredCategories}
                   showCategorySkeleton={categories.loading}

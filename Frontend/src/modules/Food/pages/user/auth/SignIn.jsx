@@ -114,94 +114,87 @@ export default function SignIn() {
 
   return (
     <AnimatedPage
-      className="min-h-screen flex flex-col"
+      className="min-h-screen min-h-[100dvh] flex flex-col relative font-sans overflow-y-auto"
       style={{ backgroundColor: SUPERFAST_BRAND.cream, '--primary-theme': '#f97316' }}
     >
-      <div className="w-full max-w-[420px] mx-auto flex flex-col min-h-screen">
-        <AuthBrandHeader compact subtitle="Superfast Food Delivery" />
+      <AuthBrandHeader compact subtitle="Superfast Food Delivery" />
 
-        <div className="flex-1 px-4 -mt-2 pb-6">
-          <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100">
-            <div className="text-center space-y-2 mb-6">
-              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight">
-                Login or Signup
-              </h2>
-              <p className="text-sm text-gray-500">
-                Enter your phone number to continue
-              </p>
-              <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
+      <div className="flex-1 w-full max-w-[420px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center relative z-20">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100 shrink-0">
+          <div className="text-center space-y-2 mb-6">
+            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight">
+              Login or Signup
+            </h2>
+            <p className="text-sm text-gray-500">
+              Enter your phone number to continue
+            </p>
+            <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
+          </div>
+
+          <form id="user-signin-form" onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <div className="relative flex items-center">
+                <div
+                  className="flex items-center px-4 h-12 md:h-14 border border-gray-300 bg-white text-gray-900 rounded-xl border-r-0 rounded-r-none font-semibold"
+                  style={{ background: SUPERFAST_BRAND.tint }}
+                >
+                  <span>+91</span>
+                </div>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={10}
+                  placeholder="Phone number"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className={`flex-1 h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl rounded-l-none focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${error ? "border-red-500" : ""} transition-all`}
+                  aria-invalid={error ? "true" : "false"}
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-1.5 text-xs text-red-500 pl-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>{error}</span>
+                </div>
+              )}
             </div>
 
-            <form id="user-signin-form" onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <div className="relative flex items-center">
-                  <div
-                    className="flex items-center px-4 h-12 md:h-14 border border-gray-300 bg-white text-gray-900 rounded-xl border-r-0 rounded-r-none font-semibold"
-                    style={{ background: SUPERFAST_BRAND.tint }}
-                  >
-                    <span>+91</span>
-                  </div>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={10}
-                    placeholder="Phone number"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className={`flex-1 h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl rounded-l-none focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${error ? "border-red-500" : ""} transition-all`}
-                    aria-invalid={error ? "true" : "false"}
-                    onFocus={(e) => {
-                      setTimeout(() => {
-                        e.target.scrollIntoView({ behavior: "smooth", block: "center" })
-                      }, 300)
-                    }}
-                  />
-                </div>
+            <Button
+              type="submit"
+              form="user-signin-form"
+              className="w-full h-12 md:h-14 text-white font-bold text-base md:text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
+              style={{ background: SUPERFAST_BRAND.gradient }}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Sending OTP...
+                </>
+              ) : (
+                "Continue"
+              )}
+            </Button>
+          </form>
 
-                {error && (
-                  <div className="flex items-center gap-1.5 text-xs text-red-500 pl-1">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    <span>{error}</span>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                form="user-signin-form"
-                className="w-full h-12 md:h-14 text-white font-bold text-base md:text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
-                style={{ background: SUPERFAST_BRAND.gradient }}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Sending OTP...
-                  </>
-                ) : (
-                  "Continue"
-                )}
-              </Button>
-            </form>
-
-            <div className="text-center text-xs md:text-sm text-gray-500 pt-6">
-              <p className="mb-2">By continuing, you agree to our</p>
-              <div className="flex justify-center gap-2 flex-wrap">
-                <Link to="/profile/terms" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>
-                  Terms & Conditions
-                </Link>
-                <span className="text-gray-300">•</span>
-                <Link to="/profile/privacy" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>
-                  Privacy Policy
-                </Link>
-                <span className="text-gray-300">•</span>
-                <Link to="/profile/support" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>
-                  Support
-                </Link>
-              </div>
+          <div className="text-center text-xs md:text-sm text-gray-500 pt-6">
+            <p className="mb-2">By continuing, you agree to our</p>
+            <div className="flex justify-center gap-2 flex-wrap">
+              <Link to="/profile/terms" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>
+                Terms & Conditions
+              </Link>
+              <span className="text-gray-300">•</span>
+              <Link to="/profile/privacy" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>
+                Privacy Policy
+              </Link>
+              <span className="text-gray-300">•</span>
+              <Link to="/profile/support" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>
+                Support
+              </Link>
             </div>
           </div>
         </div>

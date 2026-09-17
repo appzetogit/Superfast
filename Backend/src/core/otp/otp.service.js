@@ -115,11 +115,18 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         throw new ValidationError('This phone number is banned. Please contact support.');
     }
 
+    // Check Developer Mode Demo Numbers
+    const devMode = settings?.developerMode;
+    const isDevDemoPhone = devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
+        const demoLast10 = String(demo).replace(/\D/g, '').slice(-10);
+        return phoneCandidates.includes(demo) || (demoLast10 && phoneCandidates.includes(demoLast10));
+    });
+
     const existing = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
     const now = new Date();
 
-    // Rate Limiting Logic
-    if (existing) {
+    // Rate Limiting Logic (Bypassed for Dev Demo Numbers)
+    if (existing && !isDevDemoPhone) {
         const windowMs = (config.otpRateWindow || 600) * 1000;
         const isInWindow = now - existing.lastRequestAt < windowMs;
 
@@ -135,10 +142,13 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         }
     }
 
-    const shouldUseDefaultOtp = config.useDefaultOtp && !forceRandom;
+    const shouldUseDefaultOtp = (config.useDefaultOtp || isDevDemoPhone) && !forceRandom;
 
     let otp;
-    if (shouldUseDefaultOtp) {
+    if (isDevDemoPhone) {
+        otp = devMode.demoOtp || '123456';
+        logger.info(`Developer Reviewer Mode enabled – Fixed OTP is ${otp} for phone ${phone}`);
+    } else if (shouldUseDefaultOtp) {
         otp = '1234';
         logger.info(`Default OTP mode enabled – OTP is ${otp} for phone ${phone}`);
     } else {
@@ -173,10 +183,10 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         });
     }
 
-    // Only send SMS if not in default OTP mode and credentials exist.
-    if (!shouldUseDefaultOtp && config.smsApiKey && config.smsSenderId) {
+    // Only send SMS if not in demo/default mode and credentials exist.
+    if (!isDevDemoPhone && !shouldUseDefaultOtp && config.smsApiKey && config.smsSenderId) {
         await sendSmsViaIndiaHub(phone, otp);
-    } else if (!shouldUseDefaultOtp) {
+    } else if (!isDevDemoPhone && !shouldUseDefaultOtp) {
         logger.warn(`OTP generated for ${phone}, but SMS delivery is skipped because SMS India Hub credentials are missing.`);
     }
 
@@ -185,7 +195,23 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
 
 export const verifyOtp = async (phone, otp) => {
     const phoneCandidates = getPhoneCandidates(phone);
+    const settings = await GlobalSettings.findOne().lean();
+    const devMode = settings?.developerMode;
+    const isDevDemoPhone = devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
+        const demoLast10 = String(demo).replace(/\D/g, '').slice(-10);
+        return phoneCandidates.includes(demo) || (demoLast10 && phoneCandidates.includes(demoLast10));
+    });
+
     const record = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
+
+    if (isDevDemoPhone) {
+        const fixedOtp = devMode.demoOtp || '123456';
+        if (otp === fixedOtp || (record && record.otp === otp)) {
+            if (record) await record.deleteOne();
+            return { valid: true };
+        }
+    }
+
     if (!record) {
         return { valid: false, reason: 'OTP not found' };
     }

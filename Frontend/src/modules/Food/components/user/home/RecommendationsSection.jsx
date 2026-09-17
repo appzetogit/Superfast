@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect, memo, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Star, Compass, Zap, Clock } from "lucide-react";
@@ -57,6 +57,23 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
     fetchRecommendations();
   }, [zoneId, location?.latitude, location?.longitude]);
 
+  const { favouriteCategories = [], recommendedRestaurants = [] } = data;
+
+  const displayRestaurants = useMemo(() => {
+    let list = recommendedRestaurants.length > 0
+      ? recommendedRestaurants
+      : (fallbackRestaurants || []);
+
+    if (fallbackRestaurants && fallbackRestaurants.length > 0) {
+      const allowedIds = new Set(fallbackRestaurants.map(r => String(r._id || r.id || r.mongoId)));
+      list = list.filter(r => allowedIds.has(String(r._id || r.id || r.mongoId)));
+      if (list.length === 0) {
+        list = fallbackRestaurants;
+      }
+    }
+    return list;
+  }, [recommendedRestaurants, fallbackRestaurants]);
+
   if (isLoading) {
     return (
       <div className="py-4 px-4 space-y-3 max-w-2xl mx-auto">
@@ -74,12 +91,6 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
       </div>
     );
   }
-
-  const { favouriteCategories = [], recommendedRestaurants = [] } = data;
-
-  const displayRestaurants = recommendedRestaurants.length > 0
-    ? recommendedRestaurants
-    : (fallbackRestaurants || []);
 
   const filteredRestaurants = displayRestaurants.filter(r => {
     if (activeCategoryFilter === "all") return true;

@@ -8,6 +8,8 @@ import { Seller } from '../../quick-commerce/seller/models/seller.model.js';
 import { FoodRefreshToken } from '../../../core/refreshTokens/refreshToken.model.js';
 import { FoodOtp } from '../../../core/otp/otp.model.js';
 import { transformImageFields } from '../../../utils/urlHelper.js';
+import { invalidateCache } from '../../../middleware/cache.js';
+import { invalidateLandingSettingsCache } from '../../food/landing/controllers/publicLanding.controller.js';
 
 export async function getGlobalSettings(req, res, next) {
     try {
@@ -210,6 +212,25 @@ export async function updateGlobalSettings(req, res, next) {
             }
         }
 
+        if (data.developerMode !== undefined) {
+            if (data.developerMode.enabled !== undefined) updateQuery.$set['developerMode.enabled'] = Boolean(data.developerMode.enabled);
+            if (data.developerMode.demoRestaurantIds !== undefined) updateQuery.$set['developerMode.demoRestaurantIds'] = data.developerMode.demoRestaurantIds;
+            if (data.developerMode.demoStoreIds !== undefined) updateQuery.$set['developerMode.demoStoreIds'] = data.developerMode.demoStoreIds;
+            if (data.developerMode.demoPhoneNumbers !== undefined && Array.isArray(data.developerMode.demoPhoneNumbers)) {
+                updateQuery.$set['developerMode.demoPhoneNumbers'] = data.developerMode.demoPhoneNumbers;
+            }
+            if (data.developerMode.demoOtp !== undefined) updateQuery.$set['developerMode.demoOtp'] = String(data.developerMode.demoOtp).trim();
+            if (data.developerMode.bypassLocationRestriction !== undefined) {
+                updateQuery.$set['developerMode.bypassLocationRestriction'] = Boolean(data.developerMode.bypassLocationRestriction);
+            }
+            if (data.developerMode.allowTestPayment !== undefined) {
+                updateQuery.$set['developerMode.allowTestPayment'] = Boolean(data.developerMode.allowTestPayment);
+            }
+            if (data.developerMode.hideLiveRestaurantsInReview !== undefined) {
+                updateQuery.$set['developerMode.hideLiveRestaurantsInReview'] = Boolean(data.developerMode.hideLiveRestaurantsInReview);
+            }
+        }
+
         const previousBannedNumbers = settings?.bannedNumbers ? [...settings.bannedNumbers] : [];
 
         // Execute reliable update with upsert to ensure document creation
@@ -315,6 +336,14 @@ export async function updateGlobalSettings(req, res, next) {
             } catch (err) {
                 console.error("Error updating account statuses for banned/unbanned numbers:", err);
             }
+        }
+
+        // Invalidate public caches when settings are updated
+        try {
+            invalidateLandingSettingsCache();
+            await invalidateCache('*');
+        } catch (cacheErr) {
+            console.error("Error invalidating cache on settings update:", cacheErr);
         }
 
         return sendResponse(res, 200, 'Global settings updated successfully', transformImageFields(settings));

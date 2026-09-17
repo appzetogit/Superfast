@@ -174,23 +174,26 @@ export default function Cart() {
 
   const {
     cart: masterCart,
-    foodItems,
-    quickItems,
+    foodItems = [],
+    quickItems = [],
     updateQuantity,
     addToCart,
     getCartCount,
     clearCart,
     cleanCartForRestaurant,
     replaceCart
-  } = cartContext;
+  } = cartContext || {};
+
+  const safeFoodItems = Array.isArray(foodItems) ? foodItems : [];
+  const safeQuickItems = Array.isArray(quickItems) ? quickItems : [];
 
   // For the Food Cart page, we only care about food items
-  const cart = foodItems;
-  const displayItems = foodItems;
-  const hasFoodItems = foodItems.length > 0;
-  const hasQuickItems = quickItems.length > 0;
+  const cart = safeFoodItems;
+  const displayItems = safeFoodItems;
+  const hasFoodItems = safeFoodItems.length > 0;
+  const hasQuickItems = safeQuickItems.length > 0;
   const isQuickCart = false; // This page is always a food cart view
-  const hasUnavailableItems = foodItems.some(item => item.isAvailable === false)
+  const hasUnavailableItems = safeFoodItems.some(item => item?.isAvailable === false);
 
   const { vegMode, getDefaultAddress, getDefaultPaymentMethod, setDefaultAddress, addresses, paymentMethods, userProfile } = useProfile()
   const { createOrder } = useOrders()

@@ -1,4 +1,6 @@
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { GlobalSettings } from '../../../common/models/settings.model.js';
+import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
 import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
 import { toClientShape } from './outletTimings.service.js';
 import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
@@ -1439,66 +1441,75 @@ export const listApprovedRestaurants = async (query = {}) => {
 
     const filter = { status: 'approved' };
 
-    // STRICT ZONE FILTER: Apply requested zoneId / zone_id strictly before any other criteria
-    const activeZoneId = query.zoneId || query.zone_id;
-    if (activeZoneId) {
-        const zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
-        if (zoneFilter) {
-            filter.$and = [...(filter.$and || []), zoneFilter];
-        }
-    }
-
-    if (query.businessType === 'home_bakery') {
-        filter.businessType = 'home_bakery';
+    // Developer / Reviewer Mode Filtering
+    const devFilter = await getDeveloperModeFilter();
+    if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+        const demoObjIds = devFilter.demoIds.map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : id);
+        const demoStrIds = devFilter.demoIds.map(id => String(id));
+        filter._id = { $in: Array.from(new Set([...demoObjIds, ...demoStrIds])) };
+        delete filter.status;
     } else {
-        filter.businessType = { $ne: 'home_bakery' };
-    }
+        // STRICT ZONE FILTER: Apply requested zoneId / zone_id strictly before any other criteria
+        const activeZoneId = query.zoneId || query.zone_id;
+        if (activeZoneId) {
+            const zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
+            if (zoneFilter) {
+                filter.$and = [...(filter.$and || []), zoneFilter];
+            }
+        }
 
-    if (String(query.customOrdersEnabled) === 'true') {
-        filter.customOrdersEnabled = true;
-    }
+        if (query.businessType === 'home_bakery') {
+            filter.businessType = 'home_bakery';
+        } else {
+            filter.businessType = { $ne: 'home_bakery' };
+        }
 
-    if (query.featured === 'true' || query.isFeatured === 'true') {
-        filter.$or = [
-            { isFeatured: true },
-            { featuredDish: { $exists: true, $ne: '', $ne: null } },
-            { priority: { $gt: 0 } },
-            { rating: { $gte: 4.0 } }
-        ];
-    }
+        if (String(query.customOrdersEnabled) === 'true') {
+            filter.customOrdersEnabled = true;
+        }
 
-    if (query.city && String(query.city).trim()) {
-        const city = String(query.city).trim().slice(0, 80);
-        const rx = { $regex: escapeRegex(city), $options: 'i' };
-        filter.$and = [...(filter.$and || []), { $or: [{ 'location.city': rx }, { city: rx }] }];
-    }
-    if (query.area && String(query.area).trim()) {
-        const area = String(query.area).trim().slice(0, 80);
-        const rx = { $regex: escapeRegex(area), $options: 'i' };
-        filter.$and = [...(filter.$and || []), { $or: [{ 'location.area': rx }, { area: rx }] }];
-    }
-    if (query.cuisine && String(query.cuisine).trim()) {
-        const cuisine = normalizeCuisine(query.cuisine);
-        // cuisines is an array of strings.
-        filter.cuisines = { $in: [new RegExp(escapeRegex(cuisine), 'i')] };
-    }
-    if (query.hasOffers === 'true') {
-        filter.offer = { $exists: true, $ne: null, $ne: '' };
-    }
-    const minRating = toFiniteNumber(query.minRating);
-    if (minRating !== null) {
-        filter.rating = { $gte: Math.max(0, Math.min(5, minRating)) };
-    }
-    const maxDeliveryTime = toFiniteNumber(query.maxDeliveryTime);
-    if (maxDeliveryTime !== null) {
-        filter.estimatedDeliveryTimeMinutes = { $lte: Math.max(0, Math.round(maxDeliveryTime)) };
-    }
-    const maxPrice = toFiniteNumber(query.maxPrice);
-    if (maxPrice !== null) {
-        filter.featuredPrice = { $lte: Math.max(0, maxPrice) };
-    }
-    if (query.topRated === 'true') {
-        filter.rating = { ...(filter.rating || {}), $gte: 4.5 };
+        if (query.featured === 'true' || query.isFeatured === 'true') {
+            filter.$or = [
+                { isFeatured: true },
+                { featuredDish: { $exists: true, $ne: '', $ne: null } },
+                { priority: { $gt: 0 } },
+                { rating: { $gte: 4.0 } }
+            ];
+        }
+
+        if (query.city && String(query.city).trim()) {
+            const city = String(query.city).trim().slice(0, 80);
+            const rx = { $regex: escapeRegex(city), $options: 'i' };
+            filter.$and = [...(filter.$and || []), { $or: [{ 'location.city': rx }, { city: rx }] }];
+        }
+        if (query.area && String(query.area).trim()) {
+            const area = String(query.area).trim().slice(0, 80);
+            const rx = { $regex: escapeRegex(area), $options: 'i' };
+            filter.$and = [...(filter.$and || []), { $or: [{ 'location.area': rx }, { area: rx }] }];
+        }
+        if (query.cuisine && String(query.cuisine).trim()) {
+            const cuisine = normalizeCuisine(query.cuisine);
+            // cuisines is an array of strings.
+            filter.cuisines = { $in: [new RegExp(escapeRegex(cuisine), 'i')] };
+        }
+        if (query.hasOffers === 'true') {
+            filter.offer = { $exists: true, $ne: null, $ne: '' };
+        }
+        const minRating = toFiniteNumber(query.minRating);
+        if (minRating !== null) {
+            filter.rating = { $gte: Math.max(0, Math.min(5, minRating)) };
+        }
+        const maxDeliveryTime = toFiniteNumber(query.maxDeliveryTime);
+        if (maxDeliveryTime !== null) {
+            filter.estimatedDeliveryTimeMinutes = { $lte: Math.max(0, Math.round(maxDeliveryTime)) };
+        }
+        const maxPrice = toFiniteNumber(query.maxPrice);
+        if (maxPrice !== null) {
+            filter.featuredPrice = { $lte: Math.max(0, maxPrice) };
+        }
+        if (query.topRated === 'true') {
+            filter.rating = { ...(filter.rating || {}), $gte: 4.5 };
+        }
     }
     if (query.trusted === 'true') {
         filter.totalRatings = { ...(filter.totalRatings || {}), $gte: 100 };
@@ -1604,7 +1615,7 @@ export const listApprovedRestaurants = async (query = {}) => {
     }
 
     const requireFoodItems = query.requireFoodItems === 'true';
-    const foodItemsLookupFilter = (activeZoneId || !requireFoodItems) ? [] : [
+    const foodItemsLookupFilter = (devFilter?.isDevMode || activeZoneId || !requireFoodItems) ? [] : [
         {
             $lookup: {
                 from: 'food_items',
@@ -1631,8 +1642,9 @@ export const listApprovedRestaurants = async (query = {}) => {
     ];
 
     // Use $geoNear only when geo is explicitly needed (radius filter or nearest sorting).
-    // This avoids accidentally hiding restaurants that do not have coordinates yet.
-    const wantsGeo = (radiusKm !== null) || sortBy === 'nearest';
+    // Bypass if Developer Mode is enabled for reviewers.
+    const isDevGeoBypass = Boolean(devFilter?.isDevMode);
+    const wantsGeo = !isDevGeoBypass && ((radiusKm !== null) || sortBy === 'nearest');
     if (lat !== null && lng !== null && wantsGeo) {
         const geoNear = {
             $geoNear: {
@@ -1813,10 +1825,23 @@ export const listPublicOffers = async () => {
         ]
     };
 
-    const list = await FoodOffer.find(filter)
+    const devFilter = await getDeveloperModeFilter();
+
+    let list = await FoodOffer.find(filter)
         .sort({ createdAt: -1 })
         .populate({ path: 'restaurantId', select: 'restaurantName restaurantNameNormalized profileImage estimatedDeliveryTime rating' })
         .lean();
+
+    if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+        const demoIdStrs = devFilter.demoIds.map(id => id.toString());
+        list = list.filter(o => {
+            if (o.restaurantScope === 'selected') {
+                const restId = o.restaurantId?._id ? o.restaurantId._id.toString() : String(o.restaurantId);
+                return demoIdStrs.includes(restId);
+            }
+            return true;
+        });
+    }
 
     const allOffers = list.map((o) => {
         const restaurant = o.restaurantId && typeof o.restaurantId === 'object' ? o.restaurantId : null;

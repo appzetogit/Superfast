@@ -78,9 +78,9 @@ export default function AuthBrandHeader({
   const gradientId = `authWave_${portalType}`
 
   return (
-    <div className="w-full flex flex-col shrink-0 z-10 drop-shadow-md">
+    <div className="w-full flex flex-col shrink-0 z-10 drop-shadow-sm">
       <div
-        className={`w-full relative overflow-hidden pb-4 ${compact ? "pt-6" : "pt-8"}`}
+        className={`w-full relative overflow-hidden ${compact ? "pt-4 pb-2" : "pt-6 md:pt-8 pb-4"}`}
         style={{ background: theme.bg }}
       >
         {/* Back Button */}
@@ -88,9 +88,9 @@ export default function AuthBrandHeader({
           <button
             type="button"
             onClick={onBack}
-            className="absolute top-6 left-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all duration-200 z-20 backdrop-blur-md"
+            className="absolute top-4 left-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all duration-200 z-20 backdrop-blur-md"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         )}
 
@@ -117,8 +117,8 @@ export default function AuthBrandHeader({
         </div>
 
         <div
-          className={`relative z-10 flex flex-col items-center px-6 text-center text-white ${
-            compact ? "pb-6" : "pb-8"
+          className={`relative z-10 flex flex-col items-center px-4 text-center text-white ${
+            compact ? "pb-2" : "pb-4"
           }`}
         >
           <motion.div
@@ -126,7 +126,7 @@ export default function AuthBrandHeader({
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 220, damping: 18 }}
             className={`${
-              compact ? "w-20 h-20 mb-2" : "w-24 h-24 md:w-28 md:h-28 mb-3"
+              compact ? "w-14 h-14 sm:w-16 sm:h-16 mb-1" : "w-20 h-20 md:w-24 md:h-24 mb-2"
             } flex items-center justify-center overflow-hidden rounded-2xl`}
           >
             <img
@@ -142,25 +142,25 @@ export default function AuthBrandHeader({
           <motion.h1
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`font-black italic tracking-tight mb-1.5 drop-shadow-sm ${
-              compact ? "text-xl" : "text-2xl md:text-3xl"
+            className={`font-black italic tracking-tight mb-1 drop-shadow-sm ${
+              compact ? "text-lg sm:text-xl" : "text-xl md:text-2xl"
             }`}
           >
             {displayTitle}
           </motion.h1>
 
           <div className="flex items-center gap-2 justify-center">
-            <div className="h-px w-6 md:w-8 bg-white/70" />
-            <p className="text-[12px] sm:text-[14px] md:text-[15px] font-bold tracking-[0.08em] uppercase whitespace-nowrap">
+            <div className="h-px w-5 md:w-7 bg-white/70" />
+            <p className={`font-bold tracking-[0.08em] uppercase whitespace-nowrap ${compact ? "text-[10px] sm:text-[12px]" : "text-[12px] sm:text-[14px]"}`}>
               {displaySubtitle}
             </p>
-            <div className="h-px w-6 md:w-8 bg-white/70" />
+            <div className="h-px w-5 md:w-7 bg-white/70" />
           </div>
         </div>
       </div>
 
       <div className="w-full overflow-hidden leading-[0] -mt-0.5">
-        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" className="w-full h-[36px] md:h-[52px] block">
+        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" className={`w-full block ${compact ? "h-[24px] sm:h-[32px]" : "h-[32px] md:h-[44px]"}`}>
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor={theme.waveStop1} />

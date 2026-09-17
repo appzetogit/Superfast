@@ -11,8 +11,8 @@ const DEFAULT_FIREBASE_CONFIG = {
   authDomain: "superfast-1c0d2.firebaseapp.com",
   projectId: "superfast-1c0d2",
   storageBucket: "superfast-1c0d2.firebasestorage.app",
-  messagingSenderId: "429602583301",
-  appId: "1:429602583301:web:ad419bdcd2ef139311fd6c",
+  messagingSenderId: "1028328662992",
+  appId: "1:1028328662992:web:ad419bdcd2ef139311fd6c",
   measurementId: "G-RZMWCFRN29",
   vapidKey: "BIwoSjtwv48UEjf87IB1yYU3UTeskPMWp98nkHDH5ALxIEf31WoJQDcrfi4ask1Hnoxoxeu2dpobctkBLuVHj14",
 };
@@ -77,17 +77,49 @@ function normalizeModuleFromPath(pathname = window.location.pathname) {
 }
 
 function getModuleAccessToken(moduleName) {
+  if (moduleName === "admin") {
+    return (
+      localStorage.getItem("admin_accessToken") ||
+      localStorage.getItem("adminToken") ||
+      localStorage.getItem("auth_admin") ||
+      ""
+    );
+  }
+  if (moduleName === "restaurant") {
+    return (
+      localStorage.getItem("restaurant_accessToken") ||
+      localStorage.getItem("auth_restaurant") ||
+      ""
+    );
+  }
+  if (moduleName === "delivery") {
+    return (
+      localStorage.getItem("delivery_accessToken") ||
+      localStorage.getItem("auth_delivery") ||
+      ""
+    );
+  }
+  if (moduleName === "seller") {
+    return (
+      localStorage.getItem("seller_accessToken") ||
+      localStorage.getItem("auth_seller") ||
+      ""
+    );
+  }
   return (
-    localStorage.getItem(`${moduleName}_accessToken`) ||
-    localStorage.getItem(`auth_${moduleName}`) ||
+    localStorage.getItem("user_accessToken") ||
+    localStorage.getItem("auth_customer") ||
+    localStorage.getItem("accessToken") ||
     ""
   );
 }
 
 function resolvePushModule(pathname) {
   const fromPath = normalizeModuleFromPath(pathname);
-  if (getModuleAccessToken(fromPath)) return fromPath;
-  for (const moduleName of ["restaurant", "delivery", "admin", "seller", "user"]) {
+  if (fromPath === "admin") return "admin";
+  const fromPathToken = getModuleAccessToken(fromPath);
+  if (fromPathToken) return fromPath;
+  for (const moduleName of ["admin", "restaurant", "delivery", "seller", "user"]) {
     if (getModuleAccessToken(moduleName) || localStorage.getItem(`${moduleName}_authenticated`) === "true") {
       return moduleName;
     }
@@ -1007,32 +1039,34 @@ async function attachForegroundListener(firebaseAppInstance) {
 }
 
 async function safeGetFcmToken(messaging, options) {
-  const { getToken } = await import("firebase/messaging");
   try {
-    return await getToken(messaging, options);
-  } catch (error) {
-    const errStr = String(error?.message || error || "");
-    if (errStr.includes("installations") || errStr.includes("500") || errStr.includes("request-failed")) {
-      console.warn("FCM Installations error detected. Clearing stale IndexedDB installation cache and retrying...");
+    const { getToken, deleteToken } = await import("firebase/messaging");
+    if (options?.forceRefresh) {
       try {
-        if (typeof indexedDB !== "undefined") {
-          indexedDB.deleteDatabase("firebase-installations-database");
-          indexedDB.deleteDatabase("firebase-messaging-database");
-        }
-      } catch (_) { }
-      try {
-        return await getToken(messaging, options);
-      } catch (retryErr) {
-        console.warn("FCM getToken retry failed:", retryErr?.message || retryErr);
-        return null;
-      }
+        pushDebugLog(PUSH_DEBUG_PREFIX, "Force refreshing FCM token: deleting existing token");
+        await deleteToken(messaging).catch(() => {});
+      } catch (_) {}
     }
-    console.warn("FCM getToken failed gracefully:", error?.message || error);
-    return null;
+    const { forceRefresh, ...getTokenOptions } = options || {};
+    const tokenPromise = getToken(messaging, getTokenOptions);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("FCM getToken timeout (6s)")), 6000)
+    );
+    return await Promise.race([tokenPromise, timeoutPromise]);
+  } catch (error) {
+    console.warn("FCM getToken failed gracefully, retrying with deleteToken:", error?.message || error);
+    try {
+      const { getToken, deleteToken } = await import("firebase/messaging");
+      await deleteToken(messaging).catch(() => {});
+      const { forceRefresh, ...getTokenOptions } = options || {};
+      return await getToken(messaging, getTokenOptions).catch(() => null);
+    } catch (_) {
+      return null;
+    }
   }
 }
 
-export async function registerWebPushForCurrentModule(pathname = window.location.pathname) {
+export async function registerWebPushForCurrentModule(pathname = window.location.pathname, options = {}) {
   const moduleName = resolvePushModule(pathname);
   initPushNotificationClient();
 
@@ -1041,11 +1075,9 @@ export async function registerWebPushForCurrentModule(pathname = window.location
     if (isNativeAppShell()) {
       scheduleNativeTokenRetries(moduleName);
     }
-    return;
+    return { success: false, reason: "no_access_token" };
   }
 
-  // Flutter / Android WebView cannot show lock-screen alerts via web push.
-  // Keep retrying the native token after data-clear / first login.
   if (isNativeAppShell() || isFlutterWebView()) {
     const registered = await registerNativeWebViewFcmToken(moduleName).catch((error) => {
       pushDebugWarn(PUSH_DEBUG_PREFIX, "Native WebView FCM registration failed", {
@@ -1055,18 +1087,20 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       return false;
     });
     if (!registered) {
-      console.warn(
-        "FCM: waiting for Flutter native token. Lock-screen alerts need getFcmToken + high_importance_channel.",
-      );
       scheduleNativeTokenRetries(moduleName);
     }
-    return;
+    return { success: registered, reason: registered ? "native_registered" : "native_waiting" };
   }
 
   const supportsBrowserPush = isSupportedBrowser() && isSecureContextForPush();
 
   if (supportsBrowserPush) {
-    if (registrationInFlight) return registrationInFlight;
+    if (registrationInFlight && !options?.forceRefresh) {
+      const timeoutInFlight = new Promise((resolve) =>
+        setTimeout(() => resolve({ success: false, reason: "in_flight_timeout" }), 8000)
+      );
+      return Promise.race([registrationInFlight, timeoutInFlight]);
+    }
 
     registrationInFlight = (async () => {
       const firebasePublicEnv = await getFirebasePublicEnv();
@@ -1100,16 +1134,29 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       const supported = await isSupported().catch(() => false);
       if (!supported) return { success: false, reason: "messaging_unsupported" };
 
-      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      const registration = await Promise.race([
+        navigator.serviceWorker.register("/firebase-messaging-sw.js"),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("SW registration timeout")), 4000))
+      ]).catch((err) => {
+        console.warn("SW registration warning:", err?.message || err);
+        return null;
+      });
+
+      if (!registration) {
+        return { success: false, reason: "sw_registration_failed" };
+      }
+
       pushDebugLog(PUSH_DEBUG_PREFIX, "Service worker registered for push", {
         scope: registration.scope,
         moduleName,
       });
+
       const messaging = getMessaging(app);
 
       const token = await safeGetFcmToken(messaging, {
         vapidKey: firebasePublicEnv.vapidKey,
         serviceWorkerRegistration: registration,
+        forceRefresh: Boolean(options?.forceRefresh),
       });
 
       if (!token) return { success: false, reason: "failed_to_get_token" };

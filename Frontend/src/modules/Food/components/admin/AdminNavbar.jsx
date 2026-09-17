@@ -19,7 +19,9 @@ import {
   PlusCircle,
   Bell,
   BellOff,
+  Code2,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +63,8 @@ export default function AdminNavbar({ onMenuClick }) {
   const [isSearching, setIsSearching] = useState(false);
   const [adminData, setAdminData] = useState(null);
   const [businessSettings, setBusinessSettings] = useState(() => getCachedSettings() || null);
+  const [devModeEnabled, setDevModeEnabled] = useState(() => Boolean(getCachedSettings()?.developerMode?.enabled));
+  const [updatingDevMode, setUpdatingDevMode] = useState(false);
   const searchInputRef = useRef(null);
   const { items: adminNotifications } = useAdminNotifications();
 
@@ -71,10 +75,12 @@ export default function AdminNavbar({ onMenuClick }) {
         const cached = getCachedSettings();
         if (cached) {
           setBusinessSettings(cached);
+          setDevModeEnabled(Boolean(cached?.developerMode?.enabled));
         } else {
           const settings = await loadBusinessSettings();
           if (settings) {
             setBusinessSettings(settings);
+            setDevModeEnabled(Boolean(settings?.developerMode?.enabled));
           }
         }
       } catch (error) {
@@ -84,15 +90,41 @@ export default function AdminNavbar({ onMenuClick }) {
     loadSettings();
 
     // Listen for business settings updates
-    const handleSettingsUpdate = () => {
-      const settings = getCachedSettings();
-      if (settings) {
-        setBusinessSettings(settings);
+    const handleSettingsUpdate = (e) => {
+      if (e?.detail?.developerMode?.enabled !== undefined) {
+        setDevModeEnabled(Boolean(e.detail.developerMode.enabled));
+      } else {
+        const settings = getCachedSettings();
+        if (settings) {
+          setBusinessSettings(settings);
+          setDevModeEnabled(Boolean(settings?.developerMode?.enabled));
+        }
       }
     };
     window.addEventListener('businessSettingsUpdated', handleSettingsUpdate);
     return () => window.removeEventListener('businessSettingsUpdated', handleSettingsUpdate);
   }, []);
+
+  const handleToggleDevMode = async () => {
+    try {
+      setUpdatingDevMode(true);
+      const nextStatus = !devModeEnabled;
+      await adminAPI.updateBusinessSettings({
+        developerMode: { enabled: nextStatus }
+      });
+      setDevModeEnabled(nextStatus);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("businessSettingsUpdated", {
+          detail: { developerMode: { enabled: nextStatus } }
+        }));
+      }
+      toast.success(nextStatus ? "Developer Mode ENABLED (Demo Data Mode)" : "Developer Mode DISABLED (Live Mode)");
+    } catch (err) {
+      toast.error("Failed to update Developer Mode");
+    } finally {
+      setUpdatingDevMode(false);
+    }
+  };
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -311,6 +343,27 @@ export default function AdminNavbar({ onMenuClick }) {
 
           {/* Right: User Profile & Actions */}
           <div className="flex items-center gap-3">
+            {/* Developer Mode Toggle Button */}
+            <button
+              type="button"
+              onClick={handleToggleDevMode}
+              disabled={updatingDevMode}
+              title={devModeEnabled ? "Developer Mode is ON - Click to switch to Live Mode" : "Developer Mode is OFF - Click to enable Demo Reviewer Mode"}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-bold transition-all duration-300 shadow-sm cursor-pointer ${
+                devModeEnabled
+                  ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 ring-2 ring-amber-400/30"
+                  : "bg-neutral-100 text-neutral-700 border-neutral-200 hover:bg-neutral-200"
+              }`}
+            >
+              <Code2 className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline font-bold">Dev Mode:</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                devModeEnabled ? "bg-white text-amber-800" : "bg-neutral-200 text-neutral-800"
+              }`}>
+                {devModeEnabled ? "ON" : "OFF"}
+              </span>
+            </button>
+
             {/* Status Badge */}
             <div className="hidden sm:flex items-center px-3 py-1.5 rounded-full bg-[#E8F8F0] border border-[#00A669]/20">
               <span className="w-2 h-2 rounded-full bg-[#00A669] mr-2 animate-pulse"></span>

@@ -447,170 +447,158 @@ export default function OTP() {
 
   return (
     <AnimatedPage
-      className="min-h-screen flex flex-col"
+      className="min-h-screen min-h-[100dvh] flex flex-col relative font-sans overflow-y-auto"
       style={{ backgroundColor: SUPERFAST_BRAND.cream, '--primary-theme': '#f97316' }}
     >
-      <div className="w-full max-w-[420px] mx-auto flex flex-col min-h-screen">
-        <div className="relative">
-          <button
-            onClick={handleBackToLogin}
-            className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <AuthBrandHeader compact subtitle="Superfast Food Delivery" />
-        </div>
+      <div className="relative w-full">
+        <button
+          onClick={handleBackToLogin}
+          className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <AuthBrandHeader compact subtitle="Superfast Food Delivery" />
+      </div>
 
-        <div className="flex-1 px-4 -mt-2 pb-6">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100">
-            <div className="text-center space-y-2 mb-6">
-              {showNameInput && (
-                <div className="flex justify-center mb-2">
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg"
-                    style={{ background: SUPERFAST_BRAND.gradient }}
-                  >
-                    <Smartphone className="h-6 w-6" />
-                  </div>
-                </div>
-              )}
-              <h2 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">
-                {showNameInput
-                  ? "Help us know you better"
-                  : contactType === "email"
-                    ? "Verify your email"
-                    : "Verify your phone"}
-              </h2>
-              <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                {showNameInput ? (
-                  "We're excited to have you join us! Please tell us your full name to get started."
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 justify-center flex-wrap">
-                    <span>We've sent a 4-digit code to <strong className="text-gray-800 font-semibold">{contactInfo}</strong></span>
-                    <button
-                      type="button"
-                      onClick={handleBackToLogin}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline ml-1"
-                      title="Edit phone number"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-                  </span>
-                )}
-              </p>
-              <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
-            </div>
-
-            {/* OTP Input Fields */}
-            {!showNameInput && (
-              <div className="space-y-6">
-                <div className="flex justify-between gap-3 sm:gap-4 max-w-[280px] mx-auto">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={(el) => (inputRefs.current[index] = el)}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleChange(index, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(index, e)}
-                      onPaste={index === 0 ? handlePaste : undefined}
-                      disabled={isLoading}
-                      aria-label={`OTP digit ${index + 1} of 4`}
-                      onFocus={(e) => {
-                        setTimeout(() => {
-                          e.target.scrollIntoView({ behavior: "smooth", block: "center" })
-                        }, 300)
-                      }}
-                      className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"
-                    />
-                  ))}
-                </div>
-
-                {error && (
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-red-500 bg-red-50 dark:bg-red-900/10 py-2 rounded-lg">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                {/* Resend Section */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">
-                    Didn't get the OTP?{" "}
-                    {resendTimer > 0 ? (
-                      <span className="font-medium text-gray-900">Retry in {resendTimer}s</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleResend}
-                        disabled={isLoading}
-                        className="font-bold transition-colors disabled:opacity-50 hover:underline"
-                        style={{ color: SUPERFAST_BRAND.primary }}
-                      >
-                        Resend SMS
-                      </button>
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Name Input */}
+      <div className="flex-1 w-full max-w-[420px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center relative z-20">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100 shrink-0">
+          <div className="text-center space-y-2 mb-6">
             {showNameInput && (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^A-Za-z\s]/g, "")
-                      setName(cleaned)
-                      if (nameError) setNameError("")
-                    }}
-                    disabled={isLoading}
-                    placeholder="Full Name"
-                    onFocus={(e) => {
-                      setTimeout(() => {
-                        e.target.scrollIntoView({ behavior: "smooth", block: "center" })
-                      }, 300)
-                    }}
-                    className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${nameError ? "border-red-500" : ""} transition-all`}
-                  />
-                  {nameError && (
-                    <p className="text-xs text-red-500 pl-1">
-                      {nameError}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  onClick={handleSubmitName}
-                  disabled={isLoading}
-                  className="w-full h-12 md:h-14 text-white font-bold text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
+              <div className="flex justify-center mb-2">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg"
                   style={{ background: SUPERFAST_BRAND.gradient }}
                 >
-                  {isLoading ? "Getting things ready..." : "Finish Registration"}
-                </Button>
+                  <Smartphone className="h-6 w-6" />
+                </div>
               </div>
             )}
-
-            {/* Verification Loading Overlay */}
-            {isLoading && !showNameInput && (
-              <div className="flex justify-center pt-2">
-                <Loader2 className="h-6 w-6 animate-spin" style={{ color: SUPERFAST_BRAND.primary }} />
-              </div>
-            )}
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">
+              {showNameInput
+                ? "Help us know you better"
+                : contactType === "email"
+                  ? "Verify your email"
+                  : "Verify your phone"}
+            </h2>
+            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+              {showNameInput ? (
+                "We're excited to have you join us! Please tell us your full name to get started."
+              ) : (
+                <span className="inline-flex items-center gap-1.5 justify-center flex-wrap">
+                  <span>We've sent a 4-digit code to <strong className="text-gray-800 font-semibold">{contactInfo}</strong></span>
+                  <button
+                    type="button"
+                    onClick={handleBackToLogin}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline ml-1"
+                    title="Edit phone number"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                </span>
+              )}
+            </p>
+            <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
           </div>
+
+          {/* OTP Input Fields */}
+          {!showNameInput && (
+            <div className="space-y-6">
+              <div className="flex justify-between gap-3 sm:gap-4 max-w-[280px] mx-auto">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    disabled={isLoading}
+                    aria-label={`OTP digit ${index + 1} of 4`}
+                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"
+                  />
+                ))}
+              </div>
+
+              {error && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-red-500 bg-red-50 dark:bg-red-900/10 py-2 rounded-lg">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Resend Section */}
+              <div className="text-center">
+                <p className="text-sm text-gray-500">
+                  Didn't get the OTP?{" "}
+                  {resendTimer > 0 ? (
+                    <span className="font-medium text-gray-900">Retry in {resendTimer}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={isLoading}
+                      className="font-bold transition-colors disabled:opacity-50 hover:underline"
+                      style={{ color: SUPERFAST_BRAND.primary }}
+                    >
+                      Resend SMS
+                    </button>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Name Input */}
+          {showNameInput && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^A-Za-z\s]/g, "")
+                    setName(cleaned)
+                    if (nameError) setNameError("")
+                  }}
+                  disabled={isLoading}
+                  placeholder="Full Name"
+                  className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${nameError ? "border-red-500" : ""} transition-all`}
+                />
+                {nameError && (
+                  <p className="text-xs text-red-500 pl-1">
+                    {nameError}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                onClick={handleSubmitName}
+                disabled={isLoading}
+                className="w-full h-12 md:h-14 text-white font-bold text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
+                style={{ background: SUPERFAST_BRAND.gradient }}
+              >
+                {isLoading ? "Getting things ready..." : "Finish Registration"}
+              </Button>
+            </div>
+          )}
+
+          {/* Verification Loading Overlay */}
+          {isLoading && !showNameInput && (
+            <div className="flex justify-center pt-2">
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: SUPERFAST_BRAND.primary }} />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Footer — T&C / Privacy / Support */}
-      <div className="shrink-0 text-center pt-3 pb-5 px-4">
+      <div className="shrink-0 text-center pt-3 pb-5 px-4 mt-auto">
         <p className="text-slate-400 text-xs font-medium">
           By continuing, you agree to our{" "}
           <Link to="/profile/terms" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>

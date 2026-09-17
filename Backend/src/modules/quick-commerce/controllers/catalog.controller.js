@@ -6,6 +6,7 @@ import { Seller } from '../seller/models/seller.model.js';
 import { ensureQuickCommerceSeedData } from '../services/seed.service.js';
 import mongoose from 'mongoose';
 import { transformImageFields } from '../../../utils/urlHelper.js';
+import { getDeveloperModeFilter } from '../../common/utils/developerMode.js';
 
 import {
   getQuickCategories,
@@ -157,10 +158,15 @@ export const getHomeData = async (req, res) => {
   const pageType = req.query?.pageType || 'home';
   const headerId = req.query?.headerId || null;
 
+  const devFilter = await getDeveloperModeFilter();
+  const productMatch = (devFilter.isDevMode && devFilter.demoStoreIds && devFilter.demoStoreIds.length > 0)
+    ? { sellerId: { $in: devFilter.demoStoreIds } }
+    : publicProductFilter;
+
   const [categories, products, settings, heroConfig, experienceSections, offerSections] = await Promise.all([
     getQuickCategories(),
     QuickProduct.aggregate([
-      { $match: publicProductFilter },
+      { $match: productMatch },
       { $addFields: { isOutOfStock: { $cond: [{ $gt: ["$stock", 0] }, 0, 1] } } },
       { $sort: { isOutOfStock: 1, createdAt: -1 } },
       { $limit: 18 }
@@ -353,10 +359,15 @@ export const getProducts = async (req, res) => {
   setPublicCache(res, 60);
   await ensureQuickCommerceSeedData();
 
+  const devFilter = await getDeveloperModeFilter();
   const { categoryId, search, limit } = req.query;
-  const query = { ...publicProductFilter };
+  const query = devFilter.isDevMode ? {} : { ...publicProductFilter };
 
   const andConditions = [];
+
+  if (devFilter.isDevMode && devFilter.demoStoreIds && devFilter.demoStoreIds.length > 0) {
+    andConditions.push({ sellerId: { $in: devFilter.demoStoreIds } });
+  }
 
   if (categoryId) {
     const validCategoryId = mongoose.Types.ObjectId.isValid(categoryId) ? new mongoose.Types.ObjectId(categoryId) : categoryId;
@@ -405,7 +416,12 @@ export const getProductById = async (req, res) => {
   setPublicCache(res, 600); // 10 minutes cache
   await ensureQuickCommerceSeedData();
 
-  const product = await QuickProduct.findOne({ _id: req.params.productId, ...publicProductFilter }).lean();
+  const devFilter = await getDeveloperModeFilter();
+  const productFilter = (devFilter.isDevMode && devFilter.demoStoreIds && devFilter.demoStoreIds.length > 0)
+    ? { sellerId: { $in: devFilter.demoStoreIds } }
+    : publicProductFilter;
+
+  const product = await QuickProduct.findOne({ _id: req.params.productId, ...productFilter }).lean();
 
   if (!product) {
     return res.status(404).json({ success: false, message: 'Product not found' });
@@ -495,9 +511,15 @@ export const getStores = async (req, res) => {
   setPublicCache(res, 300); // 5 minutes cache
   
   try {
-    // Find distinct sellers who have products in Quick Commerce
-    const sellerIds = await QuickProduct.distinct('sellerId', publicProductFilter);
-    const stores = await Seller.find({ _id: { $in: sellerIds } }).lean();
+    const devFilter = await getDeveloperModeFilter();
+    let stores = [];
+    if (devFilter.isDevMode && devFilter.demoStoreIds && devFilter.demoStoreIds.length > 0) {
+      stores = await Seller.find({ _id: { $in: devFilter.demoStoreIds } }).lean();
+    } else {
+      // Find distinct sellers who have products in Quick Commerce
+      const sellerIds = await QuickProduct.distinct('sellerId', publicProductFilter);
+      stores = await Seller.find({ _id: { $in: sellerIds } }).lean();
+    }
 
     // Attach sample product images
     const mappedStores = await Promise.all(stores.map(async (store) => {

@@ -15,7 +15,15 @@ let globalHomeCache = {
   lastFetched: 0,
 };
 
-const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRY_MS = 5 * 1000; // 5 seconds to ensure fresh reviewer / dev mode data
+
+export const clearGlobalHomeCache = () => {
+  globalHomeCache = {
+    bootstrap: null,
+    restaurants: null,
+    lastFetched: 0,
+  };
+};
 
 export const useFoodHomeData = ({ 
   zoneId, 
@@ -88,6 +96,15 @@ export const useFoodHomeData = ({
   useEffect(() => {
     let cancelled = false;
     const zoneKey = String(zoneId || "global");
+
+    const handleSettingsUpdated = () => {
+      clearGlobalHomeCache();
+      fetchBootstrap();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("businessSettingsUpdated", handleSettingsUpdated);
+    }
 
     const fetchBootstrap = async () => {
       // Re-use cache if strictly valid
@@ -196,7 +213,12 @@ export const useFoodHomeData = ({
     };
 
     fetchBootstrap();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("businessSettingsUpdated", handleSettingsUpdated);
+      }
+    };
   }, [zoneId, normalizeImageUrl]);
 
   // --- Fetch Restaurants ---
@@ -340,7 +362,7 @@ export const useFoodHomeData = ({
   // --- Memoized Derived Data ---
   const filteredRestaurants = useMemo(() => {
     // If vegMode is active (boolean true / 'pure'), only show 100% vegetarian restaurants.
-    let filtered = [...deferredRestaurants].filter(r => (!vegMode || r.pureVegRestaurant) && r.hasFood !== false && (r.itemsCount === undefined || r.itemsCount > 0) && (!Array.isArray(r.items) || r.items.length > 0));
+    let filtered = [...deferredRestaurants].filter(r => (!vegMode || r.pureVegRestaurant) && r.hasFood !== false);
     
     // Apply active filters (Under 30/45 mins, Under 1km/2km)
     if (activeFilters && activeFilters.size > 0) {
@@ -407,11 +429,25 @@ export const useFoodHomeData = ({
   }, [realCategories, menuCategories, landingCategories, normalizeImageUrl]);
 
   const recommendedForYouRestaurants = useMemo(() => {
-    const fetchedByMongoId = new Map(restaurantsData.map(r => [String(r.mongoId || r.id), r]));
-    return recommendedRestaurantsFromSettings
-      .map(r => fetchedByMongoId.get(String(r._id || r.restaurantId)))
-      .filter(Boolean)
-      .filter(r => (!vegMode || r.pureVegRestaurant) && (r.itemsCount === undefined || r.itemsCount > 0))
+    if (!restaurantsData || restaurantsData.length === 0) return [];
+    
+    const allowedIds = new Set(restaurantsData.map(r => String(r.mongoId || r.id)));
+    
+    // 1. Try matching configured settings recommendations against allowed restaurants
+    let matched = (recommendedRestaurantsFromSettings || [])
+      .map(r => {
+        const rId = String(r._id || r.restaurantId || r.id);
+        return allowedIds.has(rId) ? (restaurantsData.find(fr => String(fr.mongoId || fr.id) === rId) || r) : null;
+      })
+      .filter(Boolean);
+
+    // 2. If no matched settings recommendations exist in allowed restaurants (e.g. in dev mode), fallback to restaurantsData
+    if (matched.length === 0) {
+      matched = restaurantsData;
+    }
+
+    return matched
+      .filter(r => (!vegMode || r.pureVegRestaurant))
       .slice(0, 12);
   }, [restaurantsData, recommendedRestaurantsFromSettings, vegMode]);
 

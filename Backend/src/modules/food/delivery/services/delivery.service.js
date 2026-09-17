@@ -8,6 +8,7 @@ import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import { QuickReturnRequest } from '../../../quick-commerce/models/ReturnRequest.model.js';
+import { GigBooking } from '../models/gigBooking.model.js';
 
 export const checkVehicleNumber = async (vehicleNumber) => {
     if (!vehicleNumber) return false;
@@ -431,6 +432,17 @@ export const updateDeliveryAvailability = async (userId, payload) => {
     // If admin has force-offlined this partner, block going online
     if (validStatus === 'online' && partner.adminForceOffline) {
         throw new ValidationError('Your account has been set offline by admin. Please contact support.');
+    }
+
+    // Require active booked gig shift to go online
+    if (validStatus === 'online') {
+        const activeBooking = await GigBooking.findOne({
+            deliveryPartnerId: partner._id,
+            status: { $in: ['booked', 'checked_in'] }
+        });
+        if (!activeBooking) {
+            throw new ValidationError('Gig shift required! Please book a gig shift first to go online.');
+        }
     }
 
     partner.availabilityStatus = validStatus;

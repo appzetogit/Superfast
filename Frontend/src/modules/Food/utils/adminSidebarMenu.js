@@ -169,6 +169,7 @@ export const adminSidebarMenu = [
       { type: "link", label: "Delivery Boy Commission", path: "/admin/food/delivery-boy-commission", icon: "DollarSign", permissionKey: "delivery" },
       { type: "link", label: "Delivery Emergency Help", path: "/admin/food/delivery-emergency-help", icon: "Phone", permissionKey: "delivery" },
       { type: "link", label: "Delivery Support Tickets", path: "/admin/food/delivery-support-tickets", icon: "MessageSquare", permissionKey: "support" },
+      { type: "link", label: "Shift / Gig Booking", path: "/admin/food/delivery-partners/gigs", icon: "Calendar", permissionKey: "delivery" },
       {
         type: "expandable",
         label: "Deliveryman",
@@ -177,6 +178,7 @@ export const adminSidebarMenu = [
         subItems: [
           { label: "New Join Request", path: "/admin/food/delivery-partners/join-request" },
           { label: "Deliveryman List", path: "/admin/food/delivery-partners" },
+          { label: "Shift / Gig Booking", path: "/admin/food/delivery-partners/gigs" },
           { label: "Deliveryman Reviews", path: "/admin/food/delivery-partners/reviews" },
           { label: "Bonus", path: "/admin/food/delivery-partners/bonus" },
           { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon" },
@@ -241,6 +243,7 @@ export const adminSidebarMenu = [
     label: "SYSTEM SETTINGS",
     permissionKey: "settings",
     items: [
+      { type: "link", label: "Developer & App Review Mode", path: "/admin/food/settings", icon: "Code2", permissionKey: "settings" },
       { type: "link", label: "Broadcast Notification", path: "/admin/food/broadcast-notification", icon: "Bell", permissionKey: "settings" },
     ],
   },

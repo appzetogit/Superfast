@@ -9,15 +9,17 @@ import { buildZoneRestaurantFilter } from '../../restaurant/services/restaurant.
 import { haversineKm } from '../../orders/services/order.helpers.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { transformImageFields, toFullUrl } from '../../../../utils/urlHelper.js';
+import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
 
 /** Public hero banners for user home: active only, sorted, with linkedRestaurants populated for click-through */
 export const getPublicHeroBannersController = async (req, res, next) => {
     try {
+        const devFilter = await getDeveloperModeFilter();
         const requestedZoneId =
             typeof req.query?.zoneId === 'string' ? req.query.zoneId.trim() : '';
         const query = { isActive: true };
 
-        if (requestedZoneId) {
+        if (requestedZoneId && (!devFilter.isDevMode || !devFilter.bypassLocation)) {
             query.$or = [
                 { zoneId: requestedZoneId },
                 { zoneId: '' },
@@ -35,10 +37,15 @@ export const getPublicHeroBannersController = async (req, res, next) => {
             })
             .lean();
         const banners = (docs || []).map((b) => {
+            let linked = Array.isArray(b.linkedRestaurantIds) ? b.linkedRestaurantIds : [];
+            if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+                const demoIdStrs = devFilter.demoIds.map(id => id.toString());
+                linked = linked.filter(r => r && demoIdStrs.includes(r._id?.toString()));
+            }
             const { linkedRestaurantIds, ...rest } = b;
             return {
                 ...rest,
-                linkedRestaurants: Array.isArray(linkedRestaurantIds) ? linkedRestaurantIds : [],
+                linkedRestaurants: linked,
                 imageUrl: b.imageUrl
             };
         });
@@ -82,12 +89,19 @@ export const getPublicExploreIconsController = async (req, res, next) => {
 
 export const getPublicGourmetController = async (req, res, next) => {
     try {
+        const devFilter = await getDeveloperModeFilter();
         const docs = await getPublicGourmetRestaurants();
-        const restaurants = (docs || []).map((d) => ({
+        let restaurants = (docs || []).map((d) => ({
             ...(d.restaurant || {}),
             _id: d.restaurant?._id || d.restaurantId,
             priority: d.priority
         })).filter((r) => r && r._id);
+
+        if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
+            const demoIdStrs = devFilter.demoIds.map(id => id.toString());
+            restaurants = restaurants.filter(r => demoIdStrs.includes(r._id.toString()));
+        }
+
         return sendResponse(res, 200, 'Gourmet restaurants fetched', { restaurants: transformImageFields(restaurants) });
     } catch (error) {
         next(error);
@@ -103,60 +117,71 @@ export const invalidateLandingSettingsCache = () => {
 
 export const getPublicLandingSettingsController = async (req, res, next) => {
     try {
+        const devFilter = await getDeveloperModeFilter();
         const activeZoneId = req.query.zoneId || req.query.zone_id || '';
         const cacheKey = activeZoneId ? String(activeZoneId) : 'global';
         const now = Date.now();
-        const cached = landingSettingsCacheMap.get(cacheKey);
-        if (cached && now - cached.lastFetched < CACHE_TTL) {
-            return sendResponse(res, 200, 'Landing settings fetched', transformImageFields(cached.data));
+
+        if (!devFilter.isDevMode) {
+            const cached = landingSettingsCacheMap.get(cacheKey);
+            if (cached && now - cached.lastFetched < CACHE_TTL) {
+                return sendResponse(res, 200, 'Landing settings fetched', transformImageFields(cached.data));
+            }
         }
 
         const settings = await getLandingSettings();
-        const ids = settings?.recommendedRestaurantIds || [];
         let recommendedRestaurants = [];
 
-        // Build strict zone filter if zoneId was passed
-        let zoneFilter = null;
-        if (activeZoneId) {
-            zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
-        }
-
-        if (Array.isArray(ids) && ids.length > 0) {
-            const queryFilter = {
-                _id: { $in: ids },
-                status: 'approved'
-            };
-            if (zoneFilter) {
-                queryFilter.$and = [zoneFilter];
-            }
-            recommendedRestaurants = await FoodRestaurant.find(queryFilter)
-                .select('restaurantName area city profileImage coverImages menuImages slug rating cuisines pureVegRestaurant')
-                .lean();
-        }
-
-        // STRICT ZONE FALLBACK: If no configured recommendations exist in the requested active zone,
-        // strictly show recommended/top restaurants belonging ONLY to the active zone.
-        if (recommendedRestaurants.length === 0 && zoneFilter) {
+        if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
             recommendedRestaurants = await FoodRestaurant.find({
-                status: 'approved',
-                $and: [zoneFilter]
+                _id: { $in: devFilter.demoIds }
             })
                 .select('restaurantName area city profileImage coverImages menuImages slug rating cuisines pureVegRestaurant')
-                .sort({ rating: -1, totalRatings: -1 })
-                .limit(12)
                 .lean();
-        }
+        } else {
+            const ids = settings?.recommendedRestaurantIds || [];
+            let zoneFilter = null;
+            if (activeZoneId) {
+                zoneFilter = await buildZoneRestaurantFilter(activeZoneId);
+            }
 
-        const userLat = Number(req.query.lat);
-        const userLng = Number(req.query.lng);
-        if (Number.isFinite(userLat) && Number.isFinite(userLng) && Array.isArray(recommendedRestaurants)) {
-            recommendedRestaurants = recommendedRestaurants.filter(r => {
-                const rLat = r.location?.coordinates?.[1] ?? r.location?.latitude;
-                const rLng = r.location?.coordinates?.[0] ?? r.location?.longitude;
-                if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) return true;
-                const d = haversineKm(rLat, rLng, userLat, userLng);
-                return d <= 25;
-            });
+            if (Array.isArray(ids) && ids.length > 0) {
+                const queryFilter = {
+                    _id: { $in: ids },
+                    status: 'approved'
+                };
+                if (zoneFilter) {
+                    queryFilter.$and = [zoneFilter];
+                }
+                recommendedRestaurants = await FoodRestaurant.find(queryFilter)
+                    .select('restaurantName area city profileImage coverImages menuImages slug rating cuisines pureVegRestaurant')
+                    .lean();
+            }
+
+            // STRICT ZONE FALLBACK: If no configured recommendations exist in the requested active zone,
+            // strictly show recommended/top restaurants belonging ONLY to the active zone.
+            if (recommendedRestaurants.length === 0 && zoneFilter) {
+                recommendedRestaurants = await FoodRestaurant.find({
+                    status: 'approved',
+                    $and: [zoneFilter]
+                })
+                    .select('restaurantName area city profileImage coverImages menuImages slug rating cuisines pureVegRestaurant')
+                    .sort({ rating: -1, totalRatings: -1 })
+                    .limit(12)
+                    .lean();
+            }
+
+            const userLat = Number(req.query.lat);
+            const userLng = Number(req.query.lng);
+            if (Number.isFinite(userLat) && Number.isFinite(userLng) && Array.isArray(recommendedRestaurants)) {
+                recommendedRestaurants = recommendedRestaurants.filter(r => {
+                    const rLat = r.location?.coordinates?.[1] ?? r.location?.latitude;
+                    const rLng = r.location?.coordinates?.[0] ?? r.location?.longitude;
+                    if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) return true;
+                    const d = haversineKm(rLat, rLng, userLat, userLng);
+                    return d <= 25;
+                });
+            }
         }
 
         const payload = {
@@ -166,10 +191,12 @@ export const getPublicLandingSettingsController = async (req, res, next) => {
             recommendedRestaurants
         };
 
-        landingSettingsCacheMap.set(cacheKey, {
-            data: payload,
-            lastFetched: now
-        });
+        if (!devFilter.isDevMode) {
+            landingSettingsCacheMap.set(cacheKey, {
+                data: payload,
+                lastFetched: now
+            });
+        }
 
         return sendResponse(res, 200, 'Landing settings fetched', transformImageFields(payload));
     } catch (error) {

@@ -286,7 +286,7 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
         )
     });
 
-    await notifyOwnersSafely(
+    notifyOwnersSafely(
         resolvedTargets.map((target) => ({
             ownerType: target.ownerType,
             ownerId: target.ownerId
@@ -300,7 +300,9 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
                 link
             }
         }
-    );
+    ).catch((err) => {
+        console.warn(`[FCM] Background broadcast push error: ${err.message}`);
+    });
 
     emitRealtimeNotifications(resolvedTargets, broadcast);
 

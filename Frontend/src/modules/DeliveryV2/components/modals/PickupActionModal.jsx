@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChefHat, MapPin, Phone,
   ChevronDown, ChevronUp, Package,
-  Navigation, CheckCircle2, Camera, Loader2, Image as ImageIcon
+  Navigation, CheckCircle2, Camera, Loader2, Image as ImageIcon,
+  AlertTriangle, X
 } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
-import { uploadAPI } from '@food/api';
+import { uploadAPI, gigAPI, deliveryAPI } from '@food/api';
+import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { toast } from 'sonner';
 import { openCamera, openGallery } from "@food/utils/imageUploadUtils";
 import { isMixedOrder, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
@@ -27,7 +29,36 @@ export const PickupActionModal = ({
 }) => {
   const [showItems, setShowItems] = useState(true);
   const [isUploadingBill, setIsUploadingBill] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [handoverReason, setHandoverReason] = useState('Vehicle Breakdown / Flat Tyre');
+  const [submittingHandover, setSubmittingHandover] = useState(false);
   const cameraInputRef = useRef(null);
+
+  const handleHandoverSubmit = async () => {
+    setSubmittingHandover(true);
+    try {
+      const res = await gigAPI.createHandoverRequest({
+        orderId: order._id || order.orderId,
+        reason: handoverReason,
+      });
+      if (res?.data?.success) {
+        toast.success('🚨 Handover request submitted! Order reassigned to other drivers.');
+        setShowHandoverModal(false);
+        try {
+          useDeliveryStore.getState().setOnline(false);
+          useDeliveryStore.getState().clearActiveOrder();
+          deliveryAPI.updateOnlineStatus(false).catch(() => {});
+        } catch (e) {}
+        if (onMinimize) onMinimize();
+      } else {
+        toast.error(res?.data?.message || 'Failed to submit handover request');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Handover submission failed');
+    } finally {
+      setSubmittingHandover(false);
+    }
+  };
 
   // Persist bill image state across remounts (e.g. returning from navigation app)
   const orderId = order?.orderId || order?._id || 'unknown';
@@ -193,18 +224,27 @@ export const PickupActionModal = ({
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => setShowHandoverModal(true)}
+              className="px-2.5 py-2 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all shadow-xs"
+              title="Request Order Handover"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <span>HANDOVER</span>
+            </button>
+
             {primaryPhone && (
               <button
                 onClick={() => window.location.href = `tel:${primaryPhone}`}
-                className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100"
+                className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100 active:scale-95 transition-all"
               >
                 <Phone className="w-5 h-5" />
               </button>
             )}
             <button
               onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(primaryAddress)}`, '_blank')}
-              className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white shadow-lg"
+              className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all"
             >
               <Navigation className="w-5 h-5" />
             </button>
@@ -445,6 +485,69 @@ export const PickupActionModal = ({
           )}
         </div>
       </motion.div>
+
+      {/* Emergency Handover Modal Popup */}
+      <AnimatePresence>
+        {showHandoverModal && (
+          <div className="fixed inset-0 z-[700] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 pointer-events-auto">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-sm bg-white dark:bg-[#1c1c1e] rounded-3xl p-5 shadow-2xl space-y-4 border border-rose-100 dark:border-rose-950"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2 text-rose-600 font-black text-sm">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  <span>EMERGENCY HANDOVER</span>
+                </div>
+                <button
+                  onClick={() => setShowHandoverModal(false)}
+                  className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="bg-rose-50 dark:bg-rose-950/40 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-800 dark:text-rose-300 leading-relaxed">
+                Facing an emergency or breakdown? Requesting a handover will notify Admin to approve reassigning this order and set your duty Offline.
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Select Reason</label>
+                <select
+                  value={handoverReason}
+                  onChange={(e) => setHandoverReason(e.target.value)}
+                  className="w-full text-xs font-bold p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-rose-500"
+                >
+                  <option value="Vehicle Breakdown / Flat Tyre">Vehicle Breakdown / Flat Tyre</option>
+                  <option value="Accident / Health Emergency">Accident / Health Emergency</option>
+                  <option value="Personal Emergency">Personal Emergency</option>
+                  <option value="Severe Weather / Flooding">Severe Weather / Flooding</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowHandoverModal(false)}
+                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-black text-xs py-3 rounded-2xl active:scale-95 transition-all"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleHandoverSubmit}
+                  disabled={submittingHandover}
+                  className="flex-[1.5] bg-rose-600 hover:bg-rose-700 text-white font-black text-xs py-3 rounded-2xl shadow-lg shadow-rose-600/30 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                >
+                  {submittingHandover ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                  <span>{submittingHandover ? 'SENDING...' : 'REQUEST HANDOVER'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

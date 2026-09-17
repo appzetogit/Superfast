@@ -174,6 +174,13 @@ export const adminAPI = {
     const path = platform === "mobile" ? "/fcm-tokens/mobile/save" : "/fcm-tokens/save";
     return apiClient.post(path, { token: String(token), platform }, { contextModule: "admin" });
   },
+  testFcmNotification: (options = {}) => {
+    return apiClient.post(
+      "/fcm-tokens/test",
+      { platform: options?.platform || "web" },
+      { contextModule: "admin" }
+    );
+  },
   getSidebarBadges: () =>
     apiClient.get("/food/admin/sidebar-badges", { contextModule: "admin" }),
   login: (email, password) => authService.adminLogin(email, password),
@@ -2935,4 +2942,23 @@ export const preferencesAPI = {
   getCategories: () => apiClient.get("/preferences/categories", { contextModule: "user" }),
   savePreferences: (categoryIds) => apiClient.post("/preferences/save", { categoryIds }, { contextModule: "user" }),
   getRecommendations: (params = {}) => apiClient.get("/preferences/recommendations", { params, contextModule: "user" }),
+};
+
+export const gigAPI = {
+  getZoneGigs: (params = {}) => apiClient.get('/food/delivery/gigs/zone-gigs', { params, contextModule: 'delivery' }),
+  bookGig: (gigId) => apiClient.post('/food/delivery/gigs/book', { gigId }, { contextModule: 'delivery' }),
+  checkInGig: (data = {}) => apiClient.post('/food/delivery/gigs/check-in', data, { contextModule: 'delivery' }),
+  checkOutGig: (data = {}) => apiClient.post('/food/delivery/gigs/check-out', data, { contextModule: 'delivery' }),
+  getMyGigs: () => apiClient.get('/food/delivery/gigs/my-gigs', { contextModule: 'delivery' }),
+  getZoneDrivers: (params = {}) => apiClient.get('/food/delivery/gigs/zone-drivers', { params, contextModule: 'delivery' }),
+  // Admin Gigs Management
+  adminGetGigs: (params = {}) => apiClient.get('/food/admin/gigs', { params, contextModule: 'admin' }),
+  adminCreateGig: (body = {}) => apiClient.post('/food/admin/gigs', body, { contextModule: 'admin' }),
+  adminUpdateGig: (id, body = {}) => apiClient.patch(`/food/admin/gigs/${id}`, body, { contextModule: 'admin' }),
+  adminDeleteGig: (id) => apiClient.delete(`/food/admin/gigs/${id}`, { contextModule: 'admin' }),
+  // Emergency Handover Requests
+  createHandoverRequest: (body = {}) => apiClient.post('/food/delivery/gigs/handover', body, { contextModule: 'delivery' }),
+  adminGetHandovers: () => apiClient.get('/food/admin/gigs/handovers', { contextModule: 'admin' }),
+  adminApproveHandover: (id, body = {}) => apiClient.post(`/food/admin/gigs/handovers/${id}/approve`, body, { contextModule: 'admin' }),
+  adminRejectHandover: (id, body = {}) => apiClient.post(`/food/admin/gigs/handovers/${id}/reject`, body, { contextModule: 'admin' }),
 };

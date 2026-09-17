@@ -1,6 +1,7 @@
 import { getRedisClient } from '../config/redis.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/env.js';
+import { getDeveloperModeFilter } from '../modules/common/utils/developerMode.js';
 
 /**
  * Higher-order function to create a caching middleware.
@@ -19,6 +20,16 @@ export const cacheResponse = (ttlInSeconds = 300, prefix = 'api_cache') => {
             req.query.noCache === 'true'
         ) {
             return next();
+        }
+
+        // Bypass caching if Developer/Reviewer Mode is active
+        try {
+            const devFilter = await getDeveloperModeFilter();
+            if (devFilter.isDevMode) {
+                return next();
+            }
+        } catch (devErr) {
+            // Ignore dev filter error and continue
         }
 
         const redis = getRedisClient();
