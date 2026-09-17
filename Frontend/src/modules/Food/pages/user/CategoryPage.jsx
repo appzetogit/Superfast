@@ -24,6 +24,7 @@ import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getMenuFromResponse } from "@food/utils/menuItems"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import { handleImageError } from "@shared/utils/imageHelper"
+import offerImage from "@food/assets/offerimage.png"
 
 // Filter options
 const filterOptions = [
@@ -591,7 +592,7 @@ export default function CategoryPage() {
 
           // Transform API categories to match expected format
           const transformedCategories = [
-            { id: 'all', name: "All", image: null, slug: 'all' },
+            { id: 'all', name: "All", image: offerImage, slug: 'all' },
             ...categoriesArray.map((cat) => ({
               id: cat.slug || cat.id,
               name: cat.name,
@@ -617,13 +618,13 @@ export default function CategoryPage() {
           setCategoryKeywords(keywordsMap)
         } else {
           // Keep default "All" category on error
-          setCategories([{ id: 'all', name: "All", image: null, slug: 'all' }])
+          setCategories([{ id: 'all', name: "All", image: offerImage, slug: 'all' }])
         }
       } catch (error) {
         if (isCancelled) return;
         debugError('Error fetching categories:', error)
         // Keep default "All" category on error
-        setCategories([{ id: 'all', name: "All", image: null, slug: 'all' }])
+        setCategories([{ id: 'all', name: "All", image: offerImage, slug: 'all' }])
       } finally {
         if (!isCancelled) setLoadingCategories(false)
       }
@@ -1354,8 +1355,13 @@ export default function CategoryPage() {
                       }`}
                   >
                     {isAllCategory ? (
-                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-all flex items-center justify-center ${isSelected ? 'border-[var(--primary-theme)] shadow-lg bg-[#FFF5F5] dark:bg-[var(--primary-theme)]/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-[#222222]'}`}>
-                        <Grid2x2 className={`h-6 w-6 md:h-7 md:w-7 ${isSelected ? 'text-[var(--primary-theme)]' : 'text-gray-500 dark:text-gray-400'}`} />
+                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-2 transition-all ${isSelected ? 'border-[var(--primary-theme)] shadow-lg' : 'border-transparent'}`}>
+                        <img
+                          src={cat.image || offerImage}
+                          alt={cat.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => handleImageError(e, 'category')}
+                        />
                       </div>
                     ) : cat.image ? (
                   <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-2 transition-all ${isSelected ? 'border-[var(--primary-theme)] shadow-lg' : 'border-transparent'

@@ -12,6 +12,7 @@ import { useZone } from "@food/hooks/useZone"
 import { restaurantAPI, adminAPI } from "@food/api"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { handleImageError } from "@shared/utils/imageHelper"
+import offerImage from "@food/assets/offerimage.png"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -44,7 +45,7 @@ export default function SearchResults() {
   const [restaurantsData, setRestaurantsData] = useState([])
   const [loadingRestaurants, setLoadingRestaurants] = useState(true)
   const [categories, setCategories] = useState([
-    { id: 'all', name: "All", image: "" }
+    { id: 'all', name: "All", image: offerImage }
   ])
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [categoryKeywords, setCategoryKeywords] = useState({})
@@ -73,7 +74,7 @@ export default function SearchResults() {
 
           // Transform API categories to match expected format
           const transformedCategories = [
-            { id: 'all', name: "All", image: "" },
+            { id: 'all', name: "All", image: offerImage },
             ...categoriesArray.map((cat) => ({
               id: cat.slug || cat.id,
               name: cat.name,
@@ -439,7 +440,7 @@ export default function SearchResults() {
               }
 
               const dynamicCategories = [
-                { id: 'all', name: "All", image: "" },
+                { id: 'all', name: "All", image: offerImage },
                 ...sourceEntries.map(([slug, name]) => ({
                   id: slug,
                   name,
@@ -808,8 +809,13 @@ export default function SearchResults() {
                     }`}
                 >
                   {isAllCategory ? (
-                    <div className={`w-16 h-16 rounded-full border-2 transition-all flex items-center justify-center ${isSelected ? 'border-[var(--primary-theme)] dark:border-[var(--primary-theme)] shadow-lg bg-red-50 dark:bg-[var(--primary-theme)]/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-[#222222]'}`}>
-                      <Grid2x2 className={`h-6 w-6 ${isSelected ? 'text-[var(--primary-theme)]' : 'text-gray-500 dark:text-gray-400'}`} />
+                    <div className={`w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${isSelected ? 'border-[var(--primary-theme)] dark:border-[var(--primary-theme)] shadow-lg' : 'border-transparent'}`}>
+                      <img
+                        src={cat.image || offerImage}
+                        alt={cat.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => handleImageError(e, 'category')}
+                      />
                     </div>
                   ) : cat.image ? (
                     <div className={`w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${isSelected ? 'border-[var(--primary-theme)] dark:border-[var(--primary-theme)] shadow-lg' : 'border-transparent'

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { adminAPI, restaurantAPI } from "@food/api";
 import { foodImages } from "@food/constants/images";
 import { normalizeImageUrl } from "@food/utils/common";
+import offerImage from "@food/assets/offerimage.png";
 
 export const useCategoryData = (zoneId) => {
   const [categories, setCategories] = useState([]);
@@ -17,7 +18,7 @@ export const useCategoryData = (zoneId) => {
       if (response.data?.success) {
         const cats = response.data.data.categories || [];
         const transformed = [
-          { id: 'all', name: "All", image: null, slug: 'all' },
+          { id: 'all', name: "All", image: offerImage, slug: 'all' },
           ...cats.map((cat) => ({
             id: cat.slug || cat._id,
             name: cat.name,
