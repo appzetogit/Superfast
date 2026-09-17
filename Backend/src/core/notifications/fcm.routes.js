@@ -9,6 +9,8 @@ import {
 import { FoodUser } from '../users/user.model.js';
 import { FoodRestaurant } from '../../modules/food/restaurant/models/restaurant.model.js';
 
+import { createInboxNotifications } from './notification.service.js';
+
 const router = express.Router();
 
 const getOwnerContext = (req) => ({
@@ -114,11 +116,24 @@ router.post('/test', authMiddleware, async (req, res, next) => {
             return sendError(res, 401, 'Authentication required');
         }
 
+        // 1. Save to Inbox DB so it appears in the Bell Icon Notification Inbox list
+        await createInboxNotifications({
+            notifications: [{
+                ownerType,
+                ownerId,
+                title: 'Test Notification 🔔',
+                message: 'This is a test notification. Firebase push & inbox notifications are working successfully!',
+                link: '/user/notifications',
+                category: 'test'
+            }]
+        }).catch((err) => console.warn('Failed to save test inbox notification:', err?.message || err));
+
+        // 2. Send FCM Device Push Notification
         const result = await sendTestNotification({ ownerType, ownerId, platform });
         console.log(`[FCM-DEBUG] /test result for ${ownerType}:${ownerId}:`, JSON.stringify(result));
         return res.status(200).json({
             success: true,
-            message: 'Test notification sent',
+            message: 'Test notification sent & added to inbox',
             data: result
         });
     } catch (error) {

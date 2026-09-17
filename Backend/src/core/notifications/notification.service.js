@@ -51,8 +51,9 @@ export const createInboxNotifications = async ({ notifications = [] } = {}) => {
 
     const operations = rows.map((item) => {
         const hasExplicitBroadcastId = item.broadcastId && mongoose.Types.ObjectId.isValid(String(item.broadcastId));
+        const normalizedOwner = normalizeOwnerType(item.ownerType) || String(item.ownerType).trim().toUpperCase();
         const payload = {
-            ownerType: item.ownerType,
+            ownerType: normalizedOwner,
             ownerId: ensureObjectId(item.ownerId, 'ownerId'),
             title: String(item.title).trim(),
             message: String(item.message).trim(),

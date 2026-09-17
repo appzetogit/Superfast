@@ -14,18 +14,18 @@ import {
   CardTitle,
 } from "@food/components/ui/card";
 import { toast } from "sonner";
-import { 
-  Code2, 
-  ShieldCheck, 
-  Smartphone, 
-  MapPin, 
-  UtensilsCrossed, 
-  KeyRound, 
-  CreditCard, 
-  Eye, 
-  Save, 
-  Loader2, 
-  CheckCircle2, 
+import {
+  Code2,
+  ShieldCheck,
+  Smartphone,
+  MapPin,
+  UtensilsCrossed,
+  KeyRound,
+  CreditCard,
+  Eye,
+  Save,
+  Loader2,
+  CheckCircle2,
   AlertTriangle,
   Copy,
   Sparkles,
@@ -129,14 +129,14 @@ export default function DeveloperSettings() {
           setLandingCategories(Array.from(combinedMap.values()));
 
           // Process Restaurants with multi-level fallback
-          let restList = restaurantsRes?.data?.data?.restaurants || 
-                         restaurantsRes?.data?.restaurants || 
-                         (Array.isArray(restaurantsRes?.data?.data) ? restaurantsRes.data.data : null);
+          let restList = restaurantsRes?.data?.data?.restaurants ||
+            restaurantsRes?.data?.restaurants ||
+            (Array.isArray(restaurantsRes?.data?.data) ? restaurantsRes.data.data : null);
 
           if (!Array.isArray(restList) || restList.length === 0) {
-            restList = approvedRestRes?.data?.data?.restaurants || 
-                       approvedRestRes?.data?.restaurants || 
-                       (Array.isArray(approvedRestRes?.data?.data) ? approvedRestRes.data.data : []);
+            restList = approvedRestRes?.data?.data?.restaurants ||
+              approvedRestRes?.data?.restaurants ||
+              (Array.isArray(approvedRestRes?.data?.data) ? approvedRestRes.data.data : []);
           }
 
           if (Array.isArray(restList)) {
@@ -145,15 +145,15 @@ export default function DeveloperSettings() {
 
           // Process Supermart Sellers & Stores
           const sellerItems = sellersRes?.data?.result?.items ||
-                              sellersRes?.data?.data?.items ||
-                              sellersRes?.data?.result ||
-                              sellersRes?.data?.data ||
-                              sellersRes?.data?.items || [];
+            sellersRes?.data?.data?.items ||
+            sellersRes?.data?.result ||
+            sellersRes?.data?.data ||
+            sellersRes?.data?.items || [];
 
-          const publicStoreList = storesRes?.data?.results || 
-                                  storesRes?.data?.data?.items || 
-                                  storesRes?.data?.data || 
-                                  (Array.isArray(storesRes?.data) ? storesRes.data : []);
+          const publicStoreList = storesRes?.data?.results ||
+            storesRes?.data?.data?.items ||
+            storesRes?.data?.data ||
+            (Array.isArray(storesRes?.data) ? storesRes.data : []);
 
           const combinedStoresMap = new Map();
 
@@ -433,14 +433,12 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
             <button
               type="button"
               onClick={() => handleToggle("enabled")}
-              className={`relative inline-flex h-8 w-16 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                developerMode.enabled ? "bg-amber-500" : "bg-neutral-300"
-              }`}
+              className={`relative inline-flex h-8 w-16 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${developerMode.enabled ? "bg-amber-500" : "bg-neutral-300"
+                }`}
             >
               <span
-                className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                  developerMode.enabled ? "translate-x-8" : "translate-x-0"
-                }`}
+                className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${developerMode.enabled ? "translate-x-8" : "translate-x-0"
+                  }`}
               />
             </button>
           </div>
@@ -536,14 +534,12 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
               <button
                 type="button"
                 onClick={() => handleToggle("bypassLocationRestriction")}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  developerMode.bypassLocationRestriction ? "bg-emerald-600" : "bg-neutral-300"
-                }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${developerMode.bypassLocationRestriction ? "bg-emerald-600" : "bg-neutral-300"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    developerMode.bypassLocationRestriction ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${developerMode.bypassLocationRestriction ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>
@@ -562,14 +558,12 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
               <button
                 type="button"
                 onClick={() => handleToggle("allowTestPayment")}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  developerMode.allowTestPayment ? "bg-emerald-600" : "bg-neutral-300"
-                }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${developerMode.allowTestPayment ? "bg-emerald-600" : "bg-neutral-300"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    developerMode.allowTestPayment ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${developerMode.allowTestPayment ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>
@@ -588,14 +582,12 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
               <button
                 type="button"
                 onClick={() => handleToggle("hideLiveRestaurantsInReview")}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  developerMode.hideLiveRestaurantsInReview ? "bg-emerald-600" : "bg-neutral-300"
-                }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${developerMode.hideLiveRestaurantsInReview ? "bg-emerald-600" : "bg-neutral-300"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    developerMode.hideLiveRestaurantsInReview ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${developerMode.hideLiveRestaurantsInReview ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>
@@ -614,14 +606,12 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
               <button
                 type="button"
                 onClick={() => handleToggle("showAllMenuItemsInDevMode")}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  developerMode.showAllMenuItemsInDevMode ? "bg-emerald-600" : "bg-neutral-300"
-                }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${developerMode.showAllMenuItemsInDevMode ? "bg-emerald-600" : "bg-neutral-300"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    developerMode.showAllMenuItemsInDevMode ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${developerMode.showAllMenuItemsInDevMode ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>
@@ -634,11 +624,10 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
         <button
           type="button"
           onClick={() => setActiveTab("mart")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
-            activeTab === "mart"
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${activeTab === "mart"
               ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
               : "bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200"
-          }`}
+            }`}
         >
           <Store className="w-4 h-4" />
           SuperfastMart Sellers ({supermartStores.length})
@@ -646,11 +635,10 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
         <button
           type="button"
           onClick={() => setActiveTab("food")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
-            activeTab === "food"
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${activeTab === "food"
               ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
               : "bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200"
-          }`}
+            }`}
         >
           <UtensilsCrossed className="w-4 h-4" />
           Food Restaurants ({approvedRestaurants.length})
@@ -682,11 +670,10 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
                     <div
                       key={store._id || store.id}
                       onClick={() => handleStoreSelect(String(store._id || store.id))}
-                      className={`cursor-pointer p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
-                        isSelected
+                      className={`cursor-pointer p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${isSelected
                           ? "border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/30 shadow-sm"
                           : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-10 h-10 rounded-lg bg-emerald-50 overflow-hidden shrink-0 border border-emerald-200 flex items-center justify-center text-emerald-700">
@@ -734,7 +721,9 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-neutral-800">
-                  <UtensilsCrossed className="w-5 h-5 text-blue-600" />
+                  <UtensilsCrossed class
+
+                    Name="w-5 h-5 text-blue-600" />
                   <div>
                     <CardTitle className="text-base font-bold">Select "What's on Your Mind" Categories for Dev Mode</CardTitle>
                     <CardDescription>
@@ -773,11 +762,10 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
                       <div
                         key={catIdStr}
                         onClick={() => handleToggleLandingCategory(catIdStr)}
-                        className={`cursor-pointer p-3 rounded-xl border transition-all flex flex-col items-center ${
-                          isSelected
+                        className={`cursor-pointer p-3 rounded-xl border transition-all flex flex-col items-center ${isSelected
                             ? "border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20 shadow-sm"
                             : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50"
-                        }`}
+                          }`}
                       >
                         <div className="relative w-14 h-14 rounded-full overflow-hidden border border-neutral-200 bg-neutral-100 mb-2 flex items-center justify-center text-blue-700 font-bold text-base shrink-0">
                           {hasImage ? (
@@ -835,11 +823,10 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
                       return (
                         <div
                           key={rest._id}
-                          className={`rounded-xl border transition-all duration-200 overflow-hidden ${
-                            isSelected
+                          className={`rounded-xl border transition-all duration-200 overflow-hidden ${isSelected
                               ? "border-purple-600 bg-purple-50/60 ring-2 ring-purple-500/20 shadow-sm"
                               : "border-neutral-200 bg-white hover:border-neutral-300"
-                          }`}
+                            }`}
                         >
                           <div
                             onClick={() => handleRestaurantSelect(restIdStr)}
@@ -927,11 +914,10 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
                                       <div
                                         key={foodIdStr}
                                         onClick={() => handleToggleMenuItem(foodIdStr)}
-                                        className={`p-2 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-colors ${
-                                          isFoodSelected
+                                        className={`p-2 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-colors ${isFoodSelected
                                             ? "border-purple-500 bg-purple-50 text-purple-900 font-medium"
                                             : "border-neutral-100 bg-neutral-50 text-neutral-700 hover:bg-neutral-100"
-                                        }`}
+                                          }`}
                                       >
                                         <div className="flex items-center gap-2 truncate">
                                           {food.image && (
@@ -995,7 +981,7 @@ Note: Developer Review Mode is ACTIVE. Reviewer can browse items, add to cart, a
         </CardHeader>
         <CardContent>
           <pre className="p-4 rounded-xl bg-slate-950 text-emerald-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap border border-slate-800">
-{`App Store / Play Store Reviewer Demo Credentials:
+            {`App Store / Play Store Reviewer Demo Credentials:
 ---------------------------------------------
 Phone Number: ${developerMode.demoPhoneNumbers.split(',')[0] || '9999999999'}
 OTP Code:     ${developerMode.demoOtp || '123456'}

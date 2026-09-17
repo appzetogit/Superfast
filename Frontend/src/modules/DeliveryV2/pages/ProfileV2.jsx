@@ -47,7 +47,7 @@ export const ProfileV2 = () => {
         return
       }
 
-      const regResult = await registerWebPushForCurrentModule("/food/delivery").catch(() => null)
+      const regResult = await registerWebPushForCurrentModule("/food/delivery", { forceRefresh: true }).catch(() => null)
       if (regResult && regResult.success === false) {
         if (regResult.reason === "permission_denied" || regResult.reason === "permission_not_granted") {
           toast.warning("Notification permission not granted. Please allow notifications when prompted.")
@@ -56,16 +56,25 @@ export const ProfileV2 = () => {
         }
       }
 
-      const res = await deliveryAPI.testFcmNotification()
-      const resData = res?.data?.data || res?.data || {}
-      const successCount = resData?.successCount
-      const failureCount = resData?.failureCount
-      const results = resData?.results || []
+      let res = await deliveryAPI.testFcmNotification()
+      let resData = res?.data?.data || res?.data || {}
+      let successCount = resData?.successCount
+      let failureCount = resData?.failureCount
+      let results = resData?.results || []
+
+      if (successCount === 0 && failureCount === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        res = await deliveryAPI.testFcmNotification().catch(() => null)
+        resData = res?.data?.data || res?.data || {}
+        successCount = resData?.successCount || 0
+        failureCount = resData?.failureCount || 0
+        results = resData?.results || []
+      }
 
       if (res?.data?.success && successCount > 0) {
         toast.success("Test FCM Push Notification sent! Check your notification bar or screen.")
       } else if (successCount === 0 && failureCount === 0) {
-        toast.warning("No device token found in database. Registering token now, please try clicking once more.")
+        toast.warning("Token registered, please tap Test Push once more to trigger notification.")
       } else if (failureCount > 0 && results.length > 0) {
         const errorMsg = results[0]?.error || "FCM delivery failed"
         toast.error(`Push notification failed: ${errorMsg}`)

@@ -2,9 +2,21 @@
 importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js");
 
-const sanitize = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "");
-const PUSH_DEBUG_PREFIX = "[push-sw]";
-const pushDebugLog = () => { };
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBM6_j3q46mziCe31PzLhxYvgxUVXAZ-yg",
+  authDomain: "superfast-1c0d2.firebaseapp.com",
+  projectId: "superfast-1c0d2",
+  storageBucket: "superfast-1c0d2.firebasestorage.app",
+  messagingSenderId: "429602583301",
+  appId: "1:429602583301:web:ad419bdcd2ef139311fd6c",
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(DEFAULT_FIREBASE_CONFIG);
+}
+
+const messaging = firebase.messaging();
+
 const getNotificationKey = (payload) =>
   payload?.data?.notificationId ||
   payload?.data?.messageId ||
@@ -17,7 +29,6 @@ const getNotificationKey = (payload) =>
   ].join("::");
 
 async function notifyOpenClients(payload) {
-  pushDebugLog(PUSH_DEBUG_PREFIX, "Broadcasting push to open clients", { payload });
   const windowClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
   windowClients.forEach((client) => {
     client.postMessage({
@@ -43,128 +54,43 @@ function getTargetPathFromPayload(payload = {}) {
   }
 }
 
-async function hasVisibleClientForTarget(payload = {}) {
-  const windowClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
-  const targetPath = getTargetPathFromPayload(payload);
-  const targetRoot = `/${String(targetPath).split("/").filter(Boolean)[0] || ""}`;
-  const visibleClient = windowClients.find((client) => {
-    const isVisible = client.visibilityState === "visible" || client.focused;
-    if (!isVisible) return false;
-    try {
-      const clientUrl = new URL(client.url);
-      if (targetRoot === "/" || !targetRoot) {
-        return true;
-      }
-      return clientUrl.pathname.startsWith(targetRoot);
-    } catch {
-      return false;
-    }
+// 1. Synchronously registered Background Message handler
+messaging.onBackgroundMessage(async (payload) => {
+  const title = payload?.notification?.title || payload?.data?.title || "New Notification";
+  const body = payload?.notification?.body || payload?.data?.body || "";
+  const image =
+    payload?.notification?.image ||
+    payload?.data?.image ||
+    payload?.data?.imageUrl ||
+    undefined;
+  const notificationKey = getNotificationKey(payload);
+  const clickAction = getTargetPathFromPayload(payload);
+  const payloadRole = String(payload?.data?.role || payload?.data?.ownerType || '').toLowerCase();
+  const isUserRole = payloadRole === 'user';
+  const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
+  const iconUrl = image || "/favicon.png";
+
+  await self.registration.showNotification(title, {
+    body,
+    icon: iconUrl,
+    badge: iconUrl,
+    image: image || undefined,
+    tag: notificationKey,
+    renotify: true,
+    silent: false,
+    requireInteraction: true,
+    vibrate: [300, 100, 300, 100, 300, 100, 500],
+    data: {
+      ...(payload?.data || {}),
+      click_action: clickAction,
+      sound: sound
+    },
   });
-  pushDebugLog(PUSH_DEBUG_PREFIX, "Visible client check", {
-    count: windowClients.length,
-    targetPath,
-    targetRoot,
-    hasVisibleClient: Boolean(visibleClient),
-    clients: windowClients.map((client) => ({
-      url: client.url,
-      visibilityState: client.visibilityState,
-      focused: client.focused,
-    })),
-  });
-  return Boolean(visibleClient);
-}
 
-async function loadFirebaseWebConfig() {
-  const candidates = [
-    "/firebase-web-config.json",
-    "/api/v1/food/public/env",
-  ];
-  for (const url of candidates) {
-    try {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) continue;
-      const json = await response.json();
-      const data = url.endsWith(".json") ? (json || {}) : ((json && json.data) || {});
-      const config = {
-        apiKey: sanitize(data.VITE_FIREBASE_API_KEY || data.FIREBASE_API_KEY),
-        authDomain: sanitize(data.VITE_FIREBASE_AUTH_DOMAIN || data.FIREBASE_AUTH_DOMAIN),
-        projectId: sanitize(data.VITE_FIREBASE_PROJECT_ID || data.FIREBASE_PROJECT_ID),
-        appId: sanitize(data.VITE_FIREBASE_APP_ID || data.FIREBASE_APP_ID),
-        messagingSenderId: sanitize(data.VITE_FIREBASE_MESSAGING_SENDER_ID || data.FIREBASE_MESSAGING_SENDER_ID),
-        storageBucket: sanitize(data.VITE_FIREBASE_STORAGE_BUCKET || data.FIREBASE_STORAGE_BUCKET),
-        measurementId: sanitize(data.VITE_FIREBASE_MEASUREMENT_ID || data.FIREBASE_MEASUREMENT_ID),
-      };
+  await notifyOpenClients(payload);
+});
 
-      if (config.apiKey && config.projectId && config.appId && config.messagingSenderId) {
-        pushDebugLog(PUSH_DEBUG_PREFIX, "Loaded Firebase web config");
-        return config;
-      }
-    } catch {
-      // try next candidate
-    }
-  }
-
-  return null;
-}
-
-(async () => {
-  const config = await loadFirebaseWebConfig();
-  if (!config || !config.apiKey || !config.projectId || !config.appId || !config.messagingSenderId) {
-    return;
-  }
-
-  firebase.initializeApp(config);
-  pushDebugLog(PUSH_DEBUG_PREFIX, "Firebase messaging service worker initialized");
-  const messaging = firebase.messaging();
-
-  messaging.onBackgroundMessage(async (payload) => {
-    pushDebugLog(PUSH_DEBUG_PREFIX, "Received Firebase background message", { payload });
-
-    const title = payload?.notification?.title || payload?.data?.title || "New Notification";
-    const body = payload?.notification?.body || payload?.data?.body || "";
-    const image =
-      payload?.notification?.image ||
-      payload?.data?.image ||
-      payload?.data?.imageUrl ||
-      undefined;
-    const notificationKey = getNotificationKey(payload);
-    const clickAction = getTargetPathFromPayload(payload);
-    const payloadRole = String(payload?.data?.role || payload?.data?.ownerType || '').toLowerCase();
-    const isUserRole = payloadRole === 'user';
-    const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
-
-    pushDebugLog(PUSH_DEBUG_PREFIX, "Showing service worker notification", {
-      title,
-      body,
-      image,
-      notificationKey,
-      isUserRole,
-    });
-
-    const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
-
-    self.registration.showNotification(title, {
-      body,
-      icon: iconUrl,
-      badge: iconUrl,
-      image: image || undefined,
-      tag: notificationKey,
-      renotify: !isUserRole,
-      silent: isUserRole,
-      requireInteraction: !isUserRole,
-      vibrate: isUserRole ? undefined : [300, 100, 300, 100, 300, 100, 500],
-      data: {
-        ...(payload?.data || {}),
-        click_action: clickAction,
-        sound: sound
-      },
-    });
-
-    // Always notify clients regardless of visibility
-    await notifyOpenClients(payload);
-  });
-})();
-
+// 2. Synchronously registered Push Event handler
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -185,7 +111,7 @@ self.addEventListener("push", (event) => {
       const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
       const notificationKey = getNotificationKey(payload);
       const clickAction = getTargetPathFromPayload(payload);
-      const iconUrl = image || "https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png";
+      const iconUrl = image || "/favicon.png";
 
       await self.registration.showNotification(title, {
         body,
@@ -193,10 +119,10 @@ self.addEventListener("push", (event) => {
         badge: iconUrl,
         image: image || undefined,
         tag: notificationKey,
-        renotify: !isUserRole,
-        silent: isUserRole,
-        requireInteraction: !isUserRole,
-        vibrate: isUserRole ? undefined : [300, 100, 300, 100, 300, 100, 500],
+        renotify: true,
+        silent: false,
+        requireInteraction: true,
+        vibrate: [300, 100, 300, 100, 300, 100, 500],
         data: {
           ...(payload?.data || {}),
           click_action: clickAction,
@@ -208,10 +134,8 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// 3. Synchronously registered Notification Click handler
 self.addEventListener("notificationclick", (event) => {
-  pushDebugLog(PUSH_DEBUG_PREFIX, "Notification click received", {
-    data: event?.notification?.data || {},
-  });
   event.notification.close();
   const rawLink =
     event?.notification?.data?.link ||
@@ -227,6 +151,6 @@ self.addEventListener("notificationclick", (event) => {
         return client.navigate(targetUrl);
       }
       return clients.openWindow(targetUrl);
-    }),
+    })
   );
 });

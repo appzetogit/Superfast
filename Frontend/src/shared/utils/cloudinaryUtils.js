@@ -14,114 +14,56 @@
  * @param {string} options.crop - Optional crop mode (default: 'fill' if width/height provided).
  * @returns {string} - The optimized URL.
  */
+export const convertCloudinaryToVpsUrl = (url) => {
+  if (!url || typeof url !== "string") return url || "";
+  if (!url.includes("res.cloudinary.com")) return url;
+
+  const uploadIndex = url.indexOf("/upload/");
+  if (uploadIndex === -1) return url;
+
+  const relativePath = url.substring(uploadIndex + "/upload/".length);
+  const segments = relativePath.split("/");
+  const filteredSegments = segments.filter(
+    (seg) => !seg.match(/^[a-z]_[^/]+$/) && !seg.match(/^v\d+$/)
+  );
+
+  const viteApiUrl = import.meta.env?.VITE_API_BASE_URL;
+  let backendOrigin = (viteApiUrl && String(viteApiUrl).startsWith("http"))
+    ? String(viteApiUrl).replace(/\/api\/v1\/?$/, "").replace(/\/$/, "")
+    : "";
+
+  if (!backendOrigin && typeof window !== "undefined") {
+    const { protocol, hostname, port } = window.location;
+    if (port === "5173" || port === "3000" || hostname === "localhost" || hostname === "127.0.0.1") {
+      backendOrigin = `${protocol}//${hostname}:5000`;
+    } else {
+      backendOrigin = window.location.origin;
+    }
+  }
+  if (!backendOrigin) backendOrigin = "http://localhost:5000";
+
+  return `${backendOrigin}/uploads/${filteredSegments.join("/")}`;
+};
+
 export const optimizeCloudinaryUrl = (url, options = {}) => {
   if (!url || typeof url !== "string") return url || "";
-
-  // Only process Cloudinary URLs
-  if (!/res\.cloudinary\.com/i.test(url) || !/\/image\/upload\//i.test(url)) {
-    return url;
+  if (url.includes("res.cloudinary.com")) {
+    return convertCloudinaryToVpsUrl(url);
   }
-
-  const {
-    format = "auto",
-    quality = "auto:good",
-    width,
-    height,
-    crop = width || height ? "limit" : null,
-    dpr = "auto",
-  } = options;
-
-  try {
-    const parts = url.split("/upload/");
-    if (parts.length !== 2) return url;
-
-    const [prefix, suffix] = parts;
-    const slashIndex = suffix.indexOf("/");
-    const firstSegment = slashIndex === -1 ? suffix : suffix.slice(0, slashIndex);
-    const rest = slashIndex === -1 ? "" : suffix.slice(slashIndex + 1);
-    const hasNamedTransformations =
-      firstSegment.includes("_") && !/^v\d+$/.test(firstSegment);
-
-    if (hasNamedTransformations) {
-      const transforms = firstSegment
-        .split(",")
-        .filter(Boolean)
-        .filter((part) => !part.startsWith("f_") && !part.startsWith("q_") && !part.startsWith("c_"));
-
-      if (crop) transforms.unshift(`c_${crop}`);
-      transforms.unshift(`q_${quality}`);
-      transforms.unshift(`f_${format}`);
-
-      const normalized = transforms.join(",");
-      return `${prefix}/upload/${normalized}/${rest}`;
-    }
-
-    let transformStr = `f_${format},q_${quality},dpr_${dpr}`;
-    if (width) transformStr += `,w_${width}`;
-    if (height) transformStr += `,h_${height}`;
-    if (crop) transformStr += `,c_${crop}`;
-
-    return `${prefix}/upload/${transformStr}/${suffix}`;
-  } catch (err) {
-    console.error("Error optimizing Cloudinary URL:", err);
-    return url;
-  }
+  return url;
 };
 
-/**
- * Specifically ensures auto format (WebP/AVIF) for a Cloudinary URL.
- */
 export const ensureWebp = (url) => optimizeCloudinaryUrl(url, { format: "auto" });
 
-/**
- * Generates a srcSet for Cloudinary images.
- * @param {string} url - Original Cloudinary URL.
- * @param {number[]} widths - Array of widths.
- * @returns {string} - srcSet string.
- */
 export const getCloudinarySrcSet = (url, widths = [300, 600, 900, 1200]) => {
-  if (!url || !/res\.cloudinary\.com/i.test(url)) return null;
-
-  return widths
-    .map((w) => {
-      const optimized = optimizeCloudinaryUrl(url, { width: w, crop: "limit", format: "auto", quality: "auto:good" });
-      return `${optimized} ${w}w`;
-    })
-    .join(", ");
+  if (!url) return null;
+  return null;
 };
 
-/**
- * Optimizes a Cloudinary Video URL by injecting transformations.
- */
 export const optimizeCloudinaryVideoUrl = (url, options = {}) => {
   if (!url || typeof url !== "string") return url || "";
-
-  // Process Cloudinary Video URLs
-  if (!/res\.cloudinary\.com/i.test(url) || !/\/video\/upload\//i.test(url)) {
-    return url;
+  if (url.includes("res.cloudinary.com")) {
+    return convertCloudinaryToVpsUrl(url);
   }
-
-  const {
-    format = "auto",
-    quality = "auto",
-    width,
-    height,
-    crop,
-  } = options;
-
-  try {
-    const parts = url.split("/upload/");
-    if (parts.length !== 2) return url;
-
-    const [prefix, suffix] = parts;
-    let transformStr = `f_${format},q_${quality}`;
-    if (width) transformStr += `,w_${width}`;
-    if (height) transformStr += `,h_${height}`;
-    if (crop) transformStr += `,c_${crop}`;
-
-    return `${prefix}/upload/${transformStr}/${suffix}`;
-  } catch (err) {
-    console.error("Error optimizing Cloudinary Video URL:", err);
-    return url;
-  }
+  return url;
 };

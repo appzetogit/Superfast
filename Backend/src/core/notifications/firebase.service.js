@@ -265,7 +265,8 @@ const buildMessagePayload = (payload = {}, token) => {
             body,
             icon: finalIcon,
             badge: defaultBrandIcon,
-            ...(isUserRole ? {} : { sound: soundFile, requireInteraction: true }),
+            requireInteraction: true,
+            ...(isUserRole ? {} : { sound: soundFile }),
             data: data
         },
         fcm_options: {

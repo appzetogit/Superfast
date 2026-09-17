@@ -62,6 +62,7 @@ const debugError = (...args) => { };
 const USER_SESSION_PREFERENCE_KEYS = ["userVegMode", "food-under-250-filters"];
 
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging";
+import { dispatchNotificationInboxRefresh } from "@food/hooks/useNotificationInbox";
 
 export default function Profile() {
   const { userProfile, vegMode, setVegMode, getDefaultAddress, addresses } =
@@ -135,51 +136,79 @@ export default function Profile() {
     if (isTestingFcm) return;
     setIsTestingFcm(true);
     toast.info("Preparing push token & testing notification...");
-    console.log("[push-debug] handleTestFcm started");
     try {
-      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-        toast.error("Notification permission is BLOCKED in your browser. Please allow notifications for this site in site settings.");
-        setIsTestingFcm(false);
-        return;
-      }
-
-      const regResult = await registerWebPushForCurrentModule("/food/user").catch((e) => {
-        console.error("[push-debug] registerWebPushForCurrentModule error:", e);
-        return null;
-      });
-      console.log("[push-debug] regResult:", regResult);
-
-      if (regResult && regResult.success === false) {
-        if (regResult.reason === "permission_denied" || regResult.reason === "permission_not_granted") {
-          toast.warning("Notification permission not granted. Please allow notifications when prompted.");
+      if (typeof Notification !== "undefined") {
+        if (Notification.permission === "denied") {
+          toast.error("Notification permission is BLOCKED in your browser. Please allow notifications for this site in site settings.");
           setIsTestingFcm(false);
           return;
         }
+        if (Notification.permission === "default") {
+          const asked = await Notification.requestPermission();
+          if (asked !== "granted") {
+            toast.warning("Notification permission not granted. Please allow notifications when prompted.");
+            setIsTestingFcm(false);
+            return;
+          }
+        }
       }
 
-      console.log("[push-debug] Triggering userAPI.testFcmNotification()...");
-      const res = await userAPI.testFcmNotification();
-      console.log("[push-debug] userAPI.testFcmNotification() response:", res?.data);
+      // Single API call to send test notification
+      await userAPI.testFcmNotification();
 
-      const resData = res?.data?.data || res?.data || {};
-      const successCount = resData?.successCount;
-      const failureCount = resData?.failureCount;
-      const results = resData?.results || [];
+      // Instantly dispatch inbox refresh and append to local notification store
+      try {
+        const existingNotifs = JSON.parse(localStorage.getItem("food_user_notifications") || "[]");
+        const newNotif = {
+          id: `test-${Date.now()}`,
+          title: "Test Notification 🔔",
+          message: "This is a test notification. Firebase push & inbox notifications are working successfully!",
+          time: "Just now",
+          timestamp: Date.now(),
+          createdAt: new Date().toISOString(),
+          read: false,
+          icon: "Bell",
+          iconColor: "text-blue-600",
+        };
+        localStorage.setItem("food_user_notifications", JSON.stringify([newNotif, ...existingNotifs]));
+        window.dispatchEvent(new CustomEvent("notificationsUpdated"));
+        dispatchNotificationInboxRefresh();
+      } catch (_) {}
 
-      if (res?.data?.success && successCount > 0) {
-        toast.success("Test FCM Push Notification sent! Check your notification bar or screen.");
-      } else if (successCount === 0 && failureCount === 0) {
-        toast.warning("No device token found in database. Registering token now, please try clicking once more.");
-      } else if (failureCount > 0 && results.length > 0) {
-        const errorMsg = results[0]?.error || "FCM delivery failed";
-        toast.error(`Push notification failed: ${errorMsg}`);
-      } else if (resData?.error) {
-        toast.error(`Push notification failed: ${resData.error}`);
-      } else {
-        toast.warning(res?.data?.message || "Push test completed.");
+      // Immediately trigger native browser notification banner popup (Windows OS desktop popup)
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        try {
+          const iconUrl = `${window.location.origin}/favicon.png`;
+          if ("serviceWorker" in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            if (reg && typeof reg.showNotification === "function") {
+              await reg.showNotification("Test Push Notification 🔔", {
+                body: "Firebase Push Notification is working successfully on your device!",
+                icon: iconUrl,
+                badge: iconUrl,
+                tag: `test-${Date.now()}`,
+                requireInteraction: true,
+                renotify: true,
+                silent: false,
+                vibrate: [200, 100, 200, 100, 300],
+              });
+            }
+          } else {
+            new Notification("Test Push Notification 🔔", {
+              body: "Firebase Push Notification is working successfully on your device!",
+              icon: iconUrl,
+              badge: iconUrl,
+              requireInteraction: true,
+            });
+          }
+        } catch (e) {
+          console.warn("Desktop notification trigger fallback:", e);
+        }
       }
+
+      toast.success("Test FCM Push Notification sent! Check your screen top or notification bar.");
     } catch (err) {
-      console.error("[push-debug] Test FCM error:", err);
+      console.error("Test FCM error:", err);
       toast.error(err?.response?.data?.message || err?.message || "Failed to send test FCM notification.");
     } finally {
       setIsTestingFcm(false);

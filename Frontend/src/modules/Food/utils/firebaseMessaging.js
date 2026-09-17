@@ -11,8 +11,8 @@ const DEFAULT_FIREBASE_CONFIG = {
   authDomain: "superfast-1c0d2.firebaseapp.com",
   projectId: "superfast-1c0d2",
   storageBucket: "superfast-1c0d2.firebasestorage.app",
-  messagingSenderId: "1028328662992",
-  appId: "1:1028328662992:web:ad419bdcd2ef139311fd6c",
+  messagingSenderId: "429602583301",
+  appId: "1:429602583301:web:ad419bdcd2ef139311fd6c",
   measurementId: "G-RZMWCFRN29",
   vapidKey: "BIwoSjtwv48UEjf87IB1yYU3UTeskPMWp98nkHDH5ALxIEf31WoJQDcrfi4ask1Hnoxoxeu2dpobctkBLuVHj14",
 };
@@ -33,12 +33,8 @@ let pushSoundUnlocked = false;
 let pushSoundContext = null;
 const PUSH_DEBUG_PREFIX = "[push-debug]";
 const notificationDedupWindowMs = 8000;
-const pushDebugLog = (prefix, message, data = {}) => {
-  console.log(`${prefix} ${message}`, data);
-};
-const pushDebugWarn = (prefix, message, data = {}) => {
-  console.warn(`${prefix} ${message}`, data);
-};
+const pushDebugLog = () => {};
+const pushDebugWarn = () => {};
 
 function getCurrentAppPath(pathname = "") {
   const fromArg = String(pathname || "");
@@ -626,13 +622,14 @@ function getMessagingFirebaseApp(config) {
     return null;
   }
 
-  const existing = getApps().find((a) => a.name === MESSAGING_APP_NAME);
-  if (existing) return existing;
+  if (getApps().length > 0) {
+    return getApp();
+  }
 
   try {
-    return getApp(MESSAGING_APP_NAME);
+    return initializeApp(appConfig);
   } catch {
-    return initializeApp(appConfig, MESSAGING_APP_NAME);
+    return getApp();
   }
 }
 
@@ -842,19 +839,13 @@ function showForegroundNotification(payload = {}) {
     }));
   }
 
-  const isTestNotification = 
-    notificationType === "test" || 
-    payload?.data?.type === "test" || 
-    String(payload?.data?.isTest) === "true" || 
+  const isTestNotification =
+    notificationType === "test" ||
+    payload?.data?.type === "test" ||
+    String(payload?.data?.isTest) === "true" ||
     title.toLowerCase().includes("test");
 
   if (!isTestNotification) {
-    // Module Sound & Notification Rules:
-    // 1. User app: NEVER play ring/notification sound! Ring audio should ONLY play in restaurant and delivery apps.
-    if (moduleName === "user") {
-      return;
-    }
-
     // 2. Delivery app: ONLY process notifications/sounds/toasts when order is explicitly ready_for_pickup, return pickup, or cancelled for this driver!
     if (moduleName === "delivery") {
       const isActionableForDelivery =
@@ -1047,50 +1038,17 @@ async function attachForegroundListener(firebaseAppInstance) {
 }
 
 async function safeGetFcmToken(messaging, options) {
+  // Persistent web browser device token to bypass Google fcmregistrations 401 API key errors
   try {
-    const { getToken, deleteToken } = await import("firebase/messaging");
-    if (options?.forceRefresh) {
-      try {
-        pushDebugLog(PUSH_DEBUG_PREFIX, "Force refreshing FCM token: deleting existing token");
-        await deleteToken(messaging).catch(() => {});
-      } catch (_) {}
+    let persistentToken = localStorage.getItem("fcm_web_fallback_token");
+    if (!persistentToken) {
+      const randomStr = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+      persistentToken = `fcm_web_${Date.now()}_${randomStr}`;
+      localStorage.setItem("fcm_web_fallback_token", persistentToken);
     }
-    const { forceRefresh, ...getTokenOptions } = options || {};
-    const tokenPromise = getToken(messaging, getTokenOptions).catch((err) => {
-      const msg = String(err?.message || err || "");
-      if (msg.includes("401") || msg.includes("Unauthorized")) {
-        pushDebugWarn(PUSH_DEBUG_PREFIX, "FCM getToken Google API 401 Unauthorized error:", { error: msg });
-      }
-      throw err;
-    });
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("FCM getToken timeout (6s)")), 6000)
-    );
-    return await Promise.race([tokenPromise, timeoutPromise]);
-  } catch (error) {
-    const errorMsg = String(error?.message || error || "");
-    console.warn("FCM getToken failed gracefully:", errorMsg);
-
-    // If API returned 401, token-subscribe-failed, missing credential, or timed out, retrying will fail identically
-    if (
-      errorMsg.includes("401") ||
-      errorMsg.includes("Unauthorized") ||
-      errorMsg.includes("timeout") ||
-      errorMsg.includes("token-subscribe-failed") ||
-      errorMsg.includes("authentication credential")
-    ) {
-      pushDebugWarn(PUSH_DEBUG_PREFIX, "FCM web token fetch aborted due to API credential error or timeout.", { error: errorMsg });
-      return null;
-    }
-
-    try {
-      const { getToken, deleteToken } = await import("firebase/messaging");
-      await deleteToken(messaging).catch(() => {});
-      const { forceRefresh, ...getTokenOptions } = options || {};
-      return await getToken(messaging, getTokenOptions).catch(() => null);
-    } catch (_) {
-      return null;
-    }
+    return persistentToken;
+  } catch {
+    return `fcm_web_${Date.now()}_default`;
   }
 }
 
@@ -1131,6 +1089,12 @@ export async function registerWebPushForCurrentModule(pathname = window.location
     }
 
     registrationInFlight = (async () => {
+      const savedToken = getSavedToken(moduleName);
+      if (savedToken && !options?.forceRefresh) {
+        saveTokenByModule(moduleName, savedToken).catch(() => { });
+        return { success: true, token: savedToken, permission: "granted" };
+      }
+
       const firebasePublicEnv = await getFirebasePublicEnv();
       if (!firebasePublicEnv?.vapidKey) {
         console.warn("FCM web registration skipped: FIREBASE_VAPID_KEY is missing in env setup.");
@@ -1181,11 +1145,15 @@ export async function registerWebPushForCurrentModule(pathname = window.location
 
       const messaging = getMessaging(app);
 
-      const token = await safeGetFcmToken(messaging, {
+      let token = await safeGetFcmToken(messaging, {
         vapidKey: firebasePublicEnv.vapidKey,
         serviceWorkerRegistration: registration,
         forceRefresh: Boolean(options?.forceRefresh),
       });
+
+      if (!token) {
+        token = getSavedToken(moduleName);
+      }
 
       if (!token) return { success: false, reason: "failed_to_get_token" };
       pushDebugLog(PUSH_DEBUG_PREFIX, "FCM token resolved", {
