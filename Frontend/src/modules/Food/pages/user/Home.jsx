@@ -378,9 +378,6 @@ export default function Home() {
   }, [activeTab, navigate, openSearch]);
 
   const heroBannerElement = useMemo(() => {
-    if (!banners.loading && (!banners?.images || banners.images.length === 0)) {
-      return null;
-    }
     return (
       <div className="px-2 pt-1">
         <div className="overflow-hidden rounded-[20px] border border-white/20 bg-white/10 shadow-xl h-[150px] sm:h-44 md:h-52">

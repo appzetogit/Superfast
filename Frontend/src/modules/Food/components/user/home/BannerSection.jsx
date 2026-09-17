@@ -1,9 +1,65 @@
-import React, { memo, useState, useEffect, useRef, useCallback } from "react";
+import React, { memo, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HeroBannerSkeleton } from "@food/components/ui/loading-skeletons";
 import { optimizeCloudinaryVideoUrl } from "@shared/utils/cloudinaryUtils";
 import OptimizedImage from "@food/components/OptimizedImage";
+
+const DEFAULT_FALLBACK_BANNERS = [
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1200&auto=format&fit=crop&q=80"
+];
+
+const BannerImageItem = memo(({ image, index, isVideo, bannerData, isCurrent, backendOrigin, onClick }) => {
+  const fallbackSrc = DEFAULT_FALLBACK_BANNERS[index % DEFAULT_FALLBACK_BANNERS.length];
+  const [imgSrc, setImgSrc] = useState(() => (image && typeof image === "string" && image.trim() !== "" ? image : fallbackSrc));
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const nextSrc = image && typeof image === "string" && image.trim() !== "" ? image : fallbackSrc;
+    setImgSrc(nextSrc);
+    setHasError(false);
+  }, [image, fallbackSrc]);
+
+  return (
+    <div
+      key={`${index}-${image}`}
+      className="relative h-full w-full flex-shrink-0 snap-start"
+      onClick={onClick}
+    >
+      {isVideo && !hasError ? (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="h-full w-full object-cover"
+          onError={() => setHasError(true)}
+        >
+          <source src={optimizeCloudinaryVideoUrl(image, { format: 'webm' })} type="video/webm" />
+          <source src={optimizeCloudinaryVideoUrl(image, { format: 'mp4' })} type="video/mp4" />
+          <source src={image} />
+        </video>
+      ) : (
+        <OptimizedImage
+          src={hasError ? fallbackSrc : imgSrc}
+          alt={`Hero Banner ${index + 1}`}
+          className="h-full w-full object-cover"
+          priority={true}
+          backendOrigin={backendOrigin}
+          draggable={false}
+          onError={() => {
+            if (!hasError) {
+              setHasError(true);
+              setImgSrc(fallbackSrc);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+});
 
 const BannerSection = memo(({
   showBannerSkeleton,
@@ -15,10 +71,23 @@ const BannerSection = memo(({
   backendOrigin = ""
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const autoSlideTimerRef = useRef(null);
   const scrollRef = useRef(null);
 
-  const bannerCount = heroBannerImages.length;
+  // Filter out null, empty, or invalid banner image URLs
+  const activeBannerImages = useMemo(() => {
+    const list = Array.isArray(heroBannerImages)
+      ? heroBannerImages.filter((img) => img && typeof img === "string" && img.trim() !== "")
+      : [];
+    return list.length > 0 ? list : DEFAULT_FALLBACK_BANNERS;
+  }, [heroBannerImages]);
+
+  const bannerCount = activeBannerImages.length;
+
+  useEffect(() => {
+    if (currentBannerIndex >= bannerCount && bannerCount > 0) {
+      setCurrentBannerIndex(0);
+    }
+  }, [bannerCount, currentBannerIndex, setCurrentBannerIndex]);
 
   const scrollToIndex = useCallback((index) => {
     if (!scrollRef.current) return;
@@ -69,8 +138,6 @@ const BannerSection = memo(({
     );
   }
 
-  if (!heroBannerImages || bannerCount === 0) return null;
-
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const scrollLeft = scrollRef.current.scrollLeft;
@@ -93,7 +160,7 @@ const BannerSection = memo(({
 
   return (
     <div
-      className="group relative h-full w-full overflow-hidden rounded-[22px] select-none bg-transparent"
+      className="group relative h-full w-full overflow-hidden rounded-[22px] select-none bg-gray-900/5 dark:bg-white/5"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={() => {
@@ -109,39 +176,21 @@ const BannerSection = memo(({
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         onScroll={handleScroll}
       >
-        {heroBannerImages.map((image, index) => {
+        {activeBannerImages.map((image, index) => {
           const bannerData = heroBannersData[index];
           const isVideo = bannerData?.type === 'video' || (typeof image === 'string' && image.toLowerCase().endsWith('.mp4'));
 
           return (
-            <div
+            <BannerImageItem
               key={`${index}-${image}`}
-              className="relative h-full w-full flex-shrink-0 snap-start"
+              image={image}
+              index={index}
+              isVideo={isVideo}
+              bannerData={bannerData}
+              isCurrent={index === currentBannerIndex}
+              backendOrigin={backendOrigin}
               onClick={() => handleBannerClick(index)}
-            >
-              {isVideo ? (
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="h-full w-full object-cover"
-                >
-                  <source src={optimizeCloudinaryVideoUrl(image, { format: 'webm' })} type="video/webm" />
-                  <source src={optimizeCloudinaryVideoUrl(image, { format: 'mp4' })} type="video/mp4" />
-                  <source src={image} />
-                </video>
-              ) : (
-                <OptimizedImage
-                  src={image}
-                  alt={`Hero Banner ${index + 1}`}
-                  className="h-full w-full object-cover"
-                  priority={index === currentBannerIndex}
-                  backendOrigin={backendOrigin}
-                  draggable={false}
-                />
-              )}
-            </div>
+            />
           );
         })}
       </div>
@@ -175,10 +224,10 @@ const BannerSection = memo(({
         </>
       )}
 
-      {/* Clean Floating Pagination Dots (No black/grey background strip) */}
+      {/* Clean Floating Pagination Dots */}
       {bannerCount > 1 && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2 py-0.5">
-          {heroBannerImages.map((_, index) => (
+          {activeBannerImages.map((_, index) => (
             <button
               key={index}
               type="button"

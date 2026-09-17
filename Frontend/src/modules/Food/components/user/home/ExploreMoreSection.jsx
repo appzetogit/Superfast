@@ -1,9 +1,62 @@
-import React, { memo } from "react";
+import React, { memo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ExploreGridSkeleton } from "@food/components/ui/loading-skeletons";
 import OptimizedImage from "@food/components/OptimizedImage";
 import discoveryBg from "@food/assets/food_discovery_bg.png";
+import offersIcon from "@food/assets/explore more icons/offers.png";
+import gourmetIcon from "@food/assets/explore more icons/gourmet.png";
+import collectionIcon from "@food/assets/explore more icons/collection.png";
+import bakeryIcon from "@food/assets/explore more icons/bakery.png";
+
+const getFallbackForLabel = (label = "", linkType = "") => {
+  const name = String(label || "").toLowerCase();
+  const type = String(linkType || "").toLowerCase();
+  if (name.includes("offer") || type === "offers") return offersIcon;
+  if (name.includes("gourmet") || type === "gourmet") return gourmetIcon;
+  if (name.includes("collection") || type === "collections") return collectionIcon;
+  if (name.includes("bakery")) return bakeryIcon;
+  return offersIcon;
+};
+
+const ExploreItemCard = memo(({ item, backendOrigin }) => {
+  const fallbackSrc = getFallbackForLabel(item.label, item.linkType);
+  const initialSrc = item.image && typeof item.image === "string" && item.image.trim() !== "" ? item.image : fallbackSrc;
+  const [imgSrc, setImgSrc] = useState(initialSrc);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const nextSrc = item.image && typeof item.image === "string" && item.image.trim() !== "" ? item.image : fallbackSrc;
+    setImgSrc(nextSrc);
+    setHasError(false);
+  }, [item.image, fallbackSrc]);
+
+  return (
+    <Link
+      to={item.href}
+      className="flex flex-col items-center gap-1.5 group w-[30%]"
+    >
+      <div className="relative w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] rounded-full p-[2px] bg-gradient-to-b from-amber-300 via-yellow-500 to-amber-700 shadow-[0_4px_12px_rgba(251,191,36,0.25)] transition-transform duration-300 group-hover:-translate-y-1 group-active:scale-95">
+        <div className="w-full h-full rounded-full overflow-hidden bg-[#0a041c] border-[1.5px] border-[#1a144b] flex items-center justify-center">
+          <OptimizedImage
+            src={hasError ? fallbackSrc : imgSrc}
+            alt={item.label}
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+            onError={() => {
+              if (!hasError) {
+                setHasError(true);
+                setImgSrc(fallbackSrc);
+              }
+            }}
+          />
+        </div>
+      </div>
+      <span className="text-[10px] sm:text-[11px] font-bold text-indigo-50 text-center tracking-wide group-hover:text-amber-300 transition-colors duration-300">
+        {item.label}
+      </span>
+    </Link>
+  );
+});
 
 const ExploreMoreSection = memo(({
   exploreMoreHeading,
@@ -35,24 +88,7 @@ const ExploreMoreSection = memo(({
         ) : (
           <div className="relative z-10 flex justify-between items-start gap-1 px-1 sm:px-2">
             {finalExploreItems.map((item, index) => (
-              <Link
-                key={item.id}
-                to={item.href}
-                className="flex flex-col items-center gap-1.5 group w-[30%]"
-              >
-                <div className="relative w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] rounded-full p-[2px] bg-gradient-to-b from-amber-300 via-yellow-500 to-amber-700 shadow-[0_4px_12px_rgba(251,191,36,0.25)] transition-transform duration-300 group-hover:-translate-y-1 group-active:scale-95">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-[#0a041c] border-[1.5px] border-[#1a144b]">
-                    <OptimizedImage
-                      src={item.image}
-                      alt={item.label}
-                      className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
-                    />
-                  </div>
-                </div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-indigo-50 text-center tracking-wide group-hover:text-amber-300 transition-colors duration-300">
-                  {item.label}
-                </span>
-              </Link>
+              <ExploreItemCard key={item.id || index} item={item} backendOrigin={backendOrigin} />
             ))}
           </div>
         )}
