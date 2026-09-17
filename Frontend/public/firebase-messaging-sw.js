@@ -65,9 +65,8 @@ messaging.onBackgroundMessage(async (payload) => {
     undefined;
   const notificationKey = getNotificationKey(payload);
   const clickAction = getTargetPathFromPayload(payload);
-  const payloadRole = String(payload?.data?.role || payload?.data?.ownerType || '').toLowerCase();
-  const isUserRole = payloadRole === 'user';
-  const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
+  const isTest = payload?.data?.type === 'test' || String(payload?.data?.isTest) === 'true' || title.toLowerCase().includes('test');
+  const sound = isTest ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
   const iconUrl = image || "/favicon.png";
 
   await self.registration.showNotification(title, {
@@ -77,9 +76,9 @@ messaging.onBackgroundMessage(async (payload) => {
     image: image || undefined,
     tag: notificationKey,
     renotify: true,
-    silent: false,
+    silent: isTest,
     requireInteraction: true,
-    vibrate: [300, 100, 300, 100, 300, 100, 500],
+    vibrate: isTest ? undefined : [300, 100, 300, 100, 300, 100, 500],
     data: {
       ...(payload?.data || {}),
       click_action: clickAction,
@@ -106,9 +105,8 @@ self.addEventListener("push", (event) => {
       const title = payload?.notification?.title || payload?.data?.title || "New Notification";
       const body = payload?.notification?.body || payload?.data?.body || "";
       const image = payload?.notification?.image || payload?.data?.image || payload?.data?.imageUrl;
-      const payloadRole = String(payload?.data?.role || payload?.data?.ownerType || '').toLowerCase();
-      const isUserRole = payloadRole === 'user';
-      const sound = isUserRole ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
+      const isTest = payload?.data?.type === 'test' || String(payload?.data?.isTest) === 'true' || title.toLowerCase().includes('test');
+      const sound = isTest ? undefined : (payload?.data?.sound || (String(payload?.data?.role).toLowerCase() === 'admin' ? '/universfield-new-notification-036-485897.mp3' : '/zomato_sms.mp3'));
       const notificationKey = getNotificationKey(payload);
       const clickAction = getTargetPathFromPayload(payload);
       const iconUrl = image || "/favicon.png";
@@ -120,9 +118,9 @@ self.addEventListener("push", (event) => {
         image: image || undefined,
         tag: notificationKey,
         renotify: true,
-        silent: false,
+        silent: isTest,
         requireInteraction: true,
-        vibrate: [300, 100, 300, 100, 300, 100, 500],
+        vibrate: isTest ? undefined : [300, 100, 300, 100, 300, 100, 500],
         data: {
           ...(payload?.data || {}),
           click_action: clickAction,

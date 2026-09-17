@@ -222,6 +222,8 @@ const buildMessagePayload = (payload = {}, token) => {
     const defaultBrandIcon = 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png';
     const finalIcon = image || payload.icon || defaultBrandIcon;
 
+    const isTest = payload.data?.type === 'test' || payload.type === 'test' || String(payload.data?.isTest) === 'true' || title.toLowerCase().includes('test');
+
     message.android = {
         priority: 'HIGH',
         ttl: '86400s',
@@ -229,11 +231,15 @@ const buildMessagePayload = (payload = {}, token) => {
             title,
             body,
             channel_id: 'high_importance_channel',
-            sound: 'default',
-            default_sound: true,
-            default_vibrate_timings: true,
-            default_light_settings: true,
-            notification_priority: 'PRIORITY_MAX',
+            ...(isTest
+                ? { default_sound: false, default_vibrate_timings: false }
+                : {
+                    sound: 'default',
+                    default_sound: true,
+                    default_vibrate_timings: true,
+                    default_light_settings: true,
+                    notification_priority: 'PRIORITY_MAX',
+                }),
             visibility: 'PUBLIC',
             ticker: title,
             click_action: 'FLUTTER_NOTIFICATION_CLICK'
@@ -248,7 +254,7 @@ const buildMessagePayload = (payload = {}, token) => {
         payload: {
             aps: {
                 alert: { title, body },
-                sound: soundFile || 'default',
+                ...(isTest ? {} : { sound: soundFile || 'default' }),
                 badge: 1,
                 'content-available': 1,
                 'mutable-content': 1
@@ -267,7 +273,7 @@ const buildMessagePayload = (payload = {}, token) => {
             icon: finalIcon,
             badge: defaultBrandIcon,
             requireInteraction: true,
-            sound: soundFile || 'default',
+            ...(isTest ? {} : { sound: soundFile || 'default' }),
             data: data
         },
         fcm_options: {

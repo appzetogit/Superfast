@@ -14,7 +14,7 @@ const DEFAULT_FIREBASE_CONFIG = {
   messagingSenderId: "429602583301",
   appId: "1:429602583301:web:ad419bdcd2ef139311fd6c",
   measurementId: "G-RZMWCFRN29",
-  vapidKey: "BIwoSjtwv48UEjf87IB1yYU3UTeskPMWp98nkHDH5ALxIEf31WoJQDcrfi4ask1Hnoxoxeu2dpobctkBLuVHj14",
+  vapidKey: "BIwoSjtwv48UEjf87IB1yYU3UTEskPMWp98nkHDH5ALxIEf31WoJQDcrfi4asK1Hnoxoxeu2dpobctkBLuVHj14",
 };
 
 const tokenCachePrefix = "fcm_web_registered_token_";
@@ -876,7 +876,9 @@ function showForegroundNotification(payload = {}) {
     }
   }
 
-  playPushSound(payload);
+  if (!isTestNotification) {
+    playPushSound(payload);
+  }
 
   // Force system notification even when the tab is in focus
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
@@ -1038,7 +1040,20 @@ async function attachForegroundListener(firebaseAppInstance) {
 }
 
 async function safeGetFcmToken(messaging, options) {
-  // Persistent web browser device token to bypass Google fcmregistrations 401 API key errors
+  try {
+    const { getToken } = await import("firebase/messaging");
+    const realToken = await getToken(messaging, {
+      vapidKey: options?.vapidKey,
+      serviceWorkerRegistration: options?.serviceWorkerRegistration,
+    }).catch(() => null);
+
+    if (realToken && typeof realToken === "string" && realToken.length > 20 && !realToken.startsWith("eyJ")) {
+      return realToken;
+    }
+  } catch (_) {
+    // Ignore real getToken failures and fallback
+  }
+
   try {
     let persistentToken = localStorage.getItem("fcm_web_fallback_token");
     if (!persistentToken) {
