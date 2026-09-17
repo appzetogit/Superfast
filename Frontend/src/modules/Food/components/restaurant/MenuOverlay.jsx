@@ -16,6 +16,7 @@ import {
   BadgeCheck,
   Store,
   CheckSquare,
+  Shield,
   LogOut,
   LogIn,
 } from "lucide-react"
@@ -66,6 +67,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
       { id: 13, name: "FSSAI", icon: BadgeCheck, route: "/restaurant/fssai" },
       { id: 14, name: "Hyperpure", icon: Store, route: "/restaurant/hyperpure" },
       { id: 15, name: "Terms & Condition", icon: CheckSquare, route: "/restaurant/terms" },
+      { id: 16, name: "Privacy Policy", icon: Shield, route: "/restaurant/privacy" },
     ]
 
     if (isAuthenticated) {

@@ -157,7 +157,7 @@ export default function RestaurantProfilePage() {
     { icon: Settings, label: "Settings", route: "/food/restaurant/onboarding?step=1" },
     { icon: HelpCircle, label: "Help Centre", route: "/food/restaurant/help-centre/support" },
     { icon: FileText, label: "Terms & Conditions", route: "/food/restaurant/terms" },
-    { icon: Lock, label: "Privacy Policy", route: "#" },
+    { icon: Lock, label: "Privacy Policy", route: "/food/restaurant/privacy" },
     { icon: Globe, label: "Language", value: "English" },
   ]
 
@@ -258,9 +258,9 @@ export default function RestaurantProfilePage() {
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-400">App Version 1.0.0</p>
           <div className="flex justify-center gap-4 mt-2 text-xs text-gray-500 font-medium">
-            <a href="#">Privacy Policy</a>
+            <button onClick={() => navigate('/food/restaurant/privacy')} className="hover:underline">Privacy Policy</button>
             <span>•</span>
-            <a href="#">Terms of Service</a>
+            <button onClick={() => navigate('/food/restaurant/terms')} className="hover:underline">Terms of Service</button>
           </div>
         </div>
       </div>

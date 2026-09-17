@@ -13,6 +13,7 @@ import {
   HiOutlineChartBarSquare,
   HiOutlineCreditCard,
   HiOutlineMapPin,
+  HiOutlineShieldCheck,
 } from "react-icons/hi2";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -61,6 +62,7 @@ const navItems = [
     icon: HiOutlineCurrencyDollar,
   },
   { label: "Profile", path: "/seller/profile", icon: HiOutlineUser },
+  { label: "Privacy Policy", path: "/seller/privacy", icon: HiOutlineShieldCheck },
 ];
 
 const Loader = () => (
