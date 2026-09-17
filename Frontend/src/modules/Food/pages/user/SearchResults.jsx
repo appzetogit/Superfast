@@ -818,12 +818,15 @@ export default function SearchResults() {
                         src={cat.image}
                         alt={cat.name}
                         className="w-full h-full object-cover"
+                        onError={(e) => handleImageError(e, 'category')}
                       />
                     </div>
                   ) : (
                     <div className={`w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border-2 transition-all ${isSelected ? 'border-[var(--primary-theme)] dark:border-[var(--primary-theme)] shadow-lg bg-red-50 dark:bg-[var(--primary-theme)]/20' : 'border-transparent'
                       }`}>
-                      <span className="text-xl">???</span>
+                      <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+                        {String(cat.name || "?").trim().slice(0, 2).toUpperCase()}
+                      </span>
                     </div>
                   )}
                   <span className={`text-xs font-medium whitespace-nowrap ${isSelected ? 'text-[var(--primary-theme)] dark:text-[var(--primary-theme)]' : 'text-gray-600 dark:text-gray-400'

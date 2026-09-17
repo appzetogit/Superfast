@@ -8,7 +8,7 @@ import foodPlaceholder from '@/assets/food-placeholder.jpg';
  * @param {string} path - The relative path or absolute URL of the image.
  * @returns {string} - The fully resolved and optimized image URL.
  */
-const DEFAULT_IMAGE_PLACEHOLDER = null;
+const DEFAULT_IMAGE_PLACEHOLDER = foodPlaceholder;
 
 export const getImageUrl = (path) => {
   if (!path) return DEFAULT_IMAGE_PLACEHOLDER;
@@ -19,6 +19,21 @@ export const getImageUrl = (path) => {
   const trimmed = path.trim();
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
+  }
+
+  // Check if it's a frontend static asset, Vite dev asset, or imported asset URL
+  const normalizedPath = trimmed.replace(/\\/g, '/');
+  if (
+    normalizedPath.startsWith('/src/') ||
+    normalizedPath.startsWith('/assets/') ||
+    normalizedPath.startsWith('/@fs/') ||
+    normalizedPath.startsWith('/@id/') ||
+    normalizedPath.startsWith('/@vite/') ||
+    normalizedPath.startsWith('/node_modules/') ||
+    normalizedPath.startsWith('src/') ||
+    normalizedPath.includes('/assets/')
+  ) {
+    return normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
   }
 
   // Derive backend origin from VITE_API_BASE_URL or current host
@@ -79,8 +94,7 @@ export const getImageUrl = (path) => {
     }
   } else {
     // It's a relative path. Normalize slashes.
-    const normalized = trimmed.replace(/\\/g, '/');
-    let pathPart = normalized.startsWith('/') ? normalized : `/${normalized}`;
+    let pathPart = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
     
     if (!pathPart.startsWith('/uploads/') && !pathPart.startsWith('/images/') && !pathPart.startsWith('/api/')) {
       pathPart = `/uploads${pathPart}`;
@@ -95,7 +109,7 @@ export const getImageUrl = (path) => {
 export const resolveImageUrl = getImageUrl;
 
 export const getFallbackImage = (type = 'food') => {
-  return DEFAULT_IMAGE_PLACEHOLDER;
+  return DEFAULT_IMAGE_PLACEHOLDER || foodPlaceholder;
 };
 
 export const handleImageError = (e, fallbackType = 'food') => {
@@ -107,6 +121,7 @@ export const handleImageError = (e, fallbackType = 'food') => {
   }
   target.dataset.hasFallback = 'true';
   target.onerror = null;
-  target.src = DEFAULT_IMAGE_PLACEHOLDER;
+  target.src = DEFAULT_IMAGE_PLACEHOLDER || foodPlaceholder;
 };
+
 
