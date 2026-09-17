@@ -222,6 +222,7 @@ const buildMessagePayload = (payload = {}, token) => {
 
     message.android = {
         priority: 'HIGH',
+        ttl: '86400s',
         notification: {
             title,
             body,
@@ -232,6 +233,7 @@ const buildMessagePayload = (payload = {}, token) => {
             default_light_settings: true,
             notification_priority: 'PRIORITY_MAX',
             visibility: 'PUBLIC',
+            ticker: title,
             click_action: 'FLUTTER_NOTIFICATION_CLICK'
         }
     };
@@ -245,8 +247,11 @@ const buildMessagePayload = (payload = {}, token) => {
             aps: {
                 alert: { title, body },
                 sound: soundFile || 'default',
-                contentAvailable: true
-            }
+                badge: 1,
+                'content-available': 1,
+                'mutable-content': 1
+            },
+            ...data
         }
     };
 
