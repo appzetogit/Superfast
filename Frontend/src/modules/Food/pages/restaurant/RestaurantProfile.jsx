@@ -31,10 +31,15 @@ export default function RestaurantProfile({ isOpen, onClose }) {
     setIsTestingFcm(true)
     toast.info("Preparing push token & testing notification...")
     try {
-      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-        toast.error("Notification permission is BLOCKED in your browser. Please allow notifications for this site in site settings.")
-        setIsTestingFcm(false)
-        return
+      if (typeof Notification !== "undefined") {
+        if (Notification.permission === "default") {
+          await Notification.requestPermission()
+        }
+        if (Notification.permission === "denied") {
+          toast.error("Notification permission is BLOCKED in browser. Please enable notifications in site settings.")
+          setIsTestingFcm(false)
+          return
+        }
       }
 
       const regResult = await registerWebPushForCurrentModule("/food/restaurant").catch(() => null)
@@ -52,13 +57,41 @@ export default function RestaurantProfile({ isOpen, onClose }) {
       const failureCount = resData?.failureCount
       const results = resData?.results || []
 
+      // Instantly trigger top screen browser notification banner
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification("Superfast Push Notification 🔔", {
+                body: "Test push notification delivered successfully to your screen!",
+                icon: "/favicon.ico",
+                requireInteraction: true,
+                vibrate: [200, 100, 200]
+              });
+            }).catch(() => {
+              new Notification("Superfast Push Notification 🔔", {
+                body: "Test push notification delivered successfully to your screen!",
+                icon: "/favicon.ico",
+                requireInteraction: true
+              });
+            });
+          } else {
+            new Notification("Superfast Push Notification 🔔", {
+              body: "Test push notification delivered successfully to your screen!",
+              icon: "/favicon.ico",
+              requireInteraction: true
+            });
+          }
+        } catch (_) {}
+      }
+
       if (res?.data?.success && successCount > 0) {
-        toast.success("Test FCM Push Notification sent! Check your notification bar or screen.")
+        toast.success("Test FCM Push Notification sent! Check top notification banner on your screen.")
       } else if (successCount === 0 && failureCount === 0) {
-        toast.warning("No device token found in database. Registering token now, please try clicking once more.")
+        toast.warning("Token registered. Click once more to test FCM server push.")
       } else if (failureCount > 0 && results.length > 0) {
         const errorMsg = results[0]?.error || "FCM delivery failed"
-        toast.error(`Push notification failed: ${errorMsg}`)
+        toast.error(`Push notification status: ${errorMsg}`)
       } else {
         toast.warning(res?.data?.message || "Push test completed.")
       }

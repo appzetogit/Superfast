@@ -57,7 +57,20 @@ export const getPublicHeroBannersController = async (req, res, next) => {
 
 export const getPublicUnder250BannersController = async (req, res, next) => {
     try {
-        const docs = await FoodUnder250Banner.find({ isActive: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
+        const devFilter = await getDeveloperModeFilter();
+        const requestedZoneId = typeof req.query?.zoneId === 'string' ? req.query.zoneId.trim() : '';
+        const query = { isActive: true };
+
+        if (requestedZoneId && (!devFilter.isDevMode || !devFilter.bypassLocation)) {
+            query.$or = [
+                { zoneId: requestedZoneId },
+                { zoneId: '' },
+                { zoneId: null },
+                { zoneId: { $exists: false } }
+            ];
+        }
+
+        const docs = await FoodUnder250Banner.find(query).sort({ sortOrder: 1, createdAt: -1 }).lean();
         return sendResponse(res, 200, 'Under 250 banners fetched', { banners: transformImageFields(docs) });
     } catch (error) {
         next(error);

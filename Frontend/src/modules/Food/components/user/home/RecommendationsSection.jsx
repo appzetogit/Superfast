@@ -112,7 +112,7 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
       animate={{ opacity: 1 }}
     >
       {/* Title */}
-      <h2 className="text-[11px] font-bold text-slate-400 tracking-widest uppercase mb-3 px-4">
+      <h2 className="text-[11px] font-extrabold text-slate-900 dark:text-white tracking-widest uppercase mb-3 px-4">
         RECOMMENDED FOR YOU
       </h2>
 
@@ -162,11 +162,7 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
                   />
 
                   {/* Rating or New badge */}
-                  <div className={`absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded-md text-[8px] sm:text-[9px] font-bold shadow-md flex items-center gap-0.5 text-white ${
-                    isNew
-                      ? "bg-gray-400"
-                      : "bg-[#259539]"
-                  }`}>
+                  <div className="absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded-md text-[8px] sm:text-[9px] font-bold shadow-md flex items-center gap-0.5 text-white bg-[#259539]">
                     {isNew ? "NEW" : rating.toFixed(1)}
                     {!isNew && <Star className="w-2 h-2 fill-white stroke-none" />}
                   </div>
@@ -193,8 +189,8 @@ const RecommendationsSection = memo(({ fallbackRestaurants, zoneId }) => {
                         <span>{deliveryTimeStr}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-0.5 text-[9px] font-medium whitespace-nowrap">
-                        <Clock className="w-2.5 h-2.5 text-slate-500 dark:text-slate-400" />
+                      <span className="text-amber-600 dark:text-amber-400 flex items-center gap-0.5 text-[9px] font-extrabold whitespace-nowrap">
+                        <Clock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
                         <span>{deliveryTimeStr}</span>
                       </span>
                     )}

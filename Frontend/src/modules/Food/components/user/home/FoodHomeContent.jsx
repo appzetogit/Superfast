@@ -145,7 +145,7 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
                     <div className="mt-2 flex flex-col items-start gap-2">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-widest shadow-sm ${
-                          availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-400 text-white"
+                          availability.isOpen ? "bg-emerald-500 text-white" : "bg-emerald-700 text-white"
                         }`}
                       >
                         {availability.isOpen ? "Open now" : "Offline"}
@@ -159,9 +159,7 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
                     </div>
                   </div>
                   <div
-                    className={`flex-shrink-0 rounded-2xl px-3 py-1.5 text-white shadow-md transition-transform duration-300 group-hover:scale-110 ${
-                      Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-400"
-                    } flex items-center gap-1.5`}
+                    className="flex-shrink-0 rounded-2xl px-3 py-1.5 text-white bg-[#259539] shadow-md transition-transform duration-300 group-hover:scale-110 flex items-center gap-1.5"
                   >
                     <span className="text-sm font-medium tracking-tight lg:text-lg">
                       {Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}
@@ -173,7 +171,7 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
                 </div>
 
                 <div className="mb-2 flex items-center gap-1 text-sm text-gray-500 opacity-70 transition-opacity duration-300 group-hover:opacity-100 lg:mb-3 lg:text-base">
-                  <Clock className="h-4 w-4 text-gray-500 dark:text-gray-400 lg:h-5 lg:w-5" strokeWidth={1.5} />
+                  <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 lg:h-5 lg:w-5" strokeWidth={1.5} />
                   <span className="font-medium text-gray-700 dark:text-gray-300">{restaurant.deliveryTime}</span>
                   <span className="mx-1">|</span>
                   <span className="font-medium text-gray-700 dark:text-gray-300">{restaurant.distance}</span>
@@ -362,7 +360,7 @@ function FoodHomeContent({
 
       {recommendedForYouRestaurants.length > 0 && (
         <motion.section className="content-auto pt-1 sm:pt-2" initial={false} animate={{ opacity: 1, y: 0 }}>
-          <h2 className="mb-2 px-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 sm:mb-3 sm:text-sm lg:text-base">
+          <h2 className="mb-2 px-4 text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white sm:mb-3 sm:text-sm lg:text-base">
             Recommended For You
           </h2>
 
@@ -399,11 +397,7 @@ function FoodHomeContent({
                         loading="lazy"
                       />
                       <div
-                        className={`absolute bottom-2 left-2 rounded-lg border border-white/10 px-2 py-0.5 text-[10px] shadow-lg ${
-                          Number(restaurant.rating) > 0
-                            ? "bg-black/80 font-medium text-white backdrop-blur-md"
-                            : "bg-gray-200/90 font-medium text-gray-600"
-                        }`}
+                        className="absolute bottom-2 left-2 rounded-lg px-2 py-0.5 text-[10px] shadow-lg bg-[#259539] font-bold text-white"
                       >
                         {Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}
                       </div>
@@ -426,10 +420,10 @@ function FoodHomeContent({
       )}
 
       <motion.section className="content-auto px-4 pt-4" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-gray-200/20 via-white to-gray-200/10 py-10 border border-gray-100/50 shadow-sm">
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-emerald-50/20 via-white to-orange-50/20 py-10 border border-emerald-100/50 shadow-sm">
           <div className="absolute inset-0 opacity-05 pointer-events-none" style={{ backgroundImage: `url(${discoveryBg})`, backgroundSize: '350px' }} />
           
-          <h2 className="mb-8 px-8 text-sm font-black uppercase tracking-[0.2em] text-gray-500/70 relative z-10">
+          <h2 className="mb-8 px-8 text-sm font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white relative z-10">
             {exploreMoreHeading}
           </h2>
           <div

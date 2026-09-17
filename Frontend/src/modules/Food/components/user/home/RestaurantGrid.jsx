@@ -87,7 +87,7 @@ const FoodRestaurantCard = memo(({
                     <div className="mt-2 flex flex-col items-start gap-2">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-widest shadow-sm ${
-                          availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-400 text-white"
+                          availability.isOpen ? "bg-emerald-500 text-white" : "bg-slate-700 text-white"
                         }`}
                       >
                         {availability.isOpen ? "Open now" : "Offline"}
@@ -101,9 +101,7 @@ const FoodRestaurantCard = memo(({
                     </div>
                   </div>
                   <div
-                    className={`flex-shrink-0 rounded-2xl px-3 py-1.5 text-white shadow-md transition-transform duration-300 group-hover:scale-110 ${
-                      Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-400"
-                    } flex items-center gap-1.5`}
+                    className="flex-shrink-0 rounded-2xl px-3 py-1.5 text-white bg-[#259539] shadow-md transition-transform duration-300 group-hover:scale-110 flex items-center gap-1.5"
                   >
                     <span className="text-sm font-medium tracking-tight lg:text-lg">
                       {Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}
@@ -173,10 +171,10 @@ const RestaurantGrid = memo(({
     <section className="content-auto space-y-0 pb-8 pt-3 sm:pt-4 md:pb-10 lg:pt-6">
       <div className="mb-4 px-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+          <h2 className="text-[11px] font-extrabold uppercase tracking-widest text-slate-900 dark:text-white">
             {filteredRestaurants.length} Restaurants Delivering to You
           </h2>
-          <span className="text-sm font-medium text-gray-500">Featured</span>
+          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Featured</span>
         </div>
       </div>
       

@@ -842,38 +842,46 @@ function showForegroundNotification(payload = {}) {
     }));
   }
 
-  // Module Sound & Notification Rules:
-  // 1. User app: NEVER play ring/notification sound! Ring audio should ONLY play in restaurant and delivery apps.
-  if (moduleName === "user") {
-    return;
-  }
+  const isTestNotification = 
+    notificationType === "test" || 
+    payload?.data?.type === "test" || 
+    String(payload?.data?.isTest) === "true" || 
+    title.toLowerCase().includes("test");
 
-  // 2. Delivery app: ONLY process notifications/sounds/toasts when order is explicitly ready_for_pickup, return pickup, or cancelled for this driver!
-  if (moduleName === "delivery") {
-    const isActionableForDelivery =
-      notificationType === "new_order" ||
-      notificationType === "return_pickup" ||
-      ["ready_for_pickup", "ready"].includes(orderStatus) ||
-      (String(orderStatus).includes("cancel") && payloadRole === "delivery");
-
-    if (!isActionableForDelivery) {
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Ignoring delivery FCM notification because order is not ready_for_pickup", { orderStatus, notificationType });
+  if (!isTestNotification) {
+    // Module Sound & Notification Rules:
+    // 1. User app: NEVER play ring/notification sound! Ring audio should ONLY play in restaurant and delivery apps.
+    if (moduleName === "user") {
       return;
     }
-  }
 
-  // 3. Restaurant app: ONLY play sound for initial new unaccepted order notifications (NEVER ring for driver actions!).
-  if (moduleName === "restaurant") {
-    const isNewOrderType = notificationType === "new_order" || payload?.data?.type === "new_order";
-    const isUnacceptedStatus = ["placed", "created", "pending", "placed_pending"].includes(orderStatus);
-    const isDriverAction =
-      ["delivery_accepted", "rider_arrived", "picked_up", "order_status_update", "reached_pickup", "reached_drop", "delivered"].includes(notificationType) ||
-      ["delivery_accepted", "rider_arrived", "picked_up", "order_status_update", "reached_pickup", "reached_drop", "delivered"].includes(String(payload?.data?.type || '').toLowerCase()) ||
-      ["preparing", "ready_for_pickup", "ready", "picked_up", "on_the_way", "delivered"].includes(orderStatus);
+    // 2. Delivery app: ONLY process notifications/sounds/toasts when order is explicitly ready_for_pickup, return pickup, or cancelled for this driver!
+    if (moduleName === "delivery") {
+      const isActionableForDelivery =
+        notificationType === "new_order" ||
+        notificationType === "return_pickup" ||
+        ["ready_for_pickup", "ready"].includes(orderStatus) ||
+        (String(orderStatus).includes("cancel") && payloadRole === "delivery");
 
-    if (!isNewOrderType || isDriverAction || !isUnacceptedStatus) {
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Ignoring restaurant push sound for driver action / non-new-order", { orderStatus, notificationType });
-      return;
+      if (!isActionableForDelivery) {
+        pushDebugLog(PUSH_DEBUG_PREFIX, "Ignoring delivery FCM notification because order is not ready_for_pickup", { orderStatus, notificationType });
+        return;
+      }
+    }
+
+    // 3. Restaurant app: ONLY play sound for initial new unaccepted order notifications (NEVER ring for driver actions!).
+    if (moduleName === "restaurant") {
+      const isNewOrderType = notificationType === "new_order" || payload?.data?.type === "new_order";
+      const isUnacceptedStatus = ["placed", "created", "pending", "placed_pending"].includes(orderStatus);
+      const isDriverAction =
+        ["delivery_accepted", "rider_arrived", "picked_up", "order_status_update", "reached_pickup", "reached_drop", "delivered"].includes(notificationType) ||
+        ["delivery_accepted", "rider_arrived", "picked_up", "order_status_update", "reached_pickup", "reached_drop", "delivered"].includes(String(payload?.data?.type || '').toLowerCase()) ||
+        ["preparing", "ready_for_pickup", "ready", "picked_up", "on_the_way", "delivered"].includes(orderStatus);
+
+      if (!isNewOrderType || isDriverAction || !isUnacceptedStatus) {
+        pushDebugLog(PUSH_DEBUG_PREFIX, "Ignoring restaurant push sound for driver action / non-new-order", { orderStatus, notificationType });
+        return;
+      }
     }
   }
 
@@ -1048,13 +1056,33 @@ async function safeGetFcmToken(messaging, options) {
       } catch (_) {}
     }
     const { forceRefresh, ...getTokenOptions } = options || {};
-    const tokenPromise = getToken(messaging, getTokenOptions);
+    const tokenPromise = getToken(messaging, getTokenOptions).catch((err) => {
+      const msg = String(err?.message || err || "");
+      if (msg.includes("401") || msg.includes("Unauthorized")) {
+        pushDebugWarn(PUSH_DEBUG_PREFIX, "FCM getToken Google API 401 Unauthorized error:", { error: msg });
+      }
+      throw err;
+    });
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("FCM getToken timeout (6s)")), 6000)
     );
     return await Promise.race([tokenPromise, timeoutPromise]);
   } catch (error) {
-    console.warn("FCM getToken failed gracefully, retrying with deleteToken:", error?.message || error);
+    const errorMsg = String(error?.message || error || "");
+    console.warn("FCM getToken failed gracefully:", errorMsg);
+
+    // If API returned 401, token-subscribe-failed, missing credential, or timed out, retrying will fail identically
+    if (
+      errorMsg.includes("401") ||
+      errorMsg.includes("Unauthorized") ||
+      errorMsg.includes("timeout") ||
+      errorMsg.includes("token-subscribe-failed") ||
+      errorMsg.includes("authentication credential")
+    ) {
+      pushDebugWarn(PUSH_DEBUG_PREFIX, "FCM web token fetch aborted due to API credential error or timeout.", { error: errorMsg });
+      return null;
+    }
+
     try {
       const { getToken, deleteToken } = await import("firebase/messaging");
       await deleteToken(messaging).catch(() => {});

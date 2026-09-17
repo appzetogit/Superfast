@@ -16,7 +16,7 @@ const RecommendedSection = memo(({ recommendedForYouRestaurants }) => {
       initial={false}
       animate={{ opacity: 1, y: 0 }}
     >
-      <h2 className="text-[11px] font-bold text-slate-400 tracking-widest uppercase mb-3 px-4">
+      <h2 className="text-[11px] font-extrabold text-slate-900 dark:text-white tracking-widest uppercase mb-3 px-4">
         RECOMMENDED FOR YOU
       </h2>
 
@@ -56,7 +56,7 @@ const RecommendedSection = memo(({ recommendedForYouRestaurants }) => {
                     className="w-full h-full object-cover"
                     backendOrigin={BACKEND_ORIGIN}
                   />
-                  <div className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-md ${isNew ? "bg-white/90 dark:bg-neutral-800/90 text-slate-500 dark:text-slate-300 border border-gray-100 dark:border-neutral-700" : "bg-black/80 dark:bg-white/80 text-white dark:text-black"}`}>
+                  <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-extrabold shadow-md bg-[#259539] text-white flex items-center gap-0.5">
                     {isNew ? "NEW" : Number(restaurant.rating).toFixed(1)}
                   </div>
                   {availabilityStatus.isOpen && availabilityStatus.closingCountdownLabel && (
