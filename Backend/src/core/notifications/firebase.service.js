@@ -192,6 +192,8 @@ const buildMessagePayload = (payload = {}, token) => {
 
     const data = normalizeDataMap({
         ...(payload.data || {}),
+        title,
+        body,
         orderId: payload.data?.orderId || payload.orderId || '',
         role: role.toLowerCase() || 'user',
         sound: soundFile,
