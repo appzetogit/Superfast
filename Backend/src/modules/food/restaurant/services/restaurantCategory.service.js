@@ -3,6 +3,7 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
 import {
     backfillLegacyCategoryWorkflow,
     GLOBAL_CATEGORY_FILTER,
@@ -167,6 +168,7 @@ export function invalidatePublicCategoriesCache() {
 }
 
 export async function listPublicCategories(query = {}) {
+    const devFilter = await getDeveloperModeFilter();
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 1000, 1), 1000);
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
@@ -174,29 +176,46 @@ export async function listPublicCategories(query = {}) {
     const search = typeof query.search === 'string' ? query.search.trim() : '';
     const zoneIdRaw = typeof query.zoneId === 'string' ? query.zoneId.trim() : '';
 
-    const cacheKey = JSON.stringify({ limit, page, skip, search, zoneIdRaw });
+    const cacheKey = JSON.stringify({
+        limit,
+        page,
+        skip,
+        search,
+        zoneIdRaw,
+        devMode: devFilter.isDevMode,
+        devCatIds: devFilter.demoLandingCategoryIds
+    });
     const now = Date.now();
     const cached = publicCategoriesCache.get(cacheKey);
     if (cached && now - cached.lastFetched < CACHE_TTL_MS) {
         return cached.data;
     }
 
-    const approvedCategoryIds = await FoodItem.distinct('categoryId', {
-        approvalStatus: 'approved',
-        categoryId: { $ne: null }
-    });
-
-    if (!approvedCategoryIds.length) {
-        const result = { categories: [], total: 0, page, limit };
-        publicCategoriesCache.set(cacheKey, { data: result, lastFetched: now });
-        return result;
-    }
-
     const filter = {
-        _id: { $in: approvedCategoryIds },
         isActive: true,
         $and: [{ $or: GLOBAL_CATEGORY_FILTER }, { $or: APPROVED_CATEGORY_FILTER }]
     };
+
+    if (devFilter.isDevMode && Array.isArray(devFilter.demoLandingCategoryIds) && devFilter.demoLandingCategoryIds.length > 0) {
+        const catObjIds = devFilter.demoLandingCategoryIds
+            .map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null)
+            .filter(Boolean);
+        if (catObjIds.length > 0) {
+            filter._id = { $in: catObjIds };
+        }
+    } else {
+        const approvedCategoryIds = await FoodItem.distinct('categoryId', {
+            approvalStatus: 'approved',
+            categoryId: { $ne: null }
+        });
+
+        if (!approvedCategoryIds.length) {
+            const result = { categories: [], total: 0, page, limit };
+            publicCategoriesCache.set(cacheKey, { data: result, lastFetched: now });
+            return result;
+        }
+        filter._id = { $in: approvedCategoryIds };
+    }
 
     if (search) {
         const term = escapeRegex(search.slice(0, 80));

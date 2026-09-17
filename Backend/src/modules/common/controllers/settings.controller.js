@@ -10,6 +10,7 @@ import { FoodOtp } from '../../../core/otp/otp.model.js';
 import { transformImageFields } from '../../../utils/urlHelper.js';
 import { invalidateCache } from '../../../middleware/cache.js';
 import { invalidateLandingSettingsCache } from '../../food/landing/controllers/publicLanding.controller.js';
+import { invalidatePublicCategoriesCache } from '../../food/restaurant/services/restaurantCategory.service.js';
 
 export async function getGlobalSettings(req, res, next) {
     try {
@@ -350,6 +351,7 @@ export async function updateGlobalSettings(req, res, next) {
         // Invalidate public caches when settings are updated
         try {
             invalidateLandingSettingsCache();
+            invalidatePublicCategoriesCache();
             await invalidateCache('*');
         } catch (cacheErr) {
             console.error("Error invalidating cache on settings update:", cacheErr);

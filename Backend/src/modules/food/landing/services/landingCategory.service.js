@@ -1,4 +1,5 @@
 import { FoodLandingCategory } from '../models/landingCategory.model.js';
+import { FoodCategory } from '../../admin/models/category.model.js';
 import { deleteImage, processAndSaveImage } from '../../../../services/storage.service.js';
 import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
 import mongoose from 'mongoose';
@@ -23,18 +24,47 @@ export const listLandingCategories = async () => {
  */
 export const listPublicLandingCategories = async () => {
     const devFilter = await getDeveloperModeFilter();
-    const query = { isActive: true };
 
     if (devFilter.isDevMode && Array.isArray(devFilter.demoLandingCategoryIds) && devFilter.demoLandingCategoryIds.length > 0) {
         const catObjIds = devFilter.demoLandingCategoryIds
             .map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null)
             .filter(Boolean);
+
         if (catObjIds.length > 0) {
-            query._id = { $in: catObjIds };
+            const [landingList, mainList] = await Promise.all([
+                FoodLandingCategory.find({ _id: { $in: catObjIds }, isActive: true }).lean(),
+                FoodCategory.find({ _id: { $in: catObjIds }, isActive: true }).lean()
+            ]);
+
+            const landingFormatted = landingList.map(item => ({
+                id: item._id,
+                name: item.label,
+                slug: item.label.toLowerCase().replace(/\s+/g, '-'),
+                image: item.imageUrl,
+                order: item.sortOrder ?? 0
+            }));
+
+            const mainFormatted = mainList.map(item => ({
+                id: item._id,
+                name: item.name,
+                slug: (item.name || '').toLowerCase().replace(/\s+/g, '-'),
+                image: item.image,
+                order: item.sortOrder ?? 0
+            }));
+
+            const combinedMap = new Map();
+            landingFormatted.forEach(c => combinedMap.set(String(c.id), c));
+            mainFormatted.forEach(c => {
+                if (!combinedMap.has(String(c.id))) {
+                    combinedMap.set(String(c.id), c);
+                }
+            });
+
+            return Array.from(combinedMap.values());
         }
     }
 
-    const list = await FoodLandingCategory.find(query)
+    const list = await FoodLandingCategory.find({ isActive: true })
         .sort({ sortOrder: 1, createdAt: -1 })
         .lean();
     return list.map(item => ({
