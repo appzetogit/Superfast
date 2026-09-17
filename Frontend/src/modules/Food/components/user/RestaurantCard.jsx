@@ -39,7 +39,7 @@ const RecommendedItemsCarousel = React.memo(({ items = [], restaurantSlug, backe
   if (!items || items.length === 0) {
     // Fallback if no recommended items exist
     return (
-      <div className="w-full h-[140px] sm:h-[160px] bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center text-gray-400">
+      <div className="w-full h-[140px] sm:h-[160px] bg-neutral-900/5 dark:bg-neutral-900/40 flex flex-col items-center justify-center text-gray-400">
         <span className="text-sm font-medium">No items available</span>
       </div>
     );
@@ -52,7 +52,7 @@ const RecommendedItemsCarousel = React.memo(({ items = [], restaurantSlug, backe
   };
 
   return (
-    <div className="relative w-full h-[160px] sm:h-[180px] bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+    <div className="relative w-full h-[160px] sm:h-[180px] bg-neutral-900/5 dark:bg-neutral-900/40 border-b border-gray-100 dark:border-gray-800">
       <div className="flex overflow-x-auto gap-3 px-3 py-3 h-full items-center hide-scrollbar scroll-smooth snap-x">
         {items.map((item) => (
           <div 
@@ -60,7 +60,7 @@ const RecommendedItemsCarousel = React.memo(({ items = [], restaurantSlug, backe
             onClick={(e) => handleItemClick(e, item._id)}
             className="flex-shrink-0 w-[120px] sm:w-[140px] h-full bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 snap-start relative group cursor-pointer transition-transform active:scale-95"
           >
-            <div className="h-[90px] sm:h-[110px] w-full relative overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div className="h-[90px] sm:h-[110px] w-full relative overflow-hidden bg-neutral-900/5 dark:bg-neutral-900/40">
               {item.image ? (
                 <OptimizedImage
                   src={withCacheBuster(item.image, backendOrigin)}

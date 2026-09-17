@@ -3,6 +3,20 @@ import { publicGetOnce, restaurantAPI, adminAPI } from "@food/api";
 import { foodImages } from "@food/constants/images";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
 import * as imgUtils from "@food/utils/imageUtils";
+import offersIcon from "@food/assets/explore more icons/offers.png";
+import gourmetIcon from "@food/assets/explore more icons/gourmet.png";
+import collectionIcon from "@food/assets/explore more icons/collection.png";
+import bakeryIcon from "@food/assets/explore more icons/bakery.png";
+
+const getExploreIconFallback = (label = "", type = "") => {
+  const name = (label || "").toLowerCase();
+  const linkType = (type || "").toLowerCase();
+  if (name.includes("offer") || linkType === "offers") return offersIcon;
+  if (name.includes("gourmet") || linkType === "gourmet") return gourmetIcon;
+  if (name.includes("collection") || linkType === "collections") return collectionIcon;
+  if (name.includes("bakery")) return bakeryIcon;
+  return offersIcon;
+};
 
 /**
  * Custom hook to manage all data fetching and filtering for the Food Module Home Page.
@@ -187,9 +201,12 @@ export const useFoodHomeData = ({
           else if (type === 'collections') href = "/user/collections";
           else if (target) href = target;
 
+          const normalizedImg = normalizeImageUrl(it.image || it.imageUrl || it.iconUrl || it.icon);
+          const finalImage = normalizedImg || getExploreIconFallback(it.label || it.name, type);
+
           return {
             ...it,
-            image: normalizeImageUrl(it.image || it.imageUrl || it.iconUrl || it.icon),
+            image: finalImage,
             label: it.label || it.name || "Explore",
             href,
           };

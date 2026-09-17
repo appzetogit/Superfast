@@ -106,8 +106,8 @@ function RestaurantCardSkeleton({ className, compact = false }) {
     <div className={cn("h-full", className)}>
       <div className="h-full overflow-hidden rounded-[28px] border-0 bg-white shadow-sm dark:bg-[#1a1a1a]">
         {/* Image Placeholder */}
-        <div className={cn("relative overflow-hidden bg-gray-100 dark:bg-gray-800", compact ? "h-40 sm:h-44" : "h-44 sm:h-52 md:h-64")}>
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900" />
+        <div className={cn("relative overflow-hidden bg-neutral-100/60 dark:bg-neutral-900/60", compact ? "h-40 sm:h-44" : "h-44 sm:h-52 md:h-64")}>
+          <div className="absolute inset-0 bg-gradient-to-br from-neutral-100/40 via-amber-50/20 to-neutral-100/40 dark:from-neutral-900/40 dark:to-neutral-900/60 animate-pulse" />
           {/* Header Badges */}
           <Skeleton className="absolute left-4 top-4 h-8 w-24 rounded-full bg-white/40 dark:bg-white/5" />
           <Skeleton className="absolute right-4 top-4 h-11 w-11 rounded-[20px] bg-white/40 dark:bg-white/5" />

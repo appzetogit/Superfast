@@ -35,6 +35,12 @@ const OptimizedImage = React.memo(({
   const imgRef = useRef(null)
   const observerRef = useRef(null)
 
+  // Reset load/error state when src changes to prevent sticking to old states
+  useEffect(() => {
+    setIsLoaded(false)
+    setHasError(false)
+  }, [src])
+
   // Check if image URL supports optimization (external URLs)
   const supportsOptimization = (imageSrc) => {
     if (!imageSrc || typeof imageSrc !== 'string' || imageSrc === '') return false
@@ -137,8 +143,8 @@ const OptimizedImage = React.memo(({
     if (onError) onError(e)
   }
 
-  // Default blur placeholder (tiny gray square)
-  const defaultBlurDataURL = blurDataURL || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjwvc3ZnPg=='
+  // Transparent/subtle blur placeholder (NO grey box)
+  const defaultBlurDataURL = blurDataURL || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9InRyYW5zcGFyZW50Ii8+PC9zdmc+'
 
   const fallbackSvg = getFallbackImage()
 
@@ -147,26 +153,21 @@ const OptimizedImage = React.memo(({
 
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
-      {/* Blur Placeholder */}
-      {placeholder === 'blur' && !isLoaded && (
+      {/* Blur Placeholder - Transparent/Soft */}
+      {placeholder === 'blur' && blurDataURL && !isLoaded && (
         <motion.div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           initial={{ opacity: 1 }}
           animate={{ opacity: isLoaded ? 0 : 1 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
           style={{
             backgroundImage: `url(${defaultBlurDataURL})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            filter: 'blur(20px)',
-            transform: 'scale(1.1)',
+            filter: 'blur(10px)',
+            transform: 'scale(1.05)',
           }}
         />
-      )}
-
-      {/* Loading Skeleton */}
-      {!isLoaded && (
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-pulse" />
       )}
 
       {/* Actual Image */}
@@ -187,7 +188,7 @@ const OptimizedImage = React.memo(({
             srcSet={!hasError ? srcSet : undefined}
             sizes={supportsOptimization(finalSrc) ? sizes : undefined}
             alt={alt || 'Image'}
-            className={`w-full h-full ${objectFit === 'cover' ? 'object-cover' : objectFit === 'contain' ? 'object-contain' : ''} ${priority || isLoaded ? 'opacity-100' : 'opacity-0'} ${!priority && 'transition-opacity duration-300'}`}
+            className={`w-full h-full ${objectFit === 'cover' ? 'object-cover' : objectFit === 'contain' ? 'object-contain' : ''} transition-opacity duration-200`}
             loading={priority ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={priority ? 'high' : 'auto'}

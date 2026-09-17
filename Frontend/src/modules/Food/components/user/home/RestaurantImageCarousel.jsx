@@ -129,7 +129,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
     const renderSrc = validImages.length > 0 ? withCacheBuster(validImages[0], backendOrigin) : fallbackFoodImage;
     
     return (
-      <div className="relative w-full h-[220px] sm:h-[240px] overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-[28px] rounded-b-none">
+      <div className="relative w-full h-[220px] sm:h-[240px] overflow-hidden bg-neutral-900/5 dark:bg-neutral-900/40 rounded-t-[28px] rounded-b-none">
         <OptimizedImage
           src={renderSrc}
           alt={restaurant.name || "Restaurant"}
@@ -152,7 +152,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
 
   return (
     <div 
-      className="relative w-full h-[220px] sm:h-[240px] bg-gray-100 dark:bg-gray-900 border-t border-x border-b-0 border-gray-100 dark:border-gray-800 rounded-t-[28px] rounded-b-none overflow-hidden shadow-sm"
+      className="relative w-full h-[220px] sm:h-[240px] bg-neutral-900/5 dark:bg-neutral-900/40 border-t border-x border-b-0 border-neutral-100 dark:border-neutral-800/40 rounded-t-[28px] rounded-b-none overflow-hidden shadow-sm"
       onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
       onTouchEnd={(e) => e.stopPropagation()}
