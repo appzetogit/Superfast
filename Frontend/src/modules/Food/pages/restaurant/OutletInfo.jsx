@@ -32,6 +32,7 @@ import { restaurantAPI } from "@food/api"
 import { toast } from "sonner"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { isFlutterBridgeAvailable, convertBase64ToFile } from "@food/utils/imageUploadUtils"
+import { clearModuleAuth } from "@food/utils/auth"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -103,6 +104,9 @@ export default function OutletInfo() {
   const [uploadingCount, setUploadingCount] = useState(0)
   const [showExpiryAlert, setShowExpiryAlert] = useState(false)
   const [daysToExpiry, setDaysToExpiry] = useState(null)
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("")
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   
   const profileImageInputRef = useRef(null)
   const menuImageInputRef = useRef(null)
@@ -560,6 +564,22 @@ export default function OutletInfo() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmInput !== "DELETE" || isDeletingAccount) return
+    try {
+      setIsDeletingAccount(true)
+      await restaurantAPI.deleteAccount()
+      toast.success("Restaurant account deleted successfully.")
+      clearModuleAuth("restaurant")
+      setShowDeleteAccountDialog(false)
+      navigate("/food/restaurant/onboarding", { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to delete account. Please try again.")
+    } finally {
+      setIsDeletingAccount(false)
+    }
+  }
+
   return (
     <>
       <div className="min-h-screen bg-white overflow-x-hidden">
@@ -894,8 +914,33 @@ export default function OutletInfo() {
               </div>
             </div>
           </section>
+
+          {/* Danger Zone / Delete Account */}
+          <section className="space-y-3 pt-2">
+            <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider ml-1">Danger Zone</h3>
+            <div className="bg-red-50/50 border border-red-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+              <div>
+                <h4 className="text-sm font-bold text-red-900">Delete Restaurant Account</h4>
+                <p className="text-xs text-red-600 font-medium mt-0.5 leading-relaxed">
+                  Permanently delete your outlet profile, menu items, and account data. This action cannot be undone.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmInput("")
+                  setShowDeleteAccountDialog(true)
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-2.5 text-xs font-bold shrink-0 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Account
+              </Button>
+            </div>
+          </section>
         </div>
       </div>
+
 
       <Dialog open={showEditNameDialog} onOpenChange={setShowEditNameDialog}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%]">
@@ -1094,6 +1139,52 @@ export default function OutletInfo() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 border-none shadow-2xl w-[90%]">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-7 h-7 text-red-600" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+              Delete Restaurant Account?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete your restaurant account? All menu items, profile details, and account data will be permanently deleted. To confirm, type <strong className="text-red-600">DELETE</strong> below.
+            </DialogDescription>
+          </div>
+
+          <div className="mb-5">
+            <Input
+              type="text"
+              value={deleteConfirmInput}
+              onChange={(e) => setDeleteConfirmInput(e.target.value.toUpperCase())}
+              placeholder="Type DELETE to confirm"
+              className="w-full text-center uppercase font-bold text-base py-3 border-gray-300 focus:ring-2 focus:ring-red-500 rounded-xl"
+            />
+          </div>
+
+          <DialogFooter className="flex flex-row gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAccountDialog(false)}
+              disabled={isDeletingAccount}
+              className="flex-1 rounded-xl text-gray-700 py-3 font-semibold"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount || deleteConfirmInput !== "DELETE"}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeletingAccount ? "Deleting..." : "Delete Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
+

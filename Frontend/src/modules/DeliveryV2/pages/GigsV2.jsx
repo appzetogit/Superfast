@@ -9,7 +9,15 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { gigAPI } from '@food/api';
 
+function formatLocalDate(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const ZONES = [
+  { id: 'all_zones', name: 'ALL ZONES' },
   { id: 'indore_central', name: 'Indore Central' },
   { id: 'vijay_nagar', name: 'Vijay Nagar Zone' },
   { id: 'palasia', name: 'Palasia Zone' },
@@ -23,10 +31,7 @@ export default function GigsV2() {
   const [activeTab, setActiveTab] = useState('gigs'); // 'gigs' | 'drivers' | 'my_shifts'
   const [selectedZone, setSelectedZone] = useState('Indore Central');
   const [driverZone, setDriverZone] = useState('Indore Central');
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  });
+  const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
 
   const [gigs, setGigs] = useState([]);
   const [loadingGigs, setLoadingGigs] = useState(false);
@@ -284,7 +289,7 @@ export default function GigsV2() {
               {[0, 1, 2].map((offset) => {
                 const dateObj = new Date();
                 dateObj.setDate(dateObj.getDate() + offset);
-                const isoStr = dateObj.toISOString().split('T')[0];
+                const isoStr = formatLocalDate(dateObj);
                 const dayLabel = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
                 const dateNum = dateObj.getDate();
                 const isSelected = selectedDate === isoStr;

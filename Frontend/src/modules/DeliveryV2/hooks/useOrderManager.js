@@ -211,36 +211,39 @@ export const useOrderManager = () => {
       return;
     }
     try {
-      // 1. Verify OTP first
-      const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otp);
-      
-      if (verifyRes?.data?.success) {
-        let finalOrder = verifyRes.data?.data?.order || activeOrder;
-        
+      let finalOrder = activeOrder;
+      const isAlreadyVerified = Boolean(activeOrder?.deliveryVerification?.dropOtp?.verified);
+      const otpStr = String(otp || '').trim();
+
+      // 1. Only verify OTP if not already verified and OTP string is provided
+      if (!isAlreadyVerified && otpStr) {
         try {
-          // 2. Mark as complete
-          const completeRes = await deliveryAPI.completeDelivery(orderId, { 
-            otp, 
-            rating: 5,
-            paymentMode
-          });
-          if (completeRes.data?.success && completeRes.data?.data?.order) {
-            finalOrder = completeRes.data.data.order;
+          const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otpStr);
+          if (verifyRes?.data?.success && verifyRes.data?.data?.order) {
+            finalOrder = verifyRes.data.data.order;
           }
-        } catch (completeErr) {
-          console.warn('Complete call failed, but OTP was verified.', completeErr);
-          // If already completed, we proceed to show the summary with whatever we have
+        } catch (verifyErr) {
+          const msg = String(verifyErr?.response?.data?.message || '').toLowerCase();
+          if (!msg.includes('already verified')) {
+            throw verifyErr;
+          }
         }
-        
-        // Update local order state so Summary Modal shows 'delivered' status
-        if (finalOrder) setActiveOrder(finalOrder);
-        
-        updateTripStatus('COMPLETED');
-        // toast.success('Delivery Success!');
-      } else {
-        toast.error('Invalid OTP. Please check with customer.');
-        throw new Error('Invalid OTP');
       }
+
+      // 2. Mark as complete
+      const completeRes = await deliveryAPI.completeDelivery(orderId, { 
+        otp: otpStr || undefined, 
+        rating: 5,
+        paymentMode
+      });
+      if (completeRes?.data?.success && completeRes.data?.data?.order) {
+        finalOrder = completeRes.data.data.order;
+      }
+      
+      // Update local order state so Summary Modal shows 'delivered' status
+      if (finalOrder) setActiveOrder(finalOrder);
+      
+      updateTripStatus('COMPLETED');
     } catch (error) {
       console.error('Completion Error:', error);
       toast.error(error?.response?.data?.message || 'Verification failed');

@@ -19,9 +19,11 @@ const stringToTime = (timeString) => {
     return new Date(2000, 0, 1, 9, 0) // Default to 9:00 AM
   }
   const [hours, minutes] = timeString.split(":").map(Number)
+  const h = isNaN(hours) ? 9 : hours
+  const m = isNaN(minutes) ? 0 : minutes
   // Ensure valid hours (0-23) and minutes (0-59)
-  const validHours = Math.max(0, Math.min(23, hours || 9))
-  const validMinutes = Math.max(0, Math.min(59, minutes || 0))
+  const validHours = Math.max(0, Math.min(23, h))
+  const validMinutes = Math.max(0, Math.min(59, m))
   return new Date(2000, 0, 1, validHours, validMinutes)
 }
 
@@ -39,11 +41,13 @@ const timeToString = (date) => {
 const formatTime12Hour = (time24) => {
   if (!time24) return "09:00 AM"
   const [hours, minutes] = time24.split(":").map(Number)
+  if (isNaN(hours) || isNaN(minutes)) return "09:00 AM"
   const period = hours >= 12 ? 'PM' : 'AM'
   const hours12 = hours % 12 || 12
   const minutesStr = minutes.toString().padStart(2, '0')
   return `${hours12}:${minutesStr} ${period}`
 }
+
 
 const getDefaultDays = () => ({
   Monday: { isOpen: true, openingTime: "09:00", closingTime: "22:00" },

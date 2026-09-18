@@ -97,12 +97,30 @@ export async function listZoneGigsController(req, res) {
       zoneName = 'Indore Central';
     }
 
-    // Fetch Admin-created active gigs for driver's zone OR 'ALL ZONES' for date
-    const zoneQuery = (zoneName && zoneName !== 'ALL ZONES')
-      ? { $in: [zoneName, 'ALL ZONES', 'General Zone', ''] }
-      : { $exists: true };
+    // Fetch Admin-created active gigs for driver's zone OR 'ALL ZONES' for date (Case-insensitive)
+    const query = { isActive: true };
 
-    const gigs = await Gig.find({ zoneName: zoneQuery, date, isActive: true })
+    if (zoneName && zoneName !== 'ALL ZONES' && zoneName !== 'ALL' && zoneName !== 'All Areas / Zones') {
+      const escapedZone = zoneName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const cleanZone = zoneName.replace(/\s*zone\s*/i, '').trim();
+      const escapedCleanZone = cleanZone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      query.$or = [
+        { zoneName: new RegExp(`^${escapedZone}$`, 'i') },
+        { zoneName: new RegExp(`^${escapedCleanZone}`, 'i') },
+        { zoneName: /^ALL ZONES$/i },
+        { zoneName: /^General Zone$/i },
+        { zoneName: '' },
+        { zoneName: null },
+        { zoneName: { $exists: false } },
+      ];
+    }
+
+    if (date && date !== 'ALL DATES' && date !== 'ALL' && date !== '') {
+      query.date = date;
+    }
+
+    const gigs = await Gig.find(query)
       .sort({ startTime: 1 })
       .lean();
 
@@ -530,7 +548,10 @@ export async function adminListGigsController(req, res) {
   try {
     const { zoneName, date, isActive } = req.query;
     const filter = {};
-    if (zoneName && zoneName !== 'ALL ZONES' && zoneName !== 'ALL') filter.zoneName = zoneName;
+    if (zoneName && zoneName !== 'ALL ZONES' && zoneName !== 'ALL') {
+      const escapedZone = zoneName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.zoneName = new RegExp(`^${escapedZone}$`, 'i');
+    }
     if (date && date !== 'ALL DATES' && date !== 'ALL' && date !== '') filter.date = date;
     if (isActive !== undefined && isActive !== 'all' && isActive !== '') filter.isActive = isActive === 'true';
 

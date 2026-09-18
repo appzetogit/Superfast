@@ -358,6 +358,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
 
             {!isPaid && (
               <div className="flex flex-col gap-3">
+                {/* 
                 <button
                   onClick={generateQr}
                   disabled={isGeneratingQr}
@@ -373,6 +374,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
                   )}
                   Show Payment QR
                 </button>
+                */}
 
                 <button
                   onClick={handleCashSelection}
