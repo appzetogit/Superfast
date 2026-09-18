@@ -1045,26 +1045,24 @@ async function safeGetFcmToken(messaging, options) {
     const realToken = await getToken(messaging, {
       vapidKey: options?.vapidKey,
       serviceWorkerRegistration: options?.serviceWorkerRegistration,
-    }).catch(() => null);
+    }).catch((err) => {
+      console.warn("FCM getToken error:", err?.message || err);
+      return null;
+    });
 
-    if (realToken && typeof realToken === "string" && realToken.length > 20 && !realToken.startsWith("eyJ")) {
+    if (realToken && typeof realToken === "string" && realToken.length > 20 && !realToken.startsWith("eyJ") && !realToken.startsWith("fcm_web_")) {
       return realToken;
     }
-  } catch (_) {
-    // Ignore real getToken failures and fallback
+  } catch (err) {
+    console.warn("FCM messaging import error:", err?.message || err);
   }
 
+  // Remove any stale dummy fallback tokens from localStorage
   try {
-    let persistentToken = localStorage.getItem("fcm_web_fallback_token");
-    if (!persistentToken) {
-      const randomStr = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-      persistentToken = `fcm_web_${Date.now()}_${randomStr}`;
-      localStorage.setItem("fcm_web_fallback_token", persistentToken);
-    }
-    return persistentToken;
-  } catch {
-    return `fcm_web_${Date.now()}_default`;
-  }
+    localStorage.removeItem("fcm_web_fallback_token");
+  } catch (_) {}
+
+  return "";
 }
 
 export async function registerWebPushForCurrentModule(pathname = window.location.pathname, options = {}) {
@@ -1153,10 +1151,15 @@ export async function registerWebPushForCurrentModule(pathname = window.location
         return { success: false, reason: "sw_registration_failed" };
       }
 
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Service worker registered for push", {
-        scope: registration.scope,
-        moduleName,
-      });
+      if (options?.forceRefresh && registration?.pushManager) {
+        try {
+          const existingSub = await registration.pushManager.getSubscription().catch(() => null);
+          if (existingSub) {
+            await existingSub.unsubscribe().catch(() => false);
+            pushDebugLog(PUSH_DEBUG_PREFIX, "Unsubscribed stale browser push subscription for forceRefresh");
+          }
+        } catch (_) {}
+      }
 
       const messaging = getMessaging(app);
 
