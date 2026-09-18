@@ -33,6 +33,7 @@ export default function RestaurantProfilePage() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(true)
   const [isTestingFcm, setIsTestingFcm] = useState(false)
 
+  /*
   const handleTestFcm = async () => {
     if (isTestingFcm) return
     setIsTestingFcm(true)
@@ -109,6 +110,8 @@ export default function RestaurantProfilePage() {
       setIsTestingFcm(false)
     }
   }
+  */
+
 
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -264,6 +267,7 @@ export default function RestaurantProfilePage() {
         </div>
 
         {/* Test FCM Button */}
+        {/*
         <button
           onClick={handleTestFcm}
           disabled={isTestingFcm}
@@ -276,6 +280,8 @@ export default function RestaurantProfilePage() {
           )}
           {isTestingFcm ? "Sending test push..." : "Test FCM Push Notification"}
         </button>
+        */}
+
 
         {/* Logout Button */}
         <button

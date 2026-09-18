@@ -26,6 +26,7 @@ export default function RestaurantProfile({ isOpen, onClose }) {
   const [loadingRestaurant, setLoadingRestaurant] = useState(true)
   const [isTestingFcm, setIsTestingFcm] = useState(false)
 
+  /*
   const handleTestFcm = async () => {
     if (isTestingFcm) return
     setIsTestingFcm(true)
@@ -102,6 +103,8 @@ export default function RestaurantProfile({ isOpen, onClose }) {
       setIsTestingFcm(false)
     }
   }
+  */
+
 
   // Handle back button to close the sheet
   useEffect(() => {
@@ -373,6 +376,7 @@ export default function RestaurantProfile({ isOpen, onClose }) {
 
             {/* Action Buttons */}
             <div className="px-6 pb-8 space-y-4">
+              {/*
               <button
                 onClick={handleTestFcm}
                 disabled={isTestingFcm}
@@ -390,6 +394,8 @@ export default function RestaurantProfile({ isOpen, onClose }) {
                   </>
                 )}
               </button>
+              */}
+
 
               <button
                 onClick={handleLogout}
