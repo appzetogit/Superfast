@@ -1669,6 +1669,8 @@ const CheckoutPage = () => {
         const placedOrderId =
           order?.orderId || order?.orderNumber || order?.id || order?._id || "";
 
+        /*
+        // Razorpay Online Payment Integration - Disabled
         if (selectedPayment === "online" && razorpayData) {
           try {
             const companyName = await getCompanyNameAsync();
@@ -1743,6 +1745,7 @@ const CheckoutPage = () => {
             return;
           }
         }
+        */
 
         // COD flow or fallback if Razorpay missing
         clearCart();

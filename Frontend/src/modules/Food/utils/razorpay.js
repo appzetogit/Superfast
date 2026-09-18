@@ -3,11 +3,9 @@
  * Handles Razorpay payment initialization and verification
  */
 
+/*
 let razorpayLoaded = false;
 
-/**
- * Load Razorpay checkout script
- */
 export const loadRazorpayScript = () => {
   return new Promise((resolve, reject) => {
     if (razorpayLoaded) {
@@ -34,25 +32,19 @@ export const loadRazorpayScript = () => {
     document.body.appendChild(script);
   });
 };
+*/
 
-/**
- * Initialize Razorpay payment
- * @param {Object} options - Payment options
- * @param {String} options.key - Razorpay key ID
- * @param {String} options.amount - Amount in paise
- * @param {String} options.currency - Currency code
- * @param {String} options.order_id - Razorpay order ID
- * @param {String} options.name - Company/App name
- * @param {String} options.description - Payment description
- * @param {String} options.prefill.name - Customer name
- * @param {String} options.prefill.email - Customer email
- * @param {String} options.prefill.contact - Customer phone
- * @param {Object} options.notes - Additional notes
- * @param {Function} options.handler - Success callback
- * @param {Function} options.onError - Error callback
- * @param {Function} options.onClose - Close callback
- */
+export const loadRazorpayScript = async () => {
+  throw new Error('Online Razorpay payments are currently disabled.');
+};
+
 export const initRazorpayPayment = async (options) => {
+  console.warn('Online Razorpay payments are disabled.');
+  if (options?.onError) {
+    options.onError(new Error('Online Razorpay payments are disabled.'));
+  }
+  throw new Error('Online Razorpay payments are currently disabled.');
+  /*
   try {
     // Load Razorpay script if not already loaded
     await loadRazorpayScript();
@@ -89,11 +81,9 @@ export const initRazorpayPayment = async (options) => {
             options.onClose();
           }
         },
-        // Ensure modal is clickable
         escape: true,
         animation: true
       },
-      // Ensure proper z-index
       retry: {
         enabled: true,
         max_count: 3
@@ -102,7 +92,6 @@ export const initRazorpayPayment = async (options) => {
 
     const razorpay = new window.Razorpay(razorpayOptions);
     
-    // Handle payment failures
     razorpay.on('payment.failed', function(response) {
       console.error('Razorpay payment failed:', response);
       if (options.onError) {
@@ -110,7 +99,6 @@ export const initRazorpayPayment = async (options) => {
       }
     });
 
-    // Handle payment method selection failures
     razorpay.on('payment.method_selection_failed', function(response) {
       console.error('Razorpay payment method selection failed:', response);
       if (options.onError) {
@@ -118,16 +106,7 @@ export const initRazorpayPayment = async (options) => {
       }
     });
 
-    // Open Razorpay modal
     razorpay.open();
-    
-    console.log('✅ Razorpay checkout opened successfully');
-    console.log('Razorpay options:', {
-      key: razorpayOptions.key ? 'Present' : 'Missing',
-      amount: razorpayOptions.amount,
-      order_id: razorpayOptions.order_id
-    });
-
     return razorpay;
   } catch (error) {
     console.error('Error initializing Razorpay:', error);
@@ -136,6 +115,7 @@ export const initRazorpayPayment = async (options) => {
     }
     throw error;
   }
+  */
 };
 
 /**

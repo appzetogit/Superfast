@@ -34,6 +34,7 @@ export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
 
     try {
       setLoading(true)
+      /* Online Razorpay Deposit Integration - Disabled
       const orderRes = await deliveryAPI.createDepositOrder(amt)
       const data = orderRes?.data?.data
       const rp = data?.razorpay
@@ -92,6 +93,10 @@ export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
         },
         onClose: () => setProcessing(false)
       })
+      */
+      toast.error("Online payment is currently disabled.")
+      setLoading(false)
+      setProcessing(false)
     } catch (err) {
       setLoading(false)
       setProcessing(false)

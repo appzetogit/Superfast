@@ -128,7 +128,7 @@ export default function DeliveryOTP() {
     // Focus first input only if all fields are empty (small delay to ensure inputs are rendered)
     if (inputRefs.current[0] && otp.every(digit => digit === "")) {
       setTimeout(() => {
-        inputRefs.current[0]?.focus()
+        inputRefs.current[0]?.focus({ preventScroll: true })
       }, 100)
     }
   }, [otp])
@@ -146,7 +146,7 @@ export default function DeliveryOTP() {
 
     // Auto-focus next input
     if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus()
+      inputRefs.current[index + 1]?.focus({ preventScroll: true })
     }
 
     // No auto-submit, user must click Verify & Continue
@@ -162,7 +162,7 @@ export default function DeliveryOTP() {
         setOtp(newOtp)
       } else if (index > 0) {
         // If current input is empty, move to previous and clear it
-        inputRefs.current[index - 1]?.focus()
+        inputRefs.current[index - 1]?.focus({ preventScroll: true })
         const newOtp = [...otp]
         newOtp[index - 1] = ""
         setOtp(newOtp)

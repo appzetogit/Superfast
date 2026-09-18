@@ -142,8 +142,14 @@ const CustomerAuth = () => {
         }
     };
 
+    useEffect(() => {
+        if (showOtp) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
+    }, [showOtp]);
+
     return (
-        <div className="min-h-screen w-full relative flex items-center justify-center font-['Outfit',_sans-serif] overflow-hidden">
+        <div className="min-h-screen min-h-[100dvh] w-full relative flex items-start sm:items-center justify-center font-['Outfit',_sans-serif] overflow-y-auto pt-2 pb-6 sm:py-10">
 
             {/* Dynamic Atmospheric Background */}
             <motion.div
@@ -187,16 +193,16 @@ const CustomerAuth = () => {
             </div>
 
             {/* Premium Centered Card Container */}
-            <div className="w-[92%] max-w-[400px] h-[85vh] max-h-[780px] bg-white relative z-10 overflow-hidden rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-white/40 flex flex-col transition-colors duration-1000">
+            <div className="w-[92%] max-w-[400px] bg-white relative z-10 rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-white/40 flex flex-col transition-colors duration-1000 my-0 sm:my-auto">
 
-                {/* Scrollable Content Container */}
-                <div className="h-full overflow-y-auto no-scrollbar pb-20">
+                {/* Content Container */}
+                <div className="w-full pb-6">
 
                     {/* Header: Immersive Category Visuals */}
                     <motion.div
                         animate={{ backgroundColor: activeCategory.theme }}
                         transition={{ duration: 1 }}
-                        className="relative h-[35%] w-full overflow-hidden"
+                        className="relative h-44 sm:h-52 w-full overflow-hidden"
                     >
                         <AnimatePresence mode="wait">
                             <motion.div
@@ -390,22 +396,29 @@ const CustomerAuth = () => {
                                                 <input
                                                     key={i}
                                                     type="tel"
+                                                    inputMode="numeric"
+                                                    autoComplete="one-time-code"
                                                     maxLength={1}
                                                     className="w-14 h-16 bg-white border-2 border-gray-200 rounded-3xl text-center text-2xl font-black outline-none shadow-[0_18px_45px_rgba(15,23,42,0.35)] focus:bg-white focus:border-[var(--theme-color)] focus:shadow-[0_24px_65px_rgba(15,23,42,0.55)] transition-all"
                                                     style={{ color: activeCategory.theme }}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Backspace' && !e.target.value && i > 0) {
-                                                            e.target.previousElementSibling.focus();
+                                                            e.target.previousElementSibling?.focus({ preventScroll: true });
                                                         }
                                                     }}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        if (val && i < 3) (e.target.nextElementSibling).focus();
+                                                        if (val && i < 3) (e.target.nextElementSibling)?.focus({ preventScroll: true });
                                                         const otpArr = formData.otp.split('');
                                                         otpArr[i] = val;
                                                         setFormData({ ...formData, otp: otpArr.join('') });
                                                     }}
-                                                    onFocus={(e) => e.target.style.borderColor = activeCategory.theme}
+                                                    onFocus={(e) => {
+                                                        e.target.style.borderColor = activeCategory.theme;
+                                                        if (window.scrollY > 0) {
+                                                            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                                                        }
+                                                    }}
                                                     onBlur={(e) => e.target.style.borderColor = ''}
                                                 />
                                             ))}

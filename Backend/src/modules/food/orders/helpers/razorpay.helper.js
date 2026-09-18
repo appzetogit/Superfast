@@ -4,11 +4,14 @@ import Razorpay from 'razorpay';
 
 import { config } from '../../../../config/env.js';
 
-const KEY_ID = config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '';
-const KEY_SECRET = config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || '';
+// Online Razorpay Payment Disabled
+// const KEY_ID = config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '';
+// const KEY_SECRET = config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || '';
 
 export function isRazorpayConfigured() {
-    return Boolean(KEY_ID && KEY_SECRET && Razorpay);
+    // Online Razorpay Payment Disabled
+    return false;
+    // return Boolean(KEY_ID && KEY_SECRET && Razorpay);
 }
 
 export function getRazorpayKeyId() {

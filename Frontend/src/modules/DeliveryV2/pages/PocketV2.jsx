@@ -131,6 +131,7 @@ export const PocketV2 = () => {
 
     try {
       setDepositing(true);
+      /* Online Razorpay Deposit Integration - Disabled
       const orderRes = await deliveryAPI.createDepositOrder(amt);
       const data = orderRes?.data?.data;
       const rp = data?.razorpay;
@@ -181,6 +182,9 @@ export const PocketV2 = () => {
         onError: () => setDepositing(false),
         onClose: () => setDepositing(false)
       });
+      */
+      toast.error("Online payment is currently disabled.");
+      setDepositing(false);
     } catch (err) {
       setDepositing(false);
       toast.error("Deposit failed to start");

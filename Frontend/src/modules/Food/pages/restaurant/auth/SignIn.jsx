@@ -94,7 +94,7 @@ export default function RestaurantSignIn() {
 
   return (
     <div
-      className={`h-screen w-full flex bg-white ${keyboardInset > 0 ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden"}`}
+      className="min-h-screen min-h-[100dvh] w-full flex bg-white overflow-y-auto overflow-x-hidden"
       style={{ paddingBottom: keyboardInset ? `${keyboardInset}px` : undefined }}
     >
       {/* Left image section */}

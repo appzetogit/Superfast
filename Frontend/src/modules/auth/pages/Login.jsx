@@ -279,6 +279,9 @@ export default function UnifiedOTPFastLogin() {
   }
 
   useEffect(() => {
+    if (step === 2) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
     if (step !== 2 || resendTimer <= 0) return
     const intervalId = setInterval(() => {
       setResendTimer((prev) => (prev > 0 ? prev - 1 : 0))
@@ -300,7 +303,7 @@ export default function UnifiedOTPFastLogin() {
 
   return (
     <div
-      className="h-[100dvh] flex flex-col relative font-sans overflow-hidden"
+      className="min-h-screen min-h-[100dvh] flex flex-col relative font-sans overflow-y-auto"
       style={{
         backgroundColor: SUPERFAST_BRAND.cream,
         '--primary-theme': '#f97316',
@@ -309,10 +312,7 @@ export default function UnifiedOTPFastLogin() {
     >
       <AuthBrandHeader />
 
-      <div
-        className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col mt-10 md:mt-14 relative z-20 pb-4 overflow-y-auto"
-        style={keyboardInset > 0 ? { maxHeight: `${window.visualViewport.height - 80}px` } : undefined}
-      >
+      <div className="flex-1 max-w-[420px] mx-auto w-full px-4 flex flex-col justify-between py-6 sm:py-8 relative z-20">
         {/* Main Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100 shrink-0 mb-4">
           <div className="text-center mb-5">
@@ -416,6 +416,7 @@ export default function UnifiedOTPFastLogin() {
                       id={`otp-${index}`}
                       type="tel"
                       inputMode="numeric"
+                      autoComplete="one-time-code"
                       required
                       value={otp[index] || ""}
                       onChange={(e) => {
@@ -427,13 +428,19 @@ export default function UnifiedOTPFastLogin() {
                         setOtp(combined);
 
                         if (index < 3 && val) {
-                          document.getElementById(`otp-${index + 1}`)?.focus();
+                          document.getElementById(`otp-${index + 1}`)?.focus({ preventScroll: true });
+                        }
+                      }}
+                      onFocus={() => {
+                        setIsInputFocused(true);
+                        if (window.scrollY > 0) {
+                          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
                         }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Backspace") {
                           if (!otp[index] && index > 0) {
-                            document.getElementById(`otp-${index - 1}`)?.focus();
+                            document.getElementById(`otp-${index - 1}`)?.focus({ preventScroll: true });
                           } else {
                             const newOtp = otp.split("");
                             newOtp[index] = "";
@@ -446,7 +453,7 @@ export default function UnifiedOTPFastLogin() {
                         const pasteData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
                         if (pasteData) {
                           setOtp(pasteData);
-                          document.getElementById(`otp-${Math.min(pasteData.length, 3)}`)?.focus();
+                          document.getElementById(`otp-${Math.min(pasteData.length, 3)}`)?.focus({ preventScroll: true });
                         }
                       }}
                       className="w-12 h-12 text-center text-xl font-bold bg-white border border-gray-200 focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] rounded-xl outline-none transition-all text-gray-900"
@@ -494,46 +501,48 @@ export default function UnifiedOTPFastLogin() {
           </form>
         </div>
 
-        {/* Features Row */}
-        {step === 1 && keyboardInset === 0 && !isInputFocused && (
-          <div className="grid grid-cols-3 gap-1 shrink-0 mt-2">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
-                <ShieldCheck className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+        {/* Features & Footer inside content section */}
+        <div className="space-y-4 pt-1">
+          {step === 1 && keyboardInset === 0 && !isInputFocused && (
+            <div className="grid grid-cols-3 gap-1 shrink-0">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
+                  <ShieldCheck className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+                </div>
+                <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Safe & Secure</h4>
+                <p className="text-[8px] text-gray-500 leading-tight">Your data is protected</p>
               </div>
-              <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Safe & Secure</h4>
-              <p className="text-[8px] text-gray-500 leading-tight">Your data is protected</p>
-            </div>
-            <div className="flex flex-col items-center text-center border-l border-r border-gray-200">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
-                <Zap className="w-5 h-5" style={{ color: SUPERFAST_BRAND.orange }} />
+              <div className="flex flex-col items-center text-center border-l border-r border-gray-200">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
+                  <Zap className="w-5 h-5" style={{ color: SUPERFAST_BRAND.orange }} />
+                </div>
+                <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Fast & Easy</h4>
+                <p className="text-[8px] text-gray-500 leading-tight">Quick login in seconds</p>
               </div>
-              <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">Fast & Easy</h4>
-              <p className="text-[8px] text-gray-500 leading-tight">Quick login in seconds</p>
-            </div>
-            <div className="flex flex-col items-center text-center">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
-                <HeadphonesIcon className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+              <div className="flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1" style={{ background: SUPERFAST_BRAND.tint }}>
+                  <HeadphonesIcon className="w-5 h-5" style={{ color: SUPERFAST_BRAND.primary }} />
+                </div>
+                <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">24/7 Support</h4>
+                <p className="text-[8px] text-gray-500 leading-tight">We're here to help</p>
               </div>
-              <h4 className="text-[10px] font-bold text-gray-900 mb-0.5">24/7 Support</h4>
-              <p className="text-[8px] text-gray-500 leading-tight">We're here to help</p>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {step === 1 && keyboardInset === 0 && !isInputFocused && (
-        <div className="text-center space-y-1 shrink-0 z-20 pt-2 pb-3 bg-transparent">
-          <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
-          <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">
-            <Link to="/food/user/profile/terms" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
-            <span className="text-gray-400">•</span>
-            <Link to="/food/user/profile/privacy" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
-            <span className="text-gray-400">•</span>
-            <Link to="/food/user/profile/support" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
-          </div>
+          {step === 1 && keyboardInset === 0 && !isInputFocused && (
+            <div className="text-center space-y-1 shrink-0 pt-2 pb-2">
+              <p className="text-[10px] text-gray-500 font-medium">By continuing, you agree to our</p>
+              <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold">
+                <Link to="/food/user/profile/terms" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
+                <span className="text-gray-400">•</span>
+                <Link to="/food/user/profile/privacy" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
+                <span className="text-gray-400">•</span>
+                <Link to="/food/user/profile/support" className="hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -46,6 +46,7 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
     try {
       setLoading(true)
 
+      /* Online Razorpay Wallet Top-up - Disabled
       debugLog("Creating wallet top-up order for amount:", amountNum)
       const orderResponse = await userAPI.createWalletTopupOrder(amountNum)
       debugLog("Order response:", orderResponse)
@@ -126,6 +127,10 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
           setProcessing(false)
         },
       })
+      */
+      toast.error("Online payment is currently disabled.")
+      setLoading(false)
+      setProcessing(false)
     } catch (error) {
       debugError("Error creating payment order:", error)
       debugError("Error response:", error?.response)

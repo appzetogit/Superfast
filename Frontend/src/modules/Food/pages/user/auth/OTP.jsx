@@ -117,9 +117,9 @@ export default function OTP() {
   }, [showNameInput, navigate])
 
   useEffect(() => {
-    // Focus first input on mount
+    // Focus first input on mount without scrolling window
     if (inputRefs.current[0] && !showNameInput) {
-      inputRefs.current[0].focus()
+      inputRefs.current[0].focus({ preventScroll: true })
     }
   }, [showNameInput])
 
@@ -136,7 +136,7 @@ export default function OTP() {
 
     // Auto-focus next input (4 boxes only)
     if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus()
+      inputRefs.current[index + 1]?.focus({ preventScroll: true })
     }
 
     // Auto-submit when all 4 digits are entered
@@ -155,7 +155,7 @@ export default function OTP() {
         setOtp(newOtp)
       } else if (index > 0) {
         // If current input is empty, move to previous and clear it
-        inputRefs.current[index - 1]?.focus()
+        inputRefs.current[index - 1]?.focus({ preventScroll: true })
         const newOtp = [...otp]
         newOtp[index - 1] = ""
         setOtp(newOtp)
@@ -174,7 +174,7 @@ export default function OTP() {
         if (!showNameInput && digits.length === 4) {
           handleVerify(newOtp.slice(0, 4).join(""))
         } else {
-          inputRefs.current[Math.min(digits.length, 3)]?.focus()
+          inputRefs.current[Math.min(digits.length, 3)]?.focus({ preventScroll: true })
         }
       })
     }
@@ -512,12 +512,18 @@ export default function OTP() {
                     ref={(el) => (inputRefs.current[index] = el)}
                     type="text"
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     pattern="[0-9]*"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={index === 0 ? handlePaste : undefined}
+                    onFocus={() => {
+                      if (window.scrollY > 0) {
+                        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                      }
+                    }}
                     disabled={isLoading}
                     aria-label={`OTP digit ${index + 1} of 4`}
                     className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"

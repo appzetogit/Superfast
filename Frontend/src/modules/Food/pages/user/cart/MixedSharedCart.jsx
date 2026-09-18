@@ -263,7 +263,7 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
       const orderResponse = await orderAPI.createOrder(orderPayload);
       const { order, razorpay } = orderResponse?.data?.data || {};
 
-      if (selectedPaymentMethod === "cash") {
+      if (selectedPaymentMethod === "cash" || order) {
         toast.success("Mixed order placed successfully");
         clearCart();
         navigate(`/user/orders/${order?.orderId || order?._id}?confirmed=true`, {
@@ -272,6 +272,7 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
         return;
       }
 
+      /* Online Razorpay Payment Integration - Disabled
       if (!razorpay?.orderId || !razorpay?.key) {
         throw new Error("Payment gateway is not ready");
       }
@@ -340,6 +341,7 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
           setIsPlacingOrder(false);
         },
       });
+      */
     } catch (error) {
       console.error("Mixed order failed", error);
       toast.error(
@@ -496,7 +498,7 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
                 <div className="grid gap-2">
                   {[
                     ...(settings?.codEnabled !== false ? [{ id: "cash", label: "Cash on delivery", icon: Truck }] : []),
-                    { id: "razorpay", label: "Online payment", icon: CreditCard },
+                    // { id: "razorpay", label: "Online payment", icon: CreditCard },
                   ].map((method) => (
                     <button
                       key={method.id}
