@@ -5,4 +5,6 @@ dist/
 coverage/
 .DS_Store
 uploads
-config/*.json
+upload
+upload/
+config/*.json
