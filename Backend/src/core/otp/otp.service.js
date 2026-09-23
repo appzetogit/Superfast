@@ -1,0 +1,237 @@
+import crypto from 'crypto';
+import ms from 'ms';
+import { FoodOtp } from './otp.model.js';
+import { config } from '../../config/env.js';
+import { logger } from '../../utils/logger.js';
+import { ValidationError } from '../auth/errors.js';
+import { GlobalSettings } from '../../modules/common/models/settings.model.js';
+
+const generateOtpCode = () => {
+    const code = crypto.randomInt(1000, 9999);
+    return String(code);
+};
+
+const normalizePhoneForOtp = (phone) => String(phone || '').replace(/\D/g, '');
+
+const getPhoneCandidates = (phone) => {
+    const raw = String(phone || '').trim();
+    const digits = normalizePhoneForOtp(phone);
+    const last10 = digits.slice(-10);
+
+    return Array.from(new Set([
+        raw,
+        digits,
+        last10,
+        digits ? `+${digits}` : '',
+        last10 ? `+91 ${last10}` : '',
+        last10 ? `+91${last10}` : '',
+        last10 ? `91${last10}` : '',
+    ].filter(Boolean)));
+};
+
+/**
+ * Sends SMS via SMS India Hub API
+ * @param {string} phone - 10-digit mobile number (will be prefixed with 91)
+ * @param {string} otp
+ */
+const sendSmsViaIndiaHub = async (phone, otp) => {
+    try {
+        // Normalize phone: extract last 10 digits and prefix with 91 country code
+        const digits = String(phone || '').replace(/\D/g, '');
+        const last10 = digits.slice(-10);
+        if (!last10 || last10.length < 10) {
+            logger.error(`[SMS] Invalid phone number provided: ${phone}`);
+            return;
+        }
+        const msisdn = `91${last10}`;
+
+        // Exact Approved DLT Template (Template ID: 1077469120018685234):
+        // DLT pattern: "Your##var##,OTP for Login verification is ##var##. Please do not share this OTP with anyone.BGADEC"
+        const message = `Your Superfast,OTP for Login verification is ${otp}. Please do not share this OTP with anyone.BGADEC`;
+
+        // SMS India Hub API URL (HTTPS)
+        const url = new URL('https://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
+        url.searchParams.append('APIKey', config.smsApiKey);
+        url.searchParams.append('sid', config.smsSenderId);
+        url.searchParams.append('msisdn', msisdn);
+        url.searchParams.append('msg', message);
+        url.searchParams.append('gwid', '2');
+        url.searchParams.append('fl', '0');
+        if (config.smsIndiaHubUsername) {
+            url.searchParams.append('uname', config.smsIndiaHubUsername);
+        }
+        if (config.smsPeId) {
+            url.searchParams.append('peid', config.smsPeId);
+            url.searchParams.append('PE_ID', config.smsPeId);
+        }
+        if (config.smsDltTemplateId) {
+            url.searchParams.append('templateid', config.smsDltTemplateId);
+            url.searchParams.append('DLT_TE_ID', config.smsDltTemplateId);
+        }
+
+        logger.info(`[SMS] Sending OTP to ${msisdn} via SMS India Hub...`);
+        const response = await fetch(url.toString());
+        const resultText = await response.text();
+        logger.info(`[SMS] Raw response for ${msisdn}: ${resultText}`);
+
+        // SMS India Hub often returns HTTP 200 OK even for errors — check response body
+        let parsed = null;
+        try { parsed = JSON.parse(resultText); } catch (_) { /* plain text response is OK */ }
+
+        if (parsed && parsed.ErrorCode && parsed.ErrorCode !== '000') {
+            const errMsg = `SMS India Hub ERROR for ${phone}: [${parsed.ErrorCode}] ${parsed.ErrorMessage || resultText}`;
+            logger.error(errMsg);
+            // eslint-disable-next-line no-console
+            console.error(`❌ [SMS ERROR] ${errMsg}`);
+            if (parsed.ErrorCode === '006') {
+                // eslint-disable-next-line no-console
+                console.error('❌ [SMS ERROR] ErrorCode 006 = DLT Template mismatch. The message text must EXACTLY match your registered TRAI DLT template. Login to https://cloud.smsindiahub.in and verify the approved template text.');
+            }
+        } else if (!response.ok) {
+            logger.error(`SMS API HTTP error for ${phone}: ${response.status} – ${resultText}`);
+        } else {
+            logger.info(`✅ SMS sent successfully to ${msisdn}`);
+        }
+    } catch (error) {
+        logger.error(`Error sending SMS to ${phone}: ${error.message}`);
+        // Do NOT throw — OTP is already stored in DB; SMS failure should not block the flow
+    }
+};
+
+export const createOrUpdateOtp = async (phone, options = {}) => {
+    const forceRandom = options?.forceRandom === true;
+    const phoneCandidates = getPhoneCandidates(phone);
+    const normalizedPhone = normalizePhoneForOtp(phone) || String(phone || '').trim();
+
+    // Check if number is banned
+    const settings = await GlobalSettings.findOne().lean();
+    const isBanned = settings?.bannedNumbers?.some(banned => {
+        const bannedLast10 = String(banned).replace(/\D/g, '').slice(-10);
+        return phoneCandidates.includes(banned) || (bannedLast10 && phoneCandidates.includes(bannedLast10));
+    });
+
+    if (isBanned) {
+        logger.warn(`OTP request blocked for banned phone number: ${phone}`);
+        throw new ValidationError('This phone number is banned. Please contact support.');
+    }
+
+    // Check Developer Mode Demo Numbers
+    const devMode = settings?.developerMode;
+    const isDevDemoPhone = devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
+        const demoLast10 = String(demo).replace(/\D/g, '').slice(-10);
+        return phoneCandidates.includes(demo) || (demoLast10 && phoneCandidates.includes(demoLast10));
+    });
+
+    const existing = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
+    const now = new Date();
+
+    // Rate Limiting Logic (Bypassed for Dev Demo Numbers)
+    if (existing && !isDevDemoPhone) {
+        const windowMs = (config.otpRateWindow || 600) * 1000;
+        const isInWindow = now - existing.lastRequestAt < windowMs;
+
+        if (isInWindow) {
+            if (existing.requestCount >= (config.otpRateLimit || 3)) {
+                logger.warn(`Rate limit exceeded for phone ${phone}`);
+                throw new ValidationError(`Too many OTP requests. Please try again after ${Math.ceil(windowMs / 60000)} minutes.`);
+            }
+            existing.requestCount += 1;
+        } else {
+            // Reset count if window has passed
+            existing.requestCount = 1;
+        }
+    }
+
+    const shouldUseDefaultOtp = (config.useDefaultOtp || isDevDemoPhone) && !forceRandom;
+
+    let otp;
+    if (isDevDemoPhone) {
+        otp = devMode.demoOtp || '123456';
+        logger.info(`Developer Reviewer Mode enabled – Fixed OTP is ${otp} for phone ${phone}`);
+    } else if (shouldUseDefaultOtp) {
+        otp = '1234';
+        logger.info(`Default OTP mode enabled – OTP is ${otp} for phone ${phone}`);
+    } else {
+        otp = generateOtpCode();
+    }
+
+    // Expiry calculation: prioritize seconds, then minutes, then fallback to MS string
+    let ttlMs;
+    if (config.otpExpirySeconds) {
+        ttlMs = config.otpExpirySeconds * 1000;
+    } else if (config.otpExpiryMinutes) {
+        ttlMs = config.otpExpiryMinutes * 60 * 1000;
+    } else {
+        ttlMs = ms(config.otpExpiry || '5m');
+    }
+    const expiresAt = new Date(now.getTime() + ttlMs);
+
+    if (existing) {
+        existing.phone = normalizedPhone;
+        existing.otp = otp;
+        existing.expiresAt = expiresAt;
+        existing.attempts = 0;
+        existing.lastRequestAt = now;
+        await existing.save();
+    } else {
+        await FoodOtp.create({
+            phone: normalizedPhone,
+            otp,
+            expiresAt,
+            requestCount: 1,
+            lastRequestAt: now
+        });
+    }
+
+    // Only send SMS if not in demo/default mode and credentials exist.
+    if (!isDevDemoPhone && !shouldUseDefaultOtp && config.smsApiKey && config.smsSenderId) {
+        await sendSmsViaIndiaHub(phone, otp);
+    } else if (!isDevDemoPhone && !shouldUseDefaultOtp) {
+        logger.warn(`OTP generated for ${phone}, but SMS delivery is skipped because SMS India Hub credentials are missing.`);
+    }
+
+    return otp;
+};
+
+export const verifyOtp = async (phone, otp) => {
+    const phoneCandidates = getPhoneCandidates(phone);
+    const settings = await GlobalSettings.findOne().lean();
+    const devMode = settings?.developerMode;
+    const isDevDemoPhone = devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
+        const demoLast10 = String(demo).replace(/\D/g, '').slice(-10);
+        return phoneCandidates.includes(demo) || (demoLast10 && phoneCandidates.includes(demoLast10));
+    });
+
+    const record = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
+
+    if (isDevDemoPhone) {
+        const fixedOtp = devMode.demoOtp || '123456';
+        if (otp === fixedOtp || (record && record.otp === otp)) {
+            if (record) await record.deleteOne();
+            return { valid: true };
+        }
+    }
+
+    if (!record) {
+        return { valid: false, reason: 'OTP not found' };
+    }
+
+    if (record.expiresAt < new Date()) {
+        return { valid: false, reason: 'OTP expired' };
+    }
+
+    if (record.attempts >= config.otpMaxAttempts) {
+        return { valid: false, reason: 'Max attempts exceeded' };
+    }
+
+    record.attempts += 1;
+
+    if (record.otp !== otp) {
+        await record.save();
+        return { valid: false, reason: 'Invalid OTP' };
+    }
+
+    await record.deleteOne();
+    return { valid: true };
+};
+

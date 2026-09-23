@@ -1,0 +1,10 @@
+node_modules/
+.env
+*.log
+dist/
+coverage/
+.DS_Store
+uploads
+upload
+upload/
+config/*.json
