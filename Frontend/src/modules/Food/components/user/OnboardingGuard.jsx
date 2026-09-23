@@ -1,0 +1,52 @@
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useProfile } from "@food/context/ProfileContext";
+import { clearModuleAuth, isProfileNameComplete } from "@food/utils/auth";
+
+/**
+ * OnboardingGuard checks if preferences have been set and profile name is complete.
+ * @param {string} mode - 'requirePreferences' (for /home) or 'preventPreferences' (for /preferences)
+ */
+export default function OnboardingGuard({ children, mode }) {
+  const { userProfile, loading } = useProfile();
+  const location = useLocation();
+
+  // Retrieve token status from localStorage synchronously
+  const isAuthenticated = localStorage.getItem("user_authenticated") === "true";
+
+  // Allow already-onboarded users to revisit preferences via ?edit=true
+  const isEditMode = new URLSearchParams(location.search).get("edit") === "true";
+
+  if (loading && !userProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0a0a0a]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-theme,#49AB14)]" />
+      </div>
+    );
+  }
+
+  // Check token & profile completion
+  const isNameComplete = isProfileNameComplete(userProfile);
+
+  if (!isAuthenticated || !isNameComplete) {
+    if (isAuthenticated && !isNameComplete) {
+      clearModuleAuth("user");
+    }
+    return <Navigate to="/user/auth/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Check preferences status from reactive userProfile
+  const hasSetPrefs = userProfile?.hasSetPreferences === true;
+
+  if (mode === "requirePreferences" && !hasSetPrefs) {
+    // User hasn't finished onboarding: send them to preferences
+    return <Navigate to="/food/user/preferences" replace />;
+  }
+
+  if (mode === "preventPreferences" && hasSetPrefs && !isEditMode) {
+    // User already finished onboarding and not in edit mode: send them to home
+    return <Navigate to="/food/user" replace />;
+  }
+
+  return children;
+}

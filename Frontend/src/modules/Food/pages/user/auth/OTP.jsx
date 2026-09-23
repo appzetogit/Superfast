@@ -1,0 +1,619 @@
+import { useState, useEffect, useRef } from "react"
+import { useNavigate, Link } from "react-router-dom"
+import { ArrowLeft, Loader2, AlertCircle, Smartphone, Pencil } from "lucide-react"
+import AnimatedPage from "@food/components/user/AnimatedPage"
+import { Input } from "@food/components/ui/input"
+import { Button } from "@food/components/ui/button"
+import { authAPI } from "@food/api"
+import { setAuthData as setUserAuthData } from "@food/utils/auth"
+import AuthBrandHeader from "@/modules/auth/components/AuthBrandHeader"
+import { SUPERFAST_BRAND } from "@/modules/auth/constants/brand"
+
+export default function OTP() {
+  const navigate = useNavigate()
+  const [otp, setOtp] = useState(["", "", "", ""]) // exactly 4 digits
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [resendTimer, setResendTimer] = useState(0)
+  const [authData, setAuthData] = useState(null)
+  const [showNameInput, setShowNameInput] = useState(false)
+  const [name, setName] = useState("")
+  const [nameError, setNameError] = useState("")
+  const [verifiedOtp, setVerifiedOtp] = useState("")
+  const [contactInfo, setContactInfo] = useState("")
+  const [contactType, setContactType] = useState("phone")
+  const [deviceToken, setDeviceToken] = useState(null)
+  const [activePlatform, setActivePlatform] = useState("web")
+  const inputRefs = useRef([])
+  const submittingRef = useRef(false)
+
+  useEffect(() => {
+    // Redirect to home if already authenticated
+    const isAuthenticated = localStorage.getItem("user_authenticated") === "true"
+    if (isAuthenticated) {
+      const userStr = localStorage.getItem("user")
+      let hasSetPrefs = false
+      if (userStr) {
+        try {
+          hasSetPrefs = JSON.parse(userStr).hasSetPreferences === true
+        } catch (e) { }
+      }
+      navigate(hasSetPrefs ? "/food/user" : "/food/user/preferences", { replace: true })
+      return
+    }
+
+    // Get auth data from sessionStorage
+    const stored = sessionStorage.getItem("userAuthData")
+    if (!stored) {
+      // No auth data, redirect to sign in
+      navigate("/user/auth/login", { replace: true })
+      return
+    }
+    const data = JSON.parse(stored)
+    setAuthData(data)
+
+    // Handle both phone and email
+    if (data.method === "email" && data.email) {
+      setContactType("email")
+      setContactInfo(data.email)
+    } else if (data.phone) {
+      setContactType("phone")
+      // Extract and format phone number for display
+      const phoneMatch = data.phone?.match(/(\+\d+)\s*(.+)/)
+      if (phoneMatch) {
+        const formattedPhone = `${phoneMatch[1]}-${phoneMatch[2].replace(/\D/g, "")}`
+        setContactInfo(formattedPhone)
+      } else {
+        setContactInfo(data.phone || "")
+      }
+
+      // OTP auto-fill removed - user must manually enter OTP
+    }
+
+    // Start resend timer (60 seconds)
+    setResendTimer(60)
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [navigate])
+
+  const handleBackToLogin = () => {
+    sessionStorage.removeItem("userAuthData")
+    setShowNameInput(false)
+    setName("")
+    setNameError("")
+    setVerifiedOtp("")
+    navigate(contactType === "email" ? "/food/login/email" : "/food/login", { replace: true })
+  }
+
+  useEffect(() => {
+    if (!showNameInput) return undefined
+
+    // Intercept hardware/browser back button on Name Input step
+    window.history.pushState({ step: "nameInput" }, "")
+
+    const handlePopState = () => {
+      sessionStorage.removeItem("userAuthData")
+      setShowNameInput(false)
+      setName("")
+      setNameError("")
+      setVerifiedOtp("")
+      navigate("/user/auth/login", { replace: true })
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+    }
+  }, [showNameInput, navigate])
+
+  useEffect(() => {
+    // Focus first input on mount without scrolling window
+    if (inputRefs.current[0] && !showNameInput) {
+      inputRefs.current[0].focus({ preventScroll: true })
+    }
+  }, [showNameInput])
+
+  const handleChange = (index, value) => {
+    // Only allow digits; OTP is exactly 4 digits
+    if (value && !/^\d$/.test(value)) {
+      return
+    }
+
+    const newOtp = [...otp]
+    newOtp[index] = value
+    setOtp(newOtp)
+    setError("")
+
+    // Auto-focus next input (4 boxes only)
+    if (value && index < 3) {
+      inputRefs.current[index + 1]?.focus({ preventScroll: true })
+    }
+
+    // Auto-submit when all 4 digits are entered
+    if (!showNameInput && newOtp.slice(0, 4).every((digit) => digit !== "")) {
+      handleVerify(newOtp.slice(0, 4).join(""))
+    }
+  }
+
+  const handleKeyDown = (index, e) => {
+    // Handle backspace
+    if (e.key === "Backspace") {
+      if (otp[index]) {
+        // If current input has value, clear it
+        const newOtp = [...otp]
+        newOtp[index] = ""
+        setOtp(newOtp)
+      } else if (index > 0) {
+        // If current input is empty, move to previous and clear it
+        inputRefs.current[index - 1]?.focus({ preventScroll: true })
+        const newOtp = [...otp]
+        newOtp[index - 1] = ""
+        setOtp(newOtp)
+      }
+    }
+    // Handle paste (4 digits only)
+    if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      navigator.clipboard.readText().then((text) => {
+        const digits = text.replace(/\D/g, "").slice(0, 4).split("")
+        const newOtp = [...otp]
+        digits.forEach((digit, i) => {
+          if (i < 4) newOtp[i] = digit
+        })
+        setOtp(newOtp)
+        if (!showNameInput && digits.length === 4) {
+          handleVerify(newOtp.slice(0, 4).join(""))
+        } else {
+          inputRefs.current[Math.min(digits.length, 3)]?.focus({ preventScroll: true })
+        }
+      })
+    }
+  }
+
+  const handlePaste = (e) => {
+    e.preventDefault()
+    const pastedData = e.clipboardData.getData("text")
+    const digits = pastedData.replace(/\D/g, "").slice(0, 4).split("")
+    const newOtp = [...otp]
+    digits.forEach((digit, i) => {
+      if (i < 4) newOtp[i] = digit
+    })
+    setOtp(newOtp)
+    if (!showNameInput && digits.length === 4) {
+      handleVerify(newOtp.slice(0, 4).join(""))
+    } else {
+      inputRefs.current[Math.min(digits.length, 3)]?.focus()
+    }
+  }
+
+  const handleVerify = async (otpValue = null) => {
+    if (showNameInput) return
+    if (submittingRef.current) return
+
+    const code = (otpValue || otp.join("")).replace(/\D/g, "")
+    const code4 = code.slice(0, 4)
+    if (code4.length !== 4) {
+      setError("OTP must be exactly 4 digits")
+      return
+    }
+
+    submittingRef.current = true
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const phone = authData?.method === "phone" ? authData.phone : null
+      const email = authData?.method === "email" ? authData.email : null
+      const purpose = authData?.isSignUp ? "register" : "login"
+      const providedName = authData?.isSignUp ? authData?.name || null : null
+      const referralCode = authData?.referralCode || null
+
+      // Try to get FCM token before verifying OTP
+      let fcmToken = null;
+      let platform = "web";
+      try {
+        if (typeof window !== "undefined") {
+          if (window.flutter_inappwebview) {
+            platform = "mobile";
+            const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"];
+            for (const handlerName of handlerNames) {
+              try {
+                const t = await window.flutter_inappwebview.callHandler(handlerName, { module: "user" });
+                if (t && typeof t === "string" && t.length > 20) {
+                  fcmToken = t.trim();
+                  break;
+                }
+              } catch (e) { }
+            }
+          } else {
+            fcmToken = localStorage.getItem("fcm_web_registered_token_user") || null;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to get FCM token during login", e);
+      }
+
+      setDeviceToken(fcmToken);
+      setActivePlatform(platform);
+
+      const response = await authAPI.verifyOTP(
+        phone,
+        code4,
+        purpose,
+        providedName,
+        email,
+        "user",
+        null,
+        referralCode,
+        fcmToken,
+        platform
+      )
+      const data = response?.data?.data || response?.data || {}
+
+      const accessToken = data.accessToken
+      const refreshToken = data.refreshToken ?? null
+      const user = data.user
+
+      if (!accessToken || !user) {
+        throw new Error("Invalid response from server")
+      }
+      if (!refreshToken) {
+        throw new Error("Invalid response from server: missing refresh token")
+      }
+
+      // Check if user needs name prompt (isNewUser flag or missing name)
+      const hasName = user.name && String(user.name).trim().length > 0 && String(user.name).toLowerCase() !== "null";
+      const needsName = data.isNewUser === true || !hasName;
+
+      if (needsName) {
+        setVerifiedOtp(code4)
+        setShowNameInput(true)
+        setIsLoading(false)
+        submittingRef.current = false
+        return
+      }
+
+      // Clear auth data from sessionStorage
+      sessionStorage.removeItem("userAuthData")
+
+      setUserAuthData("user", accessToken, user, refreshToken)
+
+      // Dispatch custom event for same-tab updates
+      window.dispatchEvent(new Event("userAuthChanged"))
+
+      setSuccess(true)
+
+      const targetPath = user?.hasSetPreferences === true ? "/food/user" : "/food/user/preferences";
+      setTimeout(() => {
+        navigate(targetPath)
+      }, 500)
+    } catch (err) {
+      const status = err?.response?.status
+      let message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to verify OTP. Please try again."
+      if (status === 401) {
+        // Friendlier copy for deactivated users or auth errors
+        if (/deactivat(ed|e)/i.test(String(message))) {
+          message = "Your account is deactivated. Please contact support."
+        } else {
+          message = "Invalid or expired code, or account not active."
+        }
+      }
+      setError(message)
+    } finally {
+      setIsLoading(false)
+      submittingRef.current = false
+    }
+  }
+
+  const handleSubmitName = async () => {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setNameError("Name is required")
+      return
+    }
+
+    if (trimmedName.length < 2) {
+      setNameError("Name must be at least 2 characters")
+      return
+    }
+
+    if (!verifiedOtp) {
+      setError("OTP verification step missing. Please request a new OTP.")
+      return
+    }
+
+    setIsLoading(true)
+    setError("")
+    setNameError("")
+
+    try {
+      const phone = authData?.method === "phone" ? authData.phone : null
+      const email = authData?.method === "email" ? authData.email : null
+      const purpose = authData?.isSignUp ? "register" : "login"
+      const referralCode = authData?.referralCode || null
+
+      // Second call with name to auto-register and login
+      const response = await authAPI.verifyOTP(
+        phone,
+        verifiedOtp,
+        purpose,
+        trimmedName,
+        email,
+        "user",
+        null,
+        referralCode,
+        deviceToken,
+        activePlatform
+      )
+      const data = response?.data?.data || response?.data || {}
+
+      const accessToken = data.accessToken
+      const refreshToken = data.refreshToken ?? null
+      const user = data.user
+
+      if (!accessToken || !user) {
+        throw new Error("Invalid response from server")
+      }
+      if (!refreshToken) {
+        throw new Error("Invalid response from server: missing refresh token")
+      }
+
+      sessionStorage.removeItem("userAuthData")
+
+      setUserAuthData("user", accessToken, user, refreshToken)
+
+      window.dispatchEvent(new Event("userAuthChanged"))
+
+      setSuccess(true)
+
+      setTimeout(() => {
+        navigate("/food/user/preferences")
+      }, 500)
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to complete registration. Please try again."
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
+
+  const handleResend = async () => {
+    if (resendTimer > 0 || isLoading) return
+
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const phone = authData?.method === "phone" ? authData.phone : null
+      const email = authData?.method === "email" ? authData.email : null
+      const purpose = authData?.isSignUp ? "register" : "login"
+
+      // Call backend to resend OTP
+      await authAPI.sendOTP(phone, purpose, email)
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to resend OTP. Please try again."
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+
+    // Reset timer to 60 seconds
+    setResendTimer(60)
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    setOtp(["", "", "", ""])
+    setShowNameInput(false)
+    setName("")
+    setNameError("")
+    setVerifiedOtp("")
+    inputRefs.current[0]?.focus()
+  }
+
+  if (!authData) {
+    return null
+  }
+
+  return (
+    <AnimatedPage
+      className="min-h-screen min-h-[100dvh] flex flex-col relative font-sans overflow-y-auto"
+      style={{ backgroundColor: SUPERFAST_BRAND.cream, '--primary-theme': '#f97316' }}
+    >
+      <div className="relative w-full">
+        <button
+          onClick={handleBackToLogin}
+          className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <AuthBrandHeader compact subtitle="Superfast Food Delivery" />
+      </div>
+
+      <div className="flex-1 w-full max-w-[420px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center relative z-20">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_10px_40px_-10px_rgba(249,115,22,0.14)] border border-orange-100 shrink-0">
+          <div className="text-center space-y-2 mb-6">
+            {showNameInput && (
+              <div className="flex justify-center mb-2">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                  style={{ background: SUPERFAST_BRAND.gradient }}
+                >
+                  <Smartphone className="h-6 w-6" />
+                </div>
+              </div>
+            )}
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">
+              {showNameInput
+                ? "Help us know you better"
+                : contactType === "email"
+                  ? "Verify your email"
+                  : "Verify your phone"}
+            </h2>
+            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+              {showNameInput ? (
+                "We're excited to have you join us! Please tell us your full name to get started."
+              ) : (
+                <span className="inline-flex items-center gap-1.5 justify-center flex-wrap">
+                  <span>We've sent a 4-digit code to <strong className="text-gray-800 font-semibold">{contactInfo}</strong></span>
+                  <button
+                    type="button"
+                    onClick={handleBackToLogin}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline ml-1"
+                    title="Edit phone number"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                </span>
+              )}
+            </p>
+            <div className="h-1 w-8 mx-auto rounded-full" style={{ background: SUPERFAST_BRAND.gradient }} />
+          </div>
+
+          {/* OTP Input Fields */}
+          {!showNameInput && (
+            <div className="space-y-6">
+              <div className="flex justify-between gap-3 sm:gap-4 max-w-[280px] mx-auto">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    onFocus={() => {
+                      if (window.scrollY > 0) {
+                        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                      }
+                    }}
+                    disabled={isLoading}
+                    aria-label={`OTP digit ${index + 1} of 4`}
+                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-[var(--primary-theme)] focus:ring-1 focus:ring-[var(--primary-theme)] bg-white text-gray-900 transition-all outline-none"
+                  />
+                ))}
+              </div>
+
+              {error && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-red-500 bg-red-50 dark:bg-red-900/10 py-2 rounded-lg">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Resend Section */}
+              <div className="text-center">
+                <p className="text-sm text-gray-500">
+                  Didn't get the OTP?{" "}
+                  {resendTimer > 0 ? (
+                    <span className="font-medium text-gray-900">Retry in {resendTimer}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={isLoading}
+                      className="font-bold transition-colors disabled:opacity-50 hover:underline"
+                      style={{ color: SUPERFAST_BRAND.primary }}
+                    >
+                      Resend SMS
+                    </button>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Name Input */}
+          {showNameInput && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^A-Za-z\s]/g, "")
+                    setName(cleaned)
+                    if (nameError) setNameError("")
+                  }}
+                  disabled={isLoading}
+                  placeholder="Full Name"
+                  className={`h-12 md:h-14 text-lg bg-white text-gray-900 border-gray-300 rounded-xl focus-visible:ring-1 focus-visible:ring-[var(--primary-theme)] focus-visible:border-[var(--primary-theme)] ${nameError ? "border-red-500" : ""} transition-all`}
+                />
+                {nameError && (
+                  <p className="text-xs text-red-500 pl-1">
+                    {nameError}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                onClick={handleSubmitName}
+                disabled={isLoading}
+                className="w-full h-12 md:h-14 text-white font-bold text-lg rounded-xl transition-all hover:opacity-95 active:scale-[0.98]"
+                style={{ background: SUPERFAST_BRAND.gradient }}
+              >
+                {isLoading ? "Getting things ready..." : "Finish Registration"}
+              </Button>
+            </div>
+          )}
+
+          {/* Verification Loading Overlay */}
+          {isLoading && !showNameInput && (
+            <div className="flex justify-center pt-2">
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: SUPERFAST_BRAND.primary }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer — T&C / Privacy / Support */}
+      <div className="shrink-0 text-center pt-3 pb-5 px-4 mt-auto">
+        <p className="text-slate-400 text-xs font-medium">
+          By continuing, you agree to our{" "}
+          <Link to="/profile/terms" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Terms &amp; Conditions</Link>
+          ,{" "}
+          <Link to="/profile/privacy" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Privacy Policy</Link>
+          {" "}and{" "}
+          <Link to="/profile/support" className="font-semibold hover:underline" style={{ color: SUPERFAST_BRAND.primary }}>Support</Link>
+        </p>
+      </div>
+    </AnimatedPage>
+  )
+}

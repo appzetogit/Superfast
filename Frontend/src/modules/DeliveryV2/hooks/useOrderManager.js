@@ -1,0 +1,289 @@
+import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
+import { deliveryAPI } from '@food/api';
+import { toast } from 'sonner';
+import { getPrimaryPickupLocation, normalizeLocationPoint, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
+import { useNavigate } from 'react-router-dom';
+
+/**
+ * useOrderManager - Professional hook for real-world trip lifecycle actions.
+ * Connects directly to the backend API services.
+ */
+export const useOrderManager = () => {
+  const navigate = useNavigate();
+  const { 
+    activeOrder, activeOrders, maxSlots, tripStatus, updateTripStatus, clearActiveOrder, setActiveOrder, addActiveOrder, removeActiveOrder, riderLocation 
+  } = useDeliveryStore();
+
+  const acceptOrder = async (order) => {
+    if (activeOrders && activeOrders.length >= (maxSlots || 2)) {
+      toast.error('All active slots are in use. Complete an active order first.');
+      throw new Error('Slots full');
+    }
+
+    if (order?.type === 'RETURN_PICKUP') {
+      const returnId = order?.returnId || order?._id || order?.id;
+      if (!returnId) {
+        toast.error('Invalid return request data');
+        return;
+      }
+      try {
+        const response = await deliveryAPI.acceptReturnPickup(returnId);
+        if (response?.data?.success) {
+          toast.success('Return pickup accepted');
+          navigate(`/delivery/quick-commerce/returns/${returnId}/active`);
+        } else {
+          toast.error(response?.data?.message || 'Failed to accept return pickup');
+        }
+      } catch (error) {
+        console.error('Accept Return Pickup Error:', error);
+        toast.error(error?.response?.data?.message || 'Error accepting return pickup');
+      }
+      return;
+    }
+
+    const orderId = order?.orderId || order?._id || order?.id;
+    if (!orderId) {
+      toast.error('Invalid order data');
+      return;
+    }
+
+    try {
+      const response = order?.isReassignment
+        ? await deliveryAPI.acceptReassignment(orderId)
+        : await deliveryAPI.acceptOrder(
+            orderId,
+            order?.dispatchLeg?.legId ? { legId: order.dispatchLeg.legId } : {},
+          );
+      
+      if (response?.data?.success) {
+        const fullOrder = response.data.data?.order || order;
+        
+        // Robustly determine locations from multiple possible formats (Populated API vs Socket)
+        const getLoc = (ref, keysLat, keysLng) => {
+          if (!ref) return null;
+          if (ref.location) {
+            if (Array.isArray(ref.location.coordinates) && ref.location.coordinates.length >= 2) {
+              return {
+                lat: ref.location.coordinates[1],
+                lng: ref.location.coordinates[0]
+              };
+            }
+            return {
+              lat: ref.location.latitude || ref.location.lat,
+              lng: ref.location.longitude || ref.location.lng
+            };
+          }
+          for (const k of keysLat) { if (ref[k] != null) return { lat: ref[k], lng: ref[keysLng[keysLat.indexOf(k)]] }; }
+          return null;
+        };
+
+        const resLoc = getLoc(fullOrder.restaurantId, ['latitude', 'lat'], ['longitude', 'lng']) || 
+                       getLoc(fullOrder, ['restaurant_lat', 'restaurantLat', 'latitude'], ['restaurant_lng', 'restaurantLng', 'longitude']);
+                       
+        const cusLoc = getLoc(fullOrder.deliveryAddress, ['latitude', 'lat'], ['longitude', 'lng']) || 
+                       getLoc(fullOrder, ['customer_lat', 'customerLat', 'latitude'], ['customer_lng', 'customerLng', 'longitude']);
+        const pickupPoints = normalizePickupPoints(fullOrder);
+        const primaryPickupLocation =
+          getPrimaryPickupLocation(fullOrder) ||
+          normalizeLocationPoint(resLoc);
+
+        addActiveOrder({
+          ...fullOrder,
+          orderId: orderId,
+          pickupPoints,
+          restaurantLocation: primaryPickupLocation || resLoc,
+          customerLocation: cusLoc
+        });
+
+        updateTripStatus('PICKING_UP');
+      } else {
+        toast.error(response?.data?.message || 'Order already taken or unavailable');
+        throw new Error('Accept failed');
+      }
+    } catch (error) {
+      console.error('Accept Order Error:', error);
+      const status = Number(error?.response?.status || 0);
+      const message = String(error?.response?.data?.message || '').toLowerCase();
+
+      if (
+        status === 403 &&
+        (
+          message.includes('already claimed') ||
+          message.includes('someone else') ||
+          message.includes('not available for this rider')
+        )
+      ) {
+        toast.error('Order was accepted by someone else');
+      } else {
+        toast.error(error?.response?.data?.message || 'Network error. Please try again.');
+      }
+      throw error;
+    }
+  };
+
+  /**
+   * Mark "Reached Pickup" (Arrival at restaurant)
+   */
+  const reachPickup = async () => {
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
+    try {
+      const response = await deliveryAPI.confirmReachedPickup(orderId);
+      if (response?.data?.success) {
+        updateTripStatus('REACHED_PICKUP');
+        // toast.info('Arrived at Restaurant');
+      } else {
+        throw new Error(response?.data?.message || 'Confirm pickup failed');
+      }
+    } catch (error) {
+      const msg = error?.response?.data?.message || error?.message || 'Failed to update status';
+      toast.error(msg);
+      throw error;
+    }
+  };
+
+  /**
+   * Mark "Picked Up" (Confirm order ID & start delivery)
+   */
+  const pickUpOrder = async (billImageUrl) => {
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
+    try {
+      // confirmOrderId(orderId, confirmedOrderId, location, data)
+      const response = await deliveryAPI.confirmOrderId(
+        orderId, 
+        activeOrder.displayOrderId || activeOrder.orderId || orderId, 
+        riderLocation || {},
+        { billImageUrl }
+      );
+      
+      if (response?.data?.success) {
+        updateTripStatus('PICKED_UP');
+        // toast.success('Order Collected! Heading to Drop-off');
+      } else {
+        throw new Error(response?.data?.message || 'Confirm order ID failed');
+      }
+    } catch (error) {
+      const msg = error?.response?.data?.message || error?.message || 'Error confirming pickup';
+      toast.error(msg);
+      throw error;
+    }
+  };
+
+  /**
+   * Mark "Reached Drop" (Arrival at customer)
+   */
+  const reachDrop = async () => {
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
+    try {
+      const response = await deliveryAPI.confirmReachedDrop(orderId);
+      if (response?.data?.success) {
+        updateTripStatus('REACHED_DROP');
+        // toast.info('Arrived at Customer Location');
+      } else {
+        throw new Error(response?.data?.message || 'Confirm drop failed');
+      }
+    } catch (error) {
+      const msg = error?.response?.data?.message || error?.message || 'Failed to notify arrival';
+      toast.error(msg);
+      throw error;
+    }
+  };
+
+  /**
+   * Finalize Delivery with OTP Check
+   */
+  const completeDelivery = async (otp, options = {}) => {
+    const { paymentMode } = options;
+    const orderId = activeOrder?.orderId || activeOrder?._id || activeOrder?.id;
+    if (!orderId) {
+      toast.error('Invalid order ID');
+      return;
+    }
+    try {
+      let finalOrder = activeOrder;
+      const isAlreadyVerified = Boolean(activeOrder?.deliveryVerification?.dropOtp?.verified);
+      const otpStr = String(otp || '').trim();
+
+      // 1. Only verify OTP if not already verified and OTP string is provided
+      if (!isAlreadyVerified && otpStr) {
+        try {
+          const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otpStr);
+          if (verifyRes?.data?.success && verifyRes.data?.data?.order) {
+            finalOrder = verifyRes.data.data.order;
+          }
+        } catch (verifyErr) {
+          const msg = String(verifyErr?.response?.data?.message || '').toLowerCase();
+          if (!msg.includes('already verified')) {
+            throw verifyErr;
+          }
+        }
+      }
+
+      // 2. Mark as complete
+      const completeRes = await deliveryAPI.completeDelivery(orderId, { 
+        otp: otpStr || undefined, 
+        rating: 5,
+        paymentMode
+      });
+      if (completeRes?.data?.success && completeRes.data?.data?.order) {
+        finalOrder = completeRes.data.data.order;
+      }
+      
+      // Update local order state so Summary Modal shows 'delivered' status
+      if (finalOrder) setActiveOrder(finalOrder);
+      
+      updateTripStatus('COMPLETED');
+    } catch (error) {
+      console.error('Completion Error:', error);
+      toast.error(error?.response?.data?.message || 'Verification failed');
+      throw error;
+    }
+  };
+
+  const rejectOrder = async (order) => {
+    const orderId = order?.orderId || order?._id || order?.id;
+    if (!orderId) {
+      toast.error('Invalid order data');
+      return;
+    }
+    try {
+      if (order?.isReassignment) {
+        await deliveryAPI.rejectReassignment(orderId);
+      } else {
+        await deliveryAPI.rejectOrder(orderId);
+      }
+    } catch (error) {
+      console.error('Reject Order Error:', error);
+    }
+  };
+
+  const resetTrip = () => {
+    if (activeOrder) {
+      const orderId = activeOrder.orderId || activeOrder._id || activeOrder.id;
+      removeActiveOrder(orderId);
+    } else {
+      clearActiveOrder();
+    }
+  };
+
+  return {
+    acceptOrder,
+    rejectOrder,
+    reachPickup,
+    pickUpOrder,
+    reachDrop,
+    completeDelivery,
+    resetTrip,
+  };
+};

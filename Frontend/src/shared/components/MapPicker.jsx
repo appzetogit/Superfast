@@ -1,0 +1,445 @@
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import {
+  GoogleMap,
+  useJsApiLoader,
+  Marker,
+  Circle,
+  Autocomplete,
+  Polygon,
+} from "@react-google-maps/api";
+import { Search, MapPin, Navigation, Loader2 } from "lucide-react";
+import Modal from "./ui/Modal";
+import Button from "./ui/Button";
+
+const libraries = ["places"];
+const mapContainerStyle = {
+  width: "100%",
+  height: "100%",
+};
+
+const defaultCenter = {
+  lat: 20.5937, // India center
+  lng: 78.9629,
+};
+
+const MapPicker = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  initialLocation = null,
+  initialRadius = 5,
+  maxRadius = 20,
+  zoneCoordinates = [],
+  zoneLabel = "",
+}) => {
+  const [center, setCenter] = useState(initialLocation || defaultCenter);
+  const [marker, setMarker] = useState(initialLocation);
+  const [radius, setRadius] = useState(initialRadius);
+  const [address, setAddress] = useState("");
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const autocompleteRef = useRef(null);
+  const mapRef = useRef(null);
+
+  const zonePath = React.useMemo(
+    () =>
+      Array.isArray(zoneCoordinates)
+        ? zoneCoordinates
+            .map((coord) => ({
+              lat: Number(coord?.latitude ?? coord?.lat),
+              lng: Number(coord?.longitude ?? coord?.lng),
+            }))
+            .filter(
+              (coord) =>
+                Number.isFinite(coord.lat) && Number.isFinite(coord.lng),
+            )
+        : [],
+    [zoneCoordinates],
+  );
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+  });
+
+  // Initialize map state only once when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Use initialLocation only for first-time initialization when modal opens
+    if (initialLocation) {
+      setCenter(initialLocation);
+      setMarker(initialLocation);
+    } else if (zonePath.length > 0) {
+      const avgLat =
+        zonePath.reduce((sum, point) => sum + point.lat, 0) / zonePath.length;
+      const avgLng =
+        zonePath.reduce((sum, point) => sum + point.lng, 0) / zonePath.length;
+      setCenter({ lat: avgLat, lng: avgLng });
+      setMarker(null);
+    } else {
+      setCenter(defaultCenter);
+      setMarker(null);
+    }
+    
+    if (initialRadius !== undefined) {
+      setRadius(initialRadius);
+    }
+  }, [isOpen]); // Only run when modal opens
+
+  useEffect(() => {
+    if (!isLoaded || !isOpen || !mapRef.current || zonePath.length < 3 || !window.google) {
+      return;
+    }
+
+    const bounds = new window.google.maps.LatLngBounds();
+    zonePath.forEach((point) => bounds.extend(point));
+    mapRef.current.fitBounds(bounds);
+  }, [isLoaded, isOpen, zonePath]);
+
+  const onMapClick = useCallback((e) => {
+    const newPos = {
+      lat: e.latLng.lat(),
+      lng: e.latLng.lng(),
+    };
+    setMarker(newPos);
+  }, []);
+
+  const onMarkerDragEnd = useCallback((e) => {
+    const newPos = {
+      lat: e.latLng.lat(),
+      lng: e.latLng.lng(),
+    };
+    setMarker(newPos);
+  }, []);
+
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.geometry) {
+        const newPos = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        };
+        setMarker(newPos);
+        setAddress(place.formatted_address || "");
+        // Pan and zoom the map imperatively
+        if (mapRef.current) {
+          mapRef.current.panTo(newPos);
+          mapRef.current.setZoom(16);
+        } else {
+          setCenter(newPos);
+        }
+      }
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported on this device.");
+      return;
+    }
+
+    setIsFetchingLocation(true);
+
+    const tryFetch = (highAccuracy = true) => {
+      let timeoutId = setTimeout(() => {
+        if (highAccuracy) {
+          console.warn("High accuracy geolocation timed out, trying low accuracy fallback...");
+          tryFetch(false);
+        } else {
+          setIsFetchingLocation(false);
+          toast.error("Unable to retrieve location automatically. Please tap directly on the map or use search bar.");
+        }
+      }, highAccuracy ? 5000 : 7000);
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          clearTimeout(timeoutId);
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setMarker(newPos);
+          setIsFetchingLocation(false);
+          toast.success("Location fetched! Tap 'Confirm & Save Location' at the bottom to save.");
+          if (mapRef.current) {
+            mapRef.current.panTo(newPos);
+            mapRef.current.setZoom(16);
+          } else {
+            setCenter(newPos);
+          }
+
+          if (window.google?.maps?.Geocoder) {
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode({ location: newPos }, (results, status) => {
+              if (status === "OK" && results?.[0]) {
+                setAddress(results[0].formatted_address || "");
+              }
+            });
+          }
+        },
+        (error) => {
+          clearTimeout(timeoutId);
+          if (highAccuracy) {
+            console.warn("High accuracy geolocation failed, trying low accuracy fallback...", error);
+            tryFetch(false);
+          } else {
+            setIsFetchingLocation(false);
+            if (error?.code === error?.PERMISSION_DENIED) {
+              toast.error("Location permission denied. Please allow location access in your browser settings or tap directly on the map.");
+            } else {
+              toast.error("Unable to retrieve location. Please tap directly on the map or use the search bar.");
+            }
+          }
+        },
+        {
+          enableHighAccuracy: highAccuracy,
+          timeout: highAccuracy ? 5000 : 7000,
+          maximumAge: 30000,
+        }
+      );
+    };
+
+    tryFetch(true);
+  };
+
+  const handleConfirm = async () => {
+    if (!marker) {
+      alert("Please select a location on the map.");
+      return;
+    }
+
+    setIsGeocoding(true);
+    try {
+      // Reverse geocode only on confirmation to save costs
+      const geocoder = new window.google.maps.Geocoder();
+      const result = await new Promise((resolve, reject) => {
+        geocoder.geocode({ location: marker }, (results, status) => {
+          if (status === "OK") resolve(results[0]);
+          else reject(status);
+        });
+      });
+
+      onConfirm({
+        ...marker,
+        radius,
+        address: result.formatted_address,
+      });
+      onClose();
+    } catch (error) {
+      console.error("Geocoding failed:", error);
+      // Fallback: confirm without address
+      onConfirm({
+        ...marker,
+        radius,
+        address: address || "Custom Location",
+      });
+      onClose();
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  if (loadError) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Select Location">
+        <div className="p-8 text-center text-red-500">
+          Failed to load Google Maps. Please check your API key and connection.
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Select Shop Location"
+      size="lg"
+      footer={
+        <div className="flex flex-col sm:flex-row gap-3 w-full justify-between items-stretch sm:items-center">
+          <div className="text-sm text-gray-500 text-center sm:text-left">
+            {marker
+              ? address
+                ? <span className="font-medium text-slate-700 block truncate max-w-full sm:max-w-xs">{address}</span>
+                : `${marker.lat.toFixed(4)}, ${marker.lng.toFixed(4)}`
+              : "No location selected"}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose} className="flex-1 sm:flex-initial">
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm} disabled={!marker || isGeocoding} className="flex-1 sm:flex-initial">
+              {isGeocoding ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Confirm Location
+            </Button>
+          </div>
+        </div>
+      }>
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            {isLoaded && (
+              <Autocomplete
+                onLoad={(ref) => (autocompleteRef.current = ref)}
+                onPlaceChanged={handlePlaceChanged}
+                options={{
+                  componentRestrictions: { country: "IN" },
+                  fields: ["geometry", "formatted_address"],
+                }}>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search for your shop area..."
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </Autocomplete>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={getCurrentLocation}
+            disabled={isFetchingLocation}
+            className="shrink-0 whitespace-nowrap px-4"
+            title="Use current location">
+            {isFetchingLocation ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Navigation className="mr-2 h-4 w-4" />
+            )}
+            {isFetchingLocation ? "Fetching..." : "Use Current Location"}
+          </Button>
+        </div>
+
+        <div className="h-[210px] sm:h-[380px] rounded-xl overflow-hidden border border-gray-200 shadow-inner relative">
+          {!isLoaded ? (
+            <div className="h-full flex items-center justify-center bg-gray-50">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              center={center}
+              zoom={15}
+              onClick={onMapClick}
+              onLoad={(map) => {
+                mapRef.current = map;
+              }}
+              options={{
+                disableDefaultUI: true,
+                zoomControl: true,
+                streetViewControl: false,
+                mapTypeControl: false,
+                fullscreenControl: false,
+              }}>
+              {zonePath.length >= 3 && (
+                <Polygon
+                  path={zonePath}
+                  options={{
+                    fillColor: "#10b981",
+                    fillOpacity: 0.14,
+                    strokeColor: "#059669",
+                    strokeOpacity: 0.9,
+                    strokeWeight: 2,
+                    clickable: false,
+                    editable: false,
+                    zIndex: 1,
+                  }}
+                />
+              )}
+              {marker && (
+                <>
+                  <Marker
+                    position={marker}
+                    draggable={true}
+                    onDragEnd={onMarkerDragEnd}
+                    animation={window.google.maps.Animation.DROP}
+                  />
+                  <Circle
+                    center={marker}
+                    radius={radius * 1000} // KM to Meters
+                    options={{
+                      fillColor: "#0ea5e9",
+                      fillOpacity: 0.1,
+                      strokeColor: "#0ea5e9",
+                      strokeOpacity: 0.5,
+                      strokeWeight: 2,
+                      clickable: false,
+                      editable: false,
+                      zIndex: 1,
+                    }}
+                  />
+                </>
+              )}
+            </GoogleMap>
+          )}
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+          {zoneLabel ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+              Showing selected zone: {zoneLabel}
+            </div>
+          ) : null}
+          <div className="flex justify-between items-center">
+            <label className="text-sm font-medium text-gray-700">
+              Service Radius (km)
+            </label>
+            <span className="text-sm font-bold text-primary">{radius} km</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max={maxRadius}
+            step="1"
+            value={radius}
+            onChange={(e) => setRadius(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+          />
+          <div className="flex justify-between text-[10px] text-gray-400">
+            <span>1 km</span>
+            <span>{maxRadius} km</span>
+          </div>
+          <p className="text-xs text-gray-500 flex items-start gap-1">
+            <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+            Customers within this radius from your shop will be able to see and
+            order from you.
+          </p>
+
+        </div>
+
+        {/* Sticky Fixed Save Bar at Modal Bottom */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-3 pt-2 shadow-[0_-8px_20px_rgba(0,0,0,0.1)] z-30 -mx-6 -mb-5 px-6 rounded-b-2xl">
+          <div className="text-[11px] text-gray-500 mb-1.5 text-center truncate font-medium">
+            {marker
+              ? address
+                ? <span className="font-semibold text-slate-800">{address}</span>
+                : `Selected: ${marker.lat.toFixed(5)}, ${marker.lng.toFixed(5)}`
+              : "Tap map or search to select shop location"}
+          </div>
+          <Button
+            onClick={handleConfirm}
+            disabled={!marker || isGeocoding}
+            className="w-full py-3.5 text-base font-bold bg-[#0c831f] hover:bg-[#09701a] text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+          >
+            {isGeocoding ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <MapPin className="w-5 h-5" />
+            )}
+            {isGeocoding ? "Saving Location..." : "Confirm & Save Location"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+export default MapPicker;

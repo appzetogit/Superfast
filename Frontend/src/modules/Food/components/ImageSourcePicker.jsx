@@ -1,0 +1,79 @@
+import { Camera, Upload } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@food/components/ui/dialog"
+import { isFlutterBridgeAvailable, openCamera, openGallery } from "@food/utils/imageUploadUtils"
+
+/**
+ * ImageSourcePicker component to choose between Camera and Gallery
+ * This shows a dialog in-app and handles the selection
+ */
+export const ImageSourcePicker = ({ 
+  isOpen, 
+  onClose, 
+  onFileSelect, 
+  title = "Update photo",
+  description = "Choose how you want to upload your photo.",
+  fileNamePrefix = "upload",
+  galleryInputRef = null
+}) => {
+  
+  const handleOpenCamera = async () => {
+    const openPromise = openCamera({
+      onSelectFile: onFileSelect,
+      fileNamePrefix: fileNamePrefix
+    })
+    onClose()
+    await openPromise
+  }
+
+  const handlePickFromDevice = async () => {
+    onClose()
+    await openGallery({
+      onSelectFile: onFileSelect,
+      fileNamePrefix: fileNamePrefix
+    })
+  }
+
+  // If no bridge is available, we might not even need the dialog if we want to default to gallery
+  // But usually users might still want a camera option if their browser supports it.
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm w-[calc(100%-2rem)] rounded-2xl p-0 overflow-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
+        <DialogHeader className="p-5 pb-3">
+          <DialogTitle className="text-lg font-bold text-gray-900 dark:text-white">{title}</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 dark:text-zinc-400">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 px-5 pb-5">
+          <button
+            type="button"
+            onClick={handleOpenCamera}
+            className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-gray-300 dark:hover:border-zinc-600 transition-all flex items-center justify-between group active:scale-[0.98]"
+          >
+            <span className="font-medium text-sm text-gray-900 dark:text-white">Use Camera</span>
+            <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-950/40 group-hover:bg-orange-100 transition-colors">
+              <Camera className="h-5 w-5 text-[var(--primary-theme)]" />
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={handlePickFromDevice}
+            className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-gray-300 dark:hover:border-zinc-600 transition-all flex items-center justify-between group active:scale-[0.98]"
+          >
+            <span className="font-medium text-sm text-gray-900 dark:text-white">Upload from Device</span>
+            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 group-hover:bg-blue-100 transition-colors">
+              <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
