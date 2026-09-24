@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
 import Select from "react-select"
-import { State, City } from "country-state-city"
 import { deliveryAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -60,16 +59,24 @@ export default function SignupStep1() {
   const emailCheckRef = useRef(null)
 
   useEffect(() => {
-    const IN_STATES = State.getStatesOfCountry("IN")
-    setStates(IN_STATES.map(state => ({ label: state.name, value: state.name, isoCode: state.isoCode })))
+    import("country-state-city")
+      .then(({ State }) => {
+        const IN_STATES = State.getStatesOfCountry("IN")
+        setStates(IN_STATES.map(state => ({ label: state.name, value: state.name, isoCode: state.isoCode })))
+      })
+      .catch((e) => debugError("Error loading states:", e))
   }, [])
 
   useEffect(() => {
-    if (formData.state) {
+    if (formData.state && states.length > 0) {
       const selectedState = states.find(s => s.value === formData.state)
       if (selectedState) {
-        const stateCities = City.getCitiesOfState("IN", selectedState.isoCode)
-        setCities(stateCities.map(city => ({ label: city.name, value: city.name })))
+        import("country-state-city")
+          .then(({ City }) => {
+            const stateCities = City.getCitiesOfState("IN", selectedState.isoCode)
+            setCities(stateCities.map(city => ({ label: city.name, value: city.name })))
+          })
+          .catch((e) => debugError("Error loading cities:", e))
       } else {
         setCities([])
       }
