@@ -4,10 +4,26 @@
  * - `API_BASE_URL` is used by UI (e.g. banners/debug) and should reflect the same value.
  */
 
-export const API_BASE_URL =
-  typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+export const API_BASE_URL = (() => {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    const isLocalHost = host === "localhost" || host === "127.0.0.1";
+    const envVal = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+      ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
+      : "";
+
+    if (!isLocalHost && (!envVal || envVal.includes("localhost") || envVal.includes("127.0.0.1"))) {
+      return "/api/v1";
+    }
+
+    if (envVal) return envVal;
+    return isLocalHost ? "http://localhost:5000/api/v1" : "/api/v1";
+  }
+
+  return typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
     ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
     : "";
+})();
 
 // Minimal shape so existing API_ENDPOINTS.* references do not break
 export const API_ENDPOINTS = {

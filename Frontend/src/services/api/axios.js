@@ -8,12 +8,28 @@
 
 import axios from "axios";
 
-// Prefer explicit env. If not set, use same-origin (works with a Vite proxy).
-// This avoids hardcoding ports like 5000 that may conflict with local setups.
-const baseURL =
-  typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+const resolveBaseURL = () => {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    const isLocalHost = host === "localhost" || host === "127.0.0.1";
+    const envVal = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+      ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
+      : "";
+
+    if (!isLocalHost && (!envVal || envVal.includes("localhost") || envVal.includes("127.0.0.1"))) {
+      return "/api/v1";
+    }
+
+    if (envVal) return envVal;
+    return isLocalHost ? "http://localhost:5000/api/v1" : "/api/v1";
+  }
+
+  return typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
     ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
-    : (typeof import.meta !== "undefined" && import.meta.env?.DEV ? "/api/v1" : "");
+    : "/api/v1";
+};
+
+const baseURL = resolveBaseURL();
 
 const apiClient = axios.create({
   baseURL: baseURL || undefined,

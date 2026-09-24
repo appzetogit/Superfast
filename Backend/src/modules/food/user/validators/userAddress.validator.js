@@ -10,10 +10,10 @@ const coordSchema = z
 
 const createAddressSchema = z.object({
     label: labelSchema.optional(),
-    street: z.string().min(1, 'Street is required').max(200).transform((s) => s.trim()),
+    street: z.string().min(1, 'Street is required').max(500).transform((s) => s.trim()),
     additionalDetails: z.string().max(500).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
-    city: z.string().min(1, 'City is required').max(100).transform((s) => s.trim()),
-    state: z.string().min(1, 'State is required').max(100).transform((s) => s.trim()),
+    city: z.string().max(100).optional().or(z.literal('')).transform((s) => String(s || '').trim() || 'City'),
+    state: z.string().max(100).optional().or(z.literal('')).transform((s) => String(s || '').trim() || 'State'),
     zipCode: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     phone: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     latitude: z.number().finite().min(-90).max(90),

@@ -669,14 +669,16 @@ export default function AddressSelectorPage() {
 
   const handleAddressFormSubmit = async (e) => {
     e.preventDefault()
-    if (!addressFormData.street || !addressFormData.city) {
-      toast.error("Please fill required fields")
-      return
-    }
+    const streetVal = addressFormData.street || currentAddress || location?.formattedAddress || location?.address || "Selected Location"
+    const cityVal = addressFormData.city || location?.city || "City"
+    const stateVal = addressFormData.state || location?.state || "State"
     setLoadingAddress(true)
     try {
       const payload = {
         ...addressFormData,
+        street: streetVal,
+        city: cityVal,
+        state: stateVal,
         label: addressFormData.label === "Work" ? "Office" : addressFormData.label,
         location: { type: "Point", coordinates: [mapPosition[1], mapPosition[0]] },
         latitude: mapPosition[0],
