@@ -2810,6 +2810,17 @@ export async function updateRestaurantById(id, body = {}) {
         doc.priority = toFinite(body.priority) ?? 0;
     }
 
+    // Zone assignment — allows admin to assign restaurant to a delivery zone
+    if (body.zoneId !== undefined) {
+        if (body.zoneId === null || body.zoneId === '' || body.zoneId === 'none') {
+            doc.zoneId = undefined;
+        } else if (mongoose.Types.ObjectId.isValid(String(body.zoneId))) {
+            doc.zoneId = new mongoose.Types.ObjectId(String(body.zoneId));
+        } else {
+            throw new ValidationError('Invalid zoneId');
+        }
+    }
+
     await doc.save();
     return FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
 }

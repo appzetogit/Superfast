@@ -448,29 +448,56 @@ export default function FeeSettings() {
         </div>
       </div>
 
-      {/* Fee Calculation Priority & Rules Overview Banner */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl p-5 mb-6 shadow-md border border-slate-700">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Info className="w-5 h-5 text-amber-400" />
-            <h2 className="text-base font-bold">Active Fee Calculation Rules & Priority</h2>
+            <h2 className="text-base font-bold">Active Fee Calculation Rules &amp; Priority</h2>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 bg-amber-400/20 text-amber-300 rounded-full border border-amber-400/30">
             System Logic
           </span>
         </div>
         <p className="text-xs text-slate-300 mb-4">
-          Enable or Disable specific fee conditions below using the toggle switches. When an order is placed, fees are applied in the following order:
+          When an order is placed, the system checks each rule <strong className="text-white">in this exact order</strong> and stops at the first match. Free Delivery threshold is always checked first.
         </p>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+          <div className="p-2.5 rounded-lg border bg-green-950/60 border-green-500/50 text-green-200">
+            <div className="font-semibold text-slate-100">0. Free Delivery</div>
+            <div className="text-[10px] mt-1 text-green-300">Subtotal ≥ threshold → ₹0 fee</div>
+          </div>
+
+          <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
+            feeSettings.enableRangeFee && feeSettings.enableZoneFees
+              ? 'bg-purple-950/60 border-purple-500/50 text-purple-200' 
+              : 'bg-slate-800/50 border-slate-700 text-slate-500'
+          }`}>
+            <div className="font-semibold text-slate-100">1. Zone Range Fee</div>
+            <div className="text-[10px] mt-1 font-mono">
+              {feeSettings.enableRangeFee && feeSettings.enableZoneFees ? '✓ ACTIVE' : '✗ OFF'}
+            </div>
+            <div className="text-[9px] mt-0.5 opacity-70">Zone + Order Value range</div>
+          </div>
+
+          <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
+            feeSettings.enableZoneFees 
+              ? 'bg-teal-950/60 border-teal-500/50 text-teal-200' 
+              : 'bg-slate-800/50 border-slate-700 text-slate-500'
+          }`}>
+            <div className="font-semibold text-slate-100">2. Zone Fee Override</div>
+            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableZoneFees ? '✓ ACTIVE' : '✗ OFF'}</div>
+            <div className="text-[9px] mt-0.5 opacity-70">Zone base + per-km rate</div>
+          </div>
+
           <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
             feeSettings.enableRangeFee 
-              ? 'bg-purple-950/60 border-purple-500/50 text-purple-200' 
+              ? 'bg-violet-950/60 border-violet-500/50 text-violet-200' 
               : 'bg-slate-800/50 border-slate-700 text-slate-500 line-through'
           }`}>
-            <div className="font-semibold text-slate-100">1. Order Value Ranges</div>
-            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableRangeFee ? '✓ ENABLED' : '✗ DISABLED'}</div>
+            <div className="font-semibold text-slate-100">3. Global Range Fee</div>
+            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableRangeFee ? '✓ ACTIVE' : '✗ OFF'}</div>
+            <div className="text-[9px] mt-0.5 opacity-70">Order value ranges (no zone)</div>
           </div>
 
           <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
@@ -478,8 +505,9 @@ export default function FeeSettings() {
               ? 'bg-blue-950/60 border-blue-500/50 text-blue-200' 
               : 'bg-slate-800/50 border-slate-700 text-slate-500 line-through'
           }`}>
-            <div className="font-semibold text-slate-100">2. Distance-Based Fee</div>
-            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableDistanceBasedFee ? '✓ ENABLED' : '✗ DISABLED'}</div>
+            <div className="font-semibold text-slate-100">4. Distance-Based</div>
+            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableDistanceBasedFee ? '✓ ACTIVE' : '✗ OFF'}</div>
+            <div className="text-[9px] mt-0.5 opacity-70">Base km + extra per km</div>
           </div>
 
           <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
@@ -487,26 +515,19 @@ export default function FeeSettings() {
               ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-200' 
               : 'bg-slate-800/50 border-slate-700 text-slate-500 line-through'
           }`}>
-            <div className="font-semibold text-slate-100">3. 1 KM / Per KM Fee</div>
-            <div className="text-[10px] mt-1 font-mono">{feeSettings.enablePerKmFee ? '✓ ENABLED' : '✗ DISABLED'}</div>
+            <div className="font-semibold text-slate-100">5. Global Per-KM</div>
+            <div className="text-[10px] mt-1 font-mono">{feeSettings.enablePerKmFee ? '✓ ACTIVE' : '✗ OFF'}</div>
+            <div className="text-[9px] mt-0.5 opacity-70">Base + extra per km</div>
           </div>
 
-          <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
-            feeSettings.enableZoneFees 
-              ? 'bg-teal-950/60 border-teal-500/50 text-teal-200' 
-              : 'bg-slate-800/50 border-slate-700 text-slate-500 line-through'
-          }`}>
-            <div className="font-semibold text-slate-100">4. Zone Fee Override</div>
-            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableZoneFees ? '✓ ENABLED' : '✗ DISABLED'}</div>
-          </div>
-
-          <div className={`p-2.5 rounded-lg border flex flex-col justify-between ${
+          <div className={`p-2.5 rounded-lg border flex flex-col justify-between col-span-2 md:col-span-1 ${
             feeSettings.enableDefaultFee 
               ? 'bg-amber-950/60 border-amber-500/50 text-amber-200' 
               : 'bg-slate-800/50 border-slate-700 text-slate-500 line-through'
           }`}>
-            <div className="font-semibold text-slate-100">5. Default Fallback Fee</div>
-            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableDefaultFee ? '✓ ENABLED' : '✗ DISABLED'}</div>
+            <div className="font-semibold text-slate-100">6. Default Fallback</div>
+            <div className="text-[10px] mt-1 font-mono">{feeSettings.enableDefaultFee ? '✓ ACTIVE' : '✗ OFF'}</div>
+            <div className="text-[9px] mt-0.5 opacity-70">Last resort flat fee</div>
           </div>
         </div>
       </div>
@@ -573,7 +594,7 @@ export default function FeeSettings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-slate-700">
-                      1 KM Delivery Fee (₹)
+                      Per KM Additional Fee (₹)
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
@@ -585,10 +606,10 @@ export default function FeeSettings() {
                         min="0"
                         step="1"
                         className="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none disabled:bg-slate-100 disabled:text-slate-400"
-                        placeholder="e.g. 15"
+                        placeholder="e.g. 5"
                       />
                     </div>
-                    <p className="text-xs text-slate-500">Standard fee per 1 KM distance</p>
+                    <p className="text-xs text-slate-500">Fee charged per extra km beyond 1st km. Formula: Default Fee + (distance−1) × this rate</p>
                   </div>
                 </div>
               </div>
@@ -655,8 +676,8 @@ export default function FeeSettings() {
                       <thead className="bg-emerald-100/60 text-slate-700">
                         <tr>
                           <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Zone</th>
-                          <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Default Delivery Fee (₹)</th>
-                          <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">1 KM Delivery Fee (₹)</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Base Fee / 1st KM (₹)</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Per Extra KM Fee (₹)</th>
                           <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
@@ -723,14 +744,14 @@ export default function FeeSettings() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">1 KM Fee (₹)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Per Extra KM Fee (₹) <span className="text-slate-400">(beyond 1st km)</span></label>
                       <input
                         type="number"
                         value={newZoneFee.perKmDeliveryFee}
                         onChange={(e) => setNewZoneFee({ ...newZoneFee, perKmDeliveryFee: e.target.value })}
                         disabled={!feeSettings.enableZoneFees}
                         min="0"
-                        placeholder="e.g. 20"
+                        placeholder="e.g. 5"
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-100"
                       />
                     </div>

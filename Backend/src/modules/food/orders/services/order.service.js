@@ -23,6 +23,7 @@ import {
   sendNotificationToOwners,
 } from "../../../../core/notifications/firebase.service.js";
 import { FoodTransaction } from '../models/foodTransaction.model.js';
+import { computeDeliveryFee } from './order-pricing.service.js';
 import { FoodSupportTicket } from '../../user/models/supportTicket.model.js';
 import { Seller } from '../../../quick-commerce/seller/models/seller.model.js';
 import { SellerOrder } from '../../../quick-commerce/seller/models/sellerOrder.model.js';
@@ -1817,6 +1818,7 @@ export async function calculateOrder(userId, dto) {
   if (primaryRestaurant.isAcceptingOrders === false)
     throw new ValidationError("Restaurant is currently offline and not accepting orders");
 
+  let calculatedDistKm = 0;
   // Geofencing & Distance Validation for Delivery Address
   if (dto.address) {
     const custLat = dto.address.latitude ?? dto.address.location?.coordinates?.[1] ?? dto.address.lat;
@@ -1826,6 +1828,7 @@ export async function calculateOrder(userId, dto) {
       const restLng = primaryRestaurant.location?.coordinates?.[0] ?? primaryRestaurant.location?.longitude ?? primaryRestaurant.longitude;
       if (Number.isFinite(restLat) && Number.isFinite(restLng)) {
         const distKm = haversineKm(restLat, restLng, custLat, custLng);
+        calculatedDistKm = distKm;
         if (distKm > 25) {
           throw new ValidationError(
             `Delivery location is too far (${Math.round(distKm)} km away) from ${primaryRestaurant.restaurantName || 'this restaurant'}. Maximum delivery radius is 25 km.`
@@ -1861,49 +1864,13 @@ export async function calculateOrder(userId, dto) {
   const packagingFee = 0;
   const platformFee = feeSettings.platformFee;
 
-  // Delivery fee by subtotal range (fallback to flat fee; free above threshold).
-  const freeThreshold = feeSettings.freeDeliveryThreshold;
-  let deliveryFee = 0;
-  if (
-    Number.isFinite(freeThreshold) &&
-    freeThreshold > 0 &&
-    subtotal >= freeThreshold
-  ) {
-    deliveryFee = 0;
-  } else {
-    const ranges = Array.isArray(feeSettings.deliveryFeeRanges)
-      ? [...feeSettings.deliveryFeeRanges]
-      : [];
-    if (ranges.length > 0) {
-      ranges.sort((a, b) => Number(a.min) - Number(b.min));
-      let matched = null;
-      for (let i = 0; i < ranges.length; i += 1) {
-        const r = ranges[i] || {};
-        const min = Number(r.min);
-        const max = Number(r.max);
-        const fee = Number(r.fee);
-        if (
-          !Number.isFinite(min) ||
-          !Number.isFinite(max) ||
-          !Number.isFinite(fee)
-        )
-          continue;
-        const isLast = i === ranges.length - 1;
-        const inRange = isLast
-          ? subtotal >= min && subtotal <= max
-          : subtotal >= min && subtotal < max;
-        if (inRange) {
-          matched = fee;
-          break;
-        }
-      }
-      deliveryFee = Number.isFinite(matched)
-        ? matched
-        : feeSettings.deliveryFee;
-    } else {
-      deliveryFee = feeSettings.deliveryFee;
-    }
-  }
+  // Calculate delivery fee using priority rules (Zone fee override > Global range fee > Per KM fee > Default fee)
+  const deliveryFee = computeDeliveryFee({
+    feeSettings,
+    subtotal,
+    restaurantZoneId: primaryRestaurant.zoneId,
+    distanceKm: calculatedDistKm,
+  });
 
   const gstRate = feeSettings.gstRate;
   const tax =
