@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 /**
@@ -33,39 +33,39 @@ export function useLocationSimple() {
       // Backend response structure: { success: true, data: { results: [...] } }
       const backendData = apiResponse?.data?.data || {}
       const results = backendData.results || []
-      
+
       if (results.length === 0) {
         return ""
       }
 
       const result = results[0]
-      
+
       // Method 1: Extract from address_components object
       if (result.address_components) {
         const components = result.address_components
-        
+
         // Check if it's an array (Google Maps style)
         if (Array.isArray(components)) {
           // Find sublocality or neighborhood
           const sublocality = components.find(comp => {
             const types = comp.types || []
-            return types.includes('sublocality') || 
-                   types.includes('sublocality_level_1') ||
-                   types.includes('neighborhood')
+            return types.includes('sublocality') ||
+              types.includes('sublocality_level_1') ||
+              types.includes('neighborhood')
           })
-          
+
           if (sublocality?.long_name) {
             return sublocality.long_name.trim()
           }
-        } 
+        }
         // Object format: { city, state, country, area }
         else if (components.area) {
           const area = components.area.trim()
           // Validate: Don't use state or city as area
-          if (area && 
-              area.toLowerCase() !== (components.state || "").toLowerCase() &&
-              area.toLowerCase() !== (components.city || "").toLowerCase() &&
-              !area.toLowerCase().includes("district")) {
+          if (area &&
+            area.toLowerCase() !== (components.state || "").toLowerCase() &&
+            area.toLowerCase() !== (components.city || "").toLowerCase() &&
+            !area.toLowerCase().includes("district")) {
             return area
           }
         }
@@ -86,23 +86,23 @@ export function useLocationSimple() {
           const state = addressParts[2]
 
           // Validate first part is not city or state
-          if (firstPart && 
-              firstPart.length > 2 && 
-              firstPart.length < 50 &&
-              firstPart.toLowerCase() !== city.toLowerCase() &&
-              firstPart.toLowerCase() !== state.toLowerCase() &&
-              !firstPart.match(/^\d+/) && // Not a number
-              !firstPart.toLowerCase().includes("district")) {
+          if (firstPart &&
+            firstPart.length > 2 &&
+            firstPart.length < 50 &&
+            firstPart.toLowerCase() !== city.toLowerCase() &&
+            firstPart.toLowerCase() !== state.toLowerCase() &&
+            !firstPart.match(/^\d+/) && // Not a number
+            !firstPart.toLowerCase().includes("district")) {
             return firstPart
           }
         }
       }
 
       // Method 3: Try direct fields from result
-      const directArea = result.area || 
-                        result.sublocality || 
-                        result.neighborhood ||
-                        result.sublocality_level_1
+      const directArea = result.area ||
+        result.sublocality ||
+        result.neighborhood ||
+        result.sublocality_level_1
 
       if (directArea && directArea.trim()) {
         return directArea.trim()
@@ -145,10 +145,10 @@ export function useLocationSimple() {
       const area = extractAreaFromResponse(response)
 
       // Extract other location details
-      const city = Array.isArray(addressComponents) 
-        ? addressComponents.find(c => c.types?.includes('locality'))?.long_name 
+      const city = Array.isArray(addressComponents)
+        ? addressComponents.find(c => c.types?.includes('locality'))?.long_name
         : addressComponents.city || ""
-      
+
       const state = Array.isArray(addressComponents)
         ? addressComponents.find(c => c.types?.includes('administrative_area_level_1'))?.long_name
         : addressComponents.state || ""
@@ -203,7 +203,7 @@ export function useLocationSimple() {
         (err) => {
           // Handle geolocation errors
           let errorMessage = "Unable to retrieve your location"
-          
+
           switch (err.code) {
             case err.PERMISSION_DENIED:
               errorMessage = "Location permission denied. Please enable location access in your browser settings."
@@ -218,7 +218,7 @@ export function useLocationSimple() {
               errorMessage = "An unknown error occurred while retrieving location."
               break
           }
-          
+
           reject(new Error(errorMessage))
         },
         options
@@ -236,17 +236,17 @@ export function useLocationSimple() {
 
     try {
       const locationData = await getCurrentLocation(true) // Force fresh location
-      
+
       setLocation(locationData)
       setPermissionGranted(true)
       setError(null)
-      
+
       return locationData
     } catch (err) {
       const errorMessage = err.message || "Failed to get location"
       setError(errorMessage)
       setPermissionGranted(false)
-      
+
       // Try to load cached location as fallback
       const cached = localStorage.getItem("userLocation")
       if (cached) {
@@ -257,7 +257,7 @@ export function useLocationSimple() {
           debugError("Failed to parse cached location:", parseErr)
         }
       }
-      
+
       throw err
     } finally {
       setLoading(false)
@@ -295,7 +295,7 @@ export function useLocationSimple() {
           try {
             localStorage.setItem("userLocation", JSON.stringify(locationData))
             localStorage.setItem("deliveryAddressMode", "current")
-          } catch (e) {}
+          } catch (e) { }
           setPermissionGranted(true)
           setError(null)
           // Broadcast location update to other components/modules
