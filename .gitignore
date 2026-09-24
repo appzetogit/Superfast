@@ -5,8 +5,10 @@ node_modules/
 dist/
 coverage/
 .DS_Store
-uploads/
-upload/
-Backend/upload/
-Backend/config/*.json
+/uploads/
+/Backend/uploads/
+/Backend/upload/
+/Frontend/public/uploads/
+/Backend/config/*.json
+
 
