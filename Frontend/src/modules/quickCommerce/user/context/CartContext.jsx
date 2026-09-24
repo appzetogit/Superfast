@@ -242,7 +242,21 @@ const useStandaloneQuickCart = (isBridged = false, navigate, location) => {
 
   const syncCart = (backendItems) => {
     if (pendingRequestsRef.current === 0) {
-      setCart(normalizeBackendCart(backendItems));
+      // Merge backend items carefully: prefer higher local quantity to avoid
+      // overriding optimistic updates from updateQuantity calls that may have
+      // resolved before this addToCart response arrived.
+      setCart((prev) => {
+        const normalized = normalizeBackendCart(backendItems);
+        if (!prev.length) return normalized;
+        return normalized.map((backendItem) => {
+          const backendId = getProductId(backendItem);
+          const localItem = prev.find((p) => getProductId(p) === backendId);
+          if (!localItem) return backendItem;
+          // If local qty is higher (user pressed + while addToCart was in-flight), keep it
+          const mergedQty = Math.max(backendItem.quantity, localItem.quantity);
+          return { ...backendItem, quantity: mergedQty };
+        });
+      });
     }
   };
 
@@ -359,9 +373,11 @@ const useStandaloneQuickCart = (isBridged = false, navigate, location) => {
     if (isAuthenticated) {
       pendingRequestsRef.current += 1;
       try {
-        const response = await customerApi.addToCart({ productId: id, quantity: 1 });
+        await customerApi.addToCart({ productId: id, quantity: 1 });
         pendingRequestsRef.current -= 1;
-        syncCart(response.data?.result?.items || response.data?.items);
+        // Don't call syncCart here — it can override quantity increments made by
+        // updateQuantity while this addToCart request was in-flight. Let the
+        // optimistic local state drive the UI; backend is already up-to-date.
       } catch (error) {
         pendingRequestsRef.current -= 1;
         if (pendingRequestsRef.current === 0) await fetchCart();

@@ -8,7 +8,7 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 
 export async function calculateOrderPricing(userId, dto) {
   const restaurant = await FoodRestaurant.findById(dto.restaurantId)
-    .select("status")
+    .select("status zoneId")
     .lean();
   if (!restaurant) throw new ValidationError("Restaurant not found");
   if (restaurant.status !== "approved")
@@ -36,6 +36,13 @@ export async function calculateOrderPricing(userId, dto) {
 
   const freeThreshold = Number(feeSettings.freeDeliveryThreshold || 0);
   let deliveryFee = 0;
+
+  const enableRangeFee = feeSettings.enableRangeFee !== false;
+  const enableZoneFees = feeSettings.enableZoneFees !== false;
+  const enablePerKmFee = feeSettings.enablePerKmFee !== false;
+  const enableDefaultFee = feeSettings.enableDefaultFee !== false;
+  const enableDistanceBasedFee = feeSettings.enableDistanceBasedFee === true;
+
   if (
     Number.isFinite(freeThreshold) &&
     freeThreshold > 0 &&
@@ -43,38 +50,60 @@ export async function calculateOrderPricing(userId, dto) {
   ) {
     deliveryFee = 0;
   } else {
-    const ranges = Array.isArray(feeSettings.deliveryFeeRanges)
-      ? [...feeSettings.deliveryFeeRanges]
-      : [];
-    if (ranges.length > 0) {
-      ranges.sort((a, b) => Number(a.min) - Number(b.min));
-      let matched = null;
-      for (let i = 0; i < ranges.length; i += 1) {
-        const r = ranges[i] || {};
-        const min = Number(r.min);
-        const max = Number(r.max);
-        const fee = Number(r.fee);
-        if (
-          !Number.isFinite(min) ||
-          !Number.isFinite(max) ||
-          !Number.isFinite(fee)
-        ) {
-          continue;
-        }
-        const isLast = i === ranges.length - 1;
-        const inRange = isLast
-          ? subtotal >= min && subtotal <= max
-          : subtotal >= min && subtotal < max;
-        if (inRange) {
-          matched = fee;
-          break;
+    const restZoneIdStr = restaurant.zoneId ? String(restaurant.zoneId) : null;
+
+    // 1) Try Range-Based Fee if Range Fee feature is enabled
+    let rangeMatchedFee = null;
+    if (enableRangeFee) {
+      const allRanges = Array.isArray(feeSettings.deliveryFeeRanges) ? [...feeSettings.deliveryFeeRanges] : [];
+      const zoneSpecificRanges = (enableZoneFees && restZoneIdStr)
+        ? allRanges.filter(r => r.zoneId && String(r.zoneId) === restZoneIdStr)
+        : [];
+      const globalRanges = allRanges.filter(r => !r.zoneId);
+
+      const activeRanges = zoneSpecificRanges.length > 0 ? zoneSpecificRanges : globalRanges;
+
+      if (activeRanges.length > 0) {
+        activeRanges.sort((a, b) => Number(a.min) - Number(b.min));
+        for (let i = 0; i < activeRanges.length; i += 1) {
+          const r = activeRanges[i] || {};
+          const min = Number(r.min);
+          const max = Number(r.max);
+          const fee = Number(r.fee);
+          if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(fee)) continue;
+          const isLast = i === activeRanges.length - 1;
+          const inRange = isLast ? (subtotal >= min && subtotal <= max) : (subtotal >= min && subtotal < max);
+          if (inRange) {
+            rangeMatchedFee = fee;
+            break;
+          }
         }
       }
-      deliveryFee = Number.isFinite(matched)
-        ? matched
-        : Number(feeSettings.deliveryFee || 0);
+    }
+
+    if (rangeMatchedFee !== null) {
+      deliveryFee = rangeMatchedFee;
+    } else if (enableDistanceBasedFee) {
+      // 2) Distance-based calculation (if enabled)
+      const baseDistFee = Number(feeSettings.baseDistanceFee || 0);
+      deliveryFee = baseDistFee;
     } else {
-      deliveryFee = Number(feeSettings.deliveryFee || 0);
+      // 3) Zone Override / Per KM / Default Fallback
+      const zoneSpecificSetting = (enableZoneFees && restZoneIdStr && Array.isArray(feeSettings.zoneDeliveryFees))
+        ? feeSettings.zoneDeliveryFees.find(z => z.zoneId && String(z.zoneId) === restZoneIdStr)
+        : null;
+
+      if (enablePerKmFee && zoneSpecificSetting?.perKmDeliveryFee !== undefined && zoneSpecificSetting?.perKmDeliveryFee !== '') {
+        deliveryFee = Number(zoneSpecificSetting.perKmDeliveryFee);
+      } else if (enablePerKmFee && feeSettings.perKmDeliveryFee !== undefined && feeSettings.perKmDeliveryFee !== '') {
+        deliveryFee = Number(feeSettings.perKmDeliveryFee);
+      } else if (enableZoneFees && zoneSpecificSetting?.deliveryFee !== undefined && zoneSpecificSetting?.deliveryFee !== '') {
+        deliveryFee = Number(zoneSpecificSetting.deliveryFee);
+      } else if (enableDefaultFee) {
+        deliveryFee = Number(feeSettings.deliveryFee || 0);
+      } else {
+        deliveryFee = 0;
+      }
     }
   }
 

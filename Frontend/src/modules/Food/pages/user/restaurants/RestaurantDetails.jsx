@@ -1295,23 +1295,18 @@ function RestaurantDetailsContent() {
           imageUrl: item.image,
         }
 
-        // If incrementing quantity, trigger add animation with sourcePosition
-        if (newQuantity > existingCartItem.quantity && sourcePosition) {
-          if (result?.ok === false) {
-            if (result?.code !== 'RESTAURANT_MISMATCH' && result?.code !== 'STORE_MISMATCH') {
-              toast.error(result.error || 'Cannot add item. Please check your cart.')
-            }
-            return
-          }
-          if (newQuantity > existingCartItem.quantity + 1) {
-            updateQuantity(lineItemId, newQuantity)
-          }
+        // If incrementing quantity, always call updateQuantity with the new absolute value.
+        // Previously this block used an undefined `result` variable (causing false error checks)
+        // and only called updateQuantity when jumping by more than 1 — so +1 presses were silently
+        // dropped and the cart stayed at its original quantity.
+        if (newQuantity > existingCartItem.quantity) {
+          updateQuantity(lineItemId, newQuantity)
         }
-        // If decreasing quantity, trigger removal animation with sourcePosition
-        else if (newQuantity < existingCartItem.quantity && sourcePosition) {
+        // If decreasing quantity
+        else if (newQuantity < existingCartItem.quantity) {
           updateQuantity(lineItemId, newQuantity, sourcePosition, productInfo)
         }
-        // Otherwise just update quantity without animation
+        // Same quantity — no-op
         else {
           updateQuantity(lineItemId, newQuantity)
         }

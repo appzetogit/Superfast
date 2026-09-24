@@ -2051,6 +2051,35 @@ export async function getFeeSettings() {
 export async function upsertFeeSettings(body) {
     // Single active doc pattern: keep only one active record.
     const existing = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 });
+
+    let processedRanges = undefined;
+    if (Array.isArray(body.deliveryFeeRanges)) {
+        processedRanges = body.deliveryFeeRanges.map(r => {
+            const zidStr = r.zoneId && typeof r.zoneId === 'object' ? String(r.zoneId._id) : (r.zoneId ? String(r.zoneId) : null);
+            return {
+                min: Number(r.min),
+                max: Number(r.max),
+                fee: Number(r.fee),
+                zoneId: zidStr && mongoose.Types.ObjectId.isValid(zidStr) ? new mongoose.Types.ObjectId(zidStr) : null
+            };
+        });
+    }
+
+    let processedZoneFees = undefined;
+    if (Array.isArray(body.zoneDeliveryFees)) {
+        processedZoneFees = body.zoneDeliveryFees
+            .map(z => {
+                const zidStr = z.zoneId && typeof z.zoneId === 'object' ? String(z.zoneId._id) : (z.zoneId ? String(z.zoneId) : null);
+                if (!zidStr || !mongoose.Types.ObjectId.isValid(zidStr)) return null;
+                return {
+                    zoneId: new mongoose.Types.ObjectId(zidStr),
+                    deliveryFee: z.deliveryFee !== undefined && z.deliveryFee !== null && z.deliveryFee !== "" ? Number(z.deliveryFee) : undefined,
+                    perKmDeliveryFee: z.perKmDeliveryFee !== undefined && z.perKmDeliveryFee !== null && z.perKmDeliveryFee !== "" ? Number(z.perKmDeliveryFee) : undefined
+                };
+            })
+            .filter(Boolean);
+    }
+
     if (existing) {
         const $set = {};
         const $unset = {};
@@ -2058,7 +2087,11 @@ export async function upsertFeeSettings(body) {
         if (body.deliveryFee === null) $unset.deliveryFee = 1;
         else if (body.deliveryFee !== undefined) $set.deliveryFee = body.deliveryFee;
 
-        if (body.deliveryFeeRanges !== undefined) $set.deliveryFeeRanges = body.deliveryFeeRanges;
+        if (body.perKmDeliveryFee === null) $unset.perKmDeliveryFee = 1;
+        else if (body.perKmDeliveryFee !== undefined) $set.perKmDeliveryFee = body.perKmDeliveryFee;
+
+        if (processedRanges !== undefined) $set.deliveryFeeRanges = processedRanges;
+        if (processedZoneFees !== undefined) $set.zoneDeliveryFees = processedZoneFees;
 
         if (body.freeDeliveryThreshold === null) $unset.freeDeliveryThreshold = 1;
         else if (body.freeDeliveryThreshold !== undefined) $set.freeDeliveryThreshold = body.freeDeliveryThreshold;
@@ -2076,6 +2109,16 @@ export async function upsertFeeSettings(body) {
         if (body.incentivePercentage === null) $unset.incentivePercentage = 1;
         else if (body.incentivePercentage !== undefined) $set.incentivePercentage = body.incentivePercentage;
 
+        if (body.enableRangeFee !== undefined) $set.enableRangeFee = body.enableRangeFee;
+        if (body.enablePerKmFee !== undefined) $set.enablePerKmFee = body.enablePerKmFee;
+        if (body.enableZoneFees !== undefined) $set.enableZoneFees = body.enableZoneFees;
+        if (body.enableDefaultFee !== undefined) $set.enableDefaultFee = body.enableDefaultFee;
+
+        if (body.enableDistanceBasedFee !== undefined) $set.enableDistanceBasedFee = body.enableDistanceBasedFee;
+        if (body.baseDistanceKm !== undefined) $set.baseDistanceKm = body.baseDistanceKm;
+        if (body.baseDistanceFee !== undefined) $set.baseDistanceFee = body.baseDistanceFee;
+        if (body.extraFeePerKm !== undefined) $set.extraFeePerKm = body.extraFeePerKm;
+
         if (body.isActive !== undefined) $set.isActive = body.isActive;
 
         const update = {};
@@ -2088,10 +2131,12 @@ export async function upsertFeeSettings(body) {
     }
 
     const payload = {
-        deliveryFeeRanges: body.deliveryFeeRanges ?? [],
+        deliveryFeeRanges: processedRanges ?? [],
+        zoneDeliveryFees: processedZoneFees ?? [],
         isActive: body.isActive !== false
     };
     if (body.deliveryFee !== undefined && body.deliveryFee !== null) payload.deliveryFee = body.deliveryFee;
+    if (body.perKmDeliveryFee !== undefined && body.perKmDeliveryFee !== null) payload.perKmDeliveryFee = body.perKmDeliveryFee;
     if (body.freeDeliveryThreshold !== undefined && body.freeDeliveryThreshold !== null) payload.freeDeliveryThreshold = body.freeDeliveryThreshold;
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
@@ -2100,6 +2145,14 @@ export async function upsertFeeSettings(body) {
     if (body.isIncentiveEnabled !== undefined) payload.isIncentiveEnabled = body.isIncentiveEnabled;
     if (body.incentiveThreshold !== undefined && body.incentiveThreshold !== null) payload.incentiveThreshold = body.incentiveThreshold;
     if (body.incentivePercentage !== undefined && body.incentivePercentage !== null) payload.incentivePercentage = body.incentivePercentage;
+    if (body.enableRangeFee !== undefined) payload.enableRangeFee = body.enableRangeFee;
+    if (body.enablePerKmFee !== undefined) payload.enablePerKmFee = body.enablePerKmFee;
+    if (body.enableZoneFees !== undefined) payload.enableZoneFees = body.enableZoneFees;
+    if (body.enableDefaultFee !== undefined) payload.enableDefaultFee = body.enableDefaultFee;
+    if (body.enableDistanceBasedFee !== undefined) payload.enableDistanceBasedFee = body.enableDistanceBasedFee;
+    if (body.baseDistanceKm !== undefined) payload.baseDistanceKm = body.baseDistanceKm;
+    if (body.baseDistanceFee !== undefined) payload.baseDistanceFee = body.baseDistanceFee;
+    if (body.extraFeePerKm !== undefined) payload.extraFeePerKm = body.extraFeePerKm;
 
     const created = await FoodFeeSettings.create(payload);
     return created.toObject();
