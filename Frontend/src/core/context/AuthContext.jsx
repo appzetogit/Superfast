@@ -124,6 +124,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        // Capture active role and path before clearing state
+        const activeRole = currentRole || (user?.role ? user.role.toLowerCase() : null);
+        const path = window.location.pathname || '';
+        const hash = (window.location.hash || '').replace(/^#\/?/, '/');
+        const effectivePath = hash !== '/' && hash ? hash : path;
+
         // Clear all role-specific tokens from localStorage
         Object.values(ROLE_STORAGE_KEYS).forEach(key => {
             localStorage.removeItem(key);
@@ -131,8 +137,6 @@ export const AuthProvider = ({ children }) => {
         Object.values(LEGACY_ROLE_STORAGE_KEYS).flat().forEach(key => {
             localStorage.removeItem(key);
         });
-
-        const path = window.location.pathname;
 
         // Also clear common/compat keys used by older module code.
         localStorage.removeItem('token');
@@ -158,12 +162,16 @@ export const AuthProvider = ({ children }) => {
         // Clear the current user profile from memory
         setUser(null);
 
-        // Final fallback: redirect based on current path if needed
-        // (ProtectedRoute usually handles this, but explicit navigation is safer for some UI edge cases)
-        if (path.startsWith('/admin')) window.location.href = '/admin/login';
-        else if (path.startsWith('/seller')) window.location.href = '/seller/auth';
-        else if (path.startsWith('/delivery')) window.location.href = '/delivery/auth';
-        else window.location.href = '/user/auth/login';
+        // Final fallback: redirect based on current path or active role
+        if (effectivePath.startsWith('/admin') || activeRole === 'admin') {
+            window.location.href = '/admin/login';
+        } else if (effectivePath.startsWith('/seller') || activeRole === 'seller') {
+            window.location.href = '/seller/auth';
+        } else if (effectivePath.startsWith('/delivery') || activeRole === 'delivery') {
+            window.location.href = '/delivery/auth';
+        } else {
+            window.location.href = '/user/auth/login';
+        }
     };
 
     const refreshUser = async () => {

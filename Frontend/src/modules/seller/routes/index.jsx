@@ -125,7 +125,7 @@ const SellerAccessRouter = () => {
   }
 
   if (!user) {
-    return <Loader />;
+    return <Navigate to="/seller/auth" replace />;
   }
 
   const approved =

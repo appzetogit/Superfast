@@ -199,6 +199,10 @@ export function clearModuleAuth(module) {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminInfo");
   }
+  if (module === "seller") {
+    localStorage.removeItem("auth_seller");
+    localStorage.removeItem("seller_accessToken");
+  }
   if (module === "user") {
     localStorage.removeItem("auth_customer");
     localStorage.removeItem("accessToken");
@@ -335,6 +339,10 @@ export function setAuthData(module, token, user, refreshToken = null) {
       if (user) {
         localStorage.setItem("adminInfo", JSON.stringify(user));
       }
+    }
+    if (module === "seller") {
+      localStorage.setItem("auth_seller", token);
+      localStorage.setItem("seller_accessToken", token);
     }
     if (module === "user") {
       localStorage.setItem("auth_customer", token);

@@ -18,7 +18,7 @@ const DEFAULT_COUNTRY_CODE = "+91";
 export default function SellerAuth() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { user, role, isAuthenticated, login } = useAuth();
   const companyName = useCompanyName();
   const [step, setStep] = useState("phone");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +27,15 @@ export default function SellerAuth() {
   const [otpPhone, setOtpPhone] = useState("");
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.portals?.seller?.logo?.url || getCachedSettings()?.logo?.url || null)
   const [keyboardInset, setKeyboardInset] = useState(0)
+
+  useEffect(() => {
+    if (isAuthenticated && role === "seller" && user) {
+      const approved = user.approved !== false && (!user.approvalStatus || user.approvalStatus === "approved");
+      if (approved) {
+        navigate("/seller", { replace: true });
+      }
+    }
+  }, [isAuthenticated, role, user, navigate]);
 
   useEffect(() => {
     const fetchSettings = async () => {

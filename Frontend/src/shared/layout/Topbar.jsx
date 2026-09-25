@@ -250,15 +250,14 @@ const Topbar = ({ onMenuClick }) => {
                         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{user?.role || 'Member'}</p>
                     </div>
                 </button>
-                {!isSeller && (
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-1.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-all duration-300 font-bold text-xs shadow-sm hover:shadow-rose-100/50"
-                    >
-                        <HiOutlineLogout className="h-4 w-4" />
-                        <span className="hidden lg:block">Sign Out</span>
-                    </button>
-                )}
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-1.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-all duration-300 font-bold text-xs shadow-sm hover:shadow-rose-100/50"
+                    title="Sign Out"
+                >
+                    <HiOutlineLogout className="h-4 w-4" />
+                    <span className="hidden lg:block">Sign Out</span>
+                </button>
             </div>
         </header>
     );

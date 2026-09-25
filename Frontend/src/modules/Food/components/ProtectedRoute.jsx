@@ -5,13 +5,21 @@ import { isModuleAuthenticated, clearModuleAuth, isProfileNameComplete } from "@
  * Role-based Protected Route Component
  * Only allows access if user is authenticated for the specific module and profile is complete
  */
-export default function ProtectedRoute({ children, requiredRole, loginPath = "/user/auth/login" }) {
+export default function ProtectedRoute({ children, requiredRole, loginPath }) {
   const location = useLocation();
 
   // If no role required, allow access
   if (!requiredRole) {
     return children;
   }
+
+  const effectiveLoginPath = loginPath || (
+    requiredRole === "seller" ? "/seller/auth" :
+    requiredRole === "restaurant" ? "/food/restaurant/login" :
+    requiredRole === "admin" ? "/admin/login" :
+    requiredRole === "delivery" ? "/delivery/auth" :
+    "/user/auth/login"
+  );
 
   const isAuthenticated = isModuleAuthenticated(requiredRole);
 
@@ -20,7 +28,7 @@ export default function ProtectedRoute({ children, requiredRole, loginPath = "/u
     if (requiredRole === "user") {
       clearModuleAuth("user");
     }
-    return <Navigate to={loginPath} state={{ from: location.pathname }} replace />;
+    return <Navigate to={effectiveLoginPath} state={{ from: location.pathname }} replace />;
   }
 
   if (requiredRole === "user") {
@@ -31,7 +39,7 @@ export default function ProtectedRoute({ children, requiredRole, loginPath = "/u
     }
     if (!isProfileNameComplete(user)) {
       clearModuleAuth("user");
-      return <Navigate to={loginPath} state={{ from: location.pathname }} replace />;
+      return <Navigate to={effectiveLoginPath} state={{ from: location.pathname }} replace />;
     }
   }
 

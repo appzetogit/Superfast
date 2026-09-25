@@ -92,11 +92,11 @@ axiosInstance.interceptors.response.use(
             }
             const path = window.location.pathname;
             const requestUrl = String(originalRequest?.url || '');
-            const currentModule = path.startsWith('/seller')
+            const currentModule = (path.startsWith('/seller') || requestUrl.startsWith('/seller') || (localStorage.getItem('auth_seller') && !path.startsWith('/admin') && !path.startsWith('/delivery')))
                 ? 'seller'
-                : path.startsWith('/admin')
+                : (path.startsWith('/admin') || requestUrl.startsWith('/admin'))
                     ? 'admin'
-                    : path.startsWith('/delivery')
+                    : (path.startsWith('/delivery') || requestUrl.startsWith('/delivery'))
                         ? 'delivery'
                         : 'customer';
             const requestModule = requestUrl.startsWith('/seller')
