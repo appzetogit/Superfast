@@ -43,6 +43,7 @@ export default function FeeSettings() {
     rangeFee: true,
     advanceFee: false,
     generalFee: true,
+    platformAndTax: true,
     incentiveFee: true,
   })
 
@@ -1149,10 +1150,13 @@ export default function FeeSettings() {
             )}
           </div>
 
-          {/* Section 5: Default Fallback Delivery Fee, Platform Fee, GST */}
+          {/* Section 5: Default Fallback Delivery Fee & Free Delivery Threshold */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">General Charges & Default Fallback Fee</h3>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Default Delivery Fee & Free Delivery Threshold</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Fallback delivery fee when no condition matches & free delivery threshold</p>
+              </div>
               <button
                 onClick={() => toggleSection('generalFee')}
                 className="p-1.5 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors"
@@ -1162,7 +1166,7 @@ export default function FeeSettings() {
             </div>
 
             {openSections.generalFee && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Default Delivery Fee (Fallback) */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1209,7 +1213,30 @@ export default function FeeSettings() {
                   />
                   <p className="text-xs text-slate-500">Orders at or above get free delivery</p>
                 </div>
+              </div>
+            )}
+          </div>
 
+          {/* Section 6: Platform Charges & Taxes (GST) */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-indigo-600" />
+                  Platform Charges & Taxes (GST)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Platform service fee and government tax rates charged on orders</p>
+              </div>
+              <button
+                onClick={() => toggleSection('platformAndTax')}
+                className="p-1.5 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors"
+              >
+                {openSections.platformAndTax ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {openSections.platformAndTax && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Platform Fee */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
@@ -1221,7 +1248,7 @@ export default function FeeSettings() {
                     onChange={(e) => setFeeSettings({ ...feeSettings, platformFee: e.target.value })}
                     min="0"
                     step="1"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                     placeholder="e.g. 5"
                   />
                   <p className="text-xs text-slate-500">Platform service fee charged on each order</p>
@@ -1239,7 +1266,7 @@ export default function FeeSettings() {
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                     placeholder="e.g. 5"
                   />
                   <p className="text-xs text-slate-500">GST percentage applied on subtotal</p>
