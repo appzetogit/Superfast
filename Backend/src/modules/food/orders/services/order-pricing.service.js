@@ -60,10 +60,15 @@ export function computeDeliveryFee({ feeSettings, subtotal, restaurantZoneId, di
   }
 
   // Priority 2: Zone-Specific Fee Override (Default Fee / Per KM Fee)
-  if (enableZoneFees && restZoneIdStr) {
-    const zoneSetting = zoneDeliveryFees.find(
-      (z) => z.zoneId && String(z.zoneId._id || z.zoneId) === restZoneIdStr
-    );
+  if (enableZoneFees) {
+    let zoneSetting = restZoneIdStr
+      ? zoneDeliveryFees.find(
+          (z) => z.zoneId && String(z.zoneId._id || z.zoneId) === restZoneIdStr
+        )
+      : null;
+    if (!zoneSetting && zoneDeliveryFees.length === 1) {
+      zoneSetting = zoneDeliveryFees[0];
+    }
     if (zoneSetting) {
       const zonePerKm =
         zoneSetting.perKmDeliveryFee !== undefined &&
