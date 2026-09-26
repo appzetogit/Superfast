@@ -1740,8 +1740,8 @@ export async function calculateOrder(userId, dto) {
     deliveryFee: 25,
     deliveryFeeRanges: [],
     freeDeliveryThreshold: 149,
-    platformFee: 5,
-    gstRate: 5,
+    platformFee: 0,
+    gstRate: 0,
     mixedOrderDistanceLimit: 2,
     mixedOrderAngleLimit: 35
   };

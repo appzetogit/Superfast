@@ -315,8 +315,8 @@ export default function Cart() {
     deliveryFee: 25,
     deliveryFeeRanges: [],
     freeDeliveryThreshold: 149,
-    platformFee: 5,
-    gstRate: 5,
+    platformFee: 0,
+    gstRate: 0,
   })
 
 
@@ -1132,8 +1132,8 @@ export default function Cart() {
             deliveryFee: response.data.data.feeSettings.deliveryFee ?? 25,
             deliveryFeeRanges: response.data.data.feeSettings.deliveryFeeRanges || [],
             freeDeliveryThreshold: response.data.data.feeSettings.freeDeliveryThreshold ?? 149,
-            platformFee: response.data.data.feeSettings.platformFee ?? 5,
-            gstRate: response.data.data.feeSettings.gstRate ?? 5,
+            platformFee: response.data.data.feeSettings.platformFee ?? 0,
+            gstRate: response.data.data.feeSettings.gstRate ?? 0,
           })
         }
       } catch (error) {
@@ -1198,8 +1198,9 @@ export default function Cart() {
   const deliveryFeeBreakdownText = hasDistanceDeliveryBreakdown
     ? `Distance ${Number(deliveryFeeBreakdown.distanceKm).toFixed(1)} km: ${RUPEE_SYMBOL}${Number(deliveryFeeBreakdown.basePayout || 0).toFixed(0)} base + ${Number(deliveryFeeBreakdown.extraDistanceKm || 0).toFixed(1)} km x ${RUPEE_SYMBOL}${Number(deliveryFeeBreakdown.commissionPerKm || 0).toFixed(0)}`
     : null
-  const platformFee = pricing?.platformFee || feeSettings.platformFee
-  const gstCharges = pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100))
+  // Use ?? instead of || so that backend fee=0 or gst=0 is not wrongly replaced by fallback
+  const platformFee = pricing != null ? (pricing.platformFee ?? 0) : Number(feeSettings.platformFee ?? 0)
+  const gstCharges = pricing != null ? (pricing.tax ?? 0) : Math.round(subtotal * (Number(feeSettings.gstRate ?? 0) / 100))
   const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
   const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges
   const total = pricing?.total || (totalBeforeDiscount - discount)

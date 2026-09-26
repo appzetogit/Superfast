@@ -204,12 +204,12 @@ export async function calculateOrderPricing(userId, dto) {
     deliveryFee: 25,
     deliveryFeeRanges: [],
     freeDeliveryThreshold: 149,
-    platformFee: 5,
-    gstRate: 5,
+    platformFee: 0,
+    gstRate: 0,
   };
 
   const packagingFee = 0;
-  const platformFee = Number(feeSettings.platformFee || 0);
+  const platformFee = Number(feeSettings.platformFee ?? 0);
 
   const deliveryFee = computeDeliveryFee({
     feeSettings,
