@@ -61,14 +61,12 @@ export function computeDeliveryFee({ feeSettings, subtotal, restaurantZoneId, di
 
   // Priority 2: Zone-Specific Fee Override (Default Fee / Per KM Fee)
   if (enableZoneFees) {
-    let zoneSetting = restZoneIdStr
+    const zoneSetting = restZoneIdStr
       ? zoneDeliveryFees.find(
           (z) => z.zoneId && String(z.zoneId._id || z.zoneId) === restZoneIdStr
         )
       : null;
-    if (!zoneSetting && zoneDeliveryFees.length === 1) {
-      zoneSetting = zoneDeliveryFees[0];
-    }
+
     if (zoneSetting) {
       const zonePerKm =
         zoneSetting.perKmDeliveryFee !== undefined &&
@@ -107,6 +105,9 @@ export function computeDeliveryFee({ feeSettings, subtotal, restaurantZoneId, di
         return zoneFeeToUse;
       }
     }
+
+    // When Zone-Wise Delivery Fee is enabled, if a zone does not have a fee configured in admin, return 0.
+    return 0;
   }
 
   // Priority 3: Global Range-Based Fee (where zoneId is null/undefined)
