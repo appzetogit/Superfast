@@ -228,11 +228,9 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
       if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(cLat) && Number.isFinite(cLng)) {
         const d = haversineKm(rLat, rLng, cLat, cLng);
         if (d > 0) {
-          const distEarning = d <= 3 ? 25 : Math.round((25 + (d - 3) * 8) * 100) / 100;
-          val = Math.max(distEarning, customerDeliveryFee);
+          val = d <= 1 ? 15 : Math.round((15 + (d - 1) * 5) * 100) / 100;
         }
       }
-      if (val <= 0 && customerDeliveryFee > 0) val = customerDeliveryFee;
     }
     return val;
   };

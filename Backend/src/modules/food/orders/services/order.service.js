@@ -1026,15 +1026,14 @@ function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
         const cLng = order?.deliveryAddress?.location?.coordinates?.[0] || order?.deliveryAddress?.longitude || order?.deliveryAddress?.lng;
         if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(cLat) && Number.isFinite(cLng)) {
           const d = haversineKm(rLat, rLng, cLat, cLng);
-          if (d > 0) val = d <= 3 ? 25 : Math.round((25 + (d - 3) * 8) * 100) / 100;
+          if (d > 0) val = d <= 1 ? 15 : Math.round((15 + (d - 1) * 5) * 100) / 100;
         }
-        if (val <= 0) val = Number(order?.pricing?.deliveryFee || 25);
       }
       return val;
     })(),
-    earnings: Number(order?.riderEarning || order?.earnings || order?.pricing?.deliveryFee || 25),
-    deliveryEarning: Number(order?.riderEarning || order?.earnings || order?.pricing?.deliveryFee || 25),
-    earningAmount: Number(order?.riderEarning || order?.earnings || order?.pricing?.deliveryFee || 25),
+    earnings: Number(order?.riderEarning || order?.earnings || 0),
+    deliveryEarning: Number(order?.riderEarning || order?.earnings || 0),
+    earningAmount: Number(order?.riderEarning || order?.earnings || 0),
     deliveryFee: order?.pricing?.deliveryFee || 0,
     deliveryFleet: order?.deliveryFleet,
     dispatch: order?.dispatch,

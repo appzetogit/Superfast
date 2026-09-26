@@ -103,7 +103,6 @@ export async function getActiveCommissionRules() {
 
 export async function getRiderEarning(distanceKm, customerDeliveryFee = 0) {
   const d = Number(distanceKm);
-  const fee = Math.max(0, Number(customerDeliveryFee) || 0);
   const safeDist = Number.isFinite(d) && d >= 0 ? d : 0;
 
   const rules = await getActiveCommissionRules();
@@ -122,13 +121,13 @@ export async function getRiderEarning(distanceKm, customerDeliveryFee = 0) {
       const basePayout = Number(matchedRule.basePayout || 0);
       const perKmRate = Number(matchedRule.commissionPerKm || 0);
       const earning = basePayout + (safeDist * perKmRate);
-      return Math.max(earning, fee);
+      return Math.round(earning * 100) / 100;
     }
   }
 
-  // Fallback dynamic calculation if no active rules set
-  const distanceEarning = safeDist <= 3 ? 30 : Math.round((30 + (safeDist - 3) * 8) * 100) / 100;
-  return Math.max(distanceEarning, fee, 30);
+  // Fallback dynamic calculation if no active commission rules set
+  const distanceEarning = safeDist <= 1 ? 15 : Math.round((15 + (safeDist - 1) * 5) * 100) / 100;
+  return distanceEarning;
 }
 
 /**
