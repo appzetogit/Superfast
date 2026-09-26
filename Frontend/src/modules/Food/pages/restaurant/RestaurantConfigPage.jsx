@@ -220,10 +220,11 @@ export default function RestaurantConfigPage() {
                 <span className="text-sm md:text-base text-gray-700">Schedule Order</span>
                 <ToggleSwitch enabled={scheduleOrder} onChange={setScheduleOrder} />
               </div>
-              <div className="flex items-center justify-between">
+              {/* Commented out for App Store compliance */}
+              {/* <div className="flex items-center justify-between">
                 <span className="text-sm md:text-base text-gray-700">Subscription Order</span>
                 <ToggleSwitch enabled={subscriptionOrder} onChange={setSubscriptionOrder} />
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <span className="text-sm md:text-base text-gray-700 flex-shrink-0">Minimum Order Amount (?):</span>
                 <Input

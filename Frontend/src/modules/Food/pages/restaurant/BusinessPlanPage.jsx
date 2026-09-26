@@ -116,8 +116,8 @@ export default function BusinessPlanPage() {
         </Card>
       </div>
 
-      {/* Plans Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 z-40 space-y-2">
+      {/* Plans Buttons - Commented out for App Store compliance */}
+      {/* <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 z-40 space-y-2">
         <Button
           variant="outline"
           className="w-full border-[#ff8100] text-[#ff8100] hover:bg-[#ff8100]/5 font-semibold py-2.5 rounded-xl text-sm"
@@ -136,7 +136,7 @@ export default function BusinessPlanPage() {
         >
           Change Business Plan
         </Button>
-      </div>
+      </div> */}
 
       {/* Bottom Navigation Bar - Mobile Only */}
       <BottomNavbar onMenuClick={() => setShowMenu(true)} />
