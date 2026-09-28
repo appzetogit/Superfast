@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS = {
   fixedDeliveryFee: 30,
   handlingFeeStrategy: "highest_category_fee",
   codEnabled: true,
+  maxCodDistance: 5,
   onlineEnabled: true,
 };
 

@@ -171,6 +171,7 @@ const GlobalApplicationSettings = () => {
           email: settings.email || "",
           phoneNumber: settings.phone?.number || "",
           address: settings.address || "",
+          maxCodDistance: settings.maxCodDistance ?? 5,
           bannedNumbers: settings.bannedNumbers || [],
           showLocationPopup: settings.showLocationPopup ?? true,
           moduleThemes: {
@@ -254,6 +255,7 @@ const GlobalApplicationSettings = () => {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
+        maxCodDistance: Number(formData.maxCodDistance ?? 5),
         bannedNumbers: formData.bannedNumbers,
         showLocationPopup: formData.showLocationPopup,
         moduleThemes: formData.moduleThemes,
@@ -378,6 +380,7 @@ const GlobalApplicationSettings = () => {
               <InputField label="Support Email" name="email" value={formData.email} onChange={handleChange} placeholder="admin@SUPERFAST.com" />
               <InputField label="Support Phone" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="0000000000" />
               <InputField label="Office Address" name="address" value={formData.address} onChange={handleChange} placeholder="Main Street, NY" />
+              <InputField label="Max COD Distance (KM)" name="maxCodDistance" value={formData.maxCodDistance} onChange={handleChange} placeholder="5" info={{ prefix: 'COD allowed up to', default: '5 km' }} />
            </div>
         </SectionCard>
 

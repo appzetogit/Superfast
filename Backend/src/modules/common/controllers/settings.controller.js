@@ -43,7 +43,7 @@ export async function updateGlobalSettings(req, res, next) {
             data = req.body;
         }
         
-        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, logoUrl, faviconUrl, themeColor, modules, codEnabled, onlinePaymentEnabled, showLocationPopup, bannedNumbers, dynamicModuleThemes } = data;
+        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, logoUrl, faviconUrl, themeColor, modules, codEnabled, maxCodDistance, onlinePaymentEnabled, showLocationPopup, bannedNumbers, dynamicModuleThemes } = data;
         
         console.log("Updating global settings with data:", data);
 
@@ -192,6 +192,7 @@ export async function updateGlobalSettings(req, res, next) {
         if (region !== undefined) updateQuery.$set.region = region;
         if (themeColor !== undefined) updateQuery.$set.themeColor = themeColor;
         if (codEnabled !== undefined) updateQuery.$set.codEnabled = codEnabled;
+        if (maxCodDistance !== undefined) updateQuery.$set.maxCodDistance = Number(maxCodDistance) >= 0 ? Number(maxCodDistance) : 5;
         if (onlinePaymentEnabled !== undefined) updateQuery.$set.onlinePaymentEnabled = onlinePaymentEnabled;
         if (showLocationPopup !== undefined) updateQuery.$set.showLocationPopup = showLocationPopup;
         if (bannedNumbers !== undefined && Array.isArray(bannedNumbers)) updateQuery.$set.bannedNumbers = bannedNumbers;

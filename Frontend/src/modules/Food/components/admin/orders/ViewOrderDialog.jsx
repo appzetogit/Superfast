@@ -316,8 +316,11 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                           id="admin-order-status-select"
                           value={currentStatus}
                           onChange={(e) => handleStatusChange(e.target.value)}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                           disabled={isDisabled}
-                          className="w-full text-sm font-medium rounded-lg border border-slate-200 bg-white px-3 py-2 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer appearance-none"
+                          className="w-full text-sm font-medium rounded-lg border border-slate-200 bg-white px-3 py-2.5 min-h-[44px] pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer appearance-none relative z-10 touch-auto"
                           style={{ minWidth: 160 }}
                         >
                           {ADMIN_STATUS_OPTIONS.map((opt, idx) => {
@@ -693,7 +696,10 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     <select
                       value={selectedDriverId}
                       onChange={(e) => setSelectedDriverId(e.target.value)}
-                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] bg-white"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] bg-white relative z-10 touch-auto"
                     >
                       <option value="">Select a driver...</option>
                       {availableDrivers.map((driver) => (

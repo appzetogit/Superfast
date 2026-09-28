@@ -25,6 +25,7 @@ import {
 import { FoodTransaction } from '../models/foodTransaction.model.js';
 import { computeDeliveryFee } from './order-pricing.service.js';
 import { FoodSupportTicket } from '../../user/models/supportTicket.model.js';
+import { GlobalSettings } from '../../../common/models/settings.model.js';
 import { Seller } from '../../../quick-commerce/seller/models/seller.model.js';
 import { SellerOrder } from '../../../quick-commerce/seller/models/sellerOrder.model.js';
 import {
@@ -2230,6 +2231,14 @@ export async function createOrder(userId, dto) {
     const d = haversineKm(rLat, rLng, dLat, dLng);
     if (Number.isFinite(d) && d > 0) {
       distanceKm = Math.round(d * 10) / 10;
+    }
+  }
+
+  if (isCash) {
+    const globalSettings = await GlobalSettings.findOne().lean();
+    const maxCodDist = globalSettings?.maxCodDistance ?? 5;
+    if (maxCodDist > 0 && distanceKm > maxCodDist) {
+      throw new ValidationError(`Cash on Delivery (COD) is available only for orders up to ${maxCodDist} km. Your order distance is ${distanceKm} km. Please select online payment.`);
     }
   }
 

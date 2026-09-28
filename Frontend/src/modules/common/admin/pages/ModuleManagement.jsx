@@ -79,6 +79,7 @@ const ModuleManagement = () => {
     quickCommerce: true,
   });
   const [codEnabled, setCodEnabled] = useState(true);
+  const [maxCodDistance, setMaxCodDistance] = useState(5);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(true);
   const [showLocationPopup, setShowLocationPopup] = useState(true);
 
@@ -97,6 +98,7 @@ const ModuleManagement = () => {
           });
         }
         setCodEnabled(settings.codEnabled ?? true);
+        setMaxCodDistance(settings.maxCodDistance ?? 5);
         setOnlinePaymentEnabled(settings.onlinePaymentEnabled ?? true);
         setShowLocationPopup(settings.showLocationPopup ?? true);
       }
@@ -122,7 +124,7 @@ const ModuleManagement = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await adminAPI.updateBusinessSettings({ modules, codEnabled, onlinePaymentEnabled, showLocationPopup });
+      const response = await adminAPI.updateBusinessSettings({ modules, codEnabled, maxCodDistance: Number(maxCodDistance), onlinePaymentEnabled, showLocationPopup });
       const updatedSettings = response?.data?.data || response?.data;
 
       if (updatedSettings) {
@@ -205,6 +207,30 @@ const ModuleManagement = () => {
                 onToggle={() => setCodEnabled(prev => !prev)}
                 color="green"
               />
+
+              <div className="p-6 rounded-2xl border-2 border-orange-100 bg-orange-50/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900 text-sm">Max Distance for COD (km)</h3>
+                  <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">
+                    {maxCodDistance} km limit
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Orders beyond this distance will automatically disable COD and force Online Payment (Prepaid).
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.5"
+                    value={maxCodDistance}
+                    onChange={(e) => setMaxCodDistance(e.target.value)}
+                    className="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-900 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm"
+                  />
+                  <span className="text-xs font-bold text-gray-500">KM</span>
+                </div>
+              </div>
 
               <ModuleCard 
                 title="Online Payment" 
