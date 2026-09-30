@@ -3306,25 +3306,25 @@ function RestaurantDetailsContent() {
                       </motion.button>
                     </div>
 
-                    {/* Banner Image (if available) */}
-                    {selectedItem.image && (
-                      <div className="relative w-full h-48 overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-800">
-                        <img
-                          src={selectedItem.image}
-                          alt={selectedItem.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-
                     {/* Scrollable Content Container */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3.5 pt-10">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3.5 pt-14">
                       {/* Card 1: Dish Overview */}
-                      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-xs border border-gray-100 dark:border-gray-800/80">
-                        <div className="flex items-start justify-between gap-3">
+                      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl shadow-xs border border-gray-100 dark:border-gray-800/80 overflow-hidden">
+                        {/* Banner Image (if available) */}
+                        {selectedItem.image && (
+                          <div className="relative w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800/50">
+                            <img
+                              src={selectedItem.image}
+                              alt={selectedItem.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-3">
                           {/* Veg / Non-Veg Indicator Badge */}
                           <div className="flex items-center gap-2">
                             {isVeg ? (
@@ -3404,6 +3404,7 @@ function RestaurantDetailsContent() {
                             {selectedItem.description}
                           </p>
                         )}
+                        </div>
                       </div>
 
                       {/* Card 2: Variants Selection (Extra / Size options) */}

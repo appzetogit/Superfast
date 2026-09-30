@@ -245,42 +245,6 @@ export default function Cart() {
   const [showPlacingOrder, setShowPlacingOrder] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isScheduled, setIsScheduled] = useState(false)
-
-  // Calculate distance between restaurant and delivery location
-  const orderDistanceKm = useMemo(() => {
-    if (!cart || cart.length === 0) return 0
-    
-    const selectedAddr = (addresses || []).find(a => (a._id || a.id) === selectedAddressId)
-    const effectiveAddr = selectedAddr || (typeof getDefaultAddress === 'function' ? getDefaultAddress() : null)
-    
-    const dLat = effectiveAddr?.latitude ?? effectiveAddr?.location?.coordinates?.[1] ?? effectiveAddr?.lat
-    const dLng = effectiveAddr?.longitude ?? effectiveAddr?.location?.coordinates?.[0] ?? effectiveAddr?.lng
-
-    const restLoc = restaurantData?.location || cart[0]?.restaurantLocation || cart[0]?.location
-    const rLat = restLoc?.latitude ?? restLoc?.coordinates?.[1] ?? restaurantData?.latitude
-    const rLng = restLoc?.longitude ?? restLoc?.coordinates?.[0] ?? restaurantData?.longitude
-
-    if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(dLat) && Number.isFinite(dLng)) {
-      const dist = calculateDistance(rLat, rLng, dLat, dLng)
-      return dist != null ? Math.round(dist * 10) / 10 : 0
-    }
-    return 0
-  }, [cart, restaurantData, addresses, selectedAddressId, getDefaultAddress])
-
-  const maxCodDist = settings?.maxCodDistance ?? 5
-  const isCodDistanceExceeded = maxCodDist > 0 && orderDistanceKm > maxCodDist
-
-  useEffect(() => {
-    if ((settings?.codEnabled === false || isCodDistanceExceeded) && selectedPaymentMethod === "cash") {
-      setSelectedPaymentMethod("wallet")
-    }
-    if (userProfile?.isCodBlocked && selectedPaymentMethod === "cash") {
-      setSelectedPaymentMethod("wallet")
-    }
-    if (settings?.onlinePaymentEnabled === false && (selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet")) {
-      setSelectedPaymentMethod("cash")
-    }
-  }, [settings?.codEnabled, settings?.maxCodDistance, isCodDistanceExceeded, settings?.onlinePaymentEnabled, selectedPaymentMethod, userProfile?.isCodBlocked])
   const [scheduledDate, setScheduledDate] = useState("")
   const [scheduledTime, setScheduledTime] = useState("")
   const [orderProgress, setOrderProgress] = useState(0)
@@ -343,6 +307,42 @@ export default function Cart() {
     platformFee: 0,
     gstRate: 0,
   })
+
+  // Calculate distance between restaurant and delivery location
+  const orderDistanceKm = useMemo(() => {
+    if (!cart || cart.length === 0) return 0
+    
+    const selectedAddr = (addresses || []).find(a => (a._id || a.id) === selectedAddressId)
+    const effectiveAddr = selectedAddr || (typeof getDefaultAddress === 'function' ? getDefaultAddress() : null)
+    
+    const dLat = effectiveAddr?.latitude ?? effectiveAddr?.location?.coordinates?.[1] ?? effectiveAddr?.lat
+    const dLng = effectiveAddr?.longitude ?? effectiveAddr?.location?.coordinates?.[0] ?? effectiveAddr?.lng
+
+    const restLoc = restaurantData?.location || cart[0]?.restaurantLocation || cart[0]?.location
+    const rLat = restLoc?.latitude ?? restLoc?.coordinates?.[1] ?? restaurantData?.latitude
+    const rLng = restLoc?.longitude ?? restLoc?.coordinates?.[0] ?? restaurantData?.longitude
+
+    if (Number.isFinite(rLat) && Number.isFinite(rLng) && Number.isFinite(dLat) && Number.isFinite(dLng)) {
+      const dist = calculateDistance(rLat, rLng, dLat, dLng)
+      return dist != null ? Math.round(dist * 10) / 10 : 0
+    }
+    return 0
+  }, [cart, restaurantData, addresses, selectedAddressId, getDefaultAddress])
+
+  const maxCodDist = settings?.maxCodDistance ?? 5
+  const isCodDistanceExceeded = maxCodDist > 0 && orderDistanceKm > maxCodDist
+
+  useEffect(() => {
+    if ((settings?.codEnabled === false || isCodDistanceExceeded) && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("wallet")
+    }
+    if (userProfile?.isCodBlocked && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("wallet")
+    }
+    if (settings?.onlinePaymentEnabled === false && (selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet")) {
+      setSelectedPaymentMethod("cash")
+    }
+  }, [settings?.codEnabled, settings?.maxCodDistance, isCodDistanceExceeded, settings?.onlinePaymentEnabled, selectedPaymentMethod, userProfile?.isCodBlocked])
 
 
   const availableTimeSlots = useMemo(() => {
