@@ -44,6 +44,7 @@ import {
 } from "@food/components/ui/popover";
 
 import { adminAPI } from "@food/api";
+import { LanguageMenu } from "@shared/i18n/LanguageContext";
 import { clearModuleAuth } from "@food/utils/auth";
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings";
 import SuperfastLogo from "@/assets/Logo.webp";
@@ -343,6 +344,8 @@ export default function AdminNavbar({ onMenuClick }) {
 
           {/* Right: User Profile & Actions */}
           <div className="flex items-center gap-3">
+            <LanguageMenu />
+
             {/* Developer Mode Toggle Button */}
             <button
               type="button"

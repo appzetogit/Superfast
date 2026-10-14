@@ -30,6 +30,7 @@ import { getImageUrl } from "@shared/utils/imageHelper"
 import { Switch } from "@food/components/ui/switch"
 import { restaurantAPI } from "@food/api"
 import { toast } from "sonner"
+import { LanguageSelector } from "@shared/i18n/LanguageContext"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { isFlutterBridgeAvailable, convertBase64ToFile } from "@food/utils/imageUploadUtils"
 import { clearModuleAuth } from "@food/utils/auth"
@@ -912,6 +913,13 @@ export default function OutletInfo() {
                   <p className="text-xs text-gray-400 font-medium mb-1">IFSC Code</p>
                   <p className="text-sm font-bold text-gray-800">{restaurantData?.ifscCode || "Not provided"}</p>
               </div>
+            </div>
+          </section>
+
+          {/* Language */}
+          <section className="space-y-3 pt-2">
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 text-gray-900 shadow-xs">
+              <LanguageSelector />
             </div>
           </section>
 

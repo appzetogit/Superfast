@@ -987,6 +987,10 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    const expectedRzOrderId = String(order.payment?.razorpay?.orderId || '');
+    if (!expectedRzOrderId || String(razorpayOrderId || '') !== expectedRzOrderId) {
+      return res.status(400).json({ success: false, message: 'Payment does not belong to this order' });
+    }
     const isValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
     if (!isValid) {
       return res.status(400).json({ success: false, message: 'Invalid payment signature' });

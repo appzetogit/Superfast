@@ -2,6 +2,24 @@ import { logger } from '../../utils/logger.js';
 import { creditWallet } from '../../core/payments/wallet.service.js';
 import { createPayment, markPaymentSuccess } from '../../core/payments/payment.service.js';
 import { initiateRefund } from '../../core/payments/refund.service.js';
+import mongoose from 'mongoose';
+import { Transaction } from '../../core/payments/models/transaction.model.js';
+import { FoodTransaction } from '../../modules/food/orders/models/foodTransaction.model.js';
+
+/** True if this order was already credited to this entity for this category (re-run / retry safe). */
+async function alreadyCredited(entityType, entityId, orderMongoId, category) {
+    if (!orderMongoId || !mongoose.Types.ObjectId.isValid(String(orderMongoId))) return false;
+    const entityOid = entityType === 'admin'
+        ? new mongoose.Types.ObjectId('000000000000000000000001')
+        : new mongoose.Types.ObjectId(String(entityId));
+    return Boolean(await Transaction.exists({
+        entityType,
+        entityId: entityOid,
+        orderId: new mongoose.Types.ObjectId(String(orderMongoId)),
+        category,
+        type: 'credit'
+    }));
+}
 
 /**
  * Post-delivery financial settlement processor.
@@ -58,26 +76,31 @@ async function handleDeliveryCompleted(data) {
         total = 0, paymentMethod
     } = data;
 
-    // 1. Credit restaurant wallet with their commission (payout)
-    if (restaurantId && commissionAmount > 0) {
+    // 1. Credit restaurant wallet with the restaurant's SHARE (subtotal + packaging - commission - bearer discount).
+    //    NOTE: `commissionAmount` is the platform's cut and must never be paid to the restaurant.
+    if (restaurantId) {
         try {
-            await creditWallet({
-                entityType: 'restaurant',
-                entityId: restaurantId,
-                amount: commissionAmount,
-                description: `Order ${orderId} - restaurant commission`,
-                category: 'commission',
-                orderId: orderMongoId,
-                metadata: { orderId, paymentMethod }
-            });
-            logger.info(`[PaymentProcessor] Restaurant ${restaurantId} credited ${commissionAmount} for order ${orderId}`);
+            const tx = await FoodTransaction.findOne({ orderId: orderMongoId }).select('amounts.restaurantShare').lean();
+            const restaurantShare = Math.round((Number(tx?.amounts?.restaurantShare) || 0) * 100) / 100;
+            if (restaurantShare > 0 && !(await alreadyCredited('restaurant', restaurantId, orderMongoId, 'restaurant_payout'))) {
+                await creditWallet({
+                    entityType: 'restaurant',
+                    entityId: restaurantId,
+                    amount: restaurantShare,
+                    description: `Order ${orderId} - restaurant payout`,
+                    category: 'restaurant_payout',
+                    orderId: orderMongoId,
+                    metadata: { orderId, paymentMethod, commissionAmount }
+                });
+                logger.info(`[PaymentProcessor] Restaurant ${restaurantId} credited ${restaurantShare} for order ${orderId}`);
+            }
         } catch (err) {
             logger.error(`[PaymentProcessor] Failed to credit restaurant: ${err.message}`);
         }
     }
 
     // 2. Credit delivery partner wallet with their earning
-    if (deliveryPartnerId && riderEarning > 0) {
+    if (deliveryPartnerId && riderEarning > 0 && !(await alreadyCredited('deliveryBoy', deliveryPartnerId, orderMongoId, 'delivery_earning'))) {
         try {
             await creditWallet({
                 entityType: 'deliveryBoy',
@@ -104,7 +127,7 @@ async function handleDeliveryCompleted(data) {
     }
 
     // 3. Credit admin/platform wallet with platform profit
-    if (platformProfit > 0) {
+    if (platformProfit > 0 && !(await alreadyCredited('admin', 'platform', orderMongoId, 'platform_fee'))) {
         try {
             await creditWallet({
                 entityType: 'admin',

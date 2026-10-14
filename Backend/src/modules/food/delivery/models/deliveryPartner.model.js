@@ -98,6 +98,8 @@ const deliveryPartnerSchema = new mongoose.Schema(
         bankName: { type: String },
         upiId: { type: String },
         upiQrCode: { type: String },
+        // Razorpay X verified payout account (penny-drop verified + user confirmed). Hidden unless asked for.
+        payoutAccount: { type: mongoose.Schema.Types.Mixed, default: null, select: false },
         availabilityStatus: {
             type: String,
             enum: ['online', 'offline'],

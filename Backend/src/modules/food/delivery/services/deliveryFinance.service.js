@@ -10,7 +10,7 @@ import {
   createRazorpayOrder,
   getRazorpayKeyId,
   isRazorpayConfigured,
-  verifyPaymentSignature,
+  verifyCapturedRazorpayPayment,
 } from "../../orders/helpers/razorpay.helper.js";
 import { Transaction } from "../../../../core/payments/models/transaction.model.js";
 import { getTransactionsByEntity } from "../../../../core/payments/transaction.service.js";
@@ -201,10 +201,8 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
 
   const effectiveWalletBalance =
     Number(wallet.balance || 0) + missingBonusBalance + missingEarningsBalance;
-  const pocketBalance = Math.max(
-    0,
-    effectiveWalletBalance - pendingWithdrawals,
-  );
+  const pocketBalanceRaw = effectiveWalletBalance - pendingWithdrawals;
+  const pocketBalance = Math.max(0, pocketBalanceRaw);
 
   const transactions = transactionsResult.transactions.map((t) => ({
     id: t._id,
@@ -230,6 +228,7 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
   return {
     totalBalance: effectiveTotalEarnings + effectiveBonus,
     pocketBalance,
+    pocketBalanceRaw,
     cashInHand,
     totalWithdrawn: wallet.totalSettled || 0,
     pendingWithdrawals,
@@ -265,8 +264,9 @@ export const isPartnerEligibleForCodOrder = async (deliveryPartnerId) => {
  * Submits a new withdrawal request for a delivery partner.
  */
 export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {
-  const { amount, bankDetails, paymentMethod = "bank_transfer" } = payload;
-  if (!amount || amount < 1) throw new ValidationError("Invalid amount");
+  const { bankDetails, paymentMethod = "bank_transfer" } = payload;
+  const amount = Math.round(Number(payload?.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount < 1) throw new ValidationError("Invalid amount");
 
   const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
   if (amount < wallet.deliveryWithdrawalLimit) {
@@ -296,6 +296,14 @@ export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {
     status: "pending",
   });
 
+  // Race guard: two parallel requests can both pass the check above. Re-check with the new
+  // request included; if the balance went negative, this request loses and is rolled back.
+  const after = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
+  if (after.pocketBalanceRaw < 0) {
+    await FoodDeliveryWithdrawal.deleteOne({ _id: withdrawal._id, status: "pending" });
+    throw new ValidationError("Insufficient balance for this withdrawal");
+  }
+
   return withdrawal;
 };
 
@@ -319,15 +327,9 @@ export const createDeliveryCashDepositOrder = async (
   const amountPaise = Math.round(amount * 100);
   const receipt = `cash_deposit_${String(deliveryPartnerId).slice(-8)}_${Date.now()}`;
 
+  // Fail closed: a dummy order would let the client "verify" a deposit that was never paid.
   if (!isRazorpayConfigured()) {
-    return {
-      razorpay: {
-        key: getRazorpayKeyId() || "rzp_test_dummy",
-        orderId: `order_dev_${Date.now()}`,
-        amount: amountPaise,
-        currency: "INR",
-      },
-    };
+    throw new ValidationError("Online payments are currently unavailable");
   }
 
   const order = await createRazorpayOrder(amountPaise, "INR", receipt);
@@ -351,14 +353,10 @@ export const verifyDeliveryCashDepositPayment = async (
   const orderId = String(payload?.razorpayOrderId || "").trim();
   const paymentId = String(payload?.razorpayPaymentId || "").trim();
   const signature = String(payload?.razorpaySignature || "").trim();
-  const amount = Number(payload?.amount);
 
   if (!orderId) throw new ValidationError("razorpayOrderId is required");
   if (!paymentId) throw new ValidationError("razorpayPaymentId is required");
-  if (!signature && isRazorpayConfigured())
-    throw new ValidationError("razorpaySignature is required");
-  if (!Number.isFinite(amount) || amount < 1)
-    throw new ValidationError("amount is required");
+  if (!signature) throw new ValidationError("razorpaySignature is required");
 
   const existing = await FoodDeliveryCashDeposit.findOne({
     deliveryPartnerId,
@@ -372,17 +370,25 @@ export const verifyDeliveryCashDepositPayment = async (
     };
   }
 
+  // A gateway payment can only ever be used for one deposit (by anyone).
+  const usedByOther = await FoodDeliveryCashDeposit.exists({
+    _id: { $ne: existing?._id },
+    $or: [{ razorpayPaymentId: paymentId }, { razorpayOrderId: orderId }],
+  });
+  if (usedByOther) {
+    throw new ValidationError("This payment has already been used");
+  }
+
+  // Use the amount Razorpay says it captured, never the client-sent amount.
+  const amount = await verifyCapturedRazorpayPayment({
+    orderId,
+    paymentId,
+    signature,
+  });
+
   const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
   if (amount > wallet.cashInHand) {
     throw new ValidationError("Deposit amount cannot exceed cash in hand");
-  }
-
-  const isValid = isRazorpayConfigured()
-    ? verifyPaymentSignature(orderId, paymentId, signature)
-    : true;
-
-  if (!isValid) {
-    throw new ValidationError("Payment verification failed");
   }
 
   const deposit = existing
@@ -391,7 +397,7 @@ export const verifyDeliveryCashDepositPayment = async (
         {
           $set: {
             amount,
-            paymentMethod: isRazorpayConfigured() ? "razorpay" : "cash",
+            paymentMethod: "razorpay",
             status: "Completed",
             razorpayOrderId: orderId,
             razorpayPaymentId: paymentId,
@@ -402,7 +408,7 @@ export const verifyDeliveryCashDepositPayment = async (
     : await FoodDeliveryCashDeposit.create({
         deliveryPartnerId,
         amount,
-        paymentMethod: isRazorpayConfigured() ? "razorpay" : "cash",
+        paymentMethod: "razorpay",
         status: "Completed",
         razorpayOrderId: orderId,
         razorpayPaymentId: paymentId,

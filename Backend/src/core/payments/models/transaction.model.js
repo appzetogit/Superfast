@@ -70,6 +70,7 @@ const transactionSchema = new mongoose.Schema(
                 'wallet_topup',
                 'wallet_debit',
                 'commission',
+                'restaurant_payout',
                 'delivery_earning',
                 'platform_fee',
                 'settlement_payout',

@@ -20,6 +20,7 @@ import {
 import { authAPI } from "../../../services/api";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
+import { LanguageSelector } from "@shared/i18n/LanguageContext";
 import Card from "@shared/components/ui/Card";
 import Button from "@shared/components/ui/Button";
 import MapPicker from "../../../shared/components/MapPicker";
@@ -536,6 +537,10 @@ const SellerProfile = () => {
             </div>
           </Card>
         </div>
+      </div>
+
+      <div className="mt-8 mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-sm">
+        <LanguageSelector />
       </div>
 
       <div className="mt-8 flex justify-center flex-wrap gap-4">

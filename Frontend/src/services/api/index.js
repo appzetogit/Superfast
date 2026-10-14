@@ -1056,6 +1056,15 @@ export const restaurantAPI = {
     apiClient.post("/food/restaurant/withdraw", { amount: Number(amount) }, {
       contextModule: "restaurant"
     }),
+  /** Payout account (bank/UPI) verification: get status / save+verify / confirm / clear. */
+  getPayoutAccount: () =>
+    apiClient.get("/food/restaurant/payout-account", { contextModule: "restaurant" }),
+  savePayoutAccount: (body) =>
+    apiClient.post("/food/restaurant/payout-account", body ?? {}, { contextModule: "restaurant" }),
+  confirmPayoutAccount: () =>
+    apiClient.post("/food/restaurant/payout-account/confirm", {}, { contextModule: "restaurant" }),
+  resetPayoutAccount: () =>
+    apiClient.delete("/food/restaurant/payout-account", { contextModule: "restaurant" }),
   /** List withdrawal history for current restaurant. */
   getWithdrawalHistory: () =>
     apiClient.get("/food/restaurant/withdrawals", {
@@ -2190,6 +2199,15 @@ export const deliveryAPI = {
     apiClient.post("/food/delivery/wallet/withdraw", body ?? {}, {
       contextModule: "delivery"
     }),
+  /** Payout account (bank/UPI) verification: get status / save+verify / confirm / clear. */
+  getPayoutAccount: () =>
+    apiClient.get("/food/delivery/payout-account", { contextModule: "delivery" }),
+  savePayoutAccount: (body) =>
+    apiClient.post("/food/delivery/payout-account", body ?? {}, { contextModule: "delivery" }),
+  confirmPayoutAccount: () =>
+    apiClient.post("/food/delivery/payout-account/confirm", {}, { contextModule: "delivery" }),
+  resetPayoutAccount: () =>
+    apiClient.delete("/food/delivery/payout-account", { contextModule: "delivery" }),
   createDepositOrder: (amount) =>
     apiClient.post("/food/delivery/wallet/deposit/order", { amount }, {
       contextModule: "delivery"

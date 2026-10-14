@@ -36,6 +36,7 @@ import AnimatedPage from "@food/components/user/AnimatedPage";
 import { Card, CardContent } from "@food/components/ui/card";
 import { Button } from "@food/components/ui/button";
 import { useProfile } from "@food/context/ProfileContext";
+import { LanguageSelector } from "@shared/i18n/LanguageContext";
 import { useLocationSelector } from "@food/components/user/UserLayout";
 import {
   Avatar,
@@ -1248,6 +1249,12 @@ export default function Profile() {
                 </Card>
               </motion.div>
             </Link>
+
+            <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800">
+              <CardContent className="p-4">
+                <LanguageSelector className="text-gray-900 dark:text-white" />
+              </CardContent>
+            </Card>
 
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}

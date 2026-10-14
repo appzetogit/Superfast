@@ -259,8 +259,33 @@ export const getWalletController = async (req, res, next) => {
 export const createWithdrawalRequestController = async (req, res, next) => {
     try {
         const deliveryPartnerId = req.user?.userId;
+
+        // Auto payout is on: money may only go to a bank/UPI account that was verified AND confirmed by the rider.
+        const { checkPayoutReady } = await import('../../../../core/payments/services/autoPayout.service.js');
+        const ready = await checkPayoutReady('delivery', deliveryPartnerId);
+        if (!ready.ok) {
+            return res.status(400).json({
+                success: false,
+                code: 'PAYOUT_ACCOUNT_REQUIRED',
+                message: 'Please add and verify your bank / UPI details before withdrawing.'
+            });
+        }
+
         const result = await requestDeliveryWithdrawal(deliveryPartnerId, req.body || {});
-        return sendResponse(res, 201, 'Withdrawal request submitted successfully', { withdrawal: result });
+
+        // Automatic payout (Razorpay X). If it can't run (disabled / no bank details) the request stays pending for admin.
+        let message = 'Withdrawal request submitted successfully';
+        let latest = result;
+        try {
+            const { autoPayWithdrawal } = await import('../../../../core/payments/services/autoPayout.service.js');
+            const { FoodDeliveryWithdrawal } = await import('../models/foodDeliveryWithdrawal.model.js');
+            const payout = await autoPayWithdrawal('delivery', result._id);
+            if (payout.paid) message = 'Withdrawal approved - payout initiated to your bank/UPI';
+            latest = (await FoodDeliveryWithdrawal.findById(result._id).lean()) || result;
+        } catch (err) {
+            console.error('Auto payout error (delivery withdrawal):', err?.message || err);
+        }
+        return sendResponse(res, 201, message, { withdrawal: latest });
     } catch (error) {
         next(error);
     }

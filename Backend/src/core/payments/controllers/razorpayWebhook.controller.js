@@ -4,6 +4,7 @@ import { FoodOrder } from '../../../modules/food/orders/models/order.model.js';
 import * as foodTransactionService from '../../../modules/food/orders/services/foodTransaction.service.js';
 import { config } from '../../../config/env.js';
 import { logger } from '../../../utils/logger.js';
+import { handlePayoutWebhook, handleValidationWebhook } from '../services/autoPayout.service.js';
 
 /**
  * ✅ NEW: Centralized Razorpay Webhook Handler (Core Layer)
@@ -79,23 +80,31 @@ export const handleRazorpayWebhook = async (req, res) => {
             const rzRefundId = refundObj.id;
             const refundAmount = refundObj.amount / 100; // to major unit
 
-            // Sync refund fields in the order
+            // Sync refund fields. Only a refund that covers the whole order flips payment.status to 'refunded'.
             const order = await FoodOrder.findOneAndUpdate(
-                { 
+                {
                     "payment.razorpay.paymentId": rzPaymentId,
                     "payment.refund.status": { $ne: 'processed' }
                 },
-                { 
-                    $set: { 
-                        "payment.status": 'refunded',
-                        "payment.refund": {
-                            status: 'processed',
-                            amount: refundAmount,
-                            refundId: rzRefundId,
-                            processedAt: new Date()
+                [
+                    {
+                        $set: {
+                            "payment.refund": {
+                                status: 'processed',
+                                amount: refundAmount,
+                                refundId: rzRefundId,
+                                processedAt: new Date()
+                            },
+                            "payment.status": {
+                                $cond: [
+                                    { $gte: [refundAmount, { $subtract: [{ $ifNull: ["$pricing.total", 0] }, 0.01] }] },
+                                    'refunded',
+                                    "$payment.status"
+                                ]
+                            }
                         }
-                    } 
-                },
+                    }
+                ],
                 { new: true }
             );
 
@@ -105,6 +114,17 @@ export const handleRazorpayWebhook = async (req, res) => {
                 // ✅ ADDED: Log warn if order not found for refund
                 logger.warn(`Webhook [refund.processed]: Order not found or already refunded for RZ-Payment: ${rzPaymentId}`);
             }
+        }
+
+        // --- 💸 RazorpayX payout events (automatic withdrawals) ---
+        if (typeof event === 'string' && event.startsWith('payout.')) {
+            const handled = await handlePayoutWebhook(event, payload?.payout?.entity);
+            if (!handled) logger.warn(`Webhook [${event}]: no matching withdrawal for payout ${payload?.payout?.entity?.id}`);
+        }
+
+        // --- Fund account (bank/UPI) validation result ---
+        if (event === 'fund_account.validation.completed' || event === 'fund_account.validation.failed') {
+            await handleValidationWebhook(payload?.['fund_account.validation']?.entity);
         }
 
         res.status(200).json({ status: 'ok' });

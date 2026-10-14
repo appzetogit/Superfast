@@ -16,7 +16,9 @@ import {
     changeAdminPasswordController,
     requestAdminForgotPasswordOtpController,
     resetAdminPasswordWithOtpController,
-    deleteAccountController
+    deleteAccountController,
+    requestAccountDeletionOtpController,
+    confirmAccountDeletionController
 } from './auth.controller.js';
 import { authMiddleware, requireAdmin } from './auth.middleware.js';
 import { authRateLimiter } from '../../middleware/rateLimit.js';
@@ -57,6 +59,10 @@ router.post('/logout-all', logoutAllController);
 
 // Authenticated user profile (requires Bearer token)
 router.get('/me', authMiddleware, getMeController);
+
+// Public account deletion for the Play Store link (no login, OTP-verified)
+router.post('/account-deletion/request-otp', authRateLimiter, requestAccountDeletionOtpController);
+router.post('/account-deletion/confirm', authRateLimiter, confirmAccountDeletionController);
 
 // Delete account (requires Bearer token)
 router.post('/delete-account', authMiddleware, deleteAccountController);

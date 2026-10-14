@@ -23,6 +23,7 @@ const SellerApp = lazy(() => import('../modules/seller/routes'))
 const SellerTermsPage = lazy(() => import('../modules/seller/pages/Terms'))
 const SellerPrivacyPage = lazy(() => import('../modules/seller/pages/Privacy'))
 const SellerSupportPage = lazy(() => import('../modules/seller/pages/Support'))
+const AccountDeletionPage = lazy(() => import('../shared/pages/AccountDeletion'))
 
 
 const FoodUserLayout = lazy(() => import('../modules/Food/components/user/UserLayout'))
@@ -161,6 +162,17 @@ const AppRoutes = () => {
     <Routes>
         {/* Root now lands on the food user page */}
         <Route path="/" element={<Navigate to={`/food/user${location.search}`} replace />} />
+
+        {/* Public account-deletion page (Google Play "Account deletion link"). No login required. */}
+        <Route
+          path="/account-deletion"
+          element={
+            <Suspense fallback={<ContentPageSkeleton />}>
+              <AccountDeletionPage />
+            </Suspense>
+          }
+        />
+        <Route path="/delete-account" element={<Navigate to="/account-deletion" replace />} />
 
         {/* Auth Module */}
         <Route path="/user/auth/*" element={<AuthApp />} />

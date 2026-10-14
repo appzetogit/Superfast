@@ -175,6 +175,8 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Razorpay X verified payout account (penny-drop verified + user confirmed). Hidden unless asked for.
+    payoutAccount: { type: mongoose.Schema.Types.Mixed, default: null, select: false },
     menuImages: {
       type: [String],
       default: [],

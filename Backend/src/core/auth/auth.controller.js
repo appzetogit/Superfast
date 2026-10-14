@@ -241,3 +241,30 @@ export const deleteAccountController = async (req, res, next) => {
     next(error);
   }
 };
+
+// ----- Public account deletion (no login; OTP-verified) -----
+export const requestAccountDeletionOtpController = async (req, res, next) => {
+  try {
+    const { requestAccountDeletionOtp } = await import('./accountDeletion.service.js');
+    const data = await requestAccountDeletionOtp({ role: String(req.body?.role || '').toLowerCase(), phone: req.body?.phone });
+    return sendResponse(res, 200, 'If an account exists for this number, an OTP has been sent.', data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const confirmAccountDeletionController = async (req, res, next) => {
+  try {
+    const { confirmAccountDeletion } = await import('./accountDeletion.service.js');
+    const data = await confirmAccountDeletion({
+      role: String(req.body?.role || '').toLowerCase(),
+      phone: req.body?.phone,
+      otp: req.body?.otp,
+      token: req.body?.token,
+      acceptWalletForfeit: req.body?.acceptWalletForfeit === true,
+    });
+    return sendResponse(res, 200, data.message, data);
+  } catch (error) {
+    next(error);
+  }
+};

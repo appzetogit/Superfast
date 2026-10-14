@@ -42,6 +42,7 @@ import { sendNotificationToOwner } from '../../../../core/notifications/firebase
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
+import { debitDeliveryForWithdrawal } from '../../../../core/payments/services/autoPayout.service.js';
 import { refundWalletBalance } from '../../user/services/userWallet.service.js';
 import { GlobalSettings } from '../../../common/models/settings.model.js';
 import { FoodOtp } from '../../../../core/otp/otp.model.js';
@@ -5449,21 +5450,33 @@ export async function getWithdrawals(query = {}) {
 export async function updateWithdrawalStatus(id, { status, adminNote, rejectionReason, transactionId }) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid withdrawal ID');
 
+    // Only pending -> approved | rejected is allowed ('processed' is treated as approved).
+    const requested = String(status || '').trim().toLowerCase();
+    const nextStatus = requested === 'processed' ? 'approved' : requested;
+    if (!['approved', 'rejected'].includes(nextStatus)) {
+        throw new ValidationError('Status must be approved or rejected');
+    }
+
     const update = {
-        status: String(status).toLowerCase(),
+        status: nextStatus,
         adminNote,
         rejectionReason,
         transactionId,
         processedAt: new Date()
     };
 
-    const updated = await FoodRestaurantWithdrawal.findByIdAndUpdate(
-        id,
+    // Atomic claim: only a request that is still pending can be decided, and only once.
+    const updated = await FoodRestaurantWithdrawal.findOneAndUpdate(
+        { _id: id, status: 'pending' },
         { $set: update },
-        { new: true }
+        { new: true, runValidators: true }
     ).populate('restaurantId', 'restaurantName').lean();
 
-    if (!updated) throw new ValidationError('Withdrawal request not found');
+    if (!updated) {
+        const existing = await FoodRestaurantWithdrawal.findById(id).select('status').lean();
+        if (!existing) throw new ValidationError('Withdrawal request not found');
+        throw new ValidationError(`Withdrawal is already ${existing.status}`);
+    }
 
     if (update.status === 'approved') {
         try {
@@ -5529,42 +5542,54 @@ export async function getDeliveryWithdrawals(query = {}) {
 export async function updateDeliveryWithdrawalStatus(id, { status, adminNote, rejectionReason, transactionId }) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid withdrawal ID');
 
+    // Only pending -> approved | rejected is allowed ('processed' is treated as approved).
+    const requested = String(status || '').trim().toLowerCase();
+    const nextStatus = requested === 'processed' ? 'approved' : requested;
+    if (!['approved', 'rejected'].includes(nextStatus)) {
+        throw new ValidationError('Status must be approved or rejected');
+    }
+
     const update = {
-        status: String(status).toLowerCase(),
+        status: nextStatus,
         adminNote,
         rejectionReason,
         transactionId,
         processedAt: new Date()
     };
 
-    const existing = await FoodDeliveryWithdrawal.findById(id).lean();
-    if (!existing) throw new ValidationError('Withdrawal request not found');
-    if (existing.status !== 'pending') throw new ValidationError(`Withdrawal is already ${existing.status}`);
+    // Atomic claim FIRST: flips pending -> decided exactly once, so two admins (or a double
+    // click) can never debit the wallet twice.
+    const claimed = await FoodDeliveryWithdrawal.findOneAndUpdate(
+        { _id: id, status: 'pending' },
+        { $set: update },
+        { new: false, runValidators: true }
+    ).lean();
 
-    // If approved, deduct from wallet balance using central transaction service FIRST
-    // so if it fails, the withdrawal request status is not updated to 'approved'
-    if (status.toLowerCase() === 'approved' || status.toLowerCase() === 'processed') {
-        const amount = Number(existing.amount || 0);
+    if (!claimed) {
+        const existing = await FoodDeliveryWithdrawal.findById(id).select('status').lean();
+        if (!existing) throw new ValidationError('Withdrawal request not found');
+        throw new ValidationError(`Withdrawal is already ${existing.status}`);
+    }
+
+    if (nextStatus === 'approved') {
+        const amount = Number(claimed.amount || 0);
         if (amount > 0) {
-            await debitWallet({
-                entityType: 'deliveryBoy',
-                entityId: existing.deliveryPartnerId?._id || existing.deliveryPartnerId,
-                amount: amount,
-                description: `Withdrawal Approved - ${existing.orderId || existing._id}`,
-                category: 'settlement_payout',
-                metadata: { withdrawalId: existing._id, transactionId },
-                allowNegative: true
-            });
+            try {
+                await debitDeliveryForWithdrawal(claimed, { transactionId });
+            } catch (err) {
+                // Debit failed: put the request back to pending so nothing is half-done.
+                await FoodDeliveryWithdrawal.updateOne(
+                    { _id: id, status: 'approved' },
+                    { $set: { status: 'pending' }, $unset: { processedAt: '', transactionId: '' } }
+                );
+                throw err;
+            }
         }
     }
 
-    const updated = await FoodDeliveryWithdrawal.findByIdAndUpdate(
-        id,
-        { $set: update },
-        { new: true }
-    ).populate('deliveryPartnerId', 'name phone profilePartnerId').lean();
-
-    return updated;
+    return FoodDeliveryWithdrawal.findById(id)
+        .populate('deliveryPartnerId', 'name phone profilePartnerId')
+        .lean();
 }
 
 /**

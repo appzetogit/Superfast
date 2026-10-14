@@ -2,14 +2,27 @@ import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { getRestaurantFinance } from '../services/restaurantFinance.service.js';
+import { autoPayWithdrawal, checkPayoutReady } from '../../../../core/payments/services/autoPayout.service.js';
+import { logger } from '../../../../utils/logger.js';
 
 export const createWithdrawalRequestController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;
-        const { amount, bankDetails } = req.body;
+        const { bankDetails } = req.body;
+        const amount = Math.round(Number(req.body?.amount) * 100) / 100;
 
         if (!restaurantId) return sendError(res, 401, 'Restaurant authentication required');
-        if (!amount || amount <= 0) return sendError(res, 400, 'Invalid withdrawal amount');
+        if (!Number.isFinite(amount) || amount < 1) return sendError(res, 400, 'Invalid withdrawal amount');
+
+        // Auto payout is on: money may only go to a bank/UPI account that was verified AND confirmed by the owner.
+        const ready = await checkPayoutReady('restaurant', restaurantId);
+        if (!ready.ok) {
+            return res.status(400).json({
+                success: false,
+                code: 'PAYOUT_ACCOUNT_REQUIRED',
+                message: 'Please add and verify your bank / UPI details before withdrawing.'
+            });
+        }
 
         // Check if restaurant has enough balance
         const finance = await getRestaurantFinance(restaurantId);
@@ -29,7 +42,25 @@ export const createWithdrawalRequestController = async (req, res, next) => {
 
         await withdrawal.save();
 
-        return sendResponse(res, 201, 'Withdrawal request submitted successfully', withdrawal);
+        // Race guard: parallel requests can all pass the check above. Re-check with this request
+        // counted; if withdrawals now exceed earnings, this request loses and is rolled back.
+        const after = await getRestaurantFinance(restaurantId);
+        if ((after?.currentCycle?.availableBalanceRaw ?? 0) < 0) {
+            await FoodRestaurantWithdrawal.deleteOne({ _id: withdrawal._id, status: 'pending' });
+            return sendError(res, 400, 'Insufficient balance for this withdrawal');
+        }
+
+        // Automatic payout (Razorpay X). If it can't run (disabled / no bank details) the request stays pending for admin.
+        let message = 'Withdrawal request submitted successfully';
+        try {
+            const payout = await autoPayWithdrawal('restaurant', withdrawal._id);
+            if (payout.paid) message = 'Withdrawal approved - payout initiated to your bank/UPI';
+        } catch (err) {
+            logger.error(`Auto payout error (restaurant withdrawal ${withdrawal._id}): ${err.message}`);
+        }
+        const latest = await FoodRestaurantWithdrawal.findById(withdrawal._id).lean();
+
+        return sendResponse(res, 201, message, latest || withdrawal);
     } catch (error) {
         next(error);
     }
