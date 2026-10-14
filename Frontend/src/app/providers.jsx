@@ -7,6 +7,7 @@ import { ThemeProvider } from 'next-themes'
 import { AuthProvider } from '@core/context/AuthContext'
 import { SettingsProvider } from '@core/context/SettingsContext'
 import { ToastProvider } from '@shared/components/ui/Toast'
+import { LanguageProvider } from '@shared/i18n/LanguageContext'
 
 function shouldUseHashRouter() {
   if (typeof window === 'undefined') return false
@@ -53,8 +54,10 @@ export function AppProviders({ children }) {
             <ToastProvider>
               <ReduxProvider store={store}>
                 <Router>
-                  {children}
-                  <Toaster position="top-center" richColors offset="80px" />
+                  <LanguageProvider>
+                    {children}
+                    <Toaster position="top-center" richColors offset="80px" />
+                  </LanguageProvider>
                 </Router>
               </ReduxProvider>
             </ToastProvider>

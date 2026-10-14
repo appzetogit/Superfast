@@ -1,4 +1,5 @@
 import express from 'express';
+import { payoutAccountControllers } from '../../../../core/payments/controllers/payoutAccount.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../../core/roles/role.middleware.js';
@@ -59,6 +60,11 @@ router.post('/reverify', authMiddleware, requireRoles('DELIVERY_PARTNER'), (req,
 
 // Pocket / requests page – wallet, earnings, and admin-set delivery settings
 router.get('/wallet', authMiddleware, requireRoles('DELIVERY_PARTNER'), getWalletController);
+const payoutAccount = payoutAccountControllers('delivery');
+router.get('/payout-account', authMiddleware, requireRoles('DELIVERY_PARTNER'), payoutAccount.get);
+router.post('/payout-account', authMiddleware, requireRoles('DELIVERY_PARTNER'), payoutAccount.save);
+router.post('/payout-account/confirm', authMiddleware, requireRoles('DELIVERY_PARTNER'), payoutAccount.confirm);
+router.delete('/payout-account', authMiddleware, requireRoles('DELIVERY_PARTNER'), payoutAccount.reset);
 router.post('/wallet/withdraw', authMiddleware, requireRoles('DELIVERY_PARTNER'), createWithdrawalRequestController);
 router.post('/wallet/deposit/order', authMiddleware, requireRoles('DELIVERY_PARTNER'), createCashDepositOrderController);
 router.post('/wallet/deposit/verify', authMiddleware, requireRoles('DELIVERY_PARTNER'), verifyCashDepositPaymentController);

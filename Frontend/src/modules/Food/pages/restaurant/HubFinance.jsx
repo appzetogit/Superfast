@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Bell, Menu, ChevronDown, Calendar, Download, ArrowRight, FileText, Wallet, X } from "lucide-react"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { restaurantAPI } from "@food/api"
+import PayoutAccountModal from "@shared/components/PayoutAccountModal"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -18,6 +19,7 @@ export default function HubFinance() {
   })
   const [selectedDateRange, setSelectedDateRange] = useState("Last 30 days")
   const [showDownloadMenu, setShowDownloadMenu] = useState(false)
+  const [showPayoutModal, setShowPayoutModal] = useState(false)
   const [showDateRangePicker, setShowDateRangePicker] = useState(false)
   const downloadMenuRef = useRef(null)
   const dateRangePickerRef = useRef(null)
@@ -1294,6 +1296,10 @@ export default function HubFinance() {
                         }
                       } catch (error) {
                         debugError('Error submitting withdrawal request:', error)
+                        if (error.response?.data?.code === 'PAYOUT_ACCOUNT_REQUIRED') {
+                          setShowPayoutModal(true)
+                          return
+                        }
                         alert(error.response?.data?.message || 'Failed to submit withdrawal request. Please try again.')
                       } finally {
                         setSubmittingWithdrawal(false)
@@ -1310,6 +1316,16 @@ export default function HubFinance() {
           </>
         )}
       </AnimatePresence>
+
+      <PayoutAccountModal
+        kind="restaurant"
+        open={showPayoutModal}
+        onClose={() => setShowPayoutModal(false)}
+        onVerified={() => {
+          setShowPayoutModal(false)
+          alert('Account verified. Tap "Submit Request" again to withdraw.')
+        }}
+      />
 
       <BottomNavOrders />
     </div>

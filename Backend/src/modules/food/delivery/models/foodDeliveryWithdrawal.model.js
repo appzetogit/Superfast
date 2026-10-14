@@ -33,7 +33,11 @@ const foodDeliveryWithdrawalSchema = new mongoose.Schema({
     adminNote: String,
     rejectionReason: String,
     transactionId: String, // Final bank transaction reference from admin
-    processedAt: Date
+    processedAt: Date,
+    // Razorpay X automatic payout tracking
+    payoutId: { type: String, index: true, sparse: true },
+    payoutStatus: String,
+    payoutError: String
 }, { 
     collection: 'food_delivery_withdrawals', 
     timestamps: true 

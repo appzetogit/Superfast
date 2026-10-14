@@ -32,6 +32,7 @@ import {
   createRazorpayOrder,
   createPaymentLink,
   verifyPaymentSignature,
+  verifyCapturedRazorpayPayment,
   getRazorpayKeyId,
   isRazorpayConfigured,
   fetchRazorpayPaymentLink,
@@ -2542,12 +2543,20 @@ export async function verifyPayment(userId, dto) {
   if (order.payment.status === "paid")
     return { order: order.toObject(), payment: order.payment };
 
-  const valid = verifyPaymentSignature(
-    dto.razorpayOrderId,
-    dto.razorpayPaymentId,
-    dto.razorpaySignature,
-  );
-  if (!valid) throw new ValidationError("Payment verification failed");
+  // The payment must belong to THIS order's Razorpay order, be captured, and cover the amount due.
+  const expectedRzOrderId = String(order.payment?.razorpay?.orderId || "");
+  if (!expectedRzOrderId || String(dto.razorpayOrderId || "") !== expectedRzOrderId) {
+    throw new ValidationError("Payment does not belong to this order");
+  }
+  const paidAmount = await verifyCapturedRazorpayPayment({
+    orderId: dto.razorpayOrderId,
+    paymentId: dto.razorpayPaymentId,
+    signature: dto.razorpaySignature,
+  });
+  const amountDue = Number(order.payment?.amountDue ?? order.pricing?.total ?? 0);
+  if (paidAmount + 0.01 < amountDue) {
+    throw new ValidationError("Paid amount is less than the order total");
+  }
 
   order.payment.status = "paid";
   order.payment.razorpay.paymentId = dto.razorpayPaymentId;

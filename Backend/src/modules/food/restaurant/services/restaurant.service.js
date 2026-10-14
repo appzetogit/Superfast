@@ -1905,8 +1905,14 @@ export const deleteRestaurantAccount = async (restaurantId) => {
 
         // Delete associated data
         await FoodRestaurantOutletTimings.deleteMany({ restaurantId }).session(session);
-        // Note: You might want to delete foods, categories, etc. as well depending on business rules.
-        // For now, we'll stick to the core profile and timings.
+
+        // Remove the menu and the restaurant's private categories so nothing of it keeps showing to customers.
+        const { FoodItem } = await import('../../admin/models/food.model.js');
+        const { FoodCategory } = await import('../../admin/models/category.model.js');
+        const { FoodAddon } = await import('../models/foodAddon.model.js');
+        await FoodItem.deleteMany({ restaurantId }).session(session);
+        await FoodAddon.deleteMany({ restaurantId }).session(session);
+        await FoodCategory.deleteMany({ restaurantId }).session(session);
         
         await FoodRestaurant.findByIdAndDelete(restaurantId).session(session);
 

@@ -154,7 +154,8 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
     }
 
     const totalDeductions = totalPendingWithdrawals + totalProcessedWithdrawals;
-    const availableBalance = Math.max(0, globalEstimatedPayout - totalDeductions);
+    const availableBalanceRaw = Math.round((globalEstimatedPayout - totalDeductions) * 100) / 100;
+    const availableBalance = Math.max(0, availableBalanceRaw);
 
     const currentCycle = {
         start: { ...nowWindow.startMeta },
@@ -162,6 +163,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         totalEarnings: currentCycleEstimatedPayout, // We still show current cycle earnings label
         totalWithdrawn: totalDeductions,
         estimatedPayout: availableBalance, // This is what UI shows as "Estimated Payout" (Available Balance)
+        availableBalanceRaw, // unclamped; negative means withdrawals exceed earnings (used by race guard)
         totalOrders: currentCycleOrders.length,
         payoutDate: null,
         orders: currentCycleOrders

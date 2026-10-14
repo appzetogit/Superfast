@@ -1,4 +1,5 @@
 import express from 'express';
+import { payoutAccountControllers } from '../../../../core/payments/controllers/payoutAccount.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import {
     registerRestaurantController,
@@ -106,6 +107,11 @@ router.put('/outlet-timings', authMiddleware, requireRestaurant, async (req, res
     next();
 }, upsertCurrentRestaurantOutletTimingsController);
 router.get('/finance', authMiddleware, requireRestaurant, getRestaurantFinanceController);
+const payoutAccount = payoutAccountControllers('restaurant');
+router.get('/payout-account', authMiddleware, requireRestaurant, payoutAccount.get);
+router.post('/payout-account', authMiddleware, requireRestaurant, payoutAccount.save);
+router.post('/payout-account/confirm', authMiddleware, requireRestaurant, payoutAccount.confirm);
+router.delete('/payout-account', authMiddleware, requireRestaurant, payoutAccount.reset);
 router.post('/withdraw', authMiddleware, requireRestaurant, createWithdrawalRequestController);
 router.get('/withdrawals', authMiddleware, requireRestaurant, listMyWithdrawalsController);
 router.post(

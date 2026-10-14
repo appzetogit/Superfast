@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
+import PayoutAccountModal from '@shared/components/PayoutAccountModal';
 import { formatCurrency } from '@food/utils/currency';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 
@@ -31,6 +32,7 @@ export const PocketBalanceV2 = () => {
      canWithdraw: false
   });
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,17 +77,6 @@ export const PocketBalanceV2 = () => {
   }, []);
 
   const handleWithdraw = async () => {
-     // Simplified verification
-     const profileRes = await deliveryAPI.getProfile();
-     const profile = profileRes?.data?.data?.profile || {};
-     const bank = profile?.documents?.bankDetails;
-     
-     if (!bank?.accountNumber) {
-        toast.error("Please add bank details first");
-        navigate("/food/delivery/profile/details");
-        return;
-     }
-
      setWithdrawSubmitting(true);
      try {
         const res = await deliveryAPI.createWithdrawalRequest({
@@ -93,11 +84,15 @@ export const PocketBalanceV2 = () => {
            paymentMethod: 'bank_transfer'
         });
         if (res?.data?.success) {
-           toast.success("Withdrawal request submitted");
+           toast.success(res?.data?.message || "Withdrawal request submitted");
            goBack();
         }
      } catch (err) {
-        toast.error("Withdrawal failed");
+        if (err?.response?.data?.code === 'PAYOUT_ACCOUNT_REQUIRED') {
+           setShowPayoutModal(true);
+        } else {
+           toast.error(err?.response?.data?.message || "Withdrawal failed");
+        }
      } finally {
         setWithdrawSubmitting(false);
      }
@@ -183,6 +178,16 @@ export const PocketBalanceV2 = () => {
              </div>
           </>
        )}
+
+       <PayoutAccountModal
+          kind="delivery"
+          open={showPayoutModal}
+          onClose={() => setShowPayoutModal(false)}
+          onVerified={() => {
+             setShowPayoutModal(false);
+             toast.success('Account verified. Tap Withdraw again to get paid.');
+          }}
+       />
     </div>
   );
 };

@@ -3,26 +3,22 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 
 import { config } from '../../../../config/env.js';
+import { ValidationError } from '../../../../core/auth/errors.js';
 
-// Online Razorpay Payment Disabled
-// const KEY_ID = config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '';
-// const KEY_SECRET = config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || '';
+const KEY_ID = config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '';
+const KEY_SECRET = config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || '';
 
 export function isRazorpayConfigured() {
-// Online Razorpay Payment Disabled
-return false;
-    // return Boolean(KEY_ID && KEY_SECRET && Razorpay);
+    return Boolean(KEY_ID && KEY_SECRET && Razorpay);
 }
 
 export function getRazorpayKeyId() {
-    return ''; // Razorpay disabled
-    // return KEY_ID;
+    return KEY_ID;
 }
 
 export function getRazorpayInstance() {
     if (!isRazorpayConfigured()) return null;
-    // return new Razorpay({ key_id: KEY_ID, key_secret: KEY_SECRET });
-    return null;
+    return new Razorpay({ key_id: KEY_ID, key_secret: KEY_SECRET });
 }
 
 export function createRazorpayOrder(amountPaise, currency = 'INR', receipt = '') {
@@ -51,10 +47,43 @@ export function createPaymentLink({ amountPaise, currency = 'INR', description, 
 }
 
 export function verifyPaymentSignature(orderId, paymentId, signature) {
-    if (!KEY_SECRET) return false;
+    if (!KEY_SECRET || !signature) return false;
     const body = `${orderId}|${paymentId}`;
     const expected = crypto.createHmac('sha256', KEY_SECRET).update(body).digest('hex');
-    return expected === signature;
+    const a = Buffer.from(expected);
+    const b = Buffer.from(String(signature));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * Fully verifies a client-reported Razorpay payment and returns the amount (INR) that
+ * Razorpay itself says was captured. Throws ValidationError if anything does not match.
+ * Callers must credit THIS amount, never the amount sent by the client.
+ */
+export async function verifyCapturedRazorpayPayment({ orderId, paymentId, signature }) {
+    if (!isRazorpayConfigured()) {
+        throw new ValidationError('Online payments are currently unavailable');
+    }
+    if (!verifyPaymentSignature(orderId, paymentId, signature)) {
+        throw new ValidationError('Payment verification failed');
+    }
+    let payment;
+    try {
+        payment = await fetchRazorpayPayment(paymentId);
+    } catch (err) {
+        throw new ValidationError('Unable to confirm payment with the gateway');
+    }
+    if (String(payment?.order_id || '') !== String(orderId)) {
+        throw new ValidationError('Payment does not belong to this order');
+    }
+    if (String(payment?.status || '').toLowerCase() !== 'captured') {
+        throw new ValidationError('Payment is not captured');
+    }
+    const amountInr = Number(payment.amount) / 100;
+    if (!Number.isFinite(amountInr) || amountInr <= 0) {
+        throw new ValidationError('Invalid payment amount');
+    }
+    return amountInr;
 }
 
 /**
@@ -87,7 +116,7 @@ export async function fetchRazorpayPaymentLink(paymentLinkId) {
  */
 export async function initiateRazorpayRefund(paymentId, amount) {
     if (!isRazorpayConfigured()) {
-        throw new Error('Razorpay is not configured on this server');
+        return { success: false, error: 'Razorpay is not configured on this server', status: 'failed' };
     }
     const instance = getRazorpayInstance();
     try {

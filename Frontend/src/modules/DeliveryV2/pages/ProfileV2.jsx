@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { deliveryAPI, authAPI } from "@food/api"
 import { toast } from "sonner"
+import { LanguageSelector } from "@shared/i18n/LanguageContext"
 import { clearModuleAuth } from "@food/utils/auth"
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
 
@@ -287,6 +288,13 @@ export const ProfileV2 = () => {
           </div>
 
           {/* Partner options Section */}
+          {/* Language */}
+          <div className="pt-4">
+            <div className="bg-white rounded-xl p-4 border border-gray-100 text-gray-900">
+              <LanguageSelector />
+            </div>
+          </div>
+
           {/* Logout Section */}
           <div className="pt-4 space-y-2">
             <div 
