@@ -313,9 +313,10 @@ export default function DeliveryOTP() {
         debugLog("Storing auth data for delivery:", { hasToken: !!accessToken, hasUser: !!user })
         storeAuthData("delivery", accessToken, user, refreshToken)
         
-        // Force online state on successful login
-        useDeliveryStore.getState().setOnline(true)
-        localStorage.setItem("app:isOnline", "true")
+        // Start offline after login: a rider can only go online with an active gig booking,
+        // and must do it explicitly from the home toggle.
+        useDeliveryStore.getState().setOnline(false)
+        localStorage.removeItem("app:isOnline")
 
         debugLog("Auth data stored successfully")
       } catch (storageError) {
@@ -404,9 +405,10 @@ export default function DeliveryOTP() {
         debugLog("Storing auth data for delivery (with name):", { hasToken: !!accessToken, hasUser: !!user })
         storeAuthData("delivery", accessToken, user, refreshToken)
         
-        // Force online state on successful login
-        useDeliveryStore.getState().setOnline(true)
-        localStorage.setItem("app:isOnline", "true")
+        // Start offline after login: a rider can only go online with an active gig booking,
+        // and must do it explicitly from the home toggle.
+        useDeliveryStore.getState().setOnline(false)
+        localStorage.removeItem("app:isOnline")
 
         debugLog("Auth data stored successfully")
       } catch (storageError) {

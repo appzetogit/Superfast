@@ -464,11 +464,8 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
     }
   }
 
-  // Set default online on login (only if admin hasn't force-offlined this partner)
-  if (deliveryPartner.availabilityStatus !== 'online' && !deliveryPartner.adminForceOffline) {
-    deliveryPartner.availabilityStatus = 'online';
-    await deliveryPartner.save();
-  }
+  // Do not force online on login: going online requires an active gig booking
+  // (enforced in updateDeliveryPartnerAvailability), so the rider starts offline.
 
   if (deliveryPartner.status && deliveryPartner.status !== "approved") {
     const isRejected = deliveryPartner.status === "rejected";

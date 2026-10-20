@@ -2664,12 +2664,12 @@ export async function approveCustomOrderRequest(id) {
 
     if (doc) {
         try {
-            const { notifyUsersSafely } = await import('../../../../core/notifications/firebase.service.js');
-            void notifyUsersSafely({
+            const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
+            void notifyOwnerSafely({ ownerType: 'RESTAURANT', ownerId: String(doc._id) }, {
                 title: doc.customOrdersEnabled ? 'Custom Orders Approved! 🎉' : 'Custom Orders Disabled',
                 body: doc.customOrdersEnabled ? 'You can now accept custom cake requests.' : 'Custom orders have been disabled for your bakery.',
                 data: { type: 'custom_orders_approved', restaurantId: String(doc._id) }
-            }, doc.fcmTokens || []);
+            });
         } catch (e) {
             console.error('Failed to send notification for custom orders approval', e);
         }
@@ -2688,12 +2688,12 @@ export async function rejectCustomOrderRequest(id) {
 
     if (doc) {
         try {
-            const { notifyUsersSafely } = await import('../../../../core/notifications/firebase.service.js');
-            void notifyUsersSafely({
+            const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
+            void notifyOwnerSafely({ ownerType: 'RESTAURANT', ownerId: String(doc._id) }, {
                 title: 'Custom Orders Request Rejected',
                 body: 'Your recent request for custom orders was declined.',
                 data: { type: 'custom_orders_rejected', restaurantId: String(doc._id) }
-            }, doc.fcmTokens || []);
+            });
         } catch (e) {
             console.error('Failed to send notification for custom orders rejection', e);
         }
@@ -3862,10 +3862,10 @@ export async function getAllOffers(_query = {}) {
     try {
         const couponOrders = await FoodOrder.find({
             $or: [
-                { "pricing.couponCode": { $exists: true, $ne: null, $ne: "" } },
-                { "pricing.appliedCoupon.code": { $exists: true, $ne: null, $ne: "" } },
-                { "appliedCoupon.code": { $exists: true, $ne: null, $ne: "" } },
-                { "couponCode": { $exists: true, $ne: null, $ne: "" } },
+                { "pricing.couponCode": { $exists: true, $nin: [null, ""] } },
+                { "pricing.appliedCoupon.code": { $exists: true, $nin: [null, ""] } },
+                { "appliedCoupon.code": { $exists: true, $nin: [null, ""] } },
+                { "couponCode": { $exists: true, $nin: [null, ""] } },
                 { "pricing.couponDiscount": { $gt: 0 } },
                 { "pricing.discount": { $gt: 0 } },
                 { "couponDiscount": { $gt: 0 } }
@@ -5034,7 +5034,7 @@ export async function approveDeliveryPartner(id) {
         try {
             const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
             const { FoodNotification } = await import('../../../../core/notifications/models/notification.model.js');
-            const { getIO, rooms } = await import('../../../../socket.js');
+            const { getIO, rooms } = await import('../../../../config/socket.js');
 
             const targetId = partner.deliveryPartnerId || partner._id;
 
@@ -5084,7 +5084,7 @@ export async function approveDeliveryPartner(id) {
     try {
         const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
         const { FoodNotification } = await import('../../../../core/notifications/models/notification.model.js');
-        const { getIO, rooms } = await import('../../../../socket.js');
+        const { getIO, rooms } = await import('../../../../config/socket.js');
 
         await notifyOwnerSafely(
             { ownerType: 'DELIVERY_PARTNER', ownerId: partner._id },
@@ -5269,7 +5269,7 @@ export async function toggleDeliveryPartnerAccount(id) {
 
     // Notify partner via socket
     try {
-        const { getIO, rooms } = await import('../../../../socket.js');
+        const { getIO, rooms } = await import('../../../../config/socket.js');
         const io = getIO();
         if (io) {
             io.to(rooms.delivery(String(id))).emit('account_status_changed', {

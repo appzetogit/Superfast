@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import AppRoutes from './routes'
 import SplashScreen from '@/components/ui/SplashScreen'
+import LocationPermissionGate from '@shared/components/LocationPermissionGate'
 import { WifiOff, RefreshCw } from 'lucide-react'
 
 function OfflineBanner() {
@@ -110,6 +111,7 @@ function App() {
       <OfflineBanner />
       <ApiStatusBanner />
       <AppRoutes />
+      {!showSplash && <LocationPermissionGate />}
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
     </>
   )

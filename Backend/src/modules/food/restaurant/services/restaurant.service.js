@@ -1473,7 +1473,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         if (query.featured === 'true' || query.isFeatured === 'true') {
             filter.$or = [
                 { isFeatured: true },
-                { featuredDish: { $exists: true, $ne: '', $ne: null } },
+                { featuredDish: { $exists: true, $nin: ['', null] } },
                 { priority: { $gt: 0 } },
                 { rating: { $gte: 4.0 } }
             ];
@@ -1495,7 +1495,7 @@ export const listApprovedRestaurants = async (query = {}) => {
             filter.cuisines = { $in: [new RegExp(escapeRegex(cuisine), 'i')] };
         }
         if (query.hasOffers === 'true') {
-            filter.offer = { $exists: true, $ne: null, $ne: '' };
+            filter.offer = { $exists: true, $nin: [null, ''] };
         }
         const minRating = toFiniteNumber(query.minRating);
         if (minRating !== null) {

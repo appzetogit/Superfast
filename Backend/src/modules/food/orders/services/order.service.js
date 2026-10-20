@@ -932,6 +932,17 @@ function buildDeliveryOrderView(orderDoc, deliveryPartnerId, options = {}) {
     order.deliveryPartnerId = assignedLeg.deliveryPartnerId || order.deliveryPartnerId || null;
   }
 
+  // Customer contact for the rider's call button (the user who placed the order).
+  const customerUser = order.userId && typeof order.userId === "object" ? order.userId : null;
+  const customerPhone = String(
+    order.customerPhone || customerUser?.phone || order.deliveryAddress?.phone || "",
+  ).trim();
+  order.customerPhone = customerPhone;
+  order.userPhone = String(order.userPhone || customerPhone).trim();
+  if (!order.customerName) {
+    order.customerName = customerUser?.name || order.deliveryAddress?.name || "";
+  }
+
   return order;
 }
 
@@ -3681,15 +3692,23 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
 
   // Find the active order assigned to or accepted by this rider.
   // An active current delivery trip MUST be accepted by the delivery partner!
+  // Two separate $or clauses must live under $and; a duplicate `$or` key in one object
+  // literal silently drops the first one (which is the "belongs to THIS rider" check).
   const order = await FoodOrder.findOne({
-    $or: [
-      { "dispatch.deliveryPartnerId": partnerId },
-      { "dispatchPlan.legs": { $elemMatch: { deliveryPartnerId: partnerId } } },
-    ],
-    $or: [
-      { "dispatch.acceptedAt": { $exists: true, $ne: null } },
-      { "dispatch.status": "accepted" },
-      { orderStatus: { $in: ["picked_up", "reached_pickup", "reached_drop"] } }
+    $and: [
+      {
+        $or: [
+          { "dispatch.deliveryPartnerId": partnerId },
+          { "dispatchPlan.legs": { $elemMatch: { deliveryPartnerId: partnerId } } },
+        ],
+      },
+      {
+        $or: [
+          { "dispatch.acceptedAt": { $exists: true, $ne: null } },
+          { "dispatch.status": "accepted" },
+          { orderStatus: { $in: ["picked_up", "reached_pickup", "reached_drop"] } }
+        ],
+      },
     ],
     orderStatus: {
       $nin: ["delivered", "cancelled_by_user", "cancelled_by_restaurant", "cancelled_by_admin"]
@@ -4348,6 +4367,26 @@ export async function confirmReachedDropDelivery(orderId, deliveryPartnerId) {
     dropOtpVerified: order.deliveryVerification?.dropOtp?.verified ?? false
   });
   return sanitizeOrderForExternal(order);
+}
+
+/** Customer: fetch the drop OTP to read out to the delivery partner (own orders only). */
+export async function getDropOtpUser(orderId, userId) {
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+  const order = await FoodOrder.findOne(identity)
+    .select("+deliveryOtp userId orderId orderStatus")
+    .lean();
+  if (!order) throw new NotFoundError("Order not found");
+  if (!userId || String(order.userId) !== String(userId)) {
+    throw new ForbiddenError("Not your order");
+  }
+  const otp = String(order.deliveryOtp || "").trim();
+  return {
+    orderId: order.orderId,
+    orderStatus: order.orderStatus,
+    required: Boolean(otp),
+    code: otp,
+  };
 }
 
 export async function verifyDropOtpDelivery(orderId, deliveryPartnerId, otp) {

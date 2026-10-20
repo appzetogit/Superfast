@@ -1965,6 +1965,8 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
   const handleAddressFormSubmit = async (e) => {
     e.preventDefault()
     let addressToSave = null
+    let savedAddress = null
+    const existingAddressId = ""
 
     // Validate required fields (zipCode is optional)
     if (!addressFormData.street || !addressFormData.city || !addressFormData.state) {

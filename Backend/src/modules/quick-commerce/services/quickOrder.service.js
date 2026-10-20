@@ -220,7 +220,7 @@ export const updateSellerOrderStatus = async (sellerOrderId, sellerId, nextStatu
 
       // Save notification to User Inbox (so it appears in notification bell)
       try {
-        const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+        const { createInboxNotifications } = await import('../../../core/notifications/notification.service.js');
         await createInboxNotifications({
           notifications: [{
             ownerType: 'USER',

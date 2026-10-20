@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { resolveQuickImageUrl } from "../utils/image";
 
-const ExperienceBannerCarousel = ({ section, items, fullWidth = false, slideGap = 0 }) => {
-  if (!items || !items.length) return null;
+const ExperienceBannerCarouselInner = ({ section, items, fullWidth = false, slideGap = 0 }) => {
 
   const effectiveSlideGap = fullWidth ? 0 : slideGap;
 
@@ -109,5 +108,10 @@ const ExperienceBannerCarousel = ({ section, items, fullWidth = false, slideGap 
     </div>
   );
 };
+
+// Bail out in a wrapper so the inner component's hooks never change between renders
+// (items going empty <-> non-empty would otherwise crash React).
+const ExperienceBannerCarousel = (props) =>
+  props.items && props.items.length ? <ExperienceBannerCarouselInner {...props} /> : null;
 
 export default ExperienceBannerCarousel;

@@ -301,7 +301,7 @@ export default function Feedback() {
     setDisplayedReviews(filtered)
   }, [reviews, filterValues])
 
-  const handleFilterReset = () => { setFilterValues({ duration: null, sortBy: "newest", reviewType: [] }); setIsFilterApply() }
+  const handleFilterReset = () => { setFilterValues({ duration: null, sortBy: "newest", reviewType: [] }) }
   const handleFilterApply = () => { setIsFilterLoading(true); setIsFilterOpen(false); setTimeout(() => setIsFilterLoading(false), 200) }
 
   const formatDate = (date) => {

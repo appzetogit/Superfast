@@ -224,7 +224,9 @@ apiClient.interceptors.response.use(
   async (err) => {
     const original = err?.config;
     const status = err?.response?.status
-    if (!err?.response || status >= 500) emitApiStatus(false)
+    if (axios.isCancel?.(err) || err?.code === 'ERR_CANCELED') {
+      // aborted on purpose (navigation / replaced request): says nothing about the server
+    } else if (!err?.response || status >= 500) emitApiStatus(false)
     else emitApiStatus(true) // 4xx = the server answered, it is up
     if (err?.response?.status === 429) {
       return Promise.reject(err);

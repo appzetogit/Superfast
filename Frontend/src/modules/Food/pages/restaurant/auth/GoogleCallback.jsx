@@ -10,6 +10,7 @@ const debugError = (...args) => {}
 
 
 export default function RestaurantGoogleCallback() {
+  const companyName = useCompanyName()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState("loading") // "loading", "success", "error"

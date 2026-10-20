@@ -33,15 +33,16 @@ export default function BottomNavOrders() {
 
   const tabs = useMemo(() => getOrdersTabs(basePath), [basePath])
 
-  const isInternalPage = pathname.includes("/create-offers")
-  if (isInternalPage) {
-    return null
-  }
-
   const activeTab = useMemo(() => {
     const match = findActiveTab(tabs, pathname)
     return match?.id || "orders"
   }, [tabs, pathname])
+
+  // Hooks above must always run; only then may we bail out of rendering.
+  const isInternalPage = pathname.includes("/create-offers")
+  if (isInternalPage) {
+    return null
+  }
 
   const handleTabClick = (tab) => {
     if (tab.route && tab.route !== pathname) {

@@ -26,6 +26,7 @@ import {
   PopoverTrigger,
 } from "@food/components/ui/popover"
 import { useCompanyName } from "@food/hooks/useCompanyName"
+import { restaurantAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -388,6 +389,27 @@ export default function DaySlots() {
   const [dayData, setDayData] = useState(getDefaultDayData)
 
   const [copyToAllDays, setCopyToAllDays] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Prefill with the slots already saved for this day.
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await restaurantAPI.getOutletTimings()
+        const saved = res?.data?.data?.outletTimings || res?.data?.outletTimings || res?.data?.data
+        const existing = saved && typeof saved === "object" ? saved[dayName] : null
+        if (mounted && existing && Array.isArray(existing.slots) && existing.slots.length > 0) {
+          setDayData({ ...getDefaultDayData(), ...existing })
+        }
+      } catch (error) {
+        debugError("Error loading day slots:", error)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [dayName])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [slotToDelete, setSlotToDelete] = useState(null)
   const [timePickerOpen, setTimePickerOpen] = useState({ 
@@ -551,10 +573,13 @@ export default function DaySlots() {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return
+    setIsSaving(true)
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      let allDays = saved ? JSON.parse(saved) : {}
+      const res = await restaurantAPI.getOutletTimings()
+      const saved = res?.data?.data?.outletTimings || res?.data?.outletTimings || res?.data?.data
+      let allDays = saved && typeof saved === "object" ? { ...saved } : {}
 
       if (copyToAllDays) {
         // Copy to all days
@@ -567,12 +592,14 @@ export default function DaySlots() {
         allDays[dayName] = dayData
       }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allDays))
+      await restaurantAPI.saveOutletTimings(allDays)
       window.dispatchEvent(new Event("outletTimingsUpdated"))
       navigate("/restaurant/outlet-timings")
     } catch (error) {
       debugError("Error saving day slots:", error)
       alert("Error saving slots. Please try again.")
+    } finally {
+      setIsSaving(false)
     }
   }
 

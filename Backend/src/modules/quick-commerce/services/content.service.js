@@ -35,6 +35,12 @@ const toIdString = (value) => {
   return String(value);
 };
 
+/** Raw-collection queries need a real ObjectId when the id is a valid one. */
+const toId = (value) => {
+  const id = toIdString(value);
+  return id && mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+};
+
 const normalizeStatusQuery = () => ({
   $and: [
     {

@@ -24,6 +24,7 @@ import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { useNavigate } from "react-router-dom"
 import { restaurantAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
+import { getAllFoods } from "@food/utils/foodManagement"
 import { handleImageError } from "@shared/utils/imageHelper"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}

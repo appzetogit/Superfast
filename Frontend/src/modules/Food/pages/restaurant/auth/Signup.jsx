@@ -21,6 +21,7 @@ const countryCodes = [
 ]
 
 export default function RestaurantSignup() {
+  const companyName = useCompanyName()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     phone: "",

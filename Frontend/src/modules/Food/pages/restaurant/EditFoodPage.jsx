@@ -761,7 +761,7 @@ export default function EditFoodPage() {
               </div>
               
               <div className="space-y-4">
-                {formData.variations.map((variation) => (
+                {formData.variations.map((variation, index) => (
                   <div key={variation.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">Variant {index + 1}</span>

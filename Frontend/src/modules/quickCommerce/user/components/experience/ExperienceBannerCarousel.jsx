@@ -4,8 +4,7 @@ import { getCloudinarySrcSet } from "@/shared/utils/cloudinaryUtils";
 import { resolveQuickImageUrl } from "../../utils/image";
 import CardBanner from "@/assets/CardBanner.webp";
 
-const ExperienceBannerCarousel = ({ section, items, fullWidth = false, slideGap = 0, edgeToEdge = false }) => {
-  if (!items.length) return null;
+const ExperienceBannerCarouselInner = ({ section, items, fullWidth = false, slideGap = 0, edgeToEdge = false }) => {
 
   const effectiveSlideGap = fullWidth ? 0 : slideGap;
 
@@ -85,5 +84,9 @@ const ExperienceBannerCarousel = ({ section, items, fullWidth = false, slideGap 
     </div>
   );
 };
+
+// Bail out in a wrapper so the inner component's hooks never change between renders.
+const ExperienceBannerCarousel = (props) =>
+  props.items && props.items.length ? <ExperienceBannerCarouselInner {...props} /> : null;
 
 export default ExperienceBannerCarousel;

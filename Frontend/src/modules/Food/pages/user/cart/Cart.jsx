@@ -1728,7 +1728,7 @@ export default function Cart() {
       // If restaurant names match but IDs differ, that's OK (same restaurant, different ID format)
       // But log a warning in development
       if (uniqueRestaurantIds.length > 1 && uniqueRestaurantNames.length === 1) {
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           debugWarn('?? Cart items have different restaurant IDs but same name. This is OK if IDs are in different formats.', {
             restaurantIds: uniqueRestaurantIds,
             restaurantName: uniqueRestaurantNames[0]

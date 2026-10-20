@@ -2062,3 +2062,5 @@ export default function CategoryPage() {
   )
 }
 
+const debugError = (...args) => {}
+const debugWarn = (...args) => {}

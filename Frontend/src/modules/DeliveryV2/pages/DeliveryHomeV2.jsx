@@ -30,10 +30,25 @@ import {
   Bell, HelpCircle, AlertTriangle,
   Wallet, History, User as UserIcon, LayoutGrid,
   Plus, Minus, Navigation2, Target, Play, CheckCircle2, Clock, ChevronDown,
-  Contact, Package, Calendar, X, Loader2
+  Contact, Package, Calendar, X, Loader2, Phone
 } from 'lucide-react';
 
 import { getHaversineDistance, calculateETA, calculateHeading } from '@/modules/DeliveryV2/utils/geo';
+
+/** Phone of the customer who placed the order (dialable), or '' when unknown. */
+const getCustomerPhone = (order) =>
+  String(
+    order?.customerPhone || order?.userPhone || order?.user?.phone || order?.userId?.phone || order?.deliveryAddress?.phone || ''
+  ).replace(/[^\d+]/g, '');
+
+const callCustomer = (order) => {
+  const phone = getCustomerPhone(order);
+  if (!phone) {
+    toast.error('Customer phone number is not available');
+    return;
+  }
+  window.location.href = `tel:${phone}`;
+};
 import { getPrimaryPickupLocation, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import { useNavigate } from 'react-router-dom';
@@ -420,7 +435,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             'handover_requested', 'handover_pending', 'handover_completed', 'transferred', 'reassigned'
           ].some(st => backendStatus === st || dispatchStatus === st || handoverStatus === st);
 
-          if (isHandedOverOrFinished) {
+          if (isFinishedOrHandedOver) {
             clearActiveOrder();
           } else if (['delivered', 'completed'].includes(backendStatus)) {
             updateTripStatus('COMPLETED');
@@ -1299,9 +1314,19 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                             const cAddr = activeOrder?.customerAddress || activeOrder?.customer_address || (addrParts.length ? addrParts.join(', ') : 'Address not available');
                             const cName = activeOrder?.userName || activeOrder?.user?.name || activeOrder?.customerName || 'Customer';
                             return (
-                              <div className="flex flex-col bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-sm">
-                                <span className="text-gray-900 font-bold text-lg truncate">{cName}</span>
-                                <span className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2" title={cAddr}>{cAddr}</span>
+                              <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-sm">
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-gray-900 font-bold text-lg truncate">{cName}</span>
+                                  <span className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2" title={cAddr}>{cAddr}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => callCustomer(activeOrder)}
+                                  aria-label="Call customer"
+                                  className="w-11 h-11 shrink-0 rounded-full bg-green-50 text-green-600 border border-green-100 flex items-center justify-center active:scale-95 transition-all"
+                                >
+                                  <Phone className="w-5 h-5" />
+                                </button>
                               </div>
                             );
                           })()}
@@ -1310,12 +1335,21 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                         <ActionSlider label="Slide to Arrive" successLabel="Arrived ✓" disabled={!isWithinRange} onConfirm={reachDrop} color="bg-blue-600" />
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setShowVerification(true)}
-                        className="w-full bg-green-500 hover:bg-green-600 text-white shadow-xl shadow-green-500/30 rounded-2xl py-5 font-bold text-sm tracking-[0.2em] transform transition-all active:scale-95 flex items-center justify-center gap-3"
-                      >
-                        <CheckCircle2 className="w-6 h-6" /> VERIFY & COMPLETE
-                      </button>
+                      <div className="w-full flex flex-col gap-3">
+                        <button
+                          type="button"
+                          onClick={() => callCustomer(activeOrder)}
+                          className="w-full bg-white text-green-600 border border-green-200 rounded-2xl py-3 font-bold text-xs tracking-[0.15em] active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Phone className="w-4 h-4" /> CALL CUSTOMER
+                        </button>
+                        <button
+                          onClick={() => setShowVerification(true)}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white shadow-xl shadow-green-500/30 rounded-2xl py-5 font-bold text-sm tracking-[0.2em] transform transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                          <CheckCircle2 className="w-6 h-6" /> VERIFY & COMPLETE
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
