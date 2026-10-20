@@ -57,7 +57,17 @@ const RouteAwarePageLoader = () => {
     return <ContentPageSkeleton hero={false} />
   }
 
-  return null
+  // Never render a blank screen while a lazy route chunk loads.
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-[50] flex flex-col items-center justify-center gap-3 bg-[#FDF4EC]"
+    >
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
+      <p className="text-sm font-semibold text-gray-500">Loading...</p>
+    </div>
+  )
 }
 /**
  * FoodAppWrapper — Quick-spicy App. को /food prefix के साथ render करता है.

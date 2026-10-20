@@ -459,7 +459,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   }, [distanceToTarget]);
 
   // 2. Online/Offline Status Sync & FCM Push Registration
+  const onlineSyncMountedRef = useRef(false);
   useEffect(() => {
+    const isFirstRun = !onlineSyncMountedRef.current;
+    onlineSyncMountedRef.current = true;
+
     if (isOnline) {
       gigAPI.getMyGigs().then((res) => {
         const bookings = res?.data?.data?.bookings || [];
@@ -474,9 +478,28 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       }).catch(() => {
         deliveryAPI.updateOnlineStatus(isOnline).catch(() => { });
       });
-    } else {
+    } else if (!isFirstRun) {
+      // Only push "offline" when the rider actually toggled. On a fresh mount/reload
+      // the local flag can be empty (webview storage reset) and must not overwrite
+      // the server's online status.
       deliveryAPI.updateOnlineStatus(false).catch(() => { });
     }
+  }, [isOnline]);
+
+  // When the app returns to the foreground, re-assert online so a status dropped
+  // while backgrounded does not stop order notifications.
+  useEffect(() => {
+    if (!isOnline) return;
+    const onVisible = () => {
+      if (document.hidden) return;
+      const loc = lastCoordRef.current;
+      const req = loc
+        ? deliveryAPI.updateLocation(loc.lat, loc.lng, true)
+        : deliveryAPI.updateOnlineStatus(true);
+      req.catch(() => { });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [isOnline]);
 
   // 3. Location logic (Smart Frequency Tracking)

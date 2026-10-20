@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
-import { toast } from "sonner"
 import { Globe } from "lucide-react"
 import { DEFAULT_LANGUAGE, LANGUAGES, isSupportedLanguage } from "./languages"
 import { applyLanguage, setTranslatorErrorHandler } from "./translator"
@@ -28,9 +27,9 @@ export function LanguageProvider({ children }) {
   const [hasChosen, setHasChosen] = useState(Boolean(stored))
 
   useEffect(() => {
-    setTranslatorErrorHandler(() =>
-      toast.error("Translation is unavailable right now. Check that Cloud Translation API is enabled for the Google key.")
-    )
+    // Translation is a best-effort enhancement: on failure the original text stays
+    // visible, so don't show users a technical error toast (details go to console).
+    setTranslatorErrorHandler(() => {})
   }, [])
 
   useEffect(() => {

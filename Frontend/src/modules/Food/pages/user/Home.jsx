@@ -118,6 +118,7 @@ import SortFilterSection from "@food/components/user/home/SortFilterSection";
 import ExploreMoreSection from "@food/components/user/home/ExploreMoreSection";
 
 import MiniCart from "@food/components/user/MiniCart";
+import DataState from "@shared/components/DataState";
 import OrderTrackingCard from "@food/components/user/OrderTrackingCard";
 import QuickCommerceHomePage from "../../../quickCommerce/user/pages/Home";
 
@@ -475,6 +476,13 @@ export default function Home() {
 
             {/* Custom cake promo banner removed */}
 
+            {restaurants.error && !restaurants.loading && !restaurants.visible?.length ? (
+              <DataState
+                error={restaurants.error}
+                errorTitle="Could not load restaurants"
+                onRetry={restaurants.reload}
+              />
+            ) : (
             <Suspense fallback={<RestaurantGridSkeleton count={3} />}>
               <RestaurantGrid
                 filteredRestaurants={restaurants.visible}
@@ -498,6 +506,7 @@ export default function Home() {
                 restaurantLoadMoreRef={restaurantLoadMoreRef}
               />
             </Suspense>
+            )}
           </div>
 
           {hasMountedQuick && (

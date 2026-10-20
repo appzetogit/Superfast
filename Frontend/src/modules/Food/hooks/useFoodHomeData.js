@@ -84,6 +84,7 @@ export const useFoodHomeData = ({
   const [loadingRestaurants, setLoadingRestaurants] = useState(!globalHomeCache.restaurants);
   const [visibleRestaurantCount, setVisibleRestaurantCount] = useState(6);
   const [isLoadingFilterResults, setIsLoadingFilterResults] = useState(false);
+  const [restaurantsError, setRestaurantsError] = useState(null);
   
   // ... existing filter state ...
   const [activeFilters, setActiveFilters] = useState(new Set());
@@ -333,6 +334,7 @@ export const useFoodHomeData = ({
           };
         });
 
+        setRestaurantsError(null);
         startTransition(() => {
           setRestaurantsData(transformed);
           globalHomeCache.restaurants = transformed;
@@ -340,6 +342,7 @@ export const useFoodHomeData = ({
       }
     } catch (err) {
       setRestaurantsData([]);
+      setRestaurantsError(err || new Error('Failed to load restaurants'));
     } finally {
       if (requestSeq === restaurantsRequestSeqRef.current) setLoadingRestaurants(false);
     }
@@ -524,6 +527,8 @@ export const useFoodHomeData = ({
       visible: visibleRestaurants, 
       loading: loadingRestaurants, 
       isLoadingFilterResults,
+      error: restaurantsError,
+      reload: () => fetchRestaurants(appliedFilters),
       hasMore: visibleRestaurantCount < filteredRestaurants.length 
     },
     landing: { exploreMore: landingExploreMore, heading: exploreMoreHeading, loading: loadingLandingConfig, videoUrl: headerVideoUrl },

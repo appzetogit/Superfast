@@ -41,6 +41,40 @@ function OfflineBanner() {
   )
 }
 
+function ApiStatusBanner() {
+  const [failing, setFailing] = useState(false)
+
+  useEffect(() => {
+    const onError = () => setFailing(true)
+    const onOk = () => setFailing(false)
+    window.addEventListener('app:api-error', onError)
+    window.addEventListener('app:api-ok', onOk)
+    return () => {
+      window.removeEventListener('app:api-error', onError)
+      window.removeEventListener('app:api-ok', onOk)
+    }
+  }, [])
+
+  // The browser-offline banner already covers "no internet"; this one covers "server not responding".
+  if (!failing || !navigator.onLine) return null
+
+  return (
+    <div role="alert" className="fixed inset-x-0 top-0 z-[99998] flex items-center justify-between gap-2 bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg">
+      <span>Server is not responding right now. Please try again in a moment.</span>
+      <button
+        onClick={() => {
+          setFailing(false)
+          window.dispatchEvent(new Event('onlineReconnect'))
+          window.location.reload()
+        }}
+        className="flex shrink-0 items-center gap-1 rounded-md bg-red-800 px-2.5 py-1 text-[10px] uppercase tracking-wider"
+      >
+        <RefreshCw className="h-3 w-3" /> Retry
+      </button>
+    </div>
+  )
+}
+
 function App() {
   const [showSplash, setShowSplash] = useState(() => {
     const hasSeenSession = sessionStorage.getItem('hasSeenSplash')
@@ -74,6 +108,7 @@ function App() {
   return (
     <>
       <OfflineBanner />
+      <ApiStatusBanner />
       <AppRoutes />
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
     </>

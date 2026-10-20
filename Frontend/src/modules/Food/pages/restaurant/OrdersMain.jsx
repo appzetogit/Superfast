@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders";
+import DataState from "@shared/components/DataState";
 import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar";
 import notificationSound from "@food/assets/audio/alert.mp3";
 import { restaurantAPI, diningAPI } from "@food/api";
@@ -125,6 +126,8 @@ const transformOrderForList = (order, defaultETA = 30) => ({
 function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -186,6 +189,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
 
         if (isMounted) {
           setOrders([]);
+          setLoadError(error);
           setLoading(false);
         }
       }
@@ -196,7 +200,23 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
     return () => {
       isMounted = false;
     };
-  }, [refreshToken]);
+  }, [refreshToken, retryKey]);
+
+  if (loadError && !loading) {
+    return (
+      <div className="pt-4 pb-6">
+        <h2 className="text-base font-semibold text-black mb-3">Completed orders</h2>
+        <DataState
+          error={loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setLoading(true);
+            setRetryKey((k) => k + 1);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -333,6 +353,8 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
 function CancelledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -397,6 +419,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
 
         if (isMounted) {
           setOrders([]);
+          setLoadError(error);
           setLoading(false);
         }
       }
@@ -407,7 +430,23 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
     return () => {
       isMounted = false;
     };
-  }, [refreshToken]);
+  }, [refreshToken, retryKey]);
+
+  if (loadError && !loading) {
+    return (
+      <div className="pt-4 pb-6">
+        <h2 className="text-base font-semibold text-black mb-3">Cancelled orders</h2>
+        <DataState
+          error={loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setLoading(true);
+            setRetryKey((k) => k + 1);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

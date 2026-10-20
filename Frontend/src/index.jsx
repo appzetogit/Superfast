@@ -137,12 +137,25 @@ window.addEventListener('unhandledrejection', (event) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { AppProviders } from './app/providers.jsx'
+import ErrorBoundary from './shared/components/ErrorBoundary.jsx'
+
+// A stale/failed lazy chunk (e.g. right after a deploy or on a flaky network) would
+// otherwise leave a blank screen. Reload once to pick up the fresh build.
+window.addEventListener('vite:preloadError', () => {
+  try {
+    if (sessionStorage.getItem('chunkReloaded')) return
+    sessionStorage.setItem('chunkReloaded', '1')
+  } catch { /* ignore */ }
+  window.location.reload()
+})
 
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Root element not found')
 
 createRoot(rootElement).render(
-  <AppProviders>
-    <App />
-  </AppProviders>
+  <ErrorBoundary>
+    <AppProviders>
+      <App />
+    </AppProviders>
+  </ErrorBoundary>
 )

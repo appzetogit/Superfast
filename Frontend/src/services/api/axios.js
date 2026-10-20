@@ -200,10 +200,32 @@ apiClient.interceptors.request.use(
   (err) => Promise.reject(err)
 );
 
+// Tell the UI (ApiStatusBanner in App.jsx) when the server is unreachable / failing,
+// so every screen gets a friendly message instead of a silent blank state.
+let consecutiveApiFailures = 0
+const emitApiStatus = (ok) => {
+  if (typeof window === 'undefined') return
+  if (ok) {
+    if (consecutiveApiFailures > 0) {
+      consecutiveApiFailures = 0
+      window.dispatchEvent(new CustomEvent('app:api-ok'))
+    }
+    return
+  }
+  consecutiveApiFailures += 1
+  if (consecutiveApiFailures >= 2) window.dispatchEvent(new CustomEvent('app:api-error'))
+}
+
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    emitApiStatus(true)
+    return response
+  },
   async (err) => {
     const original = err?.config;
+    const status = err?.response?.status
+    if (!err?.response || status >= 500) emitApiStatus(false)
+    else emitApiStatus(true) // 4xx = the server answered, it is up
     if (err?.response?.status === 429) {
       return Promise.reject(err);
     }

@@ -554,22 +554,10 @@ export async function getZoneDriversListController(req, res) {
       .populate('gigId')
       .lean();
 
-    // Auto sync stale DB availabilityStatus to offline for partners without active gig booking
-    const bookedPartnerIds = activeBookings.map((b) => String(b.deliveryPartnerId));
-    if (bookedPartnerIds.length > 0) {
-      await FoodDeliveryPartner.updateMany(
-        {
-          _id: { $nin: bookedPartnerIds.map((id) => new mongoose.Types.ObjectId(id)) },
-          availabilityStatus: 'online',
-        },
-        { $set: { availabilityStatus: 'offline' } }
-      );
-    } else {
-      await FoodDeliveryPartner.updateMany(
-        { availabilityStatus: 'online' },
-        { $set: { availabilityStatus: 'offline' } }
-      );
-    }
+    // NOTE: this is a read-only listing. Do not write availabilityStatus here: the
+    // display below already derives ONLINE strictly from (booked gig && online), and a
+    // GET that flips every unbooked rider offline made riders drop offline whenever
+    // anyone opened this list.
 
     const bookingMap = new Map();
     activeBookings.forEach((b) => {

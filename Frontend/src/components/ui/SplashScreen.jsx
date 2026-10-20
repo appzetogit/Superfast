@@ -3,45 +3,41 @@ import { motion } from "framer-motion"
 import LogoImage from "@/assets/Logo.webp"
 
 // Import the generated funky dark transparent PNG icons (perfectly segmented)
-import icon0 from '@/assets/funky/icon_0.png'
-import icon1 from '@/assets/funky/icon_1.png'
-import icon2 from '@/assets/funky/icon_2.png'
-import icon3 from '@/assets/funky/icon_3.png'
-import icon4 from '@/assets/funky/icon_4.png'
-import icon5 from '@/assets/funky/icon_5.png'
-import icon6 from '@/assets/funky/icon_6.png'
-import icon7 from '@/assets/funky/icon_7.png'
-import icon8 from '@/assets/funky/icon_8.png'
-import icon9 from '@/assets/funky/icon_9.png'
-import pizzaIcon from '@/assets/funky/pizza.png'
-import burgerIcon from '@/assets/funky/burger.png'
-import sandwichIcon from '@/assets/funky/sandwich.png'
+import icon0 from '@/assets/funky/icon_0.webp'
+import icon1 from '@/assets/funky/icon_1.webp'
+import icon2 from '@/assets/funky/icon_2.webp'
+import icon3 from '@/assets/funky/icon_3.webp'
+import icon4 from '@/assets/funky/icon_4.webp'
+import icon5 from '@/assets/funky/icon_5.webp'
+import icon6 from '@/assets/funky/icon_6.webp'
+import icon7 from '@/assets/funky/icon_7.webp'
+import icon8 from '@/assets/funky/icon_8.webp'
+import icon9 from '@/assets/funky/icon_9.webp'
+import pizzaIcon from '@/assets/funky/pizza.webp'
+import burgerIcon from '@/assets/funky/burger.webp'
+import sandwichIcon from '@/assets/funky/sandwich.webp'
 
 export default function SplashScreen({ onComplete }) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
       onComplete()
-    }, 4000)
+    }, 2200)
 
     return () => clearTimeout(timer)
   }, [onComplete])
 
-  // Custom float configurations for standard icons
+  // Single gentle drift per icon (no endless loops: 13 infinite animations made low-end phones lag)
   const floatTransition = (delay = 0) => ({
     y: {
-      duration: 2.8,
-      repeat: Infinity,
-      repeatType: "reverse",
+      duration: 1.6,
       ease: "easeInOut",
-      delay,
+      delay: delay * 0.5,
     },
     rotate: {
-      duration: 4.2,
-      repeat: Infinity,
-      repeatType: "reverse",
+      duration: 1.6,
       ease: "easeInOut",
-      delay,
+      delay: delay * 0.5,
     }
   })
 
@@ -298,8 +294,8 @@ export default function SplashScreen({ onComplete }) {
             opacity: [0, 1, 1],
           }}
           transition={{
-            delay: 1.3, // Step 3 starts at ~1.3s - 1.5s
-            duration: 1.0,
+            delay: 0.4,
+            duration: 0.9,
             times: [0, 0.7, 1.0],
             ease: [0.34, 1.56, 0.64, 1] // Custom elastic ease-out
           }}
@@ -307,13 +303,12 @@ export default function SplashScreen({ onComplete }) {
           {/* Transition Zoom: logo scales 1.0 -> 3.8 with motion blur and smooth acceleration */}
           <motion.div
             animate={{
-              scale: [1, 1, 3.8],
-              filter: ["blur(0px)", "blur(0px)", "blur(12px)"],
+              scale: [1, 1, 2.2],
               opacity: [1, 1, 0]
             }}
             transition={{
-              times: [0, 0.8, 1],
-              duration: 4.0,
+              times: [0, 0.75, 1],
+              duration: 2.2,
               ease: "easeInOut"
             }}
             className="flex flex-col items-center justify-center p-6"
