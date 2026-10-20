@@ -665,6 +665,14 @@ export const useRestaurantNotifications = () => {
       setNewOrder(null);
     };
 
+    // Admin edited the items/amount: refresh the orders list immediately.
+    socketRef.current.on('order_items_updated', (data) => {
+      debugLog('?? Order items updated by admin:', data);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ordersRefresh'));
+      }
+    });
+
     socketRef.current.on('order_cancelled', handleOrderEnded);
     socketRef.current.on('cancel_order', handleOrderEnded);
     socketRef.current.on('order_deleted', handleOrderEnded);

@@ -641,6 +641,10 @@ export const adminAPI = {
     apiClient.patch(`/food/admin/orders/${String(orderId)}/status`, { orderStatus, cancellationReason: reason }, {
       contextModule: "admin",
     }),
+  updateOrderItems: (orderId, items, note = undefined) =>
+    apiClient.patch(`/food/admin/orders/${String(orderId)}/items`, { items, note }, {
+      contextModule: "admin",
+    }),
   acceptOrder: (orderId) => adminAPI.updateOrderStatus(orderId, "preparing"),
   rejectOrder: (orderId, reason) => adminAPI.updateOrderStatus(orderId, "cancelled_by_admin", reason),
   deleteOrder: (orderId) =>

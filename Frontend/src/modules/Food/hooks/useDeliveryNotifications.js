@@ -1060,6 +1060,14 @@ export const useDeliveryNotifications = () => {
       setOrderStatusUpdate(statusData || null);
     });
 
+    // Admin edited the items/amount: make the delivery home re-sync the order (new COD amount).
+    socketRef.current.on('order_items_updated', (data) => {
+      debugLog('?? Order items updated by admin:', data);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fcm-order-update', { detail: data || {} }));
+      }
+    });
+
     socketRef.current.on('order_cancelled', (statusData) => {
       debugLog('?? Delivery order cancelled event received via socket:', statusData);
       setOrderStatusUpdate({

@@ -455,3 +455,15 @@ export async function updateOrderStatusAdminController(req, res, next) {
 }
 
 
+
+export async function updateOrderItemsAdminController(req, res, next) {
+    try {
+        const adminId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const { items, note } = req.body || {};
+        const order = await orderService.updateOrderItemsAdmin(orderId, adminId, items, note);
+        return sendResponse(res, 200, 'Order items updated successfully', { order });
+    } catch (err) {
+        next(err);
+    }
+}

@@ -6008,3 +6008,218 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
   return order;
 }
 
+
+// ----- Admin: edit order items (e.g. restaurant is out of an item) -----
+const ADMIN_ITEM_EDITABLE_STATUSES = ["scheduled", "placed", "created", "confirmed", "preparing", "ready_for_pickup"];
+
+export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], note = "") {
+  if (!Array.isArray(itemsInput) || itemsInput.length === 0) {
+    throw new ValidationError("At least one item is required. To remove every item, cancel the order instead.");
+  }
+
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+  const order = await FoodOrder.findOne(identity);
+  if (!order) throw new NotFoundError("Order not found");
+
+  if (!ADMIN_ITEM_EDITABLE_STATUSES.includes(order.orderStatus)) {
+    throw new ValidationError(`Items cannot be edited once the order is '${order.orderStatus}'.`);
+  }
+  if (order.orderType !== "food") {
+    throw new ValidationError("Only restaurant (food) orders can be edited from here.");
+  }
+  const payMethod = String(order.payment?.method || "").toLowerCase();
+  const payStatus = String(order.payment?.status || "").toLowerCase();
+  if (payStatus === "paid" && payMethod !== "cash") {
+    throw new ValidationError("This order is already paid online/by wallet. Cancel and refund it instead of editing items.");
+  }
+
+  // Only quantity changes / removals are allowed; items cannot be added or re-priced here.
+  const requested = new Map();
+  for (const entry of itemsInput) {
+    const itemId = String(entry?.itemId || "").trim();
+    const quantity = Math.floor(Number(entry?.quantity));
+    if (!itemId) throw new ValidationError("itemId is required for every item");
+    if (!Number.isFinite(quantity) || quantity < 0) throw new ValidationError("Invalid quantity");
+    requested.set(itemId, quantity);
+  }
+
+  const before = order.items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+  const nextItems = [];
+  for (const item of order.items) {
+    if (!requested.has(item.itemId)) {
+      nextItems.push(item);
+      continue;
+    }
+    const qty = requested.get(item.itemId);
+    if (qty <= 0) continue;
+    item.quantity = qty;
+    nextItems.push(item);
+  }
+  if (nextItems.length === 0) {
+    throw new ValidationError("At least one item must remain. To remove every item, cancel the order instead.");
+  }
+
+  const oldSubtotal = Number(order.pricing?.subtotal || 0);
+  const newSubtotal = nextItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.quantity || 0), 0);
+  const ratio = oldSubtotal > 0 ? newSubtotal / oldSubtotal : 1;
+  const round2 = (n) => Math.round(n * 100) / 100;
+
+  const pricing = order.pricing;
+  pricing.subtotal = round2(newSubtotal);
+  // Item-based charges scale with the subtotal; fixed fees stay as they were.
+  pricing.tax = round2(Number(pricing.tax || 0) * ratio);
+  pricing.gstAmount = round2(Number(pricing.gstAmount || 0) * ratio);
+  pricing.gst = round2(Number(pricing.gst || 0) * ratio);
+  pricing.discount = Math.min(round2(Number(pricing.discount || 0)), pricing.subtotal);
+  // Commission is a share of the item subtotal, so it shrinks with it.
+  pricing.restaurantCommission = round2(Number(pricing.restaurantCommission || 0) * ratio);
+  pricing.total = Math.max(
+    0,
+    round2(
+      pricing.subtotal +
+        Number(pricing.tax || 0) +
+        Number(pricing.packagingFee || 0) +
+        Number(pricing.handlingFee || 0) +
+        Number(pricing.deliveryFee || 0) +
+        Number(pricing.platformFee || 0) -
+        Number(pricing.discount || 0),
+    ),
+  );
+
+  order.items = nextItems;
+  const remainingIds = new Set(nextItems.map((i) => i.itemId));
+  for (const point of order.pickupPoints || []) {
+    point.itemIds = (point.itemIds || []).filter((id) => remainingIds.has(id));
+  }
+  order.payment.amountDue = pricing.total;
+  order.markModified("items");
+  order.markModified("pickupPoints");
+
+  const after = nextItems.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+  pushStatusHistory(order, {
+    byRole: "ADMIN",
+    byId: adminId,
+    from: order.orderStatus,
+    to: order.orderStatus,
+    note: `Admin edited items: [${before}] -> [${after}]${note ? ` (${note})` : ""}`,
+  });
+  await order.save();
+
+  await FoodTransaction.updateOne(
+    { orderId: order._id },
+    {
+      $set: {
+        "pricing.subtotal": pricing.subtotal,
+        "pricing.tax": pricing.tax,
+        "pricing.discount": pricing.discount,
+        "pricing.restaurantCommission": pricing.restaurantCommission,
+        "pricing.total": pricing.total,
+        "payment.amountDue": pricing.total,
+        "amounts.totalCustomerPaid": pricing.total,
+        "amounts.taxAmount": pricing.tax,
+        "amounts.restaurantCommission": pricing.restaurantCommission,
+        "amounts.restaurantShare": Math.max(
+          0,
+          pricing.subtotal +
+            Number(pricing.packagingFee || 0) -
+            pricing.restaurantCommission -
+            (pricing.discountBearer === "restaurant" ? pricing.discount : 0),
+        ),
+        "amounts.platformNetProfit":
+          Number(pricing.platformFee || 0) +
+          Number(pricing.deliveryFee || 0) +
+          pricing.restaurantCommission -
+          Number(order.riderEarning || 0) -
+          (pricing.discountBearer === "restaurant" ? 0 : pricing.discount),
+      },
+      $push: {
+        history: {
+          kind: "items_edited",
+          amount: pricing.total,
+          note: `Admin edited items: [${before}] -> [${after}]`,
+        },
+      },
+    },
+  );
+
+  try {
+    const io = getIO();
+    const itemsView = nextItems.map((i) => ({
+      itemId: i.itemId,
+      name: i.name,
+      price: i.price,
+      quantity: i.quantity,
+    }));
+    const payload = {
+      orderMongoId: order._id?.toString?.(),
+      orderId: order.orderId,
+      orderStatus: order.orderStatus,
+      title: `Order ${order.orderId} updated`,
+      message: `Order items changed. New total: ₹${pricing.total}`,
+      items: itemsView,
+      pricing: {
+        subtotal: pricing.subtotal,
+        tax: pricing.tax,
+        total: pricing.total,
+      },
+      totalAmount: pricing.total,
+      amountDue: order.payment?.amountDue,
+    };
+    const deliveryPartnerId = order.dispatch?.deliveryPartnerId;
+    if (io) {
+      // Everyone involved gets the same fresh numbers: restaurant, customer and the assigned rider.
+      const targets = [rooms.restaurant(order.restaurantId), rooms.user(order.userId)];
+      if (deliveryPartnerId) targets.push(rooms.delivery(deliveryPartnerId));
+      for (const room of targets) {
+        io.to(room).emit("order_status_update", payload);
+        io.to(room).emit("order_items_updated", payload);
+      }
+    }
+    if (deliveryPartnerId) {
+      await notifyOwnersSafely(
+        [{ ownerType: "DELIVERY_PARTNER", ownerId: deliveryPartnerId }],
+        {
+          title: "Order updated",
+          body: `Order #${order.orderId} items changed. Amount to collect: ₹${pricing.total}.`,
+          data: {
+            type: "order_items_updated",
+            orderId: String(order.orderId),
+            orderMongoId: String(order._id),
+            link: "/delivery",
+          },
+        },
+      );
+    }
+    await notifyOwnersSafely(
+      [{ ownerType: "USER", ownerId: order.userId }],
+      {
+        title: "Your order was updated",
+        body: `Some items in order #${order.orderId} were changed. New total: ₹${pricing.total}.`,
+        data: {
+          type: "order_items_updated",
+          orderId: String(order.orderId),
+          orderMongoId: String(order._id),
+          link: `/food/user/orders/${order._id}`,
+        },
+      },
+    );
+    await notifyOwnersSafely(
+      [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
+      {
+        title: "Order items updated",
+        body: `Order #${order.orderId} items were edited by admin.`,
+        data: {
+          type: "order_items_updated",
+          orderId: String(order.orderId),
+          orderMongoId: String(order._id),
+          link: `/restaurant/orders/${order._id}`,
+        },
+      },
+    );
+  } catch (err) {
+    logger.warn(`Order items update notification failed: ${err?.message || err}`);
+  }
+
+  return order.toObject();
+}

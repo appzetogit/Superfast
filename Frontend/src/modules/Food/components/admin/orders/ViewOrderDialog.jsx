@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2, ChevronDown, Check, Pencil, Minus, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -66,7 +66,7 @@ const resolveCanonicalRawStatus = (orderObj) => {
   return str;
 };
 
-export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusUpdated }) {
+export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusUpdated, onItemsUpdated }) {
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [availableDrivers, setAvailableDrivers] = useState([]);
   const [selectedDriverId, setSelectedDriverId] = useState("");
@@ -77,6 +77,32 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
   const [countdown, setCountdown] = useState(0);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [localRawStatus, setLocalRawStatus] = useState(null);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const statusDropdownRef = useRef(null);
+  const [isEditingItems, setIsEditingItems] = useState(false);
+  const [draftItems, setDraftItems] = useState([]);
+  const [isSavingItems, setIsSavingItems] = useState(false);
+  const [itemOverrides, setItemOverrides] = useState(null);
+
+  // Close the status dropdown when clicking outside of it
+  useEffect(() => {
+    if (!isStatusOpen) return undefined;
+    const onOutside = (e) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target)) {
+        setIsStatusOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onOutside);
+    return () => document.removeEventListener("pointerdown", onOutside);
+  }, [isStatusOpen]);
+
+  // Reset edit state whenever a different order is shown
+  useEffect(() => {
+    setIsEditingItems(false);
+    setDraftItems([]);
+    setItemOverrides(null);
+    setIsStatusOpen(false);
+  }, [order?.id, order?._id]);
 
   useEffect(() => {
     let timer;
@@ -144,6 +170,60 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
     }
   };
 
+  const startEditingItems = () => {
+    setDraftItems(
+      (viewOrder.items || []).map((item) => ({
+        itemId: item.itemId,
+        name: item.name,
+        price: Number(item.price || 0),
+        quantity: Number(item.quantity || 1),
+      }))
+    );
+    setIsEditingItems(true);
+  };
+
+  const updateDraftQuantity = (itemId, delta) => {
+    setDraftItems((prev) =>
+      prev.map((item) =>
+        item.itemId === itemId ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
+      )
+    );
+  };
+
+  const saveEditedItems = async () => {
+    const orderId = order?.id || order?._id;
+    const kept = draftItems.filter((item) => item.quantity > 0);
+    if (kept.length === 0) {
+      toast.error("At least one item must remain. Cancel the order instead if nothing can be served.");
+      return;
+    }
+    setIsSavingItems(true);
+    try {
+      const { adminAPI } = await import("@/services/api");
+      const response = await adminAPI.updateOrderItems(
+        orderId,
+        draftItems.map(({ itemId, quantity }) => ({ itemId, quantity }))
+      );
+      const updated = response?.data?.data?.order;
+      if (updated) {
+        setItemOverrides({
+          items: updated.items || [],
+          totalItemAmount: updated.pricing?.subtotal,
+          vatTax: updated.pricing?.tax,
+          totalAmount: updated.pricing?.total,
+          total: updated.pricing?.total,
+        });
+      }
+      toast.success("Order items updated");
+      setIsEditingItems(false);
+      if (typeof onItemsUpdated === "function") onItemsUpdated(orderId, updated);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to update items");
+    } finally {
+      setIsSavingItems(false);
+    }
+  };
+
   const fetchAvailableDrivers = async () => {
     if (!order) return;
     setIsLoadingDrivers(true);
@@ -166,6 +246,15 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
   }, [showReassignModal]);
 
   if (!order) return null
+
+  // Order as shown: parent data plus any item edits saved from this dialog.
+  const viewOrder = itemOverrides ? { ...order, ...itemOverrides } : order
+  const canEditItems =
+    ["placed", "preparing", "ready_for_pickup"].includes(localRawStatus || resolveCanonicalRawStatus(order)) &&
+    Array.isArray(viewOrder.items) &&
+    viewOrder.items.length > 0 &&
+    viewOrder.items.every((item) => item.itemId)
+  const draftSubtotal = draftItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   // Debug: Log order data to check billImageUrl
   if (order.billImageUrl) {
@@ -299,46 +388,77 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     Order Status
                     {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin text-[var(--primary-theme)]" />}
                   </p>
-                  <div className="relative">
+                  <div className="relative" ref={statusDropdownRef}>
                     {(() => {
                       const currentStatus = localRawStatus || resolveCanonicalRawStatus(order);
                       const isDisabled = isUpdatingStatus || ['delivered', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(currentStatus);
-                      
+
                       // Find index of current status to disable moving backwards
                       let currentIndex = ADMIN_STATUS_OPTIONS.findIndex(opt => opt.value === currentStatus);
-                      // If current status is something like 'confirmed' or 'created', we can treat it as 'placed' for the purpose of the dropdown hierarchy
+                      // 'confirmed' / 'created' behave like 'placed' (Pending) in the workflow
                       if (currentIndex === -1 && ['created', 'confirmed'].includes(currentStatus)) {
-                         currentIndex = 0; // Treat as Pending
+                        currentIndex = 0;
                       }
+                      const currentOption = ADMIN_STATUS_OPTIONS.find(opt => opt.value === currentStatus);
 
                       return (
-                        <select
-                          id="admin-order-status-select"
-                          value={currentStatus}
-                          onChange={(e) => handleStatusChange(e.target.value)}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onTouchStart={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                          disabled={isDisabled}
-                          className="w-full text-sm font-medium rounded-lg border border-slate-200 bg-white px-3 py-2.5 min-h-[44px] pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer appearance-none relative z-10 touch-auto"
-                          style={{ minWidth: 160 }}
-                        >
-                          {ADMIN_STATUS_OPTIONS.map((opt, idx) => {
-                            // Disable previous statuses in the workflow (can't go backwards)
-                            // "Cancelled" (the last option) is always available unless the whole select is disabled.
-                            const isOptionDisabled = currentIndex !== -1 && idx < currentIndex && opt.value !== 'cancelled_by_admin';
-                            return (
-                              <option key={opt.value} value={opt.value} disabled={isOptionDisabled}>
-                                {opt.label}
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <>
+                          <button
+                            type="button"
+                            id="admin-order-status-select"
+                            aria-haspopup="listbox"
+                            aria-expanded={isStatusOpen}
+                            disabled={isDisabled}
+                            onClick={() => setIsStatusOpen((open) => !open)}
+                            className={`w-full flex items-center justify-between gap-2 text-sm font-medium rounded-lg border bg-white px-3 py-2.5 min-h-[44px] shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer ${
+                              isStatusOpen
+                                ? "border-orange-400 ring-2 ring-orange-300"
+                                : "border-orange-300 hover:border-orange-400"
+                            }`}
+                          >
+                            <span className="text-slate-900">{currentOption?.label || order.orderStatus}</span>
+                            <ChevronDown
+                              className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isStatusOpen ? "rotate-180" : ""}`}
+                            />
+                          </button>
+
+                          {isStatusOpen && !isDisabled && (
+                            <ul
+                              role="listbox"
+                              className="absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border border-slate-200 bg-white py-1 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                            >
+                              {ADMIN_STATUS_OPTIONS.map((opt, idx) => {
+                                // Can't go backwards in the workflow; "Cancelled" is always available.
+                                const isOptionDisabled = currentIndex !== -1 && idx < currentIndex && opt.value !== 'cancelled_by_admin';
+                                const isSelected = opt.value === currentStatus;
+                                return (
+                                  <li key={opt.value} role="option" aria-selected={isSelected}>
+                                    <button
+                                      type="button"
+                                      disabled={isOptionDisabled}
+                                      onClick={() => {
+                                        setIsStatusOpen(false);
+                                        handleStatusChange(opt.value);
+                                      }}
+                                      className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
+                                        isSelected
+                                          ? "bg-orange-50 font-semibold text-orange-700"
+                                          : opt.value === 'cancelled_by_admin'
+                                            ? "text-red-600 hover:bg-red-50"
+                                            : "text-slate-800 hover:bg-slate-50"
+                                      } ${isOptionDisabled ? "opacity-40 cursor-not-allowed hover:bg-transparent" : "cursor-pointer"}`}
+                                    >
+                                      <span>{opt.label}</span>
+                                      {isSelected && <Check className="w-4 h-4" />}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </>
                       );
                     })()}
-                    <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </div>
                   </div>
                   {order.cancellationReason && (
                     <p className="text-xs text-red-600 mt-1">
@@ -435,37 +555,126 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
           )}
 
           {/* Order Items */}
-          {order.items && Array.isArray(order.items) && order.items.length > 0 && (
+          {viewOrder.items && Array.isArray(viewOrder.items) && viewOrder.items.length > 0 && (
             <div className="border-t border-slate-200 pt-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                <Package className="w-4 h-4" />
-                Order Items ({order.items.length})
-              </h3>
-              <div className="space-y-3">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex items-start justify-between p-3 bg-slate-50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-700 bg-white px-2 py-1 rounded">
-                          {item.quantity || 1}x
-                        </span>
-                        <p className="text-sm font-medium text-slate-900">{item.name || "Unknown Item"}</p>
-                        {item.isVeg !== undefined && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${item.isVeg ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {item.isVeg ? 'Veg' : 'Non-Veg'}
+              <div className="flex items-center justify-between mb-4 gap-2">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 m-0">
+                  <Package className="w-4 h-4" />
+                  Order Items ({(isEditingItems ? draftItems.filter((i) => i.quantity > 0) : viewOrder.items).length})
+                </h3>
+                {canEditItems && !isEditingItems && (
+                  <button
+                    type="button"
+                    onClick={startEditingItems}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--primary-theme)] border border-orange-300 hover:bg-orange-50 rounded-lg transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit Items
+                  </button>
+                )}
+              </div>
+
+              {isEditingItems ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Item not available at the restaurant? Reduce the quantity or remove it. Tax is adjusted and the
+                    customer and restaurant are notified of the new total.
+                  </p>
+                  {draftItems.map((item) => (
+                    <div
+                      key={item.itemId}
+                      className={`flex items-center justify-between gap-3 p-3 rounded-lg ${item.quantity === 0 ? "bg-red-50 opacity-70" : "bg-slate-50"}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium text-slate-900 truncate ${item.quantity === 0 ? "line-through" : ""}`}>
+                          {item.name || "Unknown Item"}
+                        </p>
+                        <p className="text-xs text-slate-500">₹{item.price.toFixed(2)} each</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => updateDraftQuantity(item.itemId, -1)}
+                          disabled={item.quantity === 0}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateDraftQuantity(item.itemId, 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDraftItems((prev) => prev.map((i) => (i.itemId === item.itemId ? { ...i, quantity: 0 } : i)))}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50"
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="w-20 text-right text-sm font-semibold text-slate-900">
+                        ₹{(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between pt-1 text-sm">
+                    <span className="text-slate-600">New items subtotal</span>
+                    <span className="font-bold text-slate-900">₹{draftSubtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingItems(false)}
+                      disabled={isSavingItems}
+                      className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveEditedItems}
+                      disabled={isSavingItems}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:opacity-90 rounded-lg disabled:opacity-50"
+                    >
+                      {isSavingItems && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {viewOrder.items.map((item, index) => (
+                    <div key={item.itemId || index} className="flex items-start justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-700 bg-white px-2 py-1 rounded">
+                            {item.quantity || 1}x
                           </span>
+                          <p className="text-sm font-medium text-slate-900">{item.name || "Unknown Item"}</p>
+                          {item.isVeg !== undefined && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${item.isVeg ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {item.isVeg ? 'Veg' : 'Non-Veg'}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="text-xs text-slate-500 mt-1 ml-8">{item.description}</p>
                         )}
                       </div>
-                      {item.description && (
-                        <p className="text-xs text-slate-500 mt-1 ml-8">{item.description}</p>
-                      )}
+                      <p className="text-sm font-semibold text-slate-900">
+                        ₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                      </p>
                     </div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      ₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -608,10 +817,10 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
           <div className="border-t border-slate-200 pt-4">
             <h3 className="text-sm font-semibold text-slate-700 mb-4">Pricing Breakdown</h3>
             <div className="space-y-2">
-              {order.totalItemAmount !== undefined && (
+              {viewOrder.totalItemAmount !== undefined && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Subtotal</span>
-                  <span className="font-medium text-slate-900">₹{order.totalItemAmount.toFixed(2)}</span>
+                  <span className="font-medium text-slate-900">₹{viewOrder.totalItemAmount.toFixed(2)}</span>
                 </div>
               )}
               {order.itemDiscount !== undefined && order.itemDiscount > 0 && (
@@ -642,17 +851,17 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     : <span className="text-slate-400">₹0.00</span>}
                 </span>
               </div>
-              {order.vatTax !== undefined && order.vatTax > 0 && (
+              {viewOrder.vatTax !== undefined && viewOrder.vatTax > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Tax (GST)</span>
-                  <span className="font-medium text-slate-900">₹{order.vatTax.toFixed(2)}</span>
+                  <span className="font-medium text-slate-900">₹{viewOrder.vatTax.toFixed(2)}</span>
                 </div>
               )}
               <div className="pt-2 border-t border-slate-200">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-semibold text-slate-700">Total Amount</span>
                   <span className="text-xl font-bold text-emerald-600">
-                    ₹{(order.totalAmount || order.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{(viewOrder.totalAmount || viewOrder.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
