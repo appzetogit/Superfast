@@ -597,8 +597,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       newOrder?.orderStatus || newOrder?.status || newOrder?.order?.orderStatus || ''
     ).trim().toLowerCase();
 
+    const isReassignment = Boolean(newOrder?.isReassignment || newOrder?.reassignmentStatus === 'pending');
+
     // Guard: Delivery partner modal/list MUST ONLY accept ready_for_pickup status!
-    if (!['ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
+    // Admin reassignments are exempt: the order is already in progress (any status).
+    if (!isReassignment && !['ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
       return;
     }
 
@@ -800,12 +803,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               'accepted',
             ].includes(ordStatus);
 
+            const isReassignment = Boolean(prevOrd.isReassignment || prevOrd.reassignmentStatus === 'pending');
             if (
               pid &&
               !apiMap.has(pid) &&
               !rejectedOrderIdsRef.current.has(pid) &&
               !activeIds.has(pid) &&
-              !isFinished &&
+              (!isFinished || isReassignment) &&
               prevOrd._receivedAt &&
               now - prevOrd._receivedAt < 20000
             ) {

@@ -3714,17 +3714,29 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
 
   const filter = {
     createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    "dispatch.status": { $in: ["unassigned", "assigned"] },
-    "dispatch.acceptedAt": { $exists: false },
-    orderStatus: {
-      $in: ["created", "confirmed", "preparing", "ready_for_pickup", "ready"],
-    },
     $or: [
-      { "dispatch.offeredTo.partnerId": partnerObjectId },
-      { "dispatch.status": "unassigned" },
-      { "dispatchPlan.legs.partnerCandidates.partnerId": partnerObjectId },
-      { reassignmentStatus: "pending", pendingDriverId: partnerObjectId }
-    ]
+      {
+        "dispatch.status": { $in: ["unassigned", "assigned"] },
+        "dispatch.acceptedAt": { $exists: false },
+        orderStatus: {
+          $in: ["created", "confirmed", "preparing", "ready_for_pickup", "ready"],
+        },
+        $or: [
+          { "dispatch.offeredTo.partnerId": partnerObjectId },
+          { "dispatch.status": "unassigned" },
+          { "dispatchPlan.legs.partnerCandidates.partnerId": partnerObjectId },
+        ],
+      },
+      // Admin reassignment: the order is already accepted/in-progress with another
+      // driver, so it must be listed regardless of dispatch/order status.
+      {
+        reassignmentStatus: "pending",
+        pendingDriverId: partnerObjectId,
+        orderStatus: {
+          $nin: ["delivered", "cancelled_by_user", "cancelled_by_restaurant", "cancelled_by_admin"],
+        },
+      },
+    ],
   };
 
   const orders = await FoodOrder.find(filter)
@@ -3737,12 +3749,12 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
 
   const docs = [];
   for (const order of orders) {
-    // Guard: Exclude if already accepted or marked delivered/completed
-    if (order?.dispatch?.acceptedAt || order?.dispatch?.status === "accepted") {
-      continue;
-    }
     const isReassignedToMe = order.reassignmentStatus === "pending" &&
       toIdString(order.pendingDriverId) === toIdString(deliveryPartnerId);
+    // Guard: Exclude if already accepted (a pending reassignment to me is the exception)
+    if (!isReassignedToMe && (order?.dispatch?.acceptedAt || order?.dispatch?.status === "accepted")) {
+      continue;
+    }
 
     const view = buildDeliveryOrderView(order, deliveryPartnerId);
     if (isReassignedToMe) {

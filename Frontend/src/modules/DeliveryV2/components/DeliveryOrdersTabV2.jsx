@@ -64,7 +64,8 @@ export default function DeliveryOrdersTabV2({
       incomingOrder.orderStatus || incomingOrder.status || incomingOrder.deliveryStatus || incomingOrder.dispatch?.status || ''
     ).toLowerCase();
     const incFinished = ['delivered', 'completed', 'cancelled', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin', 'accepted', 'handover_requested', 'handed_over', 'reassigned'].includes(incStatus);
-    if (!activeIds.has(incId) && !incFinished) {
+    const incIsReassignment = Boolean(incomingOrder.isReassignment || incomingOrder.reassignmentStatus === 'pending');
+    if (!activeIds.has(incId) && (!incFinished || incIsReassignment)) {
       displayNewOrders.push(incomingOrder);
     }
   }
@@ -79,7 +80,8 @@ export default function DeliveryOrdersTabV2({
       (d) => String(d.orderId || d._id || d.id || '') === ordId
     );
     const alreadyAccepted = activeIds.has(ordId);
-    if (!alreadyInList && !alreadyAccepted && !isFinished) {
+    const isReassignment = Boolean(ord.isReassignment || ord.reassignmentStatus === 'pending');
+    if (!alreadyInList && !alreadyAccepted && (!isFinished || isReassignment)) {
       displayNewOrders.push(ord);
     }
   });
