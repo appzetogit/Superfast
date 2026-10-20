@@ -36,7 +36,12 @@ export default function OnboardingGuard({ children, mode }) {
   }
 
   // Check preferences status from reactive userProfile
-  const hasSetPrefs = userProfile?.hasSetPreferences === true;
+  const profileId = userProfile?._id || userProfile?.id;
+  let skippedLocally = false;
+  try {
+    skippedLocally = Boolean(profileId) && localStorage.getItem(`prefs_skipped:${profileId}`) === "true";
+  } catch (e) { }
+  const hasSetPrefs = userProfile?.hasSetPreferences === true || skippedLocally;
 
   if (mode === "requirePreferences" && !hasSetPrefs) {
     // User hasn't finished onboarding: send them to preferences

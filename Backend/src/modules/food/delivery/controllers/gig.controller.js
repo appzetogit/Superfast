@@ -4,6 +4,7 @@ import { GigBooking } from '../models/gigBooking.model.js';
 import { FoodDeliveryPartner } from '../models/deliveryPartner.model.js';
 import { HandoverRequest } from '../models/handoverRequest.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
+import { FoodZone } from '../../admin/models/zone.model.js';
 import { notifyOwnerSafely, notifyAdminsSafely } from '../../../../core/notifications/firebase.service.js';
 import { tryAutoAssign } from '../../orders/services/order-dispatch.service.js';
 import { getIO, rooms } from '../../../../config/socket.js';
@@ -22,6 +23,39 @@ function getTodayDateString() {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/** Zone helpers: a rider may only see/book gigs of the zone they are physically in. */
+const normZone = (s) => String(s || '').replace(/\s*zone\s*$/i, '').trim().toLowerCase();
+const isGlobalGigZone = (s) => ['', 'all', 'all zones', 'all areas / zones', 'general'].includes(normZone(s));
+
+function pointInPolygon(lat, lng, coords) {
+  let inside = false;
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    const yi = coords[i].latitude, xi = coords[i].longitude;
+    const yj = coords[j].latitude, xj = coords[j].longitude;
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Normalised names of the active zones the rider's last known location falls in (empty = unknown). */
+async function getPartnerZoneNames(partner) {
+  const lat = Number(partner?.lastLat);
+  const lng = Number(partner?.lastLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return new Set();
+  const zones = await FoodZone.find({ isActive: true }).select('name zoneName coordinates').lean();
+  const names = new Set();
+  for (const z of zones) {
+    if (Array.isArray(z.coordinates) && z.coordinates.length >= 3 && pointInPolygon(lat, lng, z.coordinates)) {
+      names.add(normZone(z.name));
+      if (z.zoneName) names.add(normZone(z.zoneName));
+    }
+  }
+  return names;
+}
+
+const gigAllowedForZones = (gig, zoneNames) =>
+  isGlobalGigZone(gig?.zoneName) || zoneNames.has(normZone(gig?.zoneName));
 
 const TERMINAL_ORDER_STATUSES = [
   'delivered',
@@ -181,32 +215,20 @@ export async function listZoneGigsController(req, res) {
     const driverZone = partner?.zoneName || partner?.city || null;
     if (!zoneName) zoneName = 'ALL ZONES';
 
-    // Fetch Admin-created active gigs for the requested zone (or all) for the date (Case-insensitive)
     const query = { isActive: true };
-
-    if (zoneName && zoneName !== 'ALL ZONES' && zoneName !== 'ALL' && zoneName !== 'All Areas / Zones') {
-      const escapedZone = zoneName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const cleanZone = zoneName.replace(/\s*zone\s*/i, '').trim();
-      const escapedCleanZone = cleanZone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-      query.$or = [
-        { zoneName: new RegExp(`^${escapedZone}$`, 'i') },
-        { zoneName: new RegExp(`^${escapedCleanZone}`, 'i') },
-        { zoneName: /^ALL ZONES$/i },
-        { zoneName: /^General Zone$/i },
-        { zoneName: '' },
-        { zoneName: null },
-        { zoneName: { $exists: false } },
-      ];
-    }
 
     if (date && date !== 'ALL DATES' && date !== 'ALL' && date !== '') {
       query.date = date;
     }
 
-    const gigs = await Gig.find(query)
+    // A rider only sees gigs of the zone they are in (plus gigs open to all zones).
+    // If their zone can't be determined (no location yet / outside every zone) only
+    // all-zone gigs are shown, never another zone's.
+    const partnerZones = await getPartnerZoneNames(partner);
+    const allGigs = await Gig.find(query)
       .sort({ startTime: 1 })
       .lean();
+    const gigs = allGigs.filter((g) => gigAllowedForZones(g, partnerZones));
 
     // Cross reference driver's existing bookings
     let userBookings = [];
@@ -274,6 +296,15 @@ export async function bookGigController(req, res) {
     const window = getShiftWindow(gig);
     if (window && window.end.getTime() <= Date.now()) {
       return res.status(400).json({ success: false, message: 'This Gig shift has already ended' });
+    }
+
+    const bookingPartner = await FoodDeliveryPartner.findById(deliveryPartnerId).select('lastLat lastLng').lean();
+    const bookingZones = await getPartnerZoneNames(bookingPartner);
+    if (!gigAllowedForZones(gig, bookingZones)) {
+      return res.status(403).json({
+        success: false,
+        message: `This gig is only for the ${gig.zoneName} zone. You can book gigs in the zone you are currently in.`,
+      });
     }
 
     const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);

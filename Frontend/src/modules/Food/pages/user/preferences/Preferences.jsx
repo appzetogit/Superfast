@@ -98,6 +98,12 @@ export default function Preferences() {
   const handleSkip = async () => {
     setIsSaving(true);
     setError("");
+    // Remember the skip locally first: if the save call fails (or a profile refetch
+    // returns stale data) the guard would otherwise bounce the user straight back here.
+    try {
+      const uid = userProfile?._id || userProfile?.id;
+      if (uid) localStorage.setItem(`prefs_skipped:${uid}`, "true");
+    } catch (e) { }
     try {
       await preferencesAPI.savePreferences([]);
       const storedUser = localStorage.getItem("user");
@@ -112,10 +118,11 @@ export default function Preferences() {
       }
       updateUserProfile({ hasSetPreferences: true, preferences: [] });
       window.dispatchEvent(new Event("userAuthChanged"));
-      navigate("/food/user");
+      navigate("/food/user", { replace: true });
     } catch (err) {
       console.error(err);
-      navigate("/food/user");
+      updateUserProfile({ hasSetPreferences: true, preferences: [] });
+      navigate("/food/user", { replace: true });
     } finally {
       setIsSaving(false);
     }
