@@ -2134,8 +2134,16 @@ export async function createOrder(userId, dto) {
 
   const deliveryAddress = normalizeDeliveryAddress(dto.address);
 
-  const paymentMethod =
-    dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+  // Online payment (Razorpay) is disabled: orders go straight to the restaurant
+  // as COD / Wallet. To re-enable, restore the lines below and the Razorpay block further down.
+  // const paymentMethod =
+  //   dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+  const paymentMethod = dto.paymentMethod;
+  if (["razorpay", "card", "razorpay_qr"].includes(paymentMethod)) {
+    throw new ValidationError(
+      "Online payment is currently unavailable. Please choose Cash on Delivery or Wallet.",
+    );
+  }
   const isCash = paymentMethod === "cash";
 
   if (isCash) {
@@ -2235,13 +2243,14 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  if (isCash) {
-    const globalSettings = await GlobalSettings.findOne().lean();
-    const maxCodDist = globalSettings?.maxCodDistance ?? 5;
-    if (maxCodDist > 0 && distanceKm > maxCodDist) {
-      throw new ValidationError(`Cash on Delivery (COD) is available only for orders up to ${maxCodDist} km. Your order distance is ${distanceKm} km. Please select online payment.`);
-    }
-  }
+  // COD distance cap disabled: with online payment off, COD is the only option.
+  // if (isCash) {
+  //   const globalSettings = await GlobalSettings.findOne().lean();
+  //   const maxCodDist = globalSettings?.maxCodDistance ?? 5;
+  //   if (maxCodDist > 0 && distanceKm > maxCodDist) {
+  //     throw new ValidationError(`Cash on Delivery (COD) is available only for orders up to ${maxCodDist} km. Your order distance is ${distanceKm} km. Please select online payment.`);
+  //   }
+  // }
 
   const baseRiderEarning =
     orderType === "food" || orderType === "quick" || orderType === "mixed"
@@ -2394,28 +2403,29 @@ export async function createOrder(userId, dto) {
 
   let razorpayPayload = null;
 
-  if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
-    const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
-    if (amountPaise < 100)
-      throw new ValidationError("Amount too low for online payment");
-    try {
-      const rzOrder = await createRazorpayOrder(amountPaise, "INR", orderId);
-      order.payment.razorpay = {
-        orderId: rzOrder.id,
-        paymentId: "",
-        signature: "",
-      };
-      order.payment.status = "created";
-      razorpayPayload = {
-        key: getRazorpayKeyId(),
-        orderId: rzOrder.id,
-        amount: rzOrder.amount,
-        currency: rzOrder.currency || "INR",
-      };
-    } catch (err) {
-      throw new ValidationError(err?.message || "Payment gateway error");
-    }
-  }
+  // Online payment disabled.
+  // if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
+  //   const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
+  //   if (amountPaise < 100)
+  //     throw new ValidationError("Amount too low for online payment");
+  //   try {
+  //     const rzOrder = await createRazorpayOrder(amountPaise, "INR", orderId);
+  //     order.payment.razorpay = {
+  //       orderId: rzOrder.id,
+  //       paymentId: "",
+  //       signature: "",
+  //     };
+  //     order.payment.status = "created";
+  //     razorpayPayload = {
+  //       key: getRazorpayKeyId(),
+  //       orderId: rzOrder.id,
+  //       amount: rzOrder.amount,
+  //       currency: rzOrder.currency || "INR",
+  //     };
+  //   } catch (err) {
+  //     throw new ValidationError(err?.message || "Payment gateway error");
+  //   }
+  // }
 
   await order.save();
 
@@ -4385,9 +4395,11 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   // Dynamically update payment method based on delivery partner selection
   if (paymentMode === 'cash') {
     order.payment.method = 'cash';
-  } else if (paymentMode === 'qr') {
-    order.payment.method = 'razorpay_qr';
   }
+  // Online payment disabled: QR (Razorpay payment link) collection is not allowed.
+  // else if (paymentMode === 'qr') {
+  //   order.payment.method = 'razorpay_qr';
+  // }
 
   if (
     order.deliveryVerification?.dropOtp?.required &&
@@ -4652,6 +4664,9 @@ export async function createCollectQr(
   deliveryPartnerId,
   customerInfo = {},
 ) {
+  // Online payment disabled: no Razorpay payment links. Collect cash instead.
+  throw new ValidationError("Online QR payment is currently unavailable. Please collect cash.");
+  // eslint-disable-next-line no-unreachable
   const query = mongoose.Types.ObjectId.isValid(orderId) ? { _id: orderId } : { orderId };
   const order = await FoodOrder.findOne(query)
     .populate("userId", "name email phone")

@@ -104,11 +104,12 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const { settings } = useSettings();
 
-  useEffect(() => {
-    if (settings?.codEnabled === false && selectedPaymentMethod === "cash") {
-      setSelectedPaymentMethod("razorpay");
-    }
-  }, [settings?.codEnabled, selectedPaymentMethod]);
+  // Online payment disabled: never fall back to Razorpay when COD is off.
+  // useEffect(() => {
+  //   if (settings?.codEnabled === false && selectedPaymentMethod === "cash") {
+  //     setSelectedPaymentMethod("razorpay");
+  //   }
+  // }, [settings?.codEnabled, selectedPaymentMethod]);
 
   const quickCart = useMemo(
     () => cart.filter((item) => (item.orderType || "food") === "quick"),

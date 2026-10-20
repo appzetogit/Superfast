@@ -252,7 +252,9 @@ export const isPartnerEligibleForCodOrder = async (deliveryPartnerId) => {
   try {
     const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
     if (!wallet) return false;
-    if (wallet.totalCashLimit <= 0) return false;
+    // No cash limit configured by admin => no cap. (Online payment is disabled, so every
+    // order is COD; treating "unset" as "blocked" would leave all orders without a rider.)
+    if (wallet.totalCashLimit <= 0) return true;
     if (wallet.availableCashLimit <= 0) return false;
     return true;
   } catch (err) {

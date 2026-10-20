@@ -330,7 +330,8 @@ export default function Cart() {
   }, [cart, restaurantData, addresses, selectedAddressId, getDefaultAddress])
 
   const maxCodDist = settings?.maxCodDistance ?? 5
-  const isCodDistanceExceeded = maxCodDist > 0 && orderDistanceKm > maxCodDist
+  // COD distance cap disabled (online payment is off, so COD must always be allowed)
+  const isCodDistanceExceeded = false // was: maxCodDist > 0 && orderDistanceKm > maxCodDist
 
   useEffect(() => {
     if ((settings?.codEnabled === false || isCodDistanceExceeded) && selectedPaymentMethod === "cash") {

@@ -23,11 +23,101 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+const TERMINAL_ORDER_STATUSES = [
+  'delivered',
+  'cancelled_by_user',
+  'cancelled_by_restaurant',
+  'cancelled_by_admin',
+];
+const CHECK_IN_EARLY_MINUTES = 30;
+const SHIFT_END_GRACE_MINUTES = 30;
+
+/** Helper: "8:0" / "08:00" -> "08:00" */
+function normalizeTime(value) {
+  const [h, m] = String(value || '').split(':').map((n) => Number(n) || 0);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Helper: absolute start/end Date of a gig shift (overnight shifts roll to next day) */
+function getShiftWindow(gig) {
+  if (!gig?.date || !gig?.startTime || !gig?.endTime) return null;
+  const start = new Date(`${gig.date}T${normalizeTime(gig.startTime)}:00`);
+  const end = new Date(`${gig.date}T${normalizeTime(gig.endTime)}:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  if (end.getTime() <= start.getTime()) end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
+/** Helper: does the rider still have an undelivered accepted order? */
+async function partnerHasActiveOrder(partnerObjectId) {
+  const count = await FoodOrder.countDocuments({
+    'dispatch.deliveryPartnerId': partnerObjectId,
+    'dispatch.status': 'accepted',
+    orderStatus: { $nin: TERMINAL_ORDER_STATUSES },
+  });
+  return count > 0;
+}
+
+/**
+ * Close out stale bookings so riders do not stay "booked/online" forever:
+ * - booked but shift ended            -> missed
+ * - checked_in and shift ended + grace -> completed (rider goes offline once no active order)
+ */
+export async function expireGigBookings() {
+  try {
+    const now = Date.now();
+    const open = await GigBooking.find({ status: { $in: ['booked', 'checked_in'] } })
+      .populate('gigId')
+      .lean();
+
+    for (const booking of open) {
+      const window = getShiftWindow(booking.gigId);
+      if (!window) continue;
+
+      if (booking.status === 'booked' && window.end.getTime() <= now) {
+        await GigBooking.updateOne({ _id: booking._id, status: 'booked' }, { $set: { status: 'missed' } });
+        continue;
+      }
+
+      if (
+        booking.status === 'checked_in' &&
+        window.end.getTime() + SHIFT_END_GRACE_MINUTES * 60 * 1000 <= now
+      ) {
+        if (await partnerHasActiveOrder(booking.deliveryPartnerId)) continue;
+        await GigBooking.updateOne(
+          { _id: booking._id, status: 'checked_in' },
+          {
+            $set: {
+              status: 'completed',
+              checkOutTime: new Date(),
+              earnings: (booking.gigId?.basePay || 0) + (booking.gigId?.incentiveBonus || 0),
+            },
+          }
+        );
+        const stillActive = await GigBooking.exists({
+          deliveryPartnerId: booking.deliveryPartnerId,
+          status: 'checked_in',
+        });
+        if (!stillActive) {
+          await FoodDeliveryPartner.updateOne(
+            { _id: booking.deliveryPartnerId },
+            { $set: { availabilityStatus: 'offline' } }
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[Gig] expire bookings error:', error);
+  }
+}
+
 /**
  * 30-Minute Pre-Shift Notification Scheduler
  */
 export async function checkAndSendGigReminders() {
   try {
+    await expireGigBookings();
+
     const activeBookings = await GigBooking.find({
       status: 'booked',
       reminderSent: { $ne: true },
@@ -39,14 +129,10 @@ export async function checkAndSendGigReminders() {
       const gig = booking.gigId;
       if (!gig || !gig.startTime || !gig.date) continue;
 
-      const timeParts = String(gig.startTime).split(':').map(Number);
-      const hours = timeParts[0] || 0;
-      const minutes = timeParts[1] || 0;
+      const window = getShiftWindow(gig);
+      if (!window) continue;
 
-      const shiftDate = new Date(gig.date);
-      shiftDate.setHours(hours, minutes, 0, 0);
-
-      const diffMs = shiftDate.getTime() - now;
+      const diffMs = window.start.getTime() - now;
       const diffMinutes = diffMs / (1000 * 60);
 
       // Trigger reminder if shift starts in <= 35 mins (or up to 15 mins past start)
@@ -75,7 +161,7 @@ export async function checkAndSendGigReminders() {
 }
 
 // Start recurring 30-min pre-shift notification check every 2 minutes
-setInterval(checkAndSendGigReminders, 2 * 60 * 1000);
+setInterval(checkAndSendGigReminders, 2 * 60 * 1000).unref?.();
 
 /**
  * List active Gigs created by Admin for driver's zone and date
@@ -90,14 +176,12 @@ export async function listZoneGigsController(req, res) {
       partner = await FoodDeliveryPartner.findById(deliveryPartnerId).lean();
     }
 
-    // Auto-detect zone from driver profile if not explicitly passed
-    if (!zoneName && partner) {
-      zoneName = partner.zoneName || partner.city || 'Indore Central';
-    } else if (!zoneName) {
-      zoneName = 'Indore Central';
-    }
+    // Partners have no reliable zone (only a free-text city), so without an explicit zone we
+    // list every active gig for the date instead of hiding gigs behind a name mismatch.
+    const driverZone = partner?.zoneName || partner?.city || null;
+    if (!zoneName) zoneName = 'ALL ZONES';
 
-    // Fetch Admin-created active gigs for driver's zone OR 'ALL ZONES' for date (Case-insensitive)
+    // Fetch Admin-created active gigs for the requested zone (or all) for the date (Case-insensitive)
     const query = { isActive: true };
 
     if (zoneName && zoneName !== 'ALL ZONES' && zoneName !== 'ALL' && zoneName !== 'All Areas / Zones') {
@@ -153,7 +237,7 @@ export async function listZoneGigsController(req, res) {
       success: true,
       data: {
         zoneName,
-        driverZone: partner?.zoneName || partner?.city || zoneName,
+        driverZone: driverZone || zoneName,
         date,
         gigs: enrichedGigs,
       },
@@ -168,6 +252,8 @@ export async function listZoneGigsController(req, res) {
  * Book a Gig Slot
  */
 export async function bookGigController(req, res) {
+  let slotClaimed = false;
+  let claimedGigId = null;
   try {
     const deliveryPartnerId = getDeliveryPartnerId(req);
     const { gigId } = req.body;
@@ -176,8 +262,8 @@ export async function bookGigController(req, res) {
       return res.status(401).json({ success: false, message: 'Invalid or missing delivery partner session' });
     }
 
-    if (!gigId) {
-      return res.status(400).json({ success: false, message: 'Gig ID is required' });
+    if (!gigId || !mongoose.Types.ObjectId.isValid(gigId)) {
+      return res.status(400).json({ success: false, message: 'Valid Gig ID is required' });
     }
 
     const gig = await Gig.findById(gigId);
@@ -185,49 +271,81 @@ export async function bookGigController(req, res) {
       return res.status(404).json({ success: false, message: 'Gig shift not found or inactive' });
     }
 
-    if (gig.bookedCount >= gig.maxDrivers) {
-      return res.status(400).json({ success: false, message: 'No slots available for this Gig shift' });
+    const window = getShiftWindow(gig);
+    if (window && window.end.getTime() <= Date.now()) {
+      return res.status(400).json({ success: false, message: 'This Gig shift has already ended' });
     }
 
     const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
 
-    // Check existing booking regardless of status to handle re-booking cleanly
+    // Do not allow two overlapping shifts for the same rider.
+    if (window) {
+      const myOpen = await GigBooking.find({
+        deliveryPartnerId: partnerObjectId,
+        gigId: { $ne: gig._id },
+        status: { $in: ['booked', 'checked_in'] },
+      }).populate('gigId').lean();
+
+      const clash = myOpen.find((b) => {
+        const w = getShiftWindow(b.gigId);
+        return w && w.start < window.end && window.start < w.end;
+      });
+      if (clash) {
+        return res.status(400).json({
+          success: false,
+          message: `You already have a shift booked at this time (${clash.gigId?.title || 'another gig'}, ${clash.gigId?.startTime}-${clash.gigId?.endTime})`,
+        });
+      }
+    }
+
+    // Check existing booking for this gig to handle re-booking cleanly
     const existing = await GigBooking.findOne({
       gigId: gig._id,
       deliveryPartnerId: partnerObjectId,
     });
 
+    if (existing && !['cancelled', 'missed'].includes(existing.status)) {
+      return res.status(400).json({
+        success: false,
+        message: existing.status === 'completed'
+          ? 'You have already completed this Gig shift'
+          : 'You have already booked this Gig shift',
+      });
+    }
+
+    // Atomically claim a slot so concurrent riders cannot overbook.
+    const claimed = await Gig.findOneAndUpdate(
+      {
+        _id: gig._id,
+        isActive: true,
+        $expr: { $lt: [{ $ifNull: ['$bookedCount', 0] }, { $ifNull: ['$maxDrivers', 0] }] },
+      },
+      { $inc: { bookedCount: 1 } },
+      { new: true }
+    );
+    if (!claimed) {
+      return res.status(400).json({ success: false, message: 'No slots available for this Gig shift' });
+    }
+    slotClaimed = true;
+    claimedGigId = gig._id;
+
+    let booking;
     if (existing) {
-      if (existing.status !== 'cancelled') {
-        return res.status(400).json({ success: false, message: 'You have already booked this Gig shift' });
-      }
       existing.status = 'booked';
       existing.reminderSent = false;
       existing.checkInTime = null;
       existing.checkOutTime = null;
-      await existing.save();
-
-      gig.bookedCount = (gig.bookedCount || 0) + 1;
-      await gig.save();
-
-      setTimeout(checkAndSendGigReminders, 1000);
-
-      return res.json({
-        success: true,
-        message: 'Gig shift booked successfully',
-        data: { booking: existing },
+      existing.earnings = 0;
+      booking = await existing.save();
+    } else {
+      booking = await GigBooking.create({
+        gigId: gig._id,
+        deliveryPartnerId: partnerObjectId,
+        zoneName: gig.zoneName,
+        status: 'booked',
       });
     }
-
-    const booking = await GigBooking.create({
-      gigId: gig._id,
-      deliveryPartnerId: partnerObjectId,
-      zoneName: gig.zoneName,
-      status: 'booked',
-    });
-
-    gig.bookedCount = (gig.bookedCount || 0) + 1;
-    await gig.save();
+    slotClaimed = false; // slot is now owned by the booking
 
     // Instantly check for 30-min reminder if shift starts soon
     setTimeout(checkAndSendGigReminders, 1000);
@@ -238,6 +356,12 @@ export async function bookGigController(req, res) {
       data: { booking },
     });
   } catch (error) {
+    if (slotClaimed && claimedGigId) {
+      await Gig.updateOne({ _id: claimedGigId, bookedCount: { $gt: 0 } }, { $inc: { bookedCount: -1 } }).catch(() => {});
+    }
+    if (error?.code === 11000) {
+      return res.status(400).json({ success: false, message: 'You have already booked this Gig shift' });
+    }
     console.error('[Gig] bookGig error:', error);
     return res.status(500).json({ success: false, message: error?.message || 'Failed to book gig' });
   }
@@ -258,25 +382,54 @@ export async function checkInGigController(req, res) {
     const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
 
     let booking;
-    if (bookingId) {
+    if (bookingId && mongoose.Types.ObjectId.isValid(bookingId)) {
       booking = await GigBooking.findOne({ _id: bookingId, deliveryPartnerId: partnerObjectId });
-    } else if (gigId) {
-      booking = await GigBooking.findOne({ gigId, deliveryPartnerId: partnerObjectId, status: 'booked' });
+    } else if (gigId && mongoose.Types.ObjectId.isValid(gigId)) {
+      booking = await GigBooking.findOne({
+        gigId,
+        deliveryPartnerId: partnerObjectId,
+        status: { $in: ['booked', 'checked_in'] },
+      });
     }
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Active gig booking not found' });
     }
 
-    booking.status = 'checked_in';
-    booking.checkInTime = new Date();
-    await booking.save();
+    if (!['booked', 'checked_in'].includes(booking.status)) {
+      return res.status(400).json({ success: false, message: `Cannot check in: booking is ${booking.status}` });
+    }
+
+    const partner = await FoodDeliveryPartner.findById(partnerObjectId).select('adminForceOffline').lean();
+    if (partner?.adminForceOffline) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been set offline by admin. Please contact support.',
+      });
+    }
+
+    if (booking.status === 'booked') {
+      const gig = await Gig.findById(booking.gigId).lean();
+      const window = getShiftWindow(gig);
+      if (window) {
+        const now = Date.now();
+        if (now < window.start.getTime() - CHECK_IN_EARLY_MINUTES * 60 * 1000) {
+          return res.status(400).json({
+            success: false,
+            message: `Check-in opens ${CHECK_IN_EARLY_MINUTES} minutes before the shift starts (${gig.startTime})`,
+          });
+        }
+        if (now >= window.end.getTime()) {
+          return res.status(400).json({ success: false, message: 'This Gig shift has already ended' });
+        }
+      }
+      booking.status = 'checked_in';
+      booking.checkInTime = new Date();
+      await booking.save();
+    }
 
     // Set delivery partner availability status to online
-    await FoodDeliveryPartner.findOneAndUpdate(
-      { _id: partnerObjectId },
-      { availabilityStatus: 'online' }
-    );
+    await FoodDeliveryPartner.updateOne({ _id: partnerObjectId }, { $set: { availabilityStatus: 'online' } });
 
     return res.json({
       success: true,
@@ -300,6 +453,9 @@ export async function checkOutGigController(req, res) {
     if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
       return res.status(401).json({ success: false, message: 'Invalid or missing delivery partner session' });
     }
+    if (!bookingId || !mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+    }
 
     const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
     const booking = await GigBooking.findOne({ _id: bookingId, deliveryPartnerId: partnerObjectId });
@@ -307,13 +463,34 @@ export async function checkOutGigController(req, res) {
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Gig booking not found' });
     }
+    if (booking.status !== 'checked_in') {
+      return res.status(400).json({
+        success: false,
+        message: booking.status === 'completed' ? 'Gig shift is already completed' : 'Check in to the Gig shift before checking out',
+      });
+    }
+    if (await partnerHasActiveOrder(partnerObjectId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please finish your active delivery before ending the shift',
+      });
+    }
 
     const gig = await Gig.findById(booking.gigId);
 
     booking.status = 'completed';
     booking.checkOutTime = new Date();
-    booking.earnings = (gig?.basePay || 300) + (gig?.incentiveBonus || 50);
+    booking.earnings = (gig?.basePay || 0) + (gig?.incentiveBonus || 0);
     await booking.save();
+
+    // Go offline unless another shift is still running
+    const otherOpen = await GigBooking.exists({
+      deliveryPartnerId: partnerObjectId,
+      status: 'checked_in',
+    });
+    if (!otherOpen) {
+      await FoodDeliveryPartner.updateOne({ _id: partnerObjectId }, { $set: { availabilityStatus: 'offline' } });
+    }
 
     return res.json({
       success: true,
@@ -512,7 +689,7 @@ export async function adminCreateGigController(req, res) {
       });
     }
 
-    const finalZone = (!zoneName || zoneName === 'ALL ZONES') ? 'Indore Central' : zoneName;
+    const finalZone = zoneName || 'ALL ZONES';
 
     const gig = await Gig.create({
       zoneName: finalZone,
@@ -573,7 +750,11 @@ export async function adminListGigsController(req, res) {
 export async function adminUpdateGigController(req, res) {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    // Whitelist editable fields; bookedCount is owned by the booking flow.
+    const allowed = ['zoneName', 'title', 'shiftType', 'startTime', 'endTime', 'date', 'basePay', 'incentiveBonus', 'maxDrivers', 'isActive'];
+    const updateData = Object.fromEntries(
+      Object.entries(req.body || {}).filter(([key]) => allowed.includes(key))
+    );
 
     const gig = await Gig.findByIdAndUpdate(id, { $set: updateData }, { new: true });
     if (!gig) {

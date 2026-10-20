@@ -29,7 +29,7 @@ export default function GigsV2() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('gigs'); // 'gigs' | 'drivers' | 'my_shifts'
-  const [selectedZone, setSelectedZone] = useState('Indore Central');
+  const [selectedZone, setSelectedZone] = useState('ALL ZONES');
   const [driverZone, setDriverZone] = useState('Indore Central');
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
 

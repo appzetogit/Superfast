@@ -642,16 +642,17 @@ const CheckoutPage = () => {
   ];
 
   const paymentMethods = [
-    ...(settings?.onlinePaymentEnabled === false
-      ? []
-      : [
-          {
-            id: "online",
-            label: "Pay Online",
-            icon: CreditCard,
-            sublabel: "UPI / Cards / NetBanking",
-          },
-        ]),
+    // Online payment disabled for now.
+    // ...(settings?.onlinePaymentEnabled === false
+    //   ? []
+    //   : [
+    //       {
+    //         id: "online",
+    //         label: "Pay Online",
+    //         icon: CreditCard,
+    //         sublabel: "UPI / Cards / NetBanking",
+    //       },
+    //     ]),
     ...(settings?.codEnabled === false
       ? []
       : [
@@ -1639,7 +1640,7 @@ const CheckoutPage = () => {
       const orderData = {
         items: getCheckoutCartItemsForSync(),
         address: buildAddressForOrder(),
-        paymentMode: selectedPayment === "online" ? "ONLINE" : "COD",
+        paymentMode: "COD", // online payment disabled (was: selectedPayment === "online" ? "ONLINE" : "COD")
         discountTotal: discountAmount,
         taxTotal: gstAmount,
         platformFee: platformFee,

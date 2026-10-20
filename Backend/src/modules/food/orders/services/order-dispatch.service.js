@@ -173,19 +173,27 @@ export async function tryAutoAssign(orderId, options = {}) {
   const order = await FoodOrder.findOneAndUpdate(
     {
       _id: new mongoose.Types.ObjectId(orderId),
-      $or: [
-        { "dispatch.status": "unassigned" },
+      // Two separate $or clauses must live under $and; duplicate `$or` keys in an
+      // object literal silently drop the first one.
+      $and: [
         {
-          "dispatch.status": "assigned",
-          "dispatch.acceptedAt": { $exists: false },
-          "dispatch.assignedAt": { $lt: lockCutoff },
+          $or: [
+            { "dispatch.status": "unassigned" },
+            {
+              "dispatch.status": "assigned",
+              "dispatch.acceptedAt": { $exists: false },
+              "dispatch.assignedAt": { $lt: lockCutoff },
+            },
+          ],
+        },
+        {
+          $or: [
+            { "dispatch.dispatchingAt": { $exists: false } },
+            { "dispatch.dispatchingAt": null },
+            { "dispatch.dispatchingAt": { $lt: lockCutoff } },
+          ],
         },
       ],
-      $or: [
-        { "dispatch.dispatchingAt": { $exists: false } },
-        { "dispatch.dispatchingAt": null },
-        { "dispatch.dispatchingAt": { $lt: lockCutoff } }
-      ]
     },
     {
       $set: { "dispatch.dispatchingAt": new Date() },
