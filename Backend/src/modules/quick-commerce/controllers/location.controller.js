@@ -31,47 +31,79 @@ export const geocodeAddress = asyncHandler(async (req, res) => {
   }
 
   const key = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAP_API_KEY;
-  if (!key) {
-    console.error('GOOGLE_MAPS_API_KEY is missing in environment variables');
-    throw new ApiError(500, 'Maps API key not configured on server');
+
+  if (key) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+        address
+      )}&key=${key}`;
+      
+      const { data } = await axios.get(url, { timeout: 5000 });
+
+      if (data.status === 'OK' && data.results?.[0]) {
+        const first = data.results[0];
+        const { lat, lng } = first.geometry.location;
+        const components = mapAddressComponents(first.address_components || []);
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            latitude: lat,
+            longitude: lng,
+            formattedAddress: first.formatted_address,
+            ...components,
+            placeId: first.place_id,
+          },
+        });
+      }
+
+      if (data.status === 'ZERO_RESULTS') {
+        return res.status(404).json({
+          success: false,
+          message: 'No location found for the provided address',
+        });
+      }
+
+      console.warn(`[Location] Google Maps geocode returned status ${data.status}: ${data.error_message || ''}. Attempting fallback.`);
+    } catch (err) {
+      console.warn('[Location] Google Maps geocoding error:', err.message, '- attempting fallback');
+    }
   }
 
+  // Fallback to OpenStreetMap Nominatim
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+    const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       address
-    )}&key=${key}`;
-    
-    const { data } = await axios.get(url);
+    )}&limit=1`;
+    const { data: nomData } = await axios.get(nomUrl, {
+      timeout: 5000,
+      headers: { 'User-Agent': 'SuperfastFoodDelivery/1.0' },
+    });
 
-    if (data.status === 'ZERO_RESULTS') {
-      return res.status(404).json({
-        success: false,
-        message: 'No location found for the provided address',
+    if (Array.isArray(nomData) && nomData.length > 0) {
+      const first = nomData[0];
+      return res.status(200).json({
+        success: true,
+        data: {
+          latitude: parseFloat(first.lat),
+          longitude: parseFloat(first.lon),
+          formattedAddress: first.display_name,
+          country: 'India',
+          state: '',
+          city: '',
+          area: '',
+          pincode: '',
+          placeId: first.place_id ? String(first.place_id) : '',
+        },
       });
     }
 
-    if (data.status !== 'OK') {
-      console.error('Google Maps API error:', data.status, data.error_message);
-      throw new ApiError(500, `Maps API error: ${data.status}`);
-    }
-
-    const first = data.results[0];
-    const { lat, lng } = first.geometry.location;
-    const components = mapAddressComponents(first.address_components || []);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        latitude: lat,
-        longitude: lng,
-        formattedAddress: first.formatted_address,
-        ...components,
-        placeId: first.place_id,
-      },
+    return res.status(404).json({
+      success: false,
+      message: 'No location found for the provided address',
     });
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    console.error('Geocoding error:', error.message);
+  } catch (fallbackError) {
+    console.error('[Location] Geocoding fallback failed:', fallbackError.message);
     throw new ApiError(500, 'Failed to geocode address');
   }
 });
@@ -89,32 +121,114 @@ export const reverseGeocode = asyncHandler(async (req, res) => {
   }
 
   const key = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAP_API_KEY;
-  if (!key) {
-    throw new ApiError(500, 'Maps API key not configured');
+
+  if (key) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`;
+      const { data } = await axios.get(url, { timeout: 5000 });
+
+      if (data.status === 'OK' && data.results?.[0]) {
+        const first = data.results[0];
+        const components = mapAddressComponents(first.address_components || []);
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            formattedAddress: first.formatted_address,
+            ...components,
+            latitude: Number(lat),
+            longitude: Number(lng),
+            placeId: first.place_id,
+          },
+        });
+      }
+
+      if (data.status === 'ZERO_RESULTS') {
+        throw new ApiError(404, 'Address not found');
+      }
+
+      console.warn(`[Location] Google Maps reverse-geocode returned status ${data.status}: ${data.error_message || ''}. Attempting fallback.`);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 404) throw err;
+      console.warn('[Location] Google Maps reverse geocode error:', err.message, '- attempting fallback');
+    }
   }
 
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`;
-  const { data } = await axios.get(url);
+  // Fallback 1: BigDataCloud reverse geocode client (fast and generous free tier)
+  try {
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+    const { data: bdc } = await axios.get(bdcUrl, { timeout: 4000 });
 
-  if (data.status === 'ZERO_RESULTS') {
-    throw new ApiError(404, 'Address not found');
+    const formatted = [
+      bdc.locality || bdc.subPremise,
+      bdc.city || bdc.localityInfo?.administrative?.[2]?.name,
+      bdc.principalSubdivision,
+      bdc.postcode,
+      bdc.countryName,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        formattedAddress: formatted || `Location (${lat}, ${lng})`,
+        country: bdc.countryName || 'India',
+        state: bdc.principalSubdivision || '',
+        city: bdc.city || bdc.locality || '',
+        area: bdc.locality || '',
+        pincode: bdc.postcode || '',
+        latitude: Number(lat),
+        longitude: Number(lng),
+        placeId: '',
+      },
+    });
+  } catch (bdcErr) {
+    console.warn('[Location] BigDataCloud fallback failed:', bdcErr.message);
   }
 
-  if (data.status !== 'OK') {
-    throw new ApiError(500, `Maps API error: ${data.status}`);
+  // Fallback 2: OpenStreetMap Nominatim
+  try {
+    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+    const { data: nom } = await axios.get(nomUrl, {
+      timeout: 4000,
+      headers: { 'User-Agent': 'SuperfastFoodDelivery/1.0' },
+    });
+
+    if (nom && nom.display_name) {
+      const addr = nom.address || {};
+      return res.status(200).json({
+        success: true,
+        data: {
+          formattedAddress: nom.display_name,
+          country: addr.country || 'India',
+          state: addr.state || '',
+          city: addr.city || addr.town || addr.village || addr.county || '',
+          area: addr.suburb || addr.neighbourhood || addr.residential || '',
+          pincode: addr.postcode || '',
+          latitude: Number(lat),
+          longitude: Number(lng),
+          placeId: nom.place_id ? String(nom.place_id) : '',
+        },
+      });
+    }
+  } catch (nomErr) {
+    console.warn('[Location] Nominatim fallback failed:', nomErr.message);
   }
 
-  const first = data.results[0];
-  const components = mapAddressComponents(first.address_components || []);
-
-  res.status(200).json({
+  // Fallback 3: Return coordinates as minimal valid payload so client NEVER 500s
+  return res.status(200).json({
     success: true,
     data: {
-      formattedAddress: first.formatted_address,
-      ...components,
+      formattedAddress: `Coordinates: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`,
+      country: 'India',
+      state: '',
+      city: '',
+      area: '',
+      pincode: '',
       latitude: Number(lat),
       longitude: Number(lng),
-      placeId: first.place_id,
+      placeId: '',
     },
   });
 });
