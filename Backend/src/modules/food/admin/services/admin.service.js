@@ -2679,7 +2679,7 @@ export async function getRestaurantReviews(query = {}) {
         customerId: doc.userId?._id || 'N/A',
         review: doc.ratings?.restaurant?.comment || '',
         rating: doc.ratings?.restaurant?.rating || 0,
-        submittedAt: doc.createdAt
+        submittedAt: doc.ratings?.restaurant?.ratedAt || doc.createdAt
     }));
 
     return { reviews, total, page, limit };
@@ -3438,7 +3438,11 @@ export async function getRestaurantAddonsAdmin(query = {}) {
             .sort({ requestedAt: -1, createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('restaurantId', 'restaurantName ownerName ownerPhone')
+            .populate({
+                path: 'restaurantId',
+                select: 'restaurantName ownerName ownerPhone zoneId',
+                populate: { path: 'zoneId', select: 'name zoneName' }
+            })
             .lean(),
         FoodAddon.countDocuments(filter)
     ]);
@@ -3452,7 +3456,9 @@ export async function getRestaurantAddonsAdmin(query = {}) {
                 _id: a.restaurantId._id,
                 name: a.restaurantId.restaurantName || '',
                 ownerName: a.restaurantId.ownerName || '',
-                ownerPhone: a.restaurantId.ownerPhone || ''
+                ownerPhone: a.restaurantId.ownerPhone || '',
+                zoneId: a.restaurantId.zoneId?._id ? String(a.restaurantId.zoneId._id) : '',
+                zoneName: a.restaurantId.zoneId?.name || a.restaurantId.zoneId?.zoneName || ''
             }
             : null,
         approvalStatus: a.approvalStatus || 'pending',
@@ -4070,7 +4076,6 @@ export async function getAllOffers(_query = {}) {
 
     // 2. Scan all orders with coupon applied or discount > 0 from FoodOrder
     const usageByCodeMap = new Map();
-    let totalDiscountedOrdersCount = 0;
     try {
         const couponOrders = await FoodOrder.find({
             $or: [
@@ -4085,7 +4090,6 @@ export async function getAllOffers(_query = {}) {
         }).select("pricing appliedCoupon couponCode couponDiscount").lean();
 
         (couponOrders || []).forEach(ord => {
-            totalDiscountedOrdersCount++;
             const code = (
                 ord.pricing?.couponCode ||
                 ord.pricing?.appliedCoupon?.code ||
@@ -4129,15 +4133,11 @@ export async function getAllOffers(_query = {}) {
         const usageFromOfferUsage = offerUsageByIdMap.get(offerIdStr) || 0;
         const usageFromOrders = usageByCodeMap.get(codeUpper) || 0;
 
-        let totalUsedCount = Math.max(
+        const totalUsedCount = Math.max(
             Number(o.usedCount || 0),
             usageFromOfferUsage,
             usageFromOrders
         );
-
-        if (totalUsedCount === 0 && totalDiscountedOrdersCount > 0) {
-            totalUsedCount = totalDiscountedOrdersCount;
-        }
 
         return {
             sl: index + 1,
@@ -4159,7 +4159,13 @@ export async function getAllOffers(_query = {}) {
             maxDiscount: o.maxDiscount ?? null,
             usageLimit: o.usageLimit ?? null,
             usedCount: totalUsedCount,
-            restaurantScope: o.restaurantScope
+            restaurantScope: o.restaurantScope,
+            discountValue: o.discountValue,
+            customerScope: o.customerScope,
+            perUserLimit: o.perUserLimit ?? null,
+            startDate: o.startDate || null,
+            isFirstOrderOnly: Boolean(o.isFirstOrderOnly),
+            rawStatus: o.status || 'active'
         };
     });
 
@@ -4223,6 +4229,48 @@ export async function updateAdminOfferCartVisibility(offerId, itemId, showInCart
         { new: true }
     ).lean();
     return updated;
+}
+
+export async function updateAdminOffer(id, body) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const existing = await FoodOffer.findById(id).lean();
+    if (!existing) return null;
+
+    const $set = {};
+    const editable = ['discountValue', 'customerScope', 'minOrderValue', 'maxDiscount', 'usageLimit', 'perUserLimit', 'isFirstOrderOnly', 'status'];
+    for (const key of editable) {
+        if (body[key] !== undefined) $set[key] = body[key];
+    }
+    if (body.minOrderValue === null) $set.minOrderValue = 0;
+    if (existing.discountType === 'flat-price') delete $set.maxDiscount;
+    if (existing.discountType === 'percentage' && body.maxDiscount === null) {
+        throw new ValidationError('maxDiscount is required for percentage coupons');
+    }
+
+    const $unset = {};
+    for (const key of ['startDate', 'endDate']) {
+        if (body[key] === null) $unset[key] = '';
+        else if (body[key] !== undefined) $set[key] = body[key];
+    }
+
+    if (body.expireNow) {
+        $set.endDate = new Date();
+        $set.status = 'inactive';
+        delete $unset.endDate;
+    } else if (body.status === undefined) {
+        // Re-derive status when only the expiry date changed, but never re-activate a paused coupon.
+        const nextEnd = body.endDate === undefined ? existing.endDate : body.endDate;
+        const expired = Boolean(nextEnd && new Date(nextEnd).getTime() <= Date.now());
+        if (expired) $set.status = 'inactive';
+        else if (body.endDate !== undefined && existing.status === 'inactive') $set.status = 'active';
+    }
+
+    const update = {};
+    if (Object.keys($set).length) update.$set = $set;
+    if (Object.keys($unset).length) update.$unset = $unset;
+    if (!Object.keys(update).length) return existing;
+
+    return FoodOffer.findByIdAndUpdate(id, update, { new: true, runValidators: true }).lean();
 }
 
 export async function deleteAdminOffer(id) {
@@ -5216,7 +5264,7 @@ export async function getDeliverymanReviews(query = {}) {
         customerPhone: doc.userId?.phone || 'N/A',
         review: doc.ratings?.deliveryPartner?.comment || '',
         rating: doc.ratings?.deliveryPartner?.rating || 0,
-        submittedAt: doc.createdAt,
+        submittedAt: doc.ratings?.deliveryPartner?.ratedAt || doc.createdAt,
         deliveredAt: doc.deliveryState?.deliveredAt
     }));
 
@@ -5377,7 +5425,7 @@ export async function approveDeliveryPartner(id) {
                         role: 'DELIVERY_PARTNER',
                         rewardAmount: referrerReward,
                         status: 'rejected',
-                        reason: !referrer ? 'referrer_not_found' : (referrerReward <= 0 && refereeReward <= 0) ? 'reward_disabled' : limit <= 0 ? 'limit_disabled' : 'limit_reached'
+                        reason: !referrer ? 'referrer_not_found' : referrer.status !== 'approved' ? 'referrer_not_approved' : (referrerReward <= 0 && refereeReward <= 0) ? 'reward_disabled' : 'limit_reached'
                     });
                 }
             }
@@ -5520,7 +5568,7 @@ export async function updateDeliveryPartnerStatus(id, availabilityStatus) {
                         adminForceOffline: partner.adminForceOffline
                     });
                 }
-                io.emit('driver_status_updated', {
+                io.to(rooms.admins()).emit('driver_status_updated', {
                     partnerId: String(id),
                     status: availabilityStatus
                 });

@@ -6,6 +6,7 @@ import { useProximityCheck } from '@/modules/DeliveryV2/hooks/useProximityCheck'
 import { useOrderManager } from '@/modules/DeliveryV2/hooks/useOrderManager';
 import { useDeliveryNotifications } from '@food/hooks/useDeliveryNotifications';
 import { deliveryAPI, gigAPI } from '@food/api';
+import { requireLocation } from '../utils/requireLocation';
 import { toast } from 'sonner';
 import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
@@ -41,8 +42,20 @@ const getCustomerPhone = (order) =>
     order?.customerPhone || order?.userPhone || order?.user?.phone || order?.userId?.phone || order?.deliveryAddress?.phone || ''
   ).replace(/[^\d+]/g, '');
 
-const callCustomer = (order) => {
-  const phone = getCustomerPhone(order);
+const callCustomer = async (order) => {
+  let phone = getCustomerPhone(order);
+  if (!phone) {
+    const orderId = order?.orderId || order?._id || order?.orderMongoId;
+    if (orderId) {
+      try {
+        const res = await deliveryAPI.getOrderDetails(String(orderId));
+        const full = res?.data?.data?.order || res?.data?.order || res?.data?.data;
+        phone = getCustomerPhone(full);
+      } catch {
+        // fall through to the error toast below
+      }
+    }
+  }
   if (!phone) {
     toast.error('Customer phone number is not available');
     return;
@@ -666,7 +679,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       }
     };
 
-    if (hasPopulatedName) {
+    if (hasPopulatedName && getCustomerPhone(newOrder)) {
       processOrder(newOrder);
     } else {
       deliveryAPI.getOrderDetails(rawId)
@@ -804,10 +817,15 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
   }, [isOnline]);
 
-  // Poll available orders for NEW ORDERS tab
+  // Poll available orders for NEW ORDERS tab. New offers arrive instantly over the socket, so this is a
+  // slow fallback. Active orders are read from a ref so their updates do not restart the timer.
+  const activeTripsRef = useRef({ activeOrders, activeOrder });
+  activeTripsRef.current = { activeOrders, activeOrder };
   useEffect(() => {
     if (!isOnline) return;
     const fetchAvailableOrders = async () => {
+      if (document.hidden) return;
+      const { activeOrders, activeOrder } = activeTripsRef.current;
       try {
         const response = await deliveryAPI.getOrders({ limit: 20, page: 1 });
         const payload = response?.data?.data || response?.data || {};
@@ -861,9 +879,16 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       }
     };
     fetchAvailableOrders();
-    const interval = setInterval(fetchAvailableOrders, 8000);
-    return () => clearInterval(interval);
-  }, [isOnline, activeOrders, activeOrder]);
+    const interval = setInterval(fetchAvailableOrders, 20000);
+    const onVisible = () => {
+      if (!document.hidden) fetchAvailableOrders();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [isOnline]);
 
   useEffect(() => {
     if (orderStatusUpdate) {
@@ -912,6 +937,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 onClick={async () => {
                   const nextState = !isOnline;
                   if (nextState) {
+                    const loc = await requireLocation();
+                    if (!loc.ok) return;
                     try {
                       // Check if rider has a booked gig shift
                       const res = await gigAPI.getMyGigs();
@@ -929,9 +956,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                       }
 
                       toggleOnline();
-                      navigator.geolocation.getCurrentPosition((pos) => {
-                        deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => { });
-                      }, (err) => console.warn('Online sync position failed:', err), { enableHighAccuracy: true });
+                      deliveryAPI.updateLocation(loc.lat, loc.lng, true).catch(() => { });
                       toast.success('Online! Checked-in to your Gig shift.');
                     } catch (err) {
                       toast.error(err?.response?.data?.message || 'Please book a gig shift first to go online.');

@@ -1823,7 +1823,10 @@ const CheckoutPage = () => {
     const off = onOrderStatusUpdate(getToken, tick);
 
     tick();
-    pollId = setInterval(tick, 4000);
+    // Socket updates (onOrderStatusUpdate) are the primary path; this is a fallback.
+    pollId = setInterval(() => {
+      if (!document.hidden) tick();
+    }, 10000);
 
     return () => {
       off();

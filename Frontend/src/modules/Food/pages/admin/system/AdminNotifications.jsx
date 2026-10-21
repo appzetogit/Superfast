@@ -4,7 +4,7 @@ import useAdminNotifications from "@food/hooks/useAdminNotifications";
 
 export default function AdminNotifications() {
   const navigate = useNavigate();
-  const { items, loading, clearAll, dismissOne } = useAdminNotifications();
+  const { items, loading, clearAll, dismissOne, markRead } = useAdminNotifications();
 
   return (
     <div className="p-6">
@@ -17,7 +17,7 @@ export default function AdminNotifications() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
               <p className="text-sm text-slate-500">
-                Approval and support alerts that need admin attention.
+                New orders, approvals and support alerts that need admin attention.
               </p>
             </div>
           </div>
@@ -50,7 +50,10 @@ export default function AdminNotifications() {
                 <div className="flex items-start justify-between gap-4">
                   <button
                     type="button"
-                    onClick={() => item?.path && navigate(item.path)}
+                    onClick={() => {
+                      markRead(item?.id);
+                      if (item?.path) navigate(item.path);
+                    }}
                     className="min-w-0 flex-1 text-left"
                   >
                     <p className="text-base font-semibold text-slate-900">

@@ -19,6 +19,7 @@ import { haversineKm } from '../../food/orders/services/order.helpers.js';
 import * as foodTransactionService from '../../food/orders/services/foodTransaction.service.js';
 import { emitQuickCommerceStatusUpdate } from '../services/quickStatusRealtime.service.js';
 import { notifyOwnerSafely } from '../../../core/notifications/firebase.service.js';
+import { notifyAdminEvent } from '../../../core/notifications/adminAlert.service.js';
 import {
   createRazorpayOrder,
   getRazorpayKeyId,
@@ -582,6 +583,21 @@ export const placeOrder = async (req, res) => {
     if (paymentMode !== 'razorpay') {
       emitQuickOrderStatusUpdate(order, 'Quick order placed successfully.');
     }
+
+    const quickTotal = Number(getOrderPayableAmount(order) || 0);
+    void notifyAdminEvent({
+      type: 'new_order',
+      title: '🛒 New Quick Commerce Order',
+      message: `Order #${order.orderId} • ${items.length} item(s) • ₹${quickTotal.toFixed(0)} (${String(paymentMode || '').toUpperCase()})`,
+      link: '/admin/quick-commerce/orders/all',
+      entityId: String(order._id),
+      metadata: {
+        orderId: String(order.orderId),
+        orderType: 'quick',
+        total: quickTotal,
+        paymentMethod: String(paymentMode || ''),
+      },
+    });
 
     if (shouldFanOutSellerOrders) {
       void (async () => {

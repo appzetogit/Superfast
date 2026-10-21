@@ -102,6 +102,13 @@ const buildDirectAtlasUri = (uri) => {
     }
 };
 
+// Mongoose defaults to 100 connections per process. With PM2 running the API, socket and
+// worker processes that multiplies past shared Atlas tier limits (M0/M2/M5 allow 500).
+const poolOptions = {
+    maxPoolSize: Number(process.env.MONGODB_MAX_POOL_SIZE || 20),
+    minPoolSize: Number(process.env.MONGODB_MIN_POOL_SIZE || 2),
+};
+
 export const connectDB = async (retryCount = 0) => {
     try {
         const resolvedUri = await Promise.race([
@@ -112,6 +119,7 @@ export const connectDB = async (retryCount = 0) => {
             family: 4, // Force IPv4
             serverSelectionTimeoutMS: 15000,
             connectTimeoutMS: 15000,
+            ...poolOptions,
         });
         logger.info(`MongoDB connected: ${conn.connection.host}`);
     } catch (error) {
@@ -121,6 +129,7 @@ export const connectDB = async (retryCount = 0) => {
             const conn = await mongoose.connect(directUri, {
                 serverSelectionTimeoutMS: 15000,
                 connectTimeoutMS: 15000,
+                ...poolOptions,
             });
             logger.info(`MongoDB connected via direct shard URI: ${conn.connection.host}`);
         } catch (retryError) {

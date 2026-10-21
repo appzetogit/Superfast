@@ -11,7 +11,27 @@ import mongoose from 'mongoose';
  * - Returns `demoStoreIds: ObjectId[]` (either manually configured demo store IDs or fallback store IDs)
  * - Returns `bypassLocation: boolean`
  */
+// Called on most public read requests; settings change rarely, so keep the result briefly in memory.
+// Settings updates call invalidateDeveloperModeCache(); other processes pick the change up within the TTL.
+const DEV_MODE_CACHE_TTL_MS = 30 * 1000;
+let devModeCache = null;
+let devModeCachedAt = 0;
+
+export function invalidateDeveloperModeCache() {
+    devModeCache = null;
+    devModeCachedAt = 0;
+}
+
 export async function getDeveloperModeFilter() {
+    if (devModeCache && Date.now() - devModeCachedAt < DEV_MODE_CACHE_TTL_MS) {
+        return devModeCache;
+    }
+    devModeCache = await loadDeveloperModeFilter();
+    devModeCachedAt = Date.now();
+    return devModeCache;
+}
+
+async function loadDeveloperModeFilter() {
     try {
         const settings = await GlobalSettings.findOne().lean();
         const devMode = settings?.developerMode;

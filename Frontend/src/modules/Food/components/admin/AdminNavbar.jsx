@@ -67,7 +67,7 @@ export default function AdminNavbar({ onMenuClick }) {
   const [devModeEnabled, setDevModeEnabled] = useState(() => Boolean(getCachedSettings()?.developerMode?.enabled));
   const [updatingDevMode, setUpdatingDevMode] = useState(false);
   const searchInputRef = useRef(null);
-  const { items: adminNotifications } = useAdminNotifications();
+  const { items: adminNotifications, unreadCount: adminUnreadCount, markRead: markAdminNotificationRead } = useAdminNotifications();
 
   // Load business settings
   useEffect(() => {
@@ -293,7 +293,12 @@ export default function AdminNavbar({ onMenuClick }) {
     }
   };
 
-  const notificationCount = adminNotifications.length;
+  const notificationCount = adminUnreadCount;
+  const openNotification = (item) => {
+    setNotificationsOpen(false);
+    markAdminNotificationRead(item?.id);
+    navigate(item?.path || "/admin/food/notifications");
+  };
   const openNotificationsPage = () => {
     setNotificationsOpen(false);
     navigate("/admin/food/notifications");
@@ -393,7 +398,7 @@ export default function AdminNavbar({ onMenuClick }) {
                   <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-neutral-900">Notifications</p>
-                      <p className="text-xs text-neutral-500">Approval and support alerts</p>
+                      <p className="text-xs text-neutral-500">Orders, approvals and support alerts</p>
                     </div>
                     <button
                       type="button"
@@ -415,8 +420,8 @@ export default function AdminNavbar({ onMenuClick }) {
                         <button
                           key={item?.id}
                           type="button"
-                          onClick={openNotificationsPage}
-                          className="w-full text-left px-4 py-4 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 transition-colors"
+                          onClick={() => openNotification(item)}
+                          className={`w-full text-left px-4 py-4 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 transition-colors ${item?.read ? "opacity-60" : ""}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">

@@ -124,29 +124,6 @@ export default function QuickHeader({ showSearch = true, activeCategory = null, 
   const { scrollY } = useScroll();
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
 
-  if (isEmbedded) {
-    return (
-      <div className="relative z-10 bg-black/80 backdrop-blur-xl border-b border-white/10 px-2 pt-0 pb-0.5">
-        <motion.div
-            layout
-            className="relative flex items-end md:justify-center gap-0 overflow-x-auto no-scrollbar snap-x min-h-[60px] md:min-h-[76px] pb-0.5">
-            {categories.slice(0, 10).map((cat) => {
-              const isActive = (activeCategory?._id || activeCategory?.id) === (cat._id || cat.id);
-              return (
-                <CategoryNavColumn
-                  key={cat._id || cat.id}
-                  cat={cat}
-                  isActive={isActive}
-                  categoryAccent="#ffffff"
-                  onCategorySelect={onCategorySelect}
-                />
-              );
-            })}
-        </motion.div>
-      </div>
-    );
-  }
-
   const [isLocationOpen, setIsLocationOpen] = useState(false);
 
   // Search Logic
@@ -256,6 +233,29 @@ export default function QuickHeader({ showSearch = true, activeCategory = null, 
   const headerGradient = buildHeaderGradient(baseHeaderColor);
   const searchBarBg = buildSearchBarBackgroundColor(baseHeaderColor);
   const categoryAccent = "#ffffff";
+
+  if (isEmbedded) {
+    return (
+      <div className="relative z-10 bg-black/80 backdrop-blur-xl border-b border-white/10 px-2 pt-0 pb-0.5">
+        <motion.div
+            layout
+            className="relative flex items-end md:justify-center gap-0 overflow-x-auto no-scrollbar snap-x min-h-[60px] md:min-h-[76px] pb-0.5">
+            {categories.slice(0, 10).map((cat) => {
+              const isActive = (activeCategory?._id || activeCategory?.id) === (cat._id || cat.id);
+              return (
+                <CategoryNavColumn
+                  key={cat._id || cat.id}
+                  cat={cat}
+                  isActive={isActive}
+                  categoryAccent="#ffffff"
+                  onCategorySelect={onCategorySelect}
+                />
+              );
+            })}
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("left-0 right-0 z-50", isInline ? "relative" : "fixed top-0")}>

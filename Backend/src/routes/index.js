@@ -61,7 +61,7 @@ router.get('/v1/food/admin/business-settings/public', getPublicSettings);
 // Category C — Private Routes (Rate limited after authentication with User_ID:Real_Client_IP key)
 router.use('/v1/food/admin', authMiddleware, privateRateLimiter, requireRoles('ADMIN', 'SUB_ADMIN'), restaurantAdminRoutes);
 router.use('/v1/food/user', authMiddleware, privateRateLimiter, requireRoles('USER'), userRoutes);
-router.use('/v1/food/notifications', authMiddleware, privateRateLimiter, requireRoles('USER', 'RESTAURANT', 'DELIVERY_PARTNER'), notificationRoutes);
+router.use('/v1/food/notifications', authMiddleware, privateRateLimiter, requireRoles('USER', 'RESTAURANT', 'DELIVERY_PARTNER', 'ADMIN', 'SUB_ADMIN'), notificationRoutes);
 router.use('/v1/food/orders', authMiddleware, privateRateLimiter, requireRoles('USER'), orderUserRoutes);
 router.use('/v1/food/payments', authMiddleware, privateRateLimiter, paymentRoutes);
 router.use('/v1/payments/webhook', webhookRoutes);

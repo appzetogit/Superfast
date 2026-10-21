@@ -40,6 +40,8 @@ import {
   initiateRazorpayRefund
 } from '../helpers/razorpay.helper.js';
 import { getIO, rooms } from '../../../../config/socket.js';
+import { config } from '../../../../config/env.js';
+import { notifyAdminEvent } from '../../../../core/notifications/adminAlert.service.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
 import { fetchPolyline } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
@@ -2145,6 +2147,15 @@ export async function createOrder(userId, dto) {
   const dispatchMode = settings?.dispatchMode || "manual";
 
   const deliveryAddress = normalizeDeliveryAddress(dto.address);
+  // Riders read the customer's number from deliveryAddress.phone (socket payloads carry no populated user).
+  if (deliveryAddress && !String(deliveryAddress.phone || "").trim()) {
+    let fallbackPhone = String(dto.customerPhone || "").trim();
+    if (!fallbackPhone) {
+      const orderingUser = await FoodUser.findById(userId).select("phone").lean();
+      fallbackPhone = String(orderingUser?.phone || "").trim();
+    }
+    if (fallbackPhone) deliveryAddress.phone = fallbackPhone;
+  }
 
   // Online payment (Razorpay) is disabled: orders go straight to the restaurant
   // as COD / Wallet. To re-enable, restore the lines below and the Razorpay block further down.
@@ -2498,6 +2509,25 @@ export async function createOrder(userId, dto) {
     if (hasQuickItems) {
       await notifySellerNewOrders(order, sellerOrders);
     }
+
+    const orderTotal = Number(order.pricing?.total || 0);
+    const sourceLabel = orderType === "quick"
+      ? "Quick commerce"
+      : primaryRestaurant?.sourceName || "Restaurant";
+    void notifyAdminEvent({
+      type: "new_order",
+      title: "🛒 New Order Received",
+      message: `Order #${orderId} • ${sourceLabel} • ₹${orderTotal.toFixed(0)} (${String(paymentMethod || "").toUpperCase()})`,
+      link: "/admin/food/orders/all",
+      entityId: order._id?.toString?.() || "",
+      metadata: {
+        orderId: String(orderId),
+        orderType,
+        total: orderTotal,
+        paymentMethod: String(paymentMethod || ""),
+        restaurantName: primaryRestaurant?.sourceName || "",
+      },
+    });
 
     // Schedule delayed notification if it's a scheduled order
     if (order.orderStatus === "scheduled" && order.scheduledAt) {
@@ -4327,8 +4357,17 @@ export async function confirmReachedDropDelivery(orderId, deliveryPartnerId) {
     order.orderStatus ||
     "";
 
+  const otpRequired = config.deliveryOtpRequired;
   const existingOtp = String(order.deliveryOtp || "").trim();
-  if (!alreadyAtDrop || !existingOtp) {
+  if (!otpRequired) {
+    order.deliveryOtp = "";
+    order.deliveryVerification = {
+      ...(order.deliveryVerification?.toObject?.() ||
+        order.deliveryVerification ||
+        {}),
+      dropOtp: { required: false, verified: false },
+    };
+  } else if (!alreadyAtDrop || !existingOtp) {
     order.deliveryOtp = generateFourDigitDeliveryOtp();
     order.deliveryVerification = {
       ...(order.deliveryVerification?.toObject?.() ||
@@ -4357,14 +4396,15 @@ export async function confirmReachedDropDelivery(orderId, deliveryPartnerId) {
 
   await order.save();
 
-  const plainOtp = String(order.deliveryOtp || '').trim();
-  emitDeliveryDropOtpToUser(order, plainOtp);
+  if (otpRequired) {
+    emitDeliveryDropOtpToUser(order, String(order.deliveryOtp || '').trim());
+  }
   emitOrderUpdate(order, deliveryPartnerId);
   enqueueOrderEvent('reached_drop', {
     orderMongoId: order._id?.toString?.(),
     orderId: order.orderId,
     deliveryPartnerId,
-    dropOtpRequired: order.deliveryVerification?.dropOtp?.required ?? true,
+    dropOtpRequired: Boolean(order.deliveryVerification?.dropOtp?.required),
     dropOtpVerified: order.deliveryVerification?.dropOtp?.verified ?? false
   });
   return sanitizeOrderForExternal(order);
@@ -4436,13 +4476,13 @@ export async function verifyDropOtpDelivery(orderId, deliveryPartnerId, otp) {
 
 export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const identity = buildOrderIdentityFilter(orderId);
-  const order = await FoodOrder.findOne(identity);
+  const order = await FoodOrder.findOne(identity).select("+deliveryOtp");
   if (!order) throw new NotFoundError("Order not found");
   if (!isOrderAssignedToDeliveryPartner(order, deliveryPartnerId)) {
     throw new ForbiddenError("Not your order");
   }
 
-  const { otp, ratings, paymentMode } = body;
+  const { otp, paymentMode } = body;
 
   // Dynamically update payment method based on delivery partner selection
   if (paymentMode === 'cash') {
@@ -4454,14 +4494,20 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   // }
 
   if (
+    config.deliveryOtpRequired &&
     order.deliveryVerification?.dropOtp?.required &&
-    !order.deliveryVerification?.dropOtp?.verified &&
-    !otp // Only throw if OTP is not provided here as fallback
+    !order.deliveryVerification?.dropOtp?.verified
   ) {
-    throw new ValidationError(
-      "Customer handover OTP is required. Verify the OTP from the customer before completing delivery.",
-    );
+    const expected = String(order.deliveryOtp || "").trim();
+    if (!otp || !expected || String(otp).trim() !== expected) {
+      throw new ValidationError(
+        "Customer handover OTP is required. Verify the OTP from the customer before completing delivery.",
+      );
+    }
+    order.deliveryVerification.dropOtp.verified = true;
+    order.markModified("deliveryVerification.dropOtp.verified");
   }
+  order.deliveryOtp = "";
 
   const from = order.orderStatus;
   const prevPayStatus = order.payment.status;
@@ -4486,12 +4532,8 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     deliveredAt: new Date(),
   };
 
-  if (ratings) {
-    order.ratings = {
-      ...(order.ratings?.toObject?.() || order.ratings || {}),
-      ...ratings
-    };
-  }
+  // Ratings are customer-only (submitOrderRatings); a rider-supplied `ratings` body is ignored
+  // so it cannot fake a review or block the customer's real one.
 
   pushStatusHistory(order, {
     byRole: "DELIVERY_PARTNER",

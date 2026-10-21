@@ -154,7 +154,6 @@ const toRestaurantProfile = (doc) => {
         restaurantId: doc.restaurantId || undefined,
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
-        zoneId: doc.zoneId ? String(doc.zoneId) : '',
         cuisines: Array.isArray(doc.cuisines) ? doc.cuisines : [],
         location,
         ownerName: doc.ownerName || '',
@@ -449,7 +448,6 @@ export const registerRestaurant = async (payload, files) => {
             ifscCode,
             accountHolderName,
             accountType,
-            estimatedDeliveryTime: estimatedDeliveryTime || '',
             featuredDish: featuredDish || '',
             offer: offer || '',
             menuImages,
@@ -475,40 +473,22 @@ export const registerRestaurant = async (payload, files) => {
         });
 
         try {
-            const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
-            void notifyAdminsSafely({
+            const { notifyAdminEvent } = await import('../../../../core/notifications/adminAlert.service.js');
+            const city = restaurant.location?.city || restaurant.city || '';
+            void notifyAdminEvent({
+                type: 'restaurant_application',
+                pushType: 'new_restaurant_application',
                 title: '🏪 New Restaurant Application',
-                body: `${restaurant.restaurantName} has registered and is pending approval. Tap to review.`,
-                role: 'ADMIN',
-                data: {
-                    type: 'new_restaurant_application',
-                    subType: 'restaurant',
-                    id: String(restaurant._id),
+                message: `${restaurant.restaurantName}${city ? ` (${city})` : ''} has registered and is pending approval. Owner: ${restaurant.ownerName || 'N/A'}, ${restaurant.ownerPhone || ''}`.trim(),
+                link: '/admin/food/restaurants/joining-request',
+                entityId: String(restaurant._id),
+                metadata: {
                     name: restaurant.restaurantName,
-                    link: '/admin/food/restaurants/joining-request',
-                    click_action: '/admin/food/restaurants/joining-request'
-                }
+                    ownerName: restaurant.ownerName || '',
+                    phone: restaurant.ownerPhone || '',
+                    city,
+                },
             });
-
-            const { getIO, rooms } = await import('../../../../config/socket.js');
-            const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
-            const io = getIO();
-            if (io) {
-                const admins = await FoodAdmin.find({ isActive: true }).select('_id').lean();
-                admins.forEach((admin) => {
-                    io.to(rooms.admin(admin._id)).emit('admin_notification', {
-                        type: 'restaurant_application',
-                        id: String(restaurant._id),
-                        name: restaurant.restaurantName,
-                        ownerName: restaurant.ownerName || '',
-                        phone: restaurant.ownerPhone || '',
-                        city: restaurant.city || '',
-                        message: `${restaurant.restaurantName} has applied as a restaurant`,
-                        link: '/admin/food/restaurants/joining-request',
-                        timestamp: new Date().toISOString()
-                    });
-                });
-            }
         } catch (e) {
             console.error('Failed to notify admins of new restaurant registration:', e);
         }

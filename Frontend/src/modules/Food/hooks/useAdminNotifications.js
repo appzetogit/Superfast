@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { adminAPI, supportAPI, gigAPI } from "@food/api";
+import { adminAPI, supportAPI, gigAPI, notificationAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import io from "socket.io-client";
 
@@ -253,6 +253,36 @@ const mapHandoverRequests = (response) => {
   }));
 };
 
+const INBOX_PREFIX = "inbox-";
+const ADMIN_CONTEXT = { contextModule: "admin" };
+
+// Inbox events that duplicate an item already shown from a pending-approval list.
+const PENDING_ID_BY_CATEGORY = {
+  restaurant_application: (entityId) => `approval-restaurant-${entityId}`,
+  delivery_partner_application: (entityId) => `approval-delivery-${entityId}`,
+};
+
+const mapInbox = (response) => {
+  const rows = response?.data?.data?.items || [];
+  return (Array.isArray(rows) ? rows : []).map((item) => {
+    const meta = item?.metadata || {};
+    return {
+      id: `${INBOX_PREFIX}${String(item?._id || "")}`,
+      inboxId: String(item?._id || ""),
+      entityId: String(meta?.entityId || ""),
+      title: item?.title || "Notification",
+      message: item?.message || "",
+      type: "event",
+      category: item?.category || "event",
+      path: item?.link || "",
+      read: Boolean(item?.isRead),
+      createdAt: item?.createdAt,
+      timeLabel: toDateLabel(item?.createdAt),
+      metaLabel: joinMeta(meta?.orderId && `#${meta.orderId}`, meta?.restaurantName || meta?.name, meta?.phone),
+    };
+  });
+};
+
 const resolveSocketOrigin = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -267,31 +297,87 @@ const resolveSocketOrigin = (value) => {
   }
 };
 
+// The navbar and the notifications page both mount this hook. Shared state below keeps that to one
+// socket (one toast/sound per event) and one set of API calls per refresh.
+const POLL_MS = 60 * 1000;
+const CACHE_MS = 20 * 1000;
+const adminShared = {
+  socket: null,
+  refCount: 0,
+  audio: null,
+  inflight: null,
+  lastItems: null,
+  lastAt: 0,
+};
+
+const playAdminSound = () => {
+  if (typeof window === "undefined") return;
+  if (!adminShared.audio) {
+    adminShared.audio = new window.Audio("/universfield-new-notification-036-485897.mp3");
+    adminShared.audio.preload = "auto";
+    adminShared.audio.volume = 1;
+  }
+  adminShared.audio.currentTime = 0;
+  adminShared.audio.play().catch(() => {});
+};
+
+const showAdminToast = (title, description, link, label = "Review") => {
+  import("sonner").then(({ toast }) => {
+    toast.success(title, {
+      description,
+      duration: 8000,
+      action: link ? { label, onClick: () => { window.location.href = link; } } : undefined,
+    });
+  }).catch(() => {});
+};
+
+const handleAdminSocketEvent = (payload) => {
+  if (payload?.type === "new_order") {
+    // The admin orders page rings its own alert loop for new orders.
+    if (!window.location.pathname.includes("/admin/food/orders")) playAdminSound();
+    showAdminToast(payload?.title || "🛒 New order received", payload?.message || "", payload?.link, "View");
+  } else if (payload?.type === "delivery_partner_application") {
+    const name = payload?.name || "Someone";
+    const vehicleType = payload?.vehicleType ? ` (${payload.vehicleType})` : "";
+    playAdminSound();
+    showAdminToast("🛵 New delivery application", `${name}${vehicleType} has applied. Tap to review.`, "/admin/food/delivery-partners/join-request");
+  } else if (payload?.type === "restaurant_application") {
+    const name = payload?.name || "A restaurant";
+    const city = payload?.city ? ` in ${payload.city}` : "";
+    playAdminSound();
+    showAdminToast("🏪 New restaurant application", `${name}${city} has applied. Tap to review.`, "/admin/food/restaurants/joining-request");
+  }
+  adminShared.lastAt = 0;
+  dispatchAdminNotificationsUpdated();
+};
+
+const acquireAdminSocket = () => {
+  adminShared.refCount += 1;
+  if (adminShared.socket) return;
+  const token = localStorage.getItem("admin_accessToken") || localStorage.getItem("accessToken");
+  const socketOrigin = resolveSocketOrigin(API_BASE_URL);
+  if (!token || !socketOrigin) return;
+  adminShared.socket = io(socketOrigin, {
+    path: "/socket.io/",
+    transports: ["websocket", "polling"],
+    auth: { token },
+  });
+  adminShared.socket.on("admin_notification", handleAdminSocketEvent);
+};
+
+const releaseAdminSocket = () => {
+  adminShared.refCount = Math.max(0, adminShared.refCount - 1);
+  if (adminShared.refCount === 0 && adminShared.socket) {
+    adminShared.socket.disconnect();
+    adminShared.socket = null;
+  }
+};
+
 export const useAdminNotifications = (options = {}) => {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(Boolean(options?.autoload !== false));
-  
-  const audioRef = useRef(null);
+  const [items, setItems] = useState(() => adminShared.lastItems || []);
+  const [loading, setLoading] = useState(Boolean(options?.autoload !== false) && !adminShared.lastItems);
 
-  useEffect(() => {
-    // Load notification sound
-    if (typeof window !== "undefined") {
-      audioRef.current = new window.Audio("/universfield-new-notification-036-485897.mp3");
-      audioRef.current.preload = 'auto';
-      audioRef.current.volume = 1;
-    }
-  }, []);
-
-  const playSound = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-    }
-  }, []);
-
-  const loadNotifications = useCallback(async () => {
-    try {
-      setLoading(true);
+  const fetchAggregated = useCallback(async () => {
       const dismissed = new Set(getDismissedIds());
 
       const [
@@ -303,6 +389,7 @@ export const useAdminNotifications = (options = {}) => {
         fssaiExpiredRes,
         diningApprovalRes,
         handoversRes,
+        inboxRes,
       ] = await Promise.all([
         adminAPI.getPendingRestaurants(),
         adminAPI.getDeliveryPartnerJoinRequests({ page: 1, limit: 50 }),
@@ -312,6 +399,7 @@ export const useAdminNotifications = (options = {}) => {
         adminAPI.getExpiredFssaiNotifications(),
         adminAPI.getDiningRestaurants(),
         gigAPI.adminGetHandovers().catch(() => ({ data: { success: false } })),
+        notificationAPI.getInbox({ page: 1, limit: 50 }, ADMIN_CONTEXT).catch(() => null),
       ]);
 
       const restaurantRows =
@@ -319,7 +407,7 @@ export const useAdminNotifications = (options = {}) => {
         restaurantsRes?.data?.restaurants ||
         [];
 
-      const aggregated = uniqueById([
+      const pending = [
         ...mapPendingRestaurants(restaurantRows),
         ...mapDeliveryJoinRequests(deliveryJoinRes),
         ...mapFoodApprovals(foodApprovalRes),
@@ -328,21 +416,47 @@ export const useAdminNotifications = (options = {}) => {
         ...mapExpiredFssai(fssaiExpiredRes),
         ...mapDiningApprovalRequests(diningApprovalRes),
         ...mapHandoverRequests(handoversRes),
-      ])
+      ];
+      const pendingIds = new Set(pending.map((item) => item.id));
+      const inbox = mapInbox(inboxRes).filter((item) => {
+        const toPendingId = PENDING_ID_BY_CATEGORY[item.category];
+        return !(toPendingId && item.entityId && pendingIds.has(toPendingId(item.entityId)));
+      });
+
+      return uniqueById([...inbox, ...pending])
         .filter((item) => !dismissed.has(item.id))
         .sort((a, b) => toDateValue(b.createdAt) - toDateValue(a.createdAt));
+  }, []);
 
-      setItems(aggregated);
+  // `force` skips the short cache (used after events and user actions); concurrent calls share one request.
+  const loadNotifications = useCallback(async ({ force = true } = {}) => {
+    if (!force && adminShared.lastItems && Date.now() - adminShared.lastAt < CACHE_MS) {
+      setItems(adminShared.lastItems);
+      setLoading(false);
+      return;
+    }
+    try {
+      if (!adminShared.lastItems) setLoading(true);
+      if (!adminShared.inflight) {
+        adminShared.inflight = fetchAggregated()
+          .then((result) => {
+            adminShared.lastItems = result;
+            adminShared.lastAt = Date.now();
+            return result;
+          })
+          .finally(() => { adminShared.inflight = null; });
+      }
+      setItems(await adminShared.inflight);
     } catch {
-      setItems([]);
+      setItems(adminShared.lastItems || []);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchAggregated]);
 
   useEffect(() => {
     if (options?.autoload === false) return;
-    loadNotifications();
+    loadNotifications({ force: false });
   }, [loadNotifications, options?.autoload]);
 
   useEffect(() => {
@@ -356,80 +470,76 @@ export const useAdminNotifications = (options = {}) => {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      loadNotifications();
-    }, 60 * 1000);
+      if (document.hidden) return;
+      loadNotifications({ force: false });
+    }, POLL_MS);
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
 
   useEffect(() => {
-    const token = localStorage.getItem("admin_accessToken") || localStorage.getItem("accessToken");
-    const socketOrigin = resolveSocketOrigin(API_BASE_URL);
-    if (!token || !socketOrigin) return undefined;
+    acquireAdminSocket();
+    return () => releaseAdminSocket();
+  }, []);
 
-    const socket = io(socketOrigin, {
-      path: "/socket.io/",
-      transports: ["websocket", "polling"],
-      auth: { token },
-    });
-
-    socket.on("admin_notification", (payload) => {
-      // Show a live toast for delivery partner applications
-      if (payload?.type === "delivery_partner_application") {
-        const name = payload?.name || "Someone";
-        const vehicleType = payload?.vehicleType ? ` (${payload.vehicleType})` : "";
-        playSound();
-        import("sonner").then(({ toast }) => {
-          toast.success(`🛵 New delivery application`, {
-            description: `${name}${vehicleType} has applied. Tap to review.`,
-            duration: 8000,
-            action: { label: "Review", onClick: () => { window.location.href = "/admin/food/delivery-partners/join-request"; } }
-          });
-        }).catch(() => {});
-      } else if (payload?.type === "restaurant_application") {
-        const name = payload?.name || "A restaurant";
-        const city = payload?.city ? ` in ${payload.city}` : "";
-        playSound();
-        import("sonner").then(({ toast }) => {
-          toast.success(`🏪 New restaurant application`, {
-            description: `${name}${city} has applied. Tap to review.`,
-            duration: 8000,
-            action: { label: "Review", onClick: () => { window.location.href = "/admin/food/restaurants/joining-request"; } }
-          });
-        }).catch(() => {});
-      }
-      dispatchAdminNotificationsUpdated();
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [loadNotifications, playSound]);
-
-  const dismissOne = useCallback((id) => {
+  const dismissOne = useCallback(async (id) => {
     if (!id) return;
-    const dismissed = [...new Set([...getDismissedIds(), id])];
-    saveDismissedIds(dismissed);
+    adminShared.lastAt = 0;
     setItems((prev) => prev.filter((item) => item.id !== id));
+    if (String(id).startsWith(INBOX_PREFIX)) {
+      try {
+        await notificationAPI.dismiss(String(id).slice(INBOX_PREFIX.length), ADMIN_CONTEXT);
+      } catch {
+        // The next refresh restores it if the server did not record the dismissal.
+      }
+    } else {
+      saveDismissedIds([...new Set([...getDismissedIds(), id])]);
+    }
     dispatchAdminNotificationsUpdated();
   }, []);
 
-  const clearAll = useCallback(() => {
-    const ids = items.map((item) => item.id).filter(Boolean);
-    saveDismissedIds([...new Set([...getDismissedIds(), ...ids])]);
+  const markRead = useCallback(async (id) => {
+    if (!String(id || "").startsWith(INBOX_PREFIX)) return;
+    adminShared.lastAt = 0;
+    if (adminShared.lastItems) {
+      adminShared.lastItems = adminShared.lastItems.map((item) => (item.id === id ? { ...item, read: true } : item));
+    }
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    try {
+      await notificationAPI.markAsRead(String(id).slice(INBOX_PREFIX.length), ADMIN_CONTEXT);
+    } catch {
+      // Non-critical: unread state is corrected on the next refresh.
+    }
+  }, []);
+
+  const clearAll = useCallback(async () => {
+    const localIds = items
+      .map((item) => item.id)
+      .filter((id) => id && !String(id).startsWith(INBOX_PREFIX));
+    saveDismissedIds([...new Set([...getDismissedIds(), ...localIds])]);
+    adminShared.lastAt = 0;
+    adminShared.lastItems = [];
     setItems([]);
+    try {
+      await notificationAPI.dismissAll(ADMIN_CONTEXT);
+    } catch {
+      // Non-critical: cleared items come back on refresh if the server call failed.
+    }
     dispatchAdminNotificationsUpdated();
   }, [items]);
+
+  const unreadCount = useMemo(() => items.filter((item) => !item.read).length, [items]);
 
   return useMemo(
     () => ({
       items,
       loading,
-      unreadCount: items.length,
+      unreadCount,
       refresh: loadNotifications,
       dismissOne,
+      markRead,
       clearAll,
     }),
-    [clearAll, dismissOne, items, loadNotifications, loading]
+    [clearAll, dismissOne, items, loadNotifications, loading, markRead, unreadCount]
   );
 }
 

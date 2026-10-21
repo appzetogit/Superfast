@@ -102,7 +102,6 @@ const restaurantRegisterSchema = z.object({
     ifscCode: z.string().optional(),
     accountHolderName: z.string().optional(),
     accountType: z.string().optional(),
-    estimatedDeliveryTime: z.string().optional(),
     featuredDish: z.string().optional(),
     offer: z.string().optional()
 });

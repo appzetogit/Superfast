@@ -89,6 +89,64 @@ export const validateCreateOfferDto = (body) => {
     };
 };
 
+const updateOfferSchema = z.object({
+    discountValue: z.number().positive('Discount value must be greater than 0').optional(),
+    customerScope: z.enum(['all', 'first-time']).optional(),
+    minOrderValue: z.number().min(0).nullable().optional(),
+    maxDiscount: z.number().min(0).nullable().optional(),
+    usageLimit: z.number().min(0).nullable().optional(),
+    perUserLimit: z.number().min(0).nullable().optional(),
+    startDate: z.string().nullable().optional(),
+    endDate: z.string().nullable().optional(),
+    status: z.enum(['active', 'paused', 'inactive']).optional(),
+    isFirstOrderOnly: z.boolean().optional(),
+    expireNow: z.boolean().optional()
+});
+
+const toOptionalNumber = (v) => {
+    if (v === undefined) return undefined;
+    if (v === null || v === '') return null;
+    return Number(v);
+};
+
+const toOptionalDate = (v, field) => {
+    if (v === undefined) return undefined;
+    if (v === null || v === '') return null;
+    const d = new Date(`${String(v).slice(0, 10)}T00:00:00.000Z`);
+    if (Number.isNaN(d.getTime())) throw new ValidationError(`Invalid ${field}`);
+    return d;
+};
+
+export const validateUpdateOfferDto = (body) => {
+    const src = body || {};
+    const normalized = {
+        discountValue: src.discountValue !== undefined && src.discountValue !== '' ? Number(src.discountValue) : undefined,
+        customerScope: src.customerScope || undefined,
+        minOrderValue: toOptionalNumber(src.minOrderValue),
+        maxDiscount: toOptionalNumber(src.maxDiscount),
+        usageLimit: toOptionalNumber(src.usageLimit),
+        perUserLimit: toOptionalNumber(src.perUserLimit),
+        startDate: src.startDate === undefined ? undefined : (src.startDate ? String(src.startDate) : null),
+        endDate: src.endDate === undefined ? undefined : (src.endDate ? String(src.endDate) : null),
+        status: src.status || undefined,
+        isFirstOrderOnly: src.isFirstOrderOnly !== undefined ? Boolean(src.isFirstOrderOnly) : undefined,
+        expireNow: src.expireNow !== undefined ? Boolean(src.expireNow) : undefined
+    };
+
+    const result = updateOfferSchema.safeParse(normalized);
+    if (!result.success) {
+        throw new ValidationError(result.error.errors[0].message);
+    }
+
+    const data = { ...result.data };
+    data.startDate = toOptionalDate(data.startDate, 'startDate');
+    data.endDate = toOptionalDate(data.endDate, 'endDate');
+    if (data.startDate && data.endDate && data.endDate.getTime() <= data.startDate.getTime()) {
+        throw new ValidationError('endDate must be after startDate');
+    }
+    return data;
+};
+
 const cartVisibilitySchema = z.object({
     itemId: z.string().min(1, 'itemId is required'),
     showInCart: z.boolean()

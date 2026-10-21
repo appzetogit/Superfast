@@ -11,7 +11,6 @@ import FilterPanel from "@food/components/admin/orders/FilterPanel"
 import ViewOrderDialog from "@food/components/admin/orders/ViewOrderDialog"
 import SettingsDialog from "@food/components/admin/orders/SettingsDialog"
 import RefundModal from "@food/components/admin/orders/RefundModal"
-import CancelOrderModal from "@food/components/admin/orders/CancelOrderModal"
 import { useOrdersManagement } from "@food/components/admin/orders/useOrdersManagement"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { Loader2 } from "lucide-react"
@@ -47,9 +46,6 @@ export default function OrdersPage({ statusKey = "all" }) {
   const [processingRefund, setProcessingRefund] = useState(null)
   const [processingActionOrderId, setProcessingActionOrderId] = useState(null)
   const [deletingOrderId, setDeletingOrderId] = useState(null)
-  const [cancelModalOpen, setCancelModalOpen] = useState(false)
-  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState(null)
-  const [cancelingOrderId, setCancelingOrderId] = useState(null)
   const [refundModalOpen, setRefundModalOpen] = useState(false)
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
@@ -632,9 +628,11 @@ export default function OrdersPage({ statusKey = "all" }) {
   useEffect(() => {
     if (statusKey !== "all") return undefined
 
+    // Fallback only: new orders arrive instantly through the admin socket below.
     const pollId = setInterval(() => {
+      if (document.hidden) return
       fetchOrders({ silent: true, withRingCheck: true })
-    }, 5000)
+    }, 30000)
 
     return () => clearInterval(pollId)
   }, [statusKey, fetchOrders])
@@ -642,13 +640,20 @@ export default function OrdersPage({ statusKey = "all" }) {
   useEffect(() => {
     if (statusKey !== "all") return undefined
 
-    const backendUrl = API_BASE_URL.replace(/\/api\/?$/, "")
-    // Backend disconnected - do not open Socket.IO (new backend in progress)
-    if (!API_BASE_URL || !backendUrl || !backendUrl.startsWith("http")) {
+    let backendUrl = ""
+    try {
+      backendUrl = new URL(API_BASE_URL).origin
+    } catch {
+      backendUrl = String(API_BASE_URL || "").replace(/\/api(\/v\d+)?\/?$/i, "")
+    }
+    const token = localStorage.getItem("admin_accessToken") || localStorage.getItem("accessToken")
+    if (!backendUrl || !backendUrl.startsWith("http") || !token) {
       return undefined
     }
 
     const socket = io(backendUrl, {
+      path: "/socket.io/",
+      auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -697,10 +702,18 @@ export default function OrdersPage({ statusKey = "all" }) {
     })
     socket.on("admin_new_order", handleIncomingRealtimeOrder)
     socket.on("play_notification_sound", handleIncomingRealtimeOrder)
+    // Backend broadcasts new orders to admins as admin_notification { type: "new_order" }.
+    // The ring check inside fetchOrders raises this page's own alert for the new order.
+    const handleAdminNotification = (payload = {}) => {
+      if (payload?.type !== "new_order") return
+      fetchOrders({ silent: true, withRingCheck: true })
+    }
+    socket.on("admin_notification", handleAdminNotification)
 
     return () => {
       socket.off("admin_new_order", handleIncomingRealtimeOrder)
       socket.off("play_notification_sound", handleIncomingRealtimeOrder)
+      socket.off("admin_notification", handleAdminNotification)
       socket.disconnect()
       socketRef.current = null
     }
@@ -826,37 +839,6 @@ export default function OrdersPage({ statusKey = "all" }) {
       toast.error(error.response?.data?.message || "Failed to delete order")
     } finally {
       setDeletingOrderId(null)
-    }
-  }
-
-  // Admin force-cancel (restaurant not cancelling / no rider will pick the order).
-  const handleCancelOrder = (order) => {
-    setSelectedOrderForCancel(order)
-    setCancelModalOpen(true)
-  }
-
-  const handleCancelConfirm = async ({ reason, refund }) => {
-    const order = selectedOrderForCancel
-    const orderIdToUse = order?.id || order?._id || order?.orderId
-    if (!orderIdToUse) {
-      toast.error("Order ID not found. Please refresh the page and try again.")
-      return
-    }
-    try {
-      setCancelingOrderId(orderIdToUse)
-      const response = await adminAPI.cancelOrder(orderIdToUse, { reason, refund })
-      if (response.data?.success) {
-        toast.success(response.data?.message || `Order ${order.orderId} cancelled`)
-        setCancelModalOpen(false)
-        setSelectedOrderForCancel(null)
-        await fetchOrders({ silent: true, withRingCheck: false })
-      } else {
-        toast.error(response.data?.message || "Failed to cancel order")
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to cancel order")
-    } finally {
-      setCancelingOrderId(null)
     }
   }
 
@@ -1050,14 +1032,6 @@ export default function OrdersPage({ statusKey = "all" }) {
         onStatusUpdated={() => fetchOrders({ silent: true, withRingCheck: false })}
       />
 
-      <CancelOrderModal
-        isOpen={cancelModalOpen}
-        onOpenChange={setCancelModalOpen}
-        order={selectedOrderForCancel}
-        onConfirm={handleCancelConfirm}
-        isProcessing={cancelingOrderId !== null}
-      />
-
       <RefundModal
         isOpen={refundModalOpen}
         onOpenChange={setRefundModalOpen}
@@ -1109,8 +1083,6 @@ export default function OrdersPage({ statusKey = "all" }) {
         onPrintOrder={handlePrintOrder}
         onRefund={handleRefund}
         onDeleteOrder={statusKey === "all" ? handleDeleteOrder : undefined}
-        onCancelOrder={handleCancelOrder}
-        cancelingOrderId={cancelingOrderId}
         onAcceptOrder={statusKey === "all" || statusKey === "pending" ? handleAcceptOrder : undefined}
         onRejectOrder={statusKey === "all" || statusKey === "pending" ? handleRejectOrder : undefined}
         actionLoadingOrderId={processingActionOrderId}

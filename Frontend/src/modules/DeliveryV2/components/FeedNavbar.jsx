@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { HelpCircle, ArrowRight, Phone, Ambulance, AlertTriangle, Shield, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
 import { deliveryAPI } from "@food/api";
+import { requireLocation } from "../utils/requireLocation";
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import { getCachedSettings, loadBusinessSettings } from "@common/utils/businessSettings";
 const debugLog = (...args) => {}
@@ -147,7 +148,10 @@ export default function FeedNavbar({ className = "" }) {
     e?.stopPropagation?.();
 
     const next = !isOnline;
-    
+
+    // Going online needs location ON; stop here and tell the rider how to enable it.
+    if (next && !(await requireLocation()).ok) return;
+
     // Update state immediately for better UX
     setIsOnline(next);
     showSingleToast(next);

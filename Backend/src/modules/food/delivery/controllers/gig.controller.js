@@ -36,10 +36,18 @@ function pointInPolygon(lat, lng, coords) {
   return inside;
 }
 
-/** Normalised names of the active zones the rider's last known location falls in (empty = unknown). */
-async function getPartnerZoneNames(partner) {
-  const lat = Number(partner?.lastLat);
-  const lng = Number(partner?.lastLng);
+/**
+ * Normalised names of the active zones the rider is in (empty = unknown).
+ * `live` ({ lat, lng } sent by the app) wins over the last saved location, which
+ * can be stale (e.g. rider went offline in Dewas and is now in Sanchore).
+ */
+async function getPartnerZoneNames(partner, live = null) {
+  const liveLat = Number(live?.lat);
+  const liveLng = Number(live?.lng);
+  const hasLive = live?.lat != null && live?.lng != null && Number.isFinite(liveLat) && Number.isFinite(liveLng)
+    && Math.abs(liveLat) <= 90 && Math.abs(liveLng) <= 180;
+  const lat = hasLive ? liveLat : Number(partner?.lastLat);
+  const lng = hasLive ? liveLng : Number(partner?.lastLng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return new Set();
   const zones = await FoodZone.find({ isActive: true }).select('name zoneName coordinates').lean();
   const names = new Set();
@@ -289,7 +297,7 @@ export async function listZoneGigsController(req, res) {
     // A rider only sees gigs of the zone they are in (plus gigs open to all zones).
     // If their zone can't be determined (no location yet / outside every zone) only
     // all-zone gigs are shown, never another zone's.
-    const partnerZones = await getPartnerZoneNames(partner);
+    const partnerZones = await getPartnerZoneNames(partner, { lat: req.query.lat, lng: req.query.lng });
     const allGigs = await Gig.find(query)
       .sort({ startTime: 1 })
       .lean();
@@ -364,7 +372,7 @@ export async function bookGigController(req, res) {
     }
 
     const bookingPartner = await FoodDeliveryPartner.findById(deliveryPartnerId).select('lastLat lastLng').lean();
-    const bookingZones = await getPartnerZoneNames(bookingPartner);
+    const bookingZones = await getPartnerZoneNames(bookingPartner, { lat: req.body.lat, lng: req.body.lng });
     if (!gigAllowedForZones(gig, bookingZones)) {
       return res.status(403).json({
         success: false,
@@ -740,7 +748,7 @@ export async function getZoneDriversListController(req, res) {
         profilePhoto: p.profilePhoto || null,
         vehicleType: p.vehicleType || 'Bike',
         vehicleNumber: p.vehicleNumber || 'MP-09',
-        rating: p.rating || 4.8,
+        rating: p.rating > 0 ? p.rating : null,
         availabilityStatus: isOnline ? 'online' : 'offline',
         zoneName: p.zoneName || p.city || 'Indore Central',
         statusDisplay,

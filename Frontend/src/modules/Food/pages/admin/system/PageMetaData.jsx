@@ -3,6 +3,7 @@ import { Pencil, Settings, Search, Download, ChevronDown, FileText, FileSpreadsh
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
 import { Label } from "@food/components/ui/label"
+import { Input } from "@food/components/ui/input"
 import { Textarea } from "@food/components/ui/textarea"
 import { exportSEOPagesToCSV, exportSEOPagesToExcel, exportSEOPagesToPDF, exportSEOPagesToJSON } from "@food/components/admin/seo/seoExportUtils"
 import { useCompanyName } from "@food/hooks/useCompanyName"

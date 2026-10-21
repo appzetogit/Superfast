@@ -492,7 +492,7 @@ export default function GigsV2() {
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-black text-gray-900 dark:text-white">{driver.name}</h4>
                           <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.2 rounded-md">
-                            ★ {driver.rating}
+                            ★ {driver.rating ?? 'New'}
                           </span>
                         </div>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 font-bold">

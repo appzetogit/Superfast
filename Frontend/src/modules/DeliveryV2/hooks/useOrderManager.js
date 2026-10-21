@@ -188,6 +188,10 @@ export const useOrderManager = () => {
     try {
       const response = await deliveryAPI.confirmReachedDrop(orderId);
       if (response?.data?.success) {
+        const updated = response?.data?.data?.order;
+        if (updated?.deliveryVerification) {
+          setActiveOrder({ ...activeOrder, deliveryVerification: updated.deliveryVerification });
+        }
         updateTripStatus('REACHED_DROP');
         // toast.info('Arrived at Customer Location');
       } else {

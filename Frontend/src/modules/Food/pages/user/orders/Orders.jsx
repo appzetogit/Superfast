@@ -382,6 +382,7 @@ export default function Orders() {
     // Poll for order updates every 20 seconds to detect delivered orders
     // This ensures rating popup shows quickly when order is delivered
     const pollInterval = setInterval(() => {
+      if (document.hidden) return
       fetchOrders()
     }, 20000) // Poll every 20 seconds
 

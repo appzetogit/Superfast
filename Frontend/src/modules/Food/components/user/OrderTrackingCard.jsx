@@ -201,10 +201,19 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     }
   }, []);
 
+  // Status changes arrive via the orderStatusNotification socket event; polling is a fallback.
+  // Poll every 30s while an order is in progress, otherwise only every 2 minutes, and never in a hidden tab.
   useEffect(() => {
     if (!hasCustomerAuth) return;
+    let lastFetchAt = Date.now();
     fetchOrders();
-    const interval = setInterval(fetchOrders, 30000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      const waitMs = activeOrderKeyRef.current ? 30000 : 120000;
+      if (Date.now() - lastFetchAt < waitMs) return;
+      lastFetchAt = Date.now();
+      fetchOrders();
+    }, 30000);
     return () => clearInterval(interval);
   }, [fetchOrders, hasCustomerAuth]);
 

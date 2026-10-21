@@ -77,7 +77,6 @@ const KNOWN_TYPO_MAP = {
   deliveryy: "delivery",
   delivrey: "delivery",
   delivey: "delivery",
-  delivry: "delivery",
   deliverypartner: "delivery",
   deliveryboy: "delivery",
   delivary: "delivery",

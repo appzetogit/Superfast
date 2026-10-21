@@ -34,6 +34,7 @@ const getAddonImage = (addon) =>
 
 export default function AddonsList() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [zoneFilter, setZoneFilter] = useState("all")
   const [addons, setAddons] = useState([])
   const [loading, setLoading] = useState(true)
   const [submittingAction, setSubmittingAction] = useState(false)
@@ -79,10 +80,20 @@ export default function AddonsList() {
   }, [searchQuery])
 
   const filteredAddons = useMemo(() => {
-    const result = Array.isArray(addons) ? [...addons] : []
+    const result = (Array.isArray(addons) ? addons : []).filter(
+      (addon) => zoneFilter === "all" || addon?.restaurant?.zoneName === zoneFilter,
+    )
     result.sort((a, b) => getItemCreatedMs(b) - getItemCreatedMs(a))
     return result
-  }, [addons])
+  }, [addons, zoneFilter])
+
+  const zoneOptions = useMemo(
+    () =>
+      Array.from(new Set((addons || []).map((a) => a?.restaurant?.zoneName).filter(Boolean))).sort((a, b) =>
+        String(a).localeCompare(String(b)),
+      ),
+    [addons],
+  )
 
   const countLabel = filteredAddons.length
 
@@ -223,6 +234,20 @@ export default function AddonsList() {
               className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
             />
           </div>
+          <select
+            value={zoneFilter}
+            onChange={(e) => {
+              setZoneFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            title="Filter by zone"
+          >
+            <option value="all">All Zones</option>
+            {zoneOptions.map((z) => (
+              <option key={z} value={z}>{z}</option>
+            ))}
+          </select>
           <div className="text-sm text-slate-600">
             Showing <span className="font-semibold">{countLabel}</span>
           </div>

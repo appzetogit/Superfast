@@ -18,6 +18,7 @@ const normalizeOwnerType = (role) => {
     if (normalized === 'RESTAURANT') return 'RESTAURANT';
     if (normalized === 'DELIVERY_PARTNER' || normalized === 'DELIVERY') return 'DELIVERY_PARTNER';
     if (normalized === 'SELLER') return 'SELLER';
+    if (normalized === 'ADMIN' || normalized === 'SUB_ADMIN') return 'ADMIN';
     return null;
 };
 

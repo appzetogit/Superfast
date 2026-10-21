@@ -31,6 +31,7 @@ function maskToken(token) {
 
 const roomNames = {
     admin: (id) => `admin:${String(id)}`,
+    admins: () => 'admins',
     restaurant: (id) => `restaurant:${String(id)}`,
     user: (id) => `user:${String(id)}`,
     seller: (id) => `seller:${String(id)}`,
@@ -150,7 +151,10 @@ export const initSocket = async (server) => {
 
         // Auto-join role rooms (lets us emit without a custom join).
         if (userId && normalizedRole) {
-            if (normalizedRole === 'ADMIN') socket.join(roomNames.admin(userId));
+            if (normalizedRole === 'ADMIN' || normalizedRole === 'SUB_ADMIN') {
+                socket.join(roomNames.admin(userId));
+                socket.join(roomNames.admins());
+            }
             if (normalizedRole === 'RESTAURANT') socket.join(roomNames.restaurant(userId));
             if (normalizedRole === 'USER') socket.join(roomNames.user(userId));
             if (normalizedRole === 'SELLER') socket.join(roomNames.seller(userId));
@@ -277,14 +281,7 @@ export const initSocket = async (server) => {
                 status: data.status || 'on_the_way',
             };
 
-            logDeliverySocket('Location update received', {
-                socketId: socket.id,
-                deliveryPartnerId: String(userId),
-                orderId: String(data.orderId),
-                lat,
-                lng,
-                status: data.status || 'on_the_way',
-            });
+            logger.debug(`[DeliverySocket] Location update ${String(userId)} order=${String(data.orderId)} ${lat},${lng}`);
 
             // Broadcast to tracking room (all users watching this order)
             const trackingRoom = roomNames.tracking(data.orderId);
@@ -466,10 +463,28 @@ export const initSocket = async (server) => {
  * @returns {Server | null}
  */
 export const getIO = () => {
+    if (!io && socketEmitter) {
+        return socketEmitter;
+    }
     if (!io) {
         logger.warn('Socket.IO not initialized');
     }
     return io;
+};
+
+let socketEmitter = null;
+
+/**
+ * API-process side of the standalone socket setup (SOCKET_STANDALONE=true).
+ * Returns an emitter exposing to(room).emit(...) that publishes through Redis
+ * to the Socket.IO server running in Backend/socket.js.
+ * @param {import('redis').RedisClientType} redisClient connected client
+ */
+export const initSocketEmitter = async (redisClient) => {
+    const { Emitter } = await import('@socket.io/redis-emitter');
+    socketEmitter = new Emitter(redisClient);
+    logger.info('Socket.IO Redis emitter initialized (standalone socket mode)');
+    return socketEmitter;
 };
 
 export const rooms = roomNames;

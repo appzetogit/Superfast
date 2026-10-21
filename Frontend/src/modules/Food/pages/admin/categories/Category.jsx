@@ -62,6 +62,7 @@ export default function Category() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [zones, setZones] = useState([])
   const [zonesLoading, setZonesLoading] = useState(false)
+  const [zoneFilter, setZoneFilter] = useState("all")
   const [formData, setFormData] = useState(defaultFormData)
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
@@ -114,8 +115,15 @@ export default function Category() {
 
   const filteredCategories = useMemo(() => {
     const query = String(searchQuery || "").trim().toLowerCase()
-    if (!query) return categories
-    return categories.filter((category) => {
+    const categoryZoneId = (category) => {
+      const z = category?.zoneId
+      const id = typeof z === "string" ? z : z?._id || z?.id || ""
+      return id || "global"
+    }
+    const zoneScoped =
+      zoneFilter === "all" ? categories : categories.filter((c) => String(categoryZoneId(c)) === zoneFilter)
+    if (!query) return zoneScoped
+    return zoneScoped.filter((category) => {
       const creator = category?.createdByRestaurant?.name || category?.restaurant?.name || ""
       return (
         String(category?.name || "").toLowerCase().includes(query) ||
@@ -124,7 +132,7 @@ export default function Category() {
         String(category?.id || "").toLowerCase().includes(query)
       )
     })
-  }, [categories, searchQuery])
+  }, [categories, searchQuery, zoneFilter])
 
   const paginatedCategories = useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -135,7 +143,7 @@ export default function Category() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, showPendingOnly, pageSize])
+  }, [searchQuery, showPendingOnly, pageSize, zoneFilter])
 
   const fetchCategories = async () => {
     try {
@@ -417,6 +425,22 @@ export default function Category() {
                 Pending
               </button>
             </div>
+
+            <select
+              value={zoneFilter}
+              onChange={(event) => setZoneFilter(event.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-900"
+              title="Filter by zone"
+            >
+              <option value="all">All Zones</option>
+              <option value="global">Global (all zones)</option>
+              {zones.map((zone) => {
+                const id = String(zone?._id || zone?.id || "")
+                return id ? (
+                  <option key={id} value={id}>{zone?.name || zone?.zoneName || id}</option>
+                ) : null
+              })}
+            </select>
 
             <div className="relative min-w-[220px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

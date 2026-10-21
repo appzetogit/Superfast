@@ -20,7 +20,11 @@ export default function Coupons() {
   const [submitError, setSubmitError] = useState("")
   const [submitSuccess, setSubmitSuccess] = useState("")
   const [updatingCartVisibility, setUpdatingCartVisibility] = useState({})
-  const [deletingOffer, setDeletingOffer] = useState({})
+  const [expiringOffer, setExpiringOffer] = useState({})
+  const [editingOffer, setEditingOffer] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [editError, setEditError] = useState("")
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
     couponCode: "",
@@ -258,17 +262,94 @@ export default function Coupons() {
     }
   }
 
-  const handleDeleteOffer = async (offerId) => {
-    if (!offerId) return
-    if (deletingOffer[offerId]) return
+  const toYMD = (value) => {
+    if (!value) return ""
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return ""
+    return d.toISOString().slice(0, 10)
+  }
+
+  const openEdit = (offer) => {
+    setEditError("")
+    setEditingOffer(offer)
+    setEditForm({
+      discountValue: offer.discountValue ?? "",
+      customerScope: offer.customerScope || "all",
+      minOrderValue: Number(offer.minOrderValue) ? String(offer.minOrderValue) : "",
+      maxDiscount: offer.maxDiscount ?? "",
+      usageLimit: offer.usageLimit ?? "",
+      perUserLimit: offer.perUserLimit ?? "",
+      startDate: toYMD(offer.startDate),
+      endDate: toYMD(offer.endDate),
+      status: offer.rawStatus || "active",
+    })
+  }
+
+  const closeEdit = () => {
+    setEditingOffer(null)
+    setEditError("")
+  }
+
+  const handleEditChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }))
+    if (editError) setEditError("")
+  }
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault()
+    if (!editingOffer) return
+    const f = editForm
+    const value = Number(f.discountValue)
+    if (!Number.isFinite(value) || value <= 0) {
+      setEditError("Discount must be greater than 0")
+      return
+    }
+    const isPct = editingOffer.discountType === "percentage"
+    if (isPct && (f.maxDiscount === "" || f.maxDiscount === null)) {
+      setEditError("Max discount is required for percentage coupons")
+      return
+    }
+    if (f.startDate && f.endDate && f.startDate >= f.endDate) {
+      setEditError("Expiry date must be after start date")
+      return
+    }
+    const numOrNull = (v) => (v === "" || v === null || v === undefined ? null : Number(v))
     try {
-      setDeletingOffer((prev) => ({ ...prev, [offerId]: true }))
-      await adminAPI.deleteAdminOffer(offerId)
-      setOffers((prev) => prev.filter((o) => o.offerId !== offerId))
+      setIsSavingEdit(true)
+      await adminAPI.updateAdminOffer(editingOffer.offerId, {
+        discountValue: value,
+        customerScope: f.customerScope,
+        minOrderValue: numOrNull(f.minOrderValue),
+        maxDiscount: isPct ? numOrNull(f.maxDiscount) : undefined,
+        usageLimit: numOrNull(f.usageLimit),
+        perUserLimit: numOrNull(f.perUserLimit),
+        startDate: f.startDate || null,
+        endDate: f.endDate || null,
+        status: f.status !== (editingOffer.rawStatus || "active") ? f.status : undefined,
+      })
+      await fetchOffers()
+      closeEdit()
     } catch (err) {
-      debugError("Error deleting offer:", err)
+      debugError("Error updating offer:", err)
+      setEditError(err?.response?.data?.message || "Failed to update coupon")
     } finally {
-      setDeletingOffer((prev) => ({ ...prev, [offerId]: false }))
+      setIsSavingEdit(false)
+    }
+  }
+
+  const handleExpireOffer = async (offer) => {
+    const offerId = offer?.offerId
+    if (!offerId || expiringOffer[offerId]) return
+    if (!window.confirm(`Expire coupon ${offer.couponCode} now? Customers will no longer be able to use it.`)) return
+    try {
+      setExpiringOffer((prev) => ({ ...prev, [offerId]: true }))
+      await adminAPI.updateAdminOffer(offerId, { expireNow: true })
+      await fetchOffers()
+    } catch (err) {
+      debugError("Error expiring offer:", err)
+      window.alert(err?.response?.data?.message || "Failed to expire coupon")
+    } finally {
+      setExpiringOffer((prev) => ({ ...prev, [offerId]: false }))
     }
   }
 
@@ -687,14 +768,25 @@ export default function Coupons() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteOffer(offer.offerId)}
-                          disabled={!!deletingOffer[offer.offerId]}
-                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
-                        >
-                          {deletingOffer[offer.offerId] ? "Deleting..." : "Delete"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(offer)}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+                          >
+                            Edit
+                          </button>
+                          {offer.status !== "inactive" && (
+                            <button
+                              type="button"
+                              onClick={() => handleExpireOffer(offer)}
+                              disabled={!!expiringOffer[offer.offerId]}
+                              className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 disabled:opacity-60"
+                            >
+                              {expiringOffer[offer.offerId] ? "Expiring..." : "Expire"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -718,6 +810,152 @@ export default function Coupons() {
           )}
         </div>
       </div>
+
+      {editingOffer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeEdit}>
+          <form
+            onSubmit={handleSaveEdit}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900">
+                Edit Coupon <span className="font-mono text-blue-600">{editingOffer.couponCode}</span>
+              </h3>
+              <button type="button" onClick={closeEdit} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  {editingOffer.discountType === "percentage" ? "Discount (%)" : "Discount Amount (₹)"}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={editForm.discountValue}
+                  onChange={(e) => handleEditChange("discountValue", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Max Discount (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editForm.maxDiscount}
+                  disabled={editingOffer.discountType !== "percentage"}
+                  onChange={(e) => handleEditChange("maxDiscount", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Customer Scope</label>
+                <select
+                  value={editForm.customerScope}
+                  onChange={(e) => handleEditChange("customerScope", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Users</option>
+                  <option value="first-time">First-time Users</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => handleEditChange("status", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="inactive">Inactive (expired)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date (optional)</label>
+                <input
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(e) => handleEditChange("startDate", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Expiry Date (empty = no expiry)</label>
+                <input
+                  type="date"
+                  value={editForm.endDate}
+                  onChange={(e) => handleEditChange("endDate", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Min Order Value (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editForm.minOrderValue}
+                  onChange={(e) => handleEditChange("minOrderValue", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Usage Limit (global, empty = unlimited)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editForm.usageLimit}
+                  onChange={(e) => handleEditChange("usageLimit", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Per User Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editForm.perUserLimit}
+                  onChange={(e) => handleEditChange("perUserLimit", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {editError && <div className="mt-3 text-sm font-medium text-red-600">{editError}</div>}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeEdit}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEdit}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
+              >
+                {isSavingEdit ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

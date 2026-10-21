@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from "framer-motion";
-import { Star, Clock, IndianRupee, Heart, BadgePercent } from "lucide-react";
+import { Star, Clock, IndianRupee, Heart, BadgePercent, Plus } from "lucide-react";
 import OptimizedImage from "@food/components/OptimizedImage";
 
 const RestaurantDishCard = ({ 

@@ -72,13 +72,22 @@ export default function useNotificationInbox(module, options = {}) {
     };
   }, [fetchInbox]);
 
+  // The badge is refreshed on push/socket events (REFRESH_EVENT); polling is only a fallback.
   useEffect(() => {
-    const pollMs = Number(options?.pollMs || 15000);
+    const pollMs = Number(options?.pollMs || 2 * 60 * 1000);
     if (!pollMs || pollMs < 1000 || !module) return undefined;
     const timer = window.setInterval(() => {
+      if (document.hidden) return;
       fetchInbox();
     }, pollMs);
-    return () => window.clearInterval(timer);
+    const onVisible = () => {
+      if (!document.hidden) fetchInbox();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchInbox, module, options?.pollMs]);
 
   const markAsRead = useCallback(

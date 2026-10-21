@@ -192,7 +192,7 @@ const OtpModal = ({ order, onVerified, onClose }) => {
   );
 };
 
-const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
+const PaymentModal = ({ order, otpString, otpRequired = true, onComplete, onClose }) => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [collectQrLink, setCollectQrLink] = useState(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
@@ -228,17 +228,21 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
   };
 
   useEffect(() => {
+    if (!otpRequired) {
+      setIsPaymentOtpVerified(true);
+      return;
+    }
     const enteredOtp = paymentOtp.join("");
     if (enteredOtp.length === 4 && enteredOtp === otpString) {
       setIsPaymentOtpVerified(true);
     } else {
       setIsPaymentOtpVerified(false);
     }
-  }, [paymentOtp, otpString]);
+  }, [paymentOtp, otpString, otpRequired]);
 
   useEffect(() => {
     // Auto-focus first OTP input for online paid orders if not verified
-    if (isInitialPaid && !isPaymentOtpVerified && paymentInputRefs.current[0] && paymentInputRefs.current.length === 4) {
+    if (otpRequired && isInitialPaid && !isPaymentOtpVerified && paymentInputRefs.current[0] && paymentInputRefs.current.length === 4) {
       setTimeout(() => {
         paymentInputRefs.current[0]?.focus();
       }, 100);
@@ -326,7 +330,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
                   Collect Payment
                 </h2>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                  Step 2 of Verification
+                  {otpRequired ? "Step 2 of Verification" : "Final Step"}
                 </p>
               </div>
             </div>
@@ -389,7 +393,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
               </div>
             )}
 
-            {isPaid && (
+            {isPaid && otpRequired && (
               <div className="flex flex-col gap-3 mt-4">
                 <p className="text-sm font-bold text-gray-900 text-center">
                   Re-enter Handover Code to Complete
@@ -503,6 +507,8 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
 
 export const DeliveryVerificationModal = ({ order, onComplete, onClose }) => {
   const alreadyVerified = !!order?.deliveryVerification?.dropOtp?.verified;
+  // The backend only asks for a handover OTP when DELIVERY_OTP_REQUIRED=true.
+  const otpRequired = order?.deliveryVerification?.dropOtp?.required === true;
   const paymentMethod = (
     order?.paymentMethod ||
     order?.payment?.method ||
@@ -516,7 +522,7 @@ export const DeliveryVerificationModal = ({ order, onComplete, onClose }) => {
 
   // Determine initial step: skip OTP if already verified
   const [step, setStep] = useState(() => {
-    if (alreadyVerified) {
+    if (alreadyVerified || !otpRequired) {
       return isCod ? "payment" : "complete";
     }
     return "otp";
@@ -531,9 +537,10 @@ export const DeliveryVerificationModal = ({ order, onComplete, onClose }) => {
     setStep(isCod ? "payment" : "complete");
   };
 
-  // If OTP was already verified on mount and it's a non-COD order, auto-complete
+  // If OTP was already verified on mount and it's a non-COD order, auto-complete.
+  // Without an OTP step the rider confirms with the slider instead.
   useEffect(() => {
-    if (step === "complete" && !isCod) {
+    if (otpRequired && alreadyVerified && step === "complete" && !isCod) {
       onComplete(verifiedOtp);
     }
   }, []); // only on mount
@@ -555,6 +562,7 @@ export const DeliveryVerificationModal = ({ order, onComplete, onClose }) => {
           key="payment-modal"
           order={order}
           otpString={verifiedOtp}
+          otpRequired={otpRequired}
           onComplete={onComplete}
           onClose={onClose || (() => {})}
         />
@@ -575,7 +583,7 @@ export const DeliveryVerificationModal = ({ order, onComplete, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  OTP Verified
+                  {otpRequired ? "OTP Verified" : "Hand Over the Order"}
                 </h2>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-green-600">
                   Payment Received Online

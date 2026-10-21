@@ -144,43 +144,22 @@ export const registerDeliveryPartner = async (payload, files) => {
     await partner.save();
 
     try {
-        const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
-        void notifyAdminsSafely({
+        const { notifyAdminEvent } = await import('../../../../core/notifications/adminAlert.service.js');
+        void notifyAdminEvent({
+            type: 'delivery_partner_application',
+            pushType: 'new_delivery_partner_application',
             title: '🛵 New Delivery Partner Application',
-            body: `${partner.name} has applied to join as a delivery partner. Tap to review.`,
-            role: 'ADMIN',
-            data: {
-                type: 'new_delivery_partner_application',
-                subType: 'delivery_partner',
-                id: String(partner._id),
+            message: `${partner.name} has applied to join as a delivery partner. Phone: ${partner.phone || 'N/A'}${partner.vehicleType ? `, Vehicle: ${partner.vehicleType}` : ''}`,
+            link: '/admin/food/delivery-partners/join-request',
+            entityId: String(partner._id),
+            metadata: {
                 name: partner.name,
                 phone: partner.phone || '',
                 vehicleType: partner.vehicleType || '',
-                link: '/admin/food/delivery-partners/join-request',
-                click_action: '/admin/food/delivery-partners/join-request'
-            }
+                city: partner.city || '',
+                state: partner.state || '',
+            },
         });
-
-        const { getIO, rooms } = await import('../../../../config/socket.js');
-        const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
-        const io = getIO();
-        if (io) {
-            const admins = await FoodAdmin.find({ isActive: true }).select('_id').lean();
-            admins.forEach((admin) => {
-                io.to(rooms.admin(admin._id)).emit('admin_notification', {
-                    type: 'delivery_partner_application',
-                    id: String(partner._id),
-                    name: partner.name,
-                    phone: partner.phone || '',
-                    vehicleType: partner.vehicleType || '',
-                    city: partner.city || '',
-                    state: partner.state || '',
-                    message: `${partner.name} has applied as a delivery partner`,
-                    link: '/admin/food/delivery-partners/join-request',
-                    timestamp: new Date().toISOString()
-                });
-            });
-        }
     } catch (e) {
         // eslint-disable-next-line no-console
         console.error('Failed to notify admins of new delivery partner registration:', e);
@@ -434,8 +413,12 @@ export const updateDeliveryAvailability = async (userId, payload) => {
         throw new ValidationError('Your account has been set offline by admin. Please contact support.');
     }
 
-    // Require active booked gig shift to go online
-    if (validStatus === 'online') {
+    const previousStatus = partner.availabilityStatus;
+    const statusChanged = previousStatus !== validStatus;
+
+    // Require an active booked gig shift to go online. Riders call this endpoint as a location
+    // heartbeat every few seconds, so only check on the offline -> online transition.
+    if (validStatus === 'online' && statusChanged) {
         const activeBooking = await GigBooking.findOne({
             deliveryPartnerId: partner._id,
             status: { $in: ['booked', 'checked_in'] }
@@ -476,20 +459,21 @@ export const updateDeliveryAvailability = async (userId, payload) => {
         }
     }
 
-    // Broadcast the status update to admins and the delivery partner
-    try {
-        const { getIO, rooms } = await import('../../../../config/socket.js');
-        const io = getIO();
-        if (io && rooms) {
-            const updatePayload = {
-                partnerId: userId,
-                status: partner.availabilityStatus
-            };
-            // Tell admins
-            io.emit('driver_status_updated', updatePayload);
+    // Tell admins only when the status actually changed; location-only pings would otherwise
+    // broadcast to every connected client several times a second.
+    if (statusChanged) {
+        try {
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io && rooms) {
+                io.to(rooms.admins()).emit('driver_status_updated', {
+                    partnerId: userId,
+                    status: partner.availabilityStatus
+                });
+            }
+        } catch (e) {
+            console.error('Failed to emit delivery partner availability update:', e);
         }
-    } catch (e) {
-        console.error('Failed to emit delivery partner availability update:', e);
     }
 
     return { availabilityStatus: partner.availabilityStatus };

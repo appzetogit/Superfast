@@ -4,7 +4,7 @@ import { config } from './src/config/env.js';
 import { validateConfig } from './src/config/validateEnv.js';
 import { connectDB, disconnectDB } from './src/config/db.js';
 import { connectRedis, closeRedis } from './src/config/redis.js';
-import { initSocket } from './src/config/socket.js';
+import { initSocket, initSocketEmitter } from './src/config/socket.js';
 import { initializeQueues, closeBullMQConnection } from './src/queues/index.js';
 import { expireExpiredOffers } from './src/modules/food/admin/services/admin.service.js';
 import { syncExpiredFssaiNotifications } from './src/modules/food/restaurant/services/fssaiExpiry.service.js';
@@ -59,26 +59,37 @@ const startServer = async () => {
         // 2. Create HTTP server from Express app
         const httpServer = http.createServer(app);
 
-        // 3. Initialize Socket.IO with the HTTP server (Redis adapter when Redis enabled)
-        await initSocket(httpServer);
-
-        if (config.redisEnabled) {
-            await connectRedis();
+        // 3. Socket.IO: in-process by default, or a separate process (socket.js) reached through Redis.
+        if (config.socketStandalone) {
+            const redisClient = config.redisEnabled ? await connectRedis() : null;
+            if (!redisClient) {
+                throw new Error('SOCKET_STANDALONE=true requires REDIS_ENABLED=true and a reachable Redis');
+            }
+            await initSocketEmitter(redisClient);
+        } else {
+            await initSocket(httpServer);
+            if (config.redisEnabled) {
+                await connectRedis();
+            }
         }
 
-        // Initialize Timing Sync Job (Runs every minute)
-        cron.schedule('* * * * *', () => {
-            syncAllRestaurantTimings().catch(err => {
-                logger.error(`Timings Sync cron error: ${err.message}`);
+        if (config.backgroundJobs) {
+            // Initialize Timing Sync Job (Runs every minute)
+            cron.schedule('* * * * *', () => {
+                syncAllRestaurantTimings().catch(err => {
+                    logger.error(`Timings Sync cron error: ${err.message}`);
+                });
             });
-        });
 
-        // 5a. Watchdog: Recover stuck orders from previous run
-        try {
-            const { recoverStuckOrders } = await import('./src/modules/food/orders/services/order.service.js');
-            await recoverStuckOrders();
-        } catch (err) {
-            logger.error(`Watchdog startup error: ${err.message}`);
+            // 5a. Watchdog: Recover stuck orders from previous run
+            try {
+                const { recoverStuckOrders } = await import('./src/modules/food/orders/services/order.service.js');
+                await recoverStuckOrders();
+            } catch (err) {
+                logger.error(`Watchdog startup error: ${err.message}`);
+            }
+        } else {
+            logger.warn('BACKGROUND_JOBS=false: cron, watchdog, offer/FSSAI expiry and dispatch jobs are disabled on this instance.');
         }
 
         // 5. Conditionally initialize BullMQ queues.
@@ -101,36 +112,38 @@ const startServer = async () => {
             console.log(`🌐 [URL] http://localhost:${config.port}`);
         });
 
-        const runExpire = async () => {
-            try {
-                await expireExpiredOffers();
-            } catch (err) {
-                logger.error(`Expire offers error: ${err.message}`);
-            }
-        };
-        runExpire();
-        expireOffersInterval = setInterval(runExpire, 5 * 60 * 1000);
+        if (config.backgroundJobs) {
+            const runExpire = async () => {
+                try {
+                    await expireExpiredOffers();
+                } catch (err) {
+                    logger.error(`Expire offers error: ${err.message}`);
+                }
+            };
+            runExpire();
+            expireOffersInterval = setInterval(runExpire, 5 * 60 * 1000);
 
-        const runFssaiExpirySync = async () => {
-            try {
-                await syncExpiredFssaiNotifications();
-            } catch (err) {
-                logger.error(`FSSAI expiry sync error: ${err.message}`);
-            }
-        };
-        runFssaiExpirySync();
-        fssaiExpiryInterval = setInterval(runFssaiExpirySync, 60 * 60 * 1000);
+            const runFssaiExpirySync = async () => {
+                try {
+                    await syncExpiredFssaiNotifications();
+                } catch (err) {
+                    logger.error(`FSSAI expiry sync error: ${err.message}`);
+                }
+            };
+            runFssaiExpirySync();
+            fssaiExpiryInterval = setInterval(runFssaiExpirySync, 60 * 60 * 1000);
 
-        const runDispatchWatchdogTask = async () => {
-            try {
-                const { runDispatchWatchdog } = await import('./src/modules/food/orders/services/order-dispatch.service.js');
-                await runDispatchWatchdog();
-            } catch (err) {
-                logger.error(`Dispatch watchdog error: ${err.message}`);
-            }
-        };
-        runDispatchWatchdogTask();
-        dispatchWatchdogInterval = setInterval(runDispatchWatchdogTask, 30 * 1000);
+            const runDispatchWatchdogTask = async () => {
+                try {
+                    const { runDispatchWatchdog } = await import('./src/modules/food/orders/services/order-dispatch.service.js');
+                    await runDispatchWatchdog();
+                } catch (err) {
+                    logger.error(`Dispatch watchdog error: ${err.message}`);
+                }
+            };
+            runDispatchWatchdogTask();
+            dispatchWatchdogInterval = setInterval(runDispatchWatchdogTask, 30 * 1000);
+        }
 
 
         process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -34,6 +34,7 @@ export default function DeliverymanList() {
   const [savingDeliveryId, setSavingDeliveryId] = useState(null)
   const [sortColumn, setSortColumn] = useState(null)
   const [sortDirection, setSortDirection] = useState("asc")
+  const [zoneFilter, setZoneFilter] = useState("all")
 
   const handleSort = (columnKey) => {
     if (sortColumn === columnKey) {
@@ -189,10 +190,19 @@ availableCashLimit: wallet?.availableCashLimit || 0,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
-  const filteredDeliverymen = useMemo(() => {
-    if (!sortColumn) return deliverymen
+  const zoneOptions = useMemo(() => {
+    const names = deliverymen.map((d) => d.zone || d.zoneName || d.city).filter(Boolean)
+    return Array.from(new Set(names)).sort((a, b) => String(a).localeCompare(String(b)))
+  }, [deliverymen])
 
-    return [...deliverymen].sort((a, b) => {
+  const filteredDeliverymen = useMemo(() => {
+    const zoneFiltered =
+      zoneFilter === "all"
+        ? deliverymen
+        : deliverymen.filter((d) => (d.zone || d.zoneName || d.city) === zoneFilter)
+    if (!sortColumn) return zoneFiltered
+
+    return [...zoneFiltered].sort((a, b) => {
       let aVal = a[sortColumn]
       let bVal = b[sortColumn]
 
@@ -220,7 +230,7 @@ availableCashLimit: wallet?.availableCashLimit || 0,
       if (aVal > bVal) return sortDirection === "asc" ? 1 : -1
       return 0
     })
-  }, [deliverymen, sortColumn, sortDirection])
+  }, [deliverymen, sortColumn, sortDirection, zoneFilter])
 
   const paginatedDeliverymen = useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -231,7 +241,7 @@ availableCashLimit: wallet?.availableCashLimit || 0,
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, pageSize])
+  }, [searchQuery, pageSize, zoneFilter])
 
   const handleView = async (deliveryman) => {
     try {
@@ -474,6 +484,18 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
+
+              <select
+                value={zoneFilter}
+                onChange={(e) => setZoneFilter(e.target.value)}
+                className="px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                title="Filter by zone"
+              >
+                <option value="all">All Zones</option>
+                {zoneOptions.map((z) => (
+                  <option key={z} value={z}>{z}</option>
+                ))}
+              </select>
 
               <button
                 onClick={handleExportPDF}

@@ -82,6 +82,14 @@ export const config = {
 
     // Socket.io
     socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
+    // When true, Socket.IO runs in its own process (socket.js) and the API emits through Redis.
+    socketStandalone: process.env.SOCKET_STANDALONE === 'true',
+    socketPort: Number(process.env.SOCKET_PORT || 5001),
+    // Set BACKGROUND_JOBS=false on a second instance (e.g. a test copy beside the live server)
+    // so dispatch/expiry/timing jobs run only once against the shared database.
+    backgroundJobs: process.env.BACKGROUND_JOBS !== 'false',
+    // Customer handover OTP at drop. Off by default: the rider marks the order delivered directly.
+    deliveryOtpRequired: process.env.DELIVERY_OTP_REQUIRED === 'true',
 
     // Razorpay (payments)
     razorpayKeyId: process.env.RAZORPAY_KEY_ID,

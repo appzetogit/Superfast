@@ -11,6 +11,7 @@ import { transformImageFields } from '../../../utils/urlHelper.js';
 import { invalidateCache } from '../../../middleware/cache.js';
 import { invalidateLandingSettingsCache } from '../../food/landing/controllers/publicLanding.controller.js';
 import { invalidatePublicCategoriesCache } from '../../food/restaurant/services/restaurantCategory.service.js';
+import { invalidateDeveloperModeCache } from '../utils/developerMode.js';
 
 export async function getGlobalSettings(req, res, next) {
     try {
@@ -250,6 +251,7 @@ export async function updateGlobalSettings(req, res, next) {
             updateQuery,
             { new: true, upsert: true, lean: true }
         );
+        invalidateDeveloperModeCache();
 
         // Sync account statuses for newly banned / newly unbanned numbers
         if (bannedNumbers !== undefined && Array.isArray(bannedNumbers)) {

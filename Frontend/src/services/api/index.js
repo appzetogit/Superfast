@@ -752,6 +752,10 @@ export const adminAPI = {
       { itemId: String(itemId), showInCart: Boolean(showInCart) },
       { contextModule: "admin" },
     ),
+  updateAdminOffer: (offerId, body) =>
+    apiClient.patch(`/food/admin/offers/${String(offerId)}`, body ?? {}, {
+      contextModule: "admin",
+    }),
   deleteAdminOffer: (offerId) =>
     apiClient.delete(`/food/admin/offers/${String(offerId)}`, {
       contextModule: "admin",
@@ -2987,9 +2991,26 @@ export const preferencesAPI = {
   getRecommendations: (params = {}) => apiClient.get("/preferences/recommendations", { params, contextModule: "user" }),
 };
 
+// Rider's current GPS position ({} if denied/unavailable) so the server zones them by where they are now.
+const getCurrentCoords = () =>
+  new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve({}),
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+    );
+  });
+
 export const gigAPI = {
-  getZoneGigs: (params = {}) => apiClient.get('/food/delivery/gigs/zone-gigs', { params, contextModule: 'delivery' }),
-  bookGig: (gigId) => apiClient.post('/food/delivery/gigs/book', { gigId }, { contextModule: 'delivery' }),
+  getZoneGigs: async (params = {}) => {
+    const coords = await getCurrentCoords();
+    return apiClient.get('/food/delivery/gigs/zone-gigs', { params: { ...params, ...coords }, contextModule: 'delivery' });
+  },
+  bookGig: async (gigId) => {
+    const coords = await getCurrentCoords();
+    return apiClient.post('/food/delivery/gigs/book', { gigId, ...coords }, { contextModule: 'delivery' });
+  },
   cancelGig: (data = {}) => apiClient.post('/food/delivery/gigs/cancel', data, { contextModule: 'delivery' }),
   checkInGig: (data = {}) => apiClient.post('/food/delivery/gigs/check-in', data, { contextModule: 'delivery' }),
   checkOutGig: (data = {}) => apiClient.post('/food/delivery/gigs/check-out', data, { contextModule: 'delivery' }),

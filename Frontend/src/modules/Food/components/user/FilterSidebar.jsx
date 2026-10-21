@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { X, SlidersHorizontal, ArrowDownUp, IndianRupee, UtensilsCrossed, Check } from "lucide-react";
+import { Checkbox } from "@food/components/ui/checkbox";
 
 const FilterSidebar = ({ 
   isOpen, 

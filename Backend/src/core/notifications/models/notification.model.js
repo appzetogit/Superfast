@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema(
     {
         ownerType: {
             type: String,
-            enum: ['USER', 'RESTAURANT', 'DELIVERY_PARTNER', 'SELLER'],
+            enum: ['USER', 'RESTAURANT', 'DELIVERY_PARTNER', 'SELLER', 'ADMIN'],
             required: true,
             index: true
         },
@@ -35,7 +35,7 @@ const notificationSchema = new mongoose.Schema(
         },
         source: {
             type: String,
-            enum: ['ADMIN_BROADCAST', 'FSSAI_EXPIRY'],
+            enum: ['ADMIN_BROADCAST', 'FSSAI_EXPIRY', 'SYSTEM'],
             default: 'ADMIN_BROADCAST',
             index: true
         },

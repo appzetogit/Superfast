@@ -1427,6 +1427,19 @@ export default function RestaurantsList() {
                 <Plus className="w-4 h-4" />
                 <span>Add Restaurant</span>
               </button>
+              <select
+                value={filters.zone}
+                onChange={(e) => setFilters((prev) => ({ ...prev, zone: e.target.value }))}
+                className="px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Filter by zone"
+              >
+                <option value="">All Zones</option>
+                {Array.from(new Set(restaurants.map((r) => r.zone).filter((z) => z && z !== "N/A" && z !== "-")))
+                  .sort((a, b) => String(a).localeCompare(String(b)))
+                  .map((z) => (
+                    <option key={z} value={z}>{z}</option>
+                  ))}
+              </select>
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
                   type="text"
