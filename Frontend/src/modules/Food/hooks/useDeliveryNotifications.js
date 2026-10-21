@@ -1279,7 +1279,21 @@ export const useDeliveryNotifications = () => {
 
       // Normalize data for return orders vs normal orders
       const isReturn = orderData.type === 'RETURN_PICKUP';
-      const normalizedData = isReturn ? { ...orderData, type: 'RETURN_PICKUP' } : orderData;
+      const isReassignment =
+        orderData.type === 'reassignment_request' || String(orderData.isReassignment) === 'true';
+      let normalizedData = orderData;
+      if (isReturn) {
+        normalizedData = { ...orderData, type: 'RETURN_PICKUP' };
+      } else if (isReassignment) {
+        // FCM data values are strings; the card/accept flow checks a real boolean.
+        normalizedData = {
+          ...orderData,
+          isReassignment: true,
+          reassignmentStatus: 'pending',
+          orderId: orderData.orderId || orderData.orderMongoId,
+          orderMongoId: orderData.orderMongoId || orderData.orderId,
+        };
+      }
 
       debugLog('Received FCM popup trigger event', normalizedData);
       setNewOrder(normalizedData);

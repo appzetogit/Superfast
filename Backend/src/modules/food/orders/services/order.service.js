@@ -2879,7 +2879,11 @@ export async function getOrderById(
     assignedLegPartnerId !== deliveryPartnerId.toString()
   ) {
     const isUnassigned = order.dispatch?.status === "unassigned" || !orderPartnerId;
-    if (!isUnassigned && process.env.NODE_ENV === "production") {
+    // Admin reassignment offered to this rider: they need the details to render the offer card.
+    const isPendingReassignmentToMe =
+      order.reassignmentStatus === "pending" &&
+      toIdString(order.pendingDriverId) === toIdString(deliveryPartnerId);
+    if (!isUnassigned && !isPendingReassignmentToMe && process.env.NODE_ENV === "production") {
       throw new ForbiddenError("Not assigned to you");
     }
   }

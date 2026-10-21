@@ -815,10 +815,14 @@ function showForegroundNotification(payload = {}) {
     }
   }
 
-  // FCM delivery popup MUST ONLY be dispatched if orderStatus is explicitly ready_for_pickup or return_pickup!
+  // Admin reassignment offers carry no orderStatus (the order can be at any stage).
+  const isReassignmentOffer =
+    notificationType === 'reassignment_request' || String(payload?.data?.isReassignment) === 'true';
+
+  // FCM delivery popup MUST ONLY be dispatched if orderStatus is explicitly ready_for_pickup, return_pickup or an admin reassignment!
   const isNewOrderOffer =
     moduleName === 'delivery' &&
-    (payload?.data?.type === 'RETURN_PICKUP' || ['ready_for_pickup', 'ready'].includes(orderStatus));
+    (payload?.data?.type === 'RETURN_PICKUP' || isReassignmentOffer || ['ready_for_pickup', 'ready'].includes(orderStatus));
 
   if (isNewOrderOffer && payload?.data) {
     if (typeof window !== 'undefined') {
@@ -851,6 +855,7 @@ function showForegroundNotification(payload = {}) {
       const isActionableForDelivery =
         notificationType === "new_order" ||
         notificationType === "return_pickup" ||
+        isReassignmentOffer ||
         ["ready_for_pickup", "ready"].includes(orderStatus) ||
         (String(orderStatus).includes("cancel") && payloadRole === "delivery");
 
