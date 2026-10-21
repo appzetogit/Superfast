@@ -52,6 +52,11 @@ const gigSchema = new mongoose.Schema(
       type: Number,
       default: 50,
     },
+    cancellationCutoffMinutes: {
+      type: Number,
+      default: 60,
+      min: 0,
+    },
     isActive: {
       type: Boolean,
       default: true,

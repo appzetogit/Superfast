@@ -301,7 +301,8 @@ const shouldRemoveTokenFromError = (errorJson, response) => {
     const status = response?.status;
     const message = String(errorJson?.error?.message || '').toUpperCase();
     const errorStatus = String(errorJson?.error?.status || '').toUpperCase();
-    if (status === 404 || status === 401 || errorStatus === 'NOT_FOUND' || message.includes('UNREGISTERED') || message.includes('MISMATCH') || message.includes('SENDER')) {
+    // 401 is our server credential failing, not a dead device token: never delete tokens for it.
+    if (status === 404 || errorStatus === 'NOT_FOUND' || message.includes('UNREGISTERED') || message.includes('MISMATCH') || message.includes('SENDER')) {
         return true;
     }
     // INVALID_ARGUMENT often means a bad payload, not a dead token. Only drop the

@@ -49,6 +49,7 @@ export default function AdminGigsManagement() {
     basePay: 350,
     incentiveBonus: 50,
     maxDrivers: 20,
+    cancellationCutoffMinutes: 60,
     isActive: true,
   });
 
@@ -185,6 +186,7 @@ export default function AdminGigsManagement() {
       basePay: 350,
       incentiveBonus: 50,
       maxDrivers: 20,
+      cancellationCutoffMinutes: 60,
       isActive: true,
     });
     setShowModal(true);
@@ -203,6 +205,7 @@ export default function AdminGigsManagement() {
       basePay: gig.basePay,
       incentiveBonus: gig.incentiveBonus,
       maxDrivers: gig.maxDrivers,
+      cancellationCutoffMinutes: gig.cancellationCutoffMinutes ?? 60,
       isActive: gig.isActive,
     });
     setShowModal(true);
@@ -848,25 +851,23 @@ export default function AdminGigsManagement() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Shift Type</label>
-                  <select
-                    value={formData.shiftType}
-                    onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
-                  >
-                    <option value="MORNING">MORNING</option>
-                    <option value="AFTERNOON">AFTERNOON</option>
-                    <option value="EVENING">EVENING</option>
-                    <option value="NIGHT">NIGHT</option>
-                  </select>
-                </div>
-                <div>
                   <label className="block text-slate-700 dark:text-slate-300 mb-1">Date</label>
                   <input
                     type="date"
                     required
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Capacity (max riders)</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={formData.maxDrivers}
+                    onChange={(e) => setFormData({ ...formData, maxDrivers: e.target.value })}
                     className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
                   />
                 </div>
@@ -897,38 +898,15 @@ export default function AdminGigsManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Base Pay (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.basePay}
-                    onChange={(e) => setFormData({ ...formData, basePay: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Incentive (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.incentiveBonus}
-                    onChange={(e) => setFormData({ ...formData, incentiveBonus: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Capacity</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.maxDrivers}
-                    onChange={(e) => setFormData({ ...formData, maxDrivers: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1">Cancellation cutoff (minutes before start)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.cancellationCutoffMinutes}
+                  onChange={(e) => setFormData({ ...formData, cancellationCutoffMinutes: e.target.value })}
+                  className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                />
               </div>
 
               <div className="flex items-center gap-2 pt-2">

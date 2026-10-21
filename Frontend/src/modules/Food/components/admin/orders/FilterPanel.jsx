@@ -1,3 +1,4 @@
+import { todayInputValue } from "@food/utils/adminDateFilters"
 import { useState } from "react"
 import { X } from "lucide-react"
 
@@ -8,7 +9,9 @@ export default function FilterPanel({
   setFilters, 
   onApply, 
   onReset, 
-  restaurants = [], 
+  restaurants = [],
+  zones = [],
+  categories = [],
   statuses = [],
   hidePaymentStatus = false,
   hideDeliveryType = false
@@ -20,6 +23,10 @@ export default function FilterPanel({
   const handleApply = () => {
     if (filters.minAmount && filters.maxAmount && Number(filters.minAmount) > Number(filters.maxAmount)) {
       setError("Min amount cannot be greater than max amount")
+      return
+    }
+    if (filters.fromDate && filters.toDate && filters.fromDate > filters.toDate) {
+      setError("From date cannot be after To date")
       return
     }
     setError("")
@@ -168,7 +175,7 @@ export default function FilterPanel({
               </label>
               <input
                 type="date"
-                max={new Date().toISOString().split("T")[0]}
+                max={todayInputValue()}
                 value={filters.fromDate || ""}
                 onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -180,13 +187,57 @@ export default function FilterPanel({
               </label>
               <input
                 type="date"
-                max={new Date().toISOString().split("T")[0]}
+                max={todayInputValue()}
                 value={filters.toDate || ""}
                 onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
+
+          {/* Zone Filter */}
+          {zones.length > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Zone
+              </label>
+              <select
+                value={filters.zoneId || ""}
+                onChange={(e) => setFilters(prev => ({ ...prev, zoneId: e.target.value }))}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">All Zones</option>
+                {zones.map((zone) => {
+                  const zoneId = String(zone._id || zone.id || "")
+                  return (
+                    <option key={zoneId} value={zoneId}>{zone.name || zone.zoneName || zoneId}</option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
+
+          {/* Category Filter */}
+          {categories.length > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Category
+              </label>
+              <select
+                value={filters.categoryId || ""}
+                onChange={(e) => setFilters(prev => ({ ...prev, categoryId: e.target.value }))}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">All Categories</option>
+                {categories.map((category) => {
+                  const categoryId = String(category._id || category.id || "")
+                  return (
+                    <option key={categoryId} value={categoryId}>{category.name}</option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
 
           {/* Restaurant Filter */}
           {restaurants.length > 0 && (

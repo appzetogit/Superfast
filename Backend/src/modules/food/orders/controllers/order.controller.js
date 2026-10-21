@@ -437,6 +437,19 @@ export async function rejectReassignmentDeliveryController(req, res, next) {
     }
 }
 
+export async function cancelOrderAdminController(req, res, next) {
+    try {
+        const adminId = req.user?.userId;
+        const result = await orderService.cancelOrderAdmin(req.params.orderId, adminId, req.body || {});
+        const refundNote = result.refund?.attempted
+            ? (result.refund.success ? ' Refund processed.' : ` Refund failed: ${result.refund.message}`)
+            : '';
+        return sendResponse(res, 200, `Order cancelled.${refundNote}`, result);
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function updateOrderStatusAdminController(req, res, next) {
     try {
         const adminId = req.user?.userId;

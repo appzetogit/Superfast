@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/componen
 import { exportTransactionReportToCSV, exportTransactionReportToExcel, exportTransactionReportToPDF, exportTransactionReportToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import ReportFilterFields, { EMPTY_REPORT_FILTERS, buildReportParams, countActiveReportFilters, hasInvalidDateRange } from "@food/components/admin/reports/ReportFilterFields"
+import { useAdminFilterOptions } from "@food/hooks/useAdminFilterOptions"
 
 // Import icons from Transaction-report-icons
 import completedIcon from "@food/assets/Transaction-report-icons/trx1.png"
@@ -38,43 +40,9 @@ export default function TransactionReport() {
     restaurantEarning: 0,
     deliverymanEarning: 0
   })
-  const [filters, setFilters] = useState({
-    zone: "All Zones",
-    restaurant: "All restaurants",
-    time: "All Time",
-  })
+  const [filters, setFilters] = useState(EMPTY_REPORT_FILTERS)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [zones, setZones] = useState([])
-  const [restaurants, setRestaurants] = useState([])
-
-  // Fetch zones and restaurants for filters
-  useEffect(() => {
-    const fetchFilterData = async () => {
-      try {
-        // Fetch zones safely
-        if (typeof adminAPI?.getZones === 'function') {
-          const zonesResponse = await adminAPI.getZones({ limit: 1000 })
-          const zoneList = zonesResponse?.data?.data?.zones || zonesResponse?.data?.zones || []
-          if (Array.isArray(zoneList)) {
-            setZones(zoneList)
-          }
-        }
-
-        // Fetch restaurants safely
-        const fetchRests = adminAPI?.getApprovedRestaurants || adminAPI?.getRestaurants
-        if (typeof fetchRests === 'function') {
-          const restaurantsResponse = await fetchRests({ limit: 1000 })
-          const restList = restaurantsResponse?.data?.data?.restaurants || restaurantsResponse?.data?.restaurants || (Array.isArray(restaurantsResponse?.data?.data) ? restaurantsResponse.data.data : [])
-          if (Array.isArray(restList)) {
-            setRestaurants(restList)
-          }
-        }
-      } catch (error) {
-        debugError("Error fetching filter data:", error)
-      }
-    }
-    fetchFilterData()
-  }, [])
+  const { zones, categories, restaurants } = useAdminFilterOptions()
 
   // Fetch transaction report data with debounce for search
   useEffect(() => {
@@ -84,30 +52,14 @@ export default function TransactionReport() {
       try {
         setIsRefreshing(true)
         
-        // Build date range based on time filter
-        let fromDate = null
-        let toDate = null
-        const now = new Date()
-        
-        if (filters.time === "Today") {
-          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-        } else if (filters.time === "This Week") {
-          const dayOfWeek = now.getDay()
-          const diff = now.getDate() - dayOfWeek
-          fromDate = new Date(now.getFullYear(), now.getMonth(), diff)
-          toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59)
-        } else if (filters.time === "This Month") {
-          fromDate = new Date(now.getFullYear(), now.getMonth(), 1)
-          toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+        if (hasInvalidDateRange(filters)) {
+          setIsRefreshing(false)
+          return
         }
 
         const params = {
           search: searchQuery || undefined,
-          zone: filters.zone !== "All Zones" ? filters.zone : undefined,
-          restaurant: filters.restaurant !== "All restaurants" ? filters.restaurant : undefined,
-          fromDate: fromDate ? fromDate.toISOString() : undefined,
-          toDate: toDate ? toDate.toISOString() : undefined,
+          ...buildReportParams(filters),
           limit: 1000
         }
 
@@ -196,15 +148,11 @@ export default function TransactionReport() {
   }
 
   const handleResetFilters = () => {
-    setFilters({
-      zone: "All Zones",
-      restaurant: "All restaurants",
-      time: "All Time",
-    })
+    setFilters(EMPTY_REPORT_FILTERS)
     setCurrentPage(1)
   }
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = countActiveReportFilters(filters)
 
   // Compute paginated transactions
   const paginatedTransactions = useMemo(() => {
@@ -267,47 +215,13 @@ export default function TransactionReport() {
         {/* Search Data Section */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3 mb-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={filters.zone}
-                onChange={(e) => setFilters(prev => ({ ...prev, zone: e.target.value }))}
-                className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
-              >
-                <option value="All Zones">All Zones</option>
-                {zones.map(zone => (
-                  <option key={zone._id} value={zone.zoneName || zone.name}>{zone.zoneName || zone.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={filters.restaurant}
-                onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
-                className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
-              >
-                <option value="All restaurants">All restaurants</option>
-                {restaurants.map(restaurant => (
-                  <option key={restaurant._id} value={restaurant.restaurantName || restaurant.name}>{restaurant.restaurantName || restaurant.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={filters.time}
-                onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value }))}
-                className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
-              >
-                <option value="All Time">All Time</option>
-                <option value="Today">Today</option>
-                <option value="This Week">This Week</option>
-                <option value="This Month">This Month</option>
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
+            <ReportFilterFields
+              filters={filters}
+              setFilters={setFilters}
+              zones={zones}
+              restaurants={restaurants}
+              categories={categories}
+            />
 
             <button 
               onClick={handleFilterApply}

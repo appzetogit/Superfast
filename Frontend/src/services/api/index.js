@@ -633,6 +633,10 @@ export const adminAPI = {
     apiClient.get(`/food/admin/orders/${String(orderId)}/reassignment-history`, {
       contextModule: "admin",
     }),
+  cancelOrder: (orderId, body = {}) =>
+    apiClient.post(`/food/admin/orders/${String(orderId)}/cancel`, body, {
+      contextModule: "admin",
+    }),
   processRefund: (orderId, body = {}) =>
     apiClient.post(`/food/admin/orders/${String(orderId)}/refund`, body ?? {}, {
       contextModule: "admin",
@@ -672,6 +676,21 @@ export const adminAPI = {
   getTransactionReport: (params = {}) =>
     apiClient.get("/food/admin/reports/transactions", {
       params: { page: 1, limit: 1000, ...params },
+      contextModule: "admin",
+    }),
+  /** Withdrawal payouts. Query: party=restaurant|deliveryman, status, paymentMethod, zoneId, restaurantId, dates. */
+  getDisbursementReport: (params = {}) =>
+    apiClient.get("/food/admin/reports/disbursement", { params, contextModule: "admin" }),
+  /** Platform expenses per order (coupon discounts, rider payouts, refunds). */
+  getExpenseReport: (params = {}) =>
+    apiClient.get("/food/admin/reports/expense", { params, contextModule: "admin" }),
+  /** Per-dish sales plus a 12-month sales trend. */
+  getFoodReport: (params = {}) =>
+    apiClient.get("/food/admin/reports/food", { params, contextModule: "admin" }),
+  /** Day-wise earnings with zone / category / restaurant / date filters. */
+  getEarningsReport: (params = {}) =>
+    apiClient.get("/food/admin/reports/earnings", {
+      params,
       contextModule: "admin",
     }),
   getTaxReport: (params = {}) =>
@@ -2971,6 +2990,7 @@ export const preferencesAPI = {
 export const gigAPI = {
   getZoneGigs: (params = {}) => apiClient.get('/food/delivery/gigs/zone-gigs', { params, contextModule: 'delivery' }),
   bookGig: (gigId) => apiClient.post('/food/delivery/gigs/book', { gigId }, { contextModule: 'delivery' }),
+  cancelGig: (data = {}) => apiClient.post('/food/delivery/gigs/cancel', data, { contextModule: 'delivery' }),
   checkInGig: (data = {}) => apiClient.post('/food/delivery/gigs/check-in', data, { contextModule: 'delivery' }),
   checkOutGig: (data = {}) => apiClient.post('/food/delivery/gigs/check-out', data, { contextModule: 'delivery' }),
   getMyGigs: () => apiClient.get('/food/delivery/gigs/my-gigs', { contextModule: 'delivery' }),

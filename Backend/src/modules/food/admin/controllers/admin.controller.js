@@ -1,3 +1,4 @@
+import * as adminReportsService from '../services/adminReports.service.js';
 import mongoose from 'mongoose';
 import * as adminService from '../services/admin.service.js';
 import { validateCategoryListQuery, validateCategoryRejectDto, validateCategoryUpsertDto } from '../validators/category.validator.js';
@@ -202,6 +203,46 @@ export async function getTransactionReport(req, res, next) {
             message: 'Transaction report fetched successfully',
             data
         });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getEarningsReport(req, res, next) {
+    try {
+        const data = await adminService.getEarningsReport(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Earnings report fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDisbursementReport(req, res, next) {
+    try {
+        const data = await adminReportsService.getDisbursementReport(req.query || {});
+        res.status(200).json({ success: true, message: 'Disbursement report fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getExpenseReport(req, res, next) {
+    try {
+        const data = await adminReportsService.getExpenseReport(req.query || {});
+        res.status(200).json({ success: true, message: 'Expense report fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getFoodReport(req, res, next) {
+    try {
+        const data = await adminReportsService.getFoodReport(req.query || {});
+        res.status(200).json({ success: true, message: 'Food report fetched successfully', data });
     } catch (error) {
         next(error);
     }

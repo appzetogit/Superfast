@@ -36,9 +36,17 @@ const gigBookingSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    reminderSent: {
+    reminder30MinSent: {
       type: Boolean,
       default: false,
+    },
+    reminder15MinSent: {
+      type: Boolean,
+      default: false,
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

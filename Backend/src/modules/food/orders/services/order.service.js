@@ -10,6 +10,7 @@ import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
+import { buildOrderScopeFilter } from '../../admin/services/adminFilters.service.js';
 import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
 import { isPointInPolygon } from '../../../../utils/geo.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../../../core/auth/errors.js';
@@ -4892,18 +4893,17 @@ export async function getPaymentStatus(orderId, deliveryPartnerId) {
 
 // ----- Admin -----
 export async function listOrdersAdmin(query) {
-  const { page, limit, skip } = buildPaginationOptions(query);
+  // Admin screens and reports load whole lists at once, so allow a higher cap than the shared 100.
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 5000);
+  const skip = (page - 1) * limit;
   const filter = {};
 
   // Extract raw query params
   const rawStatus = typeof query.status === "string" ? query.status.trim().toLowerCase() : "";
   const cancelledBy = typeof query.cancelledBy === "string" ? query.cancelledBy.trim().toLowerCase() : "";
-  const restaurantIdRaw = typeof query.restaurantId === "string" ? query.restaurantId.trim() : "";
-  const zoneIdRaw = typeof query.zoneId === "string" ? query.zoneId.trim() : "";
   const userIdRaw = typeof query.userId === "string" ? query.userId.trim() : "";
   const deliveryPartnerIdRaw = typeof query.deliveryPartnerId === "string" ? query.deliveryPartnerId.trim() : "";
-  const startDateRaw = typeof query.startDate === "string" ? query.startDate.trim() : "";
-  const endDateRaw = typeof query.endDate === "string" ? query.endDate.trim() : "";
   const search = typeof query.search === "string" ? query.search.trim() : "";
 
   if (rawStatus && rawStatus !== "all") {
@@ -4952,56 +4952,35 @@ export async function listOrdersAdmin(query) {
     }
   }
 
-  // ID based filters
-  if (restaurantIdRaw && mongoose.Types.ObjectId.isValid(restaurantIdRaw)) {
-    filter.restaurantId = new mongoose.Types.ObjectId(restaurantIdRaw);
+  // Zone / restaurant / category / date filters (shared with the admin reports)
+  const scope = await buildOrderScopeFilter(query);
+  if (scope.empty) {
+    const emptyPage = buildPaginatedResult({ docs: [], total: 0, page, limit });
+    return { ...emptyPage, orders: emptyPage.data };
   }
-  if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
-    filter.zoneId = new mongoose.Types.ObjectId(zoneIdRaw);
-  }
+  const andConditions = [...(scope.filter.$and || [])];
+
   if (userIdRaw && mongoose.Types.ObjectId.isValid(userIdRaw)) {
     filter.userId = new mongoose.Types.ObjectId(userIdRaw);
   }
   if (deliveryPartnerIdRaw && mongoose.Types.ObjectId.isValid(deliveryPartnerIdRaw)) {
-    filter.$and = [
-      {
-        $or: [
-          { "dispatch.deliveryPartnerId": new mongoose.Types.ObjectId(deliveryPartnerIdRaw) },
-          { "dispatchPlan.legs.deliveryPartnerId": new mongoose.Types.ObjectId(deliveryPartnerIdRaw) }
-        ]
-      }
-    ];
-  }
-
-  // Date filters
-  if (startDateRaw || endDateRaw) {
-    const createdAt = {};
-    const start = startDateRaw ? new Date(startDateRaw) : null;
-    const end = endDateRaw ? new Date(endDateRaw) : null;
-    if (start && !Number.isNaN(start.getTime())) {
-      createdAt.$gte = start;
-    }
-    if (end && !Number.isNaN(end.getTime())) {
-      // Set to end of day
-      end.setHours(23, 59, 59, 999);
-      createdAt.$lte = end;
-    }
-    if (Object.keys(createdAt).length > 0) {
-      filter.createdAt = createdAt;
-    }
+    andConditions.push({
+      $or: [
+        { "dispatch.deliveryPartnerId": new mongoose.Types.ObjectId(deliveryPartnerIdRaw) },
+        { "dispatchPlan.legs.deliveryPartnerId": new mongoose.Types.ObjectId(deliveryPartnerIdRaw) }
+      ]
+    });
   }
 
   // Search logic
   if (search) {
-    // Search by Order ID (exact or partial regex)
-    const searchConditions = [
-      { orderId: { $regex: search, $options: "i" } }
-    ];
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const searchConditions = [{ orderId: { $regex: escapedSearch, $options: "i" } }];
 
-    // If search looks like a name, we need to find matching users and restaurants first
+    // Names live on other collections, so resolve matching users/restaurants first
     const [matchingUsers, matchingRestaurants] = await Promise.all([
-      FoodUser.find({ name: { $regex: search, $options: "i" } }).select('_id').lean(),
-      FoodRestaurant.find({ restaurantName: { $regex: search, $options: "i" } }).select('_id').lean()
+      FoodUser.find({ name: { $regex: escapedSearch, $options: "i" } }).select('_id').lean(),
+      FoodRestaurant.find({ restaurantName: { $regex: escapedSearch, $options: "i" } }).select('_id').lean()
     ]);
 
     if (matchingUsers.length > 0) {
@@ -5010,28 +4989,11 @@ export async function listOrdersAdmin(query) {
     if (matchingRestaurants.length > 0) {
       searchConditions.push({ restaurantId: { $in: matchingRestaurants.map(r => r._id) } });
     }
+    andConditions.push({ $or: searchConditions });
+  }
 
-    // Combine base filter with search conditions
-    // We use $and to ensure both the visibility/status filters AND the search conditions are met
-    const originalFilter = { ...filter };
-    delete filter.$or; // We'll reconstruct it
-
-    const searchOr = { $or: searchConditions };
-    if (originalFilter.$and) {
-      filter.$and = [
-        ...originalFilter.$and,
-        { $or: originalFilter.$or },
-        searchOr
-      ];
-    } else {
-      filter.$and = [
-        { $or: originalFilter.$or },
-        searchOr
-      ];
-    }
-
-    // Copy other specific filters into $and if needed, but since they are already in `filter` object, 
-    // we should be careful. Actually, it's better to just keep them as they are and let Mongo handle it.
+  if (andConditions.length > 0) {
+    filter.$and = andConditions;
   }
 
   const [docs, total] = await Promise.all([
@@ -5750,6 +5712,125 @@ export async function processReassignmentTimeout(orderMongoId, pendingDriverId) 
   } catch (err) {
     logger.warn(`FCM push failed for reassignment timeout: ${err.message}`);
   }
+}
+
+/**
+ * Admin force-cancel: works at any stage before delivery (e.g. restaurant never cancels,
+ * or no rider is going to pick the order). Frees the rider, stops all rings, optionally refunds.
+ */
+export async function cancelOrderAdmin(orderId, adminId, payload = {}) {
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError('Order id required');
+
+  const order = await FoodOrder.findOne(identity);
+  if (!order) throw new NotFoundError('Order not found');
+
+  const terminal = ['delivered', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
+  if (terminal.includes(order.orderStatus)) {
+    throw new ValidationError(`Order is already ${String(order.orderStatus).replace(/_/g, ' ')}`);
+  }
+
+  const reason = String(payload.reason || payload.cancellationReason || '').trim() || 'Cancelled by admin';
+  const from = order.orderStatus;
+  const assignedRiderId = order.dispatch?.deliveryPartnerId || null;
+  const offeredRiderIds = (order.dispatch?.offeredTo || []).map((o) => o?.partnerId).filter(Boolean);
+
+  order.orderStatus = 'cancelled_by_admin';
+  order.cancellationReason = reason;
+  order.cancelledAt = new Date();
+  order.cancelledBy = 'admin';
+  if (order.dispatch) {
+    order.dispatch.status = 'cancelled';
+    order.dispatch.deliveryPartnerId = null;
+    order.dispatch.dispatchingAt = undefined;
+  }
+  const paidOnline =
+    ['razorpay', 'razorpay_qr', 'wallet', 'online'].includes(String(order.payment?.method || '').toLowerCase()) &&
+    ['paid', 'refunded'].includes(String(order.payment?.status || '').toLowerCase());
+  if (!paidOnline && order.payment) order.payment.status = 'cancelled';
+  pushStatusHistory(order, { byRole: 'ADMIN', byId: adminId, from, to: 'cancelled_by_admin', note: reason });
+  await order.save();
+
+  try {
+    await cancelSellerOrdersForParent(order, 'Cancelled by admin');
+  } catch (err) {
+    logger.warn(`cancelOrderAdmin seller legs sync failed: ${err?.message || err}`);
+  }
+
+  try {
+    if (from === 'ready_for_pickup' || from === 'picked_up') {
+      // Late cancellation: platform absorbs the loss, restaurant/rider still get paid
+      await foodTransactionService.applyAdminCancellationLoss(order._id, adminId);
+    } else {
+      await foodTransactionService.updateTransactionStatus(order._id, 'cancelled_by_admin', {
+        status: paidOnline ? 'refunded' : 'failed',
+        note: `Order cancelled by admin: ${reason}`,
+        recordedByRole: 'ADMIN',
+        recordedById: adminId,
+      });
+    }
+  } catch (err) {
+    logger.warn(`cancelOrderAdmin transaction sync failed: ${err?.message || err}`);
+  }
+
+  // Refund (full) only when the customer paid online / by wallet and admin asked for it.
+  let refund = { attempted: false, success: false, message: '' };
+  if (paidOnline && payload.refund !== false && order.payment?.status !== 'refunded') {
+    refund.attempted = true;
+    try {
+      const { processRefund } = await import('../../admin/services/admin.service.js');
+      await processRefund(String(order._id), null, null);
+      refund.success = true;
+    } catch (err) {
+      refund.message = err?.message || 'Refund failed';
+      logger.warn(`cancelOrderAdmin refund failed for ${order._id}: ${refund.message}`);
+    }
+  }
+
+  const displayId = order.orderId || order._id;
+  const refundLine = refund.success ? ' Your refund has been initiated.' : '';
+  const targets = [{ ownerType: 'USER', ownerId: order.userId }];
+  if (order.restaurantId) targets.push({ ownerType: 'RESTAURANT', ownerId: order.restaurantId });
+  if (assignedRiderId) targets.push({ ownerType: 'DELIVERY_PARTNER', ownerId: assignedRiderId });
+  await notifyOwnersSafely(targets, {
+    title: 'Order Cancelled ❌',
+    body: `Order #${displayId} was cancelled by admin. ${reason}.${refundLine}`,
+    image: 'https://i.ibb.co/3m2Yh7r/SUPERFAST-Brand-Image.png',
+    data: {
+      type: 'order_cancelled',
+      orderId: String(order._id),
+      orderMongoId: String(order._id),
+      restaurantId: String(order.restaurantId?._id || order.restaurantId || ''),
+    },
+  });
+
+  try {
+    const io = getIO();
+    if (io) {
+      const socketPayload = {
+        orderMongoId: order._id.toString(),
+        orderId: order.orderId || order._id.toString(),
+        orderStatus: order.orderStatus,
+        status: order.orderStatus,
+        cancelledBy: 'admin',
+        cancellationReason: reason,
+        message: `Order #${displayId} was cancelled by admin.${refundLine}`,
+      };
+      const roomList = [rooms.user(order.userId), rooms.tracking(order._id)];
+      if (order.restaurantId) roomList.push(rooms.restaurant(order.restaurantId));
+      if (assignedRiderId) roomList.push(rooms.delivery(assignedRiderId));
+      // Riders who were only offered the order must stop ringing too.
+      for (const id of offeredRiderIds) roomList.push(rooms.delivery(id));
+      for (const room of new Set(roomList)) {
+        io.to(room).emit('order_status_update', socketPayload);
+        io.to(room).emit('order_cancelled', socketPayload);
+      }
+    }
+  } catch (err) {
+    logger.warn(`cancelOrderAdmin socket emit failed: ${err?.message || err}`);
+  }
+
+  return { order: normalizeOrderForClient(order), refund };
 }
 
 /**

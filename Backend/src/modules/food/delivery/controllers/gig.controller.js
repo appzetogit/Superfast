@@ -6,6 +6,7 @@ import { HandoverRequest } from '../models/handoverRequest.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { notifyOwnerSafely, notifyAdminsSafely } from '../../../../core/notifications/firebase.service.js';
+import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
 import { tryAutoAssign } from '../../orders/services/order-dispatch.service.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 
@@ -17,11 +18,8 @@ function getDeliveryPartnerId(req) {
 
 /** Helper: Get today YYYY-MM-DD */
 function getTodayDateString() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  // en-CA formats as YYYY-MM-DD; pinned to IST so a UTC server does not roll the date at 05:30.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 }
 
 /** Zone helpers: a rider may only see/book gigs of the zone they are physically in. */
@@ -64,7 +62,6 @@ const TERMINAL_ORDER_STATUSES = [
   'cancelled_by_admin',
 ];
 const CHECK_IN_EARLY_MINUTES = 30;
-const SHIFT_END_GRACE_MINUTES = 30;
 
 /** Helper: "8:0" / "08:00" -> "08:00" */
 function normalizeTime(value) {
@@ -75,8 +72,9 @@ function normalizeTime(value) {
 /** Helper: absolute start/end Date of a gig shift (overnight shifts roll to next day) */
 function getShiftWindow(gig) {
   if (!gig?.date || !gig?.startTime || !gig?.endTime) return null;
-  const start = new Date(`${gig.date}T${normalizeTime(gig.startTime)}:00`);
-  const end = new Date(`${gig.date}T${normalizeTime(gig.endTime)}:00`);
+  // Shift times are entered in IST; parse them as IST regardless of the server timezone.
+  const start = new Date(`${gig.date}T${normalizeTime(gig.startTime)}:00+05:30`);
+  const end = new Date(`${gig.date}T${normalizeTime(gig.endTime)}:00+05:30`);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
   if (end.getTime() <= start.getTime()) end.setDate(end.getDate() + 1);
   return { start, end };
@@ -92,10 +90,34 @@ async function partnerHasActiveOrder(partnerObjectId) {
   return count > 0;
 }
 
+/** Helper: send push + inbox + socket for a gig event to one rider. */
+async function notifyPartnerGigEvent(partnerId, { title, body, type, gigId, socketEvent, extra = {} }) {
+  const ownerId = String(partnerId);
+  await notifyOwnerSafely(
+    { ownerType: 'DELIVERY_PARTNER', ownerId },
+    { title, body, data: { type, gigId: String(gigId || ''), link: '/food/delivery' } }
+  );
+  try {
+    await createInboxNotifications({
+      notifications: [
+        { ownerType: 'DELIVERY_PARTNER', ownerId, title, message: body, category: 'gig_reminder', metadata: { gigId: String(gigId || ''), type } },
+      ],
+    });
+  } catch (err) {
+    console.warn('[Gig] inbox notification failed:', err?.message || err);
+  }
+  try {
+    const io = getIO();
+    if (io && socketEvent) io.to(rooms.delivery(ownerId)).emit(socketEvent, { gigId, title, message: body, ...extra });
+  } catch {
+    // socket is best-effort
+  }
+}
+
 /**
- * Close out stale bookings so riders do not stay "booked/online" forever:
- * - booked but shift ended            -> missed
- * - checked_in and shift ended + grace -> completed (rider goes offline once no active order)
+ * Close out stale bookings:
+ * - booked but shift ended     -> missed
+ * - checked_in and shift ended -> completed (unless the rider still has an active order)
  */
 export async function expireGigBookings() {
   try {
@@ -106,39 +128,18 @@ export async function expireGigBookings() {
 
     for (const booking of open) {
       const window = getShiftWindow(booking.gigId);
-      if (!window) continue;
+      if (!window || window.end.getTime() > now) continue;
 
-      if (booking.status === 'booked' && window.end.getTime() <= now) {
+      if (booking.status === 'booked') {
         await GigBooking.updateOne({ _id: booking._id, status: 'booked' }, { $set: { status: 'missed' } });
         continue;
       }
 
-      if (
-        booking.status === 'checked_in' &&
-        window.end.getTime() + SHIFT_END_GRACE_MINUTES * 60 * 1000 <= now
-      ) {
-        if (await partnerHasActiveOrder(booking.deliveryPartnerId)) continue;
-        await GigBooking.updateOne(
-          { _id: booking._id, status: 'checked_in' },
-          {
-            $set: {
-              status: 'completed',
-              checkOutTime: new Date(),
-              earnings: (booking.gigId?.basePay || 0) + (booking.gigId?.incentiveBonus || 0),
-            },
-          }
-        );
-        const stillActive = await GigBooking.exists({
-          deliveryPartnerId: booking.deliveryPartnerId,
-          status: 'checked_in',
-        });
-        if (!stillActive) {
-          await FoodDeliveryPartner.updateOne(
-            { _id: booking.deliveryPartnerId },
-            { $set: { availabilityStatus: 'offline' } }
-          );
-        }
-      }
+      if (await partnerHasActiveOrder(booking.deliveryPartnerId)) continue;
+      await GigBooking.updateOne(
+        { _id: booking._id, status: 'checked_in' },
+        { $set: { status: 'completed', checkOutTime: new Date() } }
+      );
     }
   } catch (error) {
     console.error('[Gig] expire bookings error:', error);
@@ -146,47 +147,111 @@ export async function expireGigBookings() {
 }
 
 /**
- * 30-Minute Pre-Shift Notification Scheduler
+ * Shift-end auto-offline: an online rider with no running (or starting within
+ * 30 min) booking and no active order is set offline and told why. The socket
+ * event lets the open app flip its toggle instead of showing a stale "online".
+ */
+export async function autoOfflineEndedShifts() {
+  try {
+    const now = Date.now();
+    const onlinePartners = await FoodDeliveryPartner.find({ availabilityStatus: 'online' }).select('_id').lean();
+
+    for (const partner of onlinePartners) {
+      const bookings = await GigBooking.find({
+        deliveryPartnerId: partner._id,
+        status: { $in: ['booked', 'checked_in'] },
+      }).populate('gigId').lean();
+
+      const hasActiveGig = bookings.some((b) => {
+        const w = getShiftWindow(b.gigId);
+        return w && now >= w.start.getTime() - CHECK_IN_EARLY_MINUTES * 60 * 1000 && now < w.end.getTime();
+      });
+      if (hasActiveGig) continue;
+      if (await partnerHasActiveOrder(partner._id)) continue;
+
+      const flipped = await FoodDeliveryPartner.updateOne(
+        { _id: partner._id, availabilityStatus: 'online' },
+        { $set: { availabilityStatus: 'offline' } }
+      );
+      if (!flipped.modifiedCount) continue;
+
+      await notifyPartnerGigEvent(partner._id, {
+        title: 'Shift Ended - You are now Offline',
+        body: 'Aapki gig shift end ho gayi hai. Dubara online aane ke liye nayi gig book karein.',
+        type: 'GIG_SHIFT_ENDED',
+        socketEvent: 'availability_status_changed',
+        extra: { availabilityStatus: 'offline', reason: 'gig_expired' },
+      });
+    }
+  } catch (error) {
+    console.error('[Gig] auto-offline error:', error);
+  }
+}
+
+const REMINDER_30_MS = 30 * 60 * 1000;
+const REMINDER_15_MS = 15 * 60 * 1000;
+
+/**
+ * Pre-shift reminders, each fired exactly once per booking (DB flag, claimed atomically):
+ * - 30 min before start: only if the rider is still offline
+ * - 15 min before start: always
+ * Also expires old bookings and auto-offlines riders whose shift ended.
  */
 export async function checkAndSendGigReminders() {
   try {
     await expireGigBookings();
+    await autoOfflineEndedShifts();
 
-    const activeBookings = await GigBooking.find({
-      status: 'booked',
-      reminderSent: { $ne: true },
-    }).populate('gigId').lean();
+    const bookings = await GigBooking.find({ status: 'booked' })
+      .populate('gigId')
+      .populate('deliveryPartnerId', 'availabilityStatus')
+      .lean();
 
     const now = Date.now();
 
-    for (const booking of activeBookings) {
+    for (const booking of bookings) {
       const gig = booking.gigId;
-      if (!gig || !gig.startTime || !gig.date) continue;
+      const partner = booking.deliveryPartnerId;
+      if (!gig || !gig.isActive || !partner) continue;
 
       const window = getShiftWindow(gig);
       if (!window) continue;
 
-      const diffMs = window.start.getTime() - now;
-      const diffMinutes = diffMs / (1000 * 60);
+      const untilStart = window.start.getTime() - now;
+      if (untilStart <= 0) continue;
 
-      // Trigger reminder if shift starts in <= 35 mins (or up to 15 mins past start)
-      if (diffMinutes <= 35 && diffMinutes >= -15) {
-        await GigBooking.updateOne({ _id: booking._id }, { $set: { reminderSent: true } });
-
-        const minsLeftText = diffMinutes > 0 ? `${Math.max(1, Math.round(diffMinutes))} minutes` : 'now';
-
-        await notifyOwnerSafely(
-          { ownerType: 'DELIVERY', ownerId: String(booking.deliveryPartnerId) },
-          {
-            title: '⏰ Shift Starting Soon!',
-            body: `Your booked Gig shift (${gig.startTime} - ${gig.endTime}) starts ${minsLeftText}! Please check-in now to start working.`,
-            data: {
-              type: 'GIG_REMINDER',
-              gigId: String(gig._id),
-              link: '/food/delivery',
-            },
-          }
+      if (!booking.reminder30MinSent && untilStart <= REMINDER_30_MS && partner.availabilityStatus !== 'online') {
+        const claimed = await GigBooking.updateOne(
+          { _id: booking._id, reminder30MinSent: { $ne: true } },
+          { $set: { reminder30MinSent: true } }
         );
+        if (claimed.modifiedCount) {
+          await notifyPartnerGigEvent(partner._id, {
+            title: 'Upcoming Shift Reminder (30m)',
+            body: `Your booked shift "${gig.title}" starts in 30 minutes (${gig.startTime}). Please get ready!`,
+            type: 'GIG_REMINDER_30MIN',
+            gigId: gig._id,
+            socketEvent: 'gig:reminder_30min',
+            extra: { startTime: gig.startTime },
+          });
+        }
+      }
+
+      if (!booking.reminder15MinSent && untilStart <= REMINDER_15_MS) {
+        const claimed = await GigBooking.updateOne(
+          { _id: booking._id, reminder15MinSent: { $ne: true } },
+          { $set: { reminder15MinSent: true } }
+        );
+        if (claimed.modifiedCount) {
+          await notifyPartnerGigEvent(partner._id, {
+            title: 'Shift Starting Soon (15m)',
+            body: `Your shift "${gig.title}" starts in 15 minutes (${gig.startTime}). Please log in and go online now!`,
+            type: 'GIG_REMINDER_15MIN',
+            gigId: gig._id,
+            socketEvent: 'gig:reminder_15min',
+            extra: { startTime: gig.startTime },
+          });
+        }
       }
     }
   } catch (error) {
@@ -194,8 +259,8 @@ export async function checkAndSendGigReminders() {
   }
 }
 
-// Start recurring 30-min pre-shift notification check every 2 minutes
-setInterval(checkAndSendGigReminders, 2 * 60 * 1000).unref?.();
+// Reminder / expiry / shift-end check every minute
+setInterval(checkAndSendGigReminders, 60 * 1000).unref?.();
 
 /**
  * List active Gigs created by Admin for driver's zone and date
@@ -363,7 +428,9 @@ export async function bookGigController(req, res) {
     let booking;
     if (existing) {
       existing.status = 'booked';
-      existing.reminderSent = false;
+      existing.reminder30MinSent = false;
+      existing.reminder15MinSent = false;
+      existing.cancelledAt = null;
       existing.checkInTime = null;
       existing.checkOutTime = null;
       existing.earnings = 0;
@@ -395,6 +462,51 @@ export async function bookGigController(req, res) {
     }
     console.error('[Gig] bookGig error:', error);
     return res.status(500).json({ success: false, message: error?.message || 'Failed to book gig' });
+  }
+}
+
+/**
+ * Cancel a booked Gig (only until the cancellation cutoff before shift start)
+ */
+export async function cancelGigBookingController(req, res) {
+  try {
+    const deliveryPartnerId = getDeliveryPartnerId(req);
+    const { bookingId, gigId } = req.body;
+
+    if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
+      return res.status(401).json({ success: false, message: 'Invalid or missing delivery partner session' });
+    }
+    const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
+
+    const filter = { deliveryPartnerId: partnerObjectId, status: 'booked' };
+    if (bookingId && mongoose.Types.ObjectId.isValid(bookingId)) filter._id = bookingId;
+    else if (gigId && mongoose.Types.ObjectId.isValid(gigId)) filter.gigId = gigId;
+    else return res.status(400).json({ success: false, message: 'Booking ID or Gig ID is required' });
+
+    const booking = await GigBooking.findOne(filter);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'No active booking found for this gig' });
+    }
+
+    const gig = await Gig.findById(booking.gigId).lean();
+    const window = getShiftWindow(gig);
+    const cutoffMins = gig?.cancellationCutoffMinutes ?? 60;
+    if (window && Date.now() > window.start.getTime() - cutoffMins * 60 * 1000) {
+      return res.status(400).json({
+        success: false,
+        message: `Cancellation is not allowed within ${cutoffMins} minutes before the shift starts`,
+      });
+    }
+
+    booking.status = 'cancelled';
+    booking.cancelledAt = new Date();
+    await booking.save();
+    await Gig.updateOne({ _id: booking.gigId, bookedCount: { $gt: 0 } }, { $inc: { bookedCount: -1 } });
+
+    return res.json({ success: true, message: 'Gig booking cancelled successfully' });
+  } catch (error) {
+    console.error('[Gig] cancelGigBooking error:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'Failed to cancel booking' });
   }
 }
 
@@ -459,7 +571,7 @@ export async function checkInGigController(req, res) {
       await booking.save();
     }
 
-    // Set delivery partner availability status to online
+    // Rider explicitly checked in -> go online.
     await FoodDeliveryPartner.updateOne({ _id: partnerObjectId }, { $set: { availabilityStatus: 'online' } });
 
     return res.json({
@@ -513,15 +625,6 @@ export async function checkOutGigController(req, res) {
     booking.checkOutTime = new Date();
     booking.earnings = (gig?.basePay || 0) + (gig?.incentiveBonus || 0);
     await booking.save();
-
-    // Go offline unless another shift is still running
-    const otherOpen = await GigBooking.exists({
-      deliveryPartnerId: partnerObjectId,
-      status: 'checked_in',
-    });
-    if (!otherOpen) {
-      await FoodDeliveryPartner.updateOne({ _id: partnerObjectId }, { $set: { availabilityStatus: 'offline' } });
-    }
 
     return res.json({
       success: true,
@@ -698,6 +801,7 @@ export async function adminCreateGigController(req, res) {
       basePay = 300,
       incentiveBonus = 50,
       maxDrivers = 15,
+      cancellationCutoffMinutes = 60,
       isActive = true,
     } = req.body;
 
@@ -720,6 +824,7 @@ export async function adminCreateGigController(req, res) {
       basePay: Number(basePay) || 300,
       incentiveBonus: Number(incentiveBonus) || 50,
       maxDrivers: Number(maxDrivers) || 15,
+      cancellationCutoffMinutes: Math.max(0, Number(cancellationCutoffMinutes) || 0),
       bookedCount: 0,
       isActive: isActive !== false,
     });
@@ -770,7 +875,7 @@ export async function adminUpdateGigController(req, res) {
   try {
     const { id } = req.params;
     // Whitelist editable fields; bookedCount is owned by the booking flow.
-    const allowed = ['zoneName', 'title', 'shiftType', 'startTime', 'endTime', 'date', 'basePay', 'incentiveBonus', 'maxDrivers', 'isActive'];
+    const allowed = ['zoneName', 'title', 'shiftType', 'startTime', 'endTime', 'date', 'basePay', 'incentiveBonus', 'maxDrivers', 'cancellationCutoffMinutes', 'isActive'];
     const updateData = Object.fromEntries(
       Object.entries(req.body || {}).filter(([key]) => allowed.includes(key))
     );

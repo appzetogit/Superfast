@@ -2,6 +2,8 @@ import { useMemo, useState, useEffect } from "react"
 import { BarChart3, ChevronDown, Settings, FileText, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import ReportFilterFields, { EMPTY_REPORT_FILTERS, buildReportParams, countActiveReportFilters, hasInvalidDateRange } from "@food/components/admin/reports/ReportFilterFields"
+import { useAdminFilterOptions } from "@food/hooks/useAdminFilterOptions"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
@@ -43,80 +45,31 @@ export default function RegularOrderReport() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isFiltering, setIsFiltering] = useState(false)
   const [error, setError] = useState(null)
-  const [zones, setZones] = useState([])
-  const [restaurants, setRestaurants] = useState([])
+  const { zones, categories, restaurants } = useAdminFilterOptions()
   const [customers, setCustomers] = useState([])
-  
-  const [filters, setFilters] = useState({
-    zone: "All Zones",
-    restaurant: "All restaurants",
-    customer: "All customers",
-    time: "All Time",
-  })
+
+  const [filters, setFilters] = useState({ ...EMPTY_REPORT_FILTERS, customer: "" })
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  // Fetch zones, restaurants, and customers for filter dropdowns
+  // Fetch customers for the filter dropdown (zones/restaurants/categories come from the shared hook)
   useEffect(() => {
-    const fetchFilterData = async () => {
+    const fetchCustomers = async () => {
       try {
-        // Fetch zones
-        const zonesRes = await adminAPI.getZones({ limit: 100, isActive: true })
-        if (zonesRes.data?.success) {
-          setZones(zonesRes.data.data.zones || [])
-        }
-
-        // Fetch restaurants
-        const restaurantsRes = await adminAPI.getRestaurants({ limit: 100 })
-        if (restaurantsRes.data?.success) {
-          setRestaurants(restaurantsRes.data.data.restaurants || [])
-        }
-
-        // Fetch customers (users) via existing customers API
-        const customersRes = await adminAPI.getCustomers({ limit: 100 })
+        const customersRes = await adminAPI.getCustomers({ limit: 1000 })
         if (customersRes.data?.success) {
           setCustomers(customersRes.data.data.customers || [])
         }
       } catch (err) {
-        debugError("Error fetching filter data:", err)
+        debugError("Error fetching customers:", err)
       }
     }
 
-    fetchFilterData()
+    fetchCustomers()
   }, [])
-
-  // Calculate date range based on time filter
-  const getDateRange = () => {
-    const now = new Date()
-    let fromDate = null
-    let toDate = null
-
-    switch (filters.time) {
-      case "Today":
-        fromDate = new Date(now.setHours(0, 0, 0, 0))
-        toDate = new Date(now.setHours(23, 59, 59, 999))
-        break
-      case "This Week":
-        const weekStart = new Date(now)
-        weekStart.setDate(now.getDate() - now.getDay())
-        weekStart.setHours(0, 0, 0, 0)
-        fromDate = weekStart
-        toDate = new Date(now.setHours(23, 59, 59, 999))
-        break
-      case "This Month":
-        fromDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-        break
-      default:
-        // All Time - no date filter
-        break
-    }
-
-    return { fromDate, toDate }
-  }
 
   // Fetch orders from backend
   useEffect(() => {
@@ -128,16 +81,16 @@ export default function RegularOrderReport() {
       }
       setError(null)
       try {
-        const { fromDate, toDate } = getDateRange()
+        if (hasInvalidDateRange(filters)) {
+          setOrders([])
+          return
+        }
         const params = {
           page: 1,
-          limit: 10000,
+          limit: 5000,
           search: searchQuery || undefined,
-          zoneId: filters.zone !== "All Zones" ? filters.zone : undefined,
-          restaurantId: filters.restaurant !== "All restaurants" ? filters.restaurant : undefined,
-          userId: filters.customer !== "All customers" ? filters.customer : undefined,
-          startDate: fromDate ? fromDate.toISOString().split('T')[0] : undefined,
-          endDate: toDate ? toDate.toISOString().split('T')[0] : undefined,
+          ...buildReportParams(filters),
+          userId: filters.customer || undefined,
         }
 
         const response = await adminAPI.getOrders(params)
@@ -212,6 +165,10 @@ export default function RegularOrderReport() {
             }
           })
           setOrders(transformedOrders)
+          const totalMatching = Number(response.data.data.meta?.total || 0)
+          if (totalMatching > rawOrders.length) {
+            toast.warning(`Showing the latest ${rawOrders.length} of ${totalMatching} orders. Narrow the filters to see the rest.`)
+          }
         } else {
           setError(response.data?.message || "Failed to fetch orders")
           toast.error(response.data?.message || "Failed to fetch orders")
@@ -265,15 +222,11 @@ export default function RegularOrderReport() {
   }
 
   const handleResetFilters = () => {
-    setFilters({
-      zone: "All Zones",
-      restaurant: "All restaurants",
-      customer: "All customers",
-      time: "All Time",
-    })
+    setFilters({ ...EMPTY_REPORT_FILTERS, customer: "" })
+    setCurrentPage(1)
   }
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = countActiveReportFilters(filters) + (filters.customer ? 1 : 0)
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
 
@@ -385,37 +338,16 @@ export default function RegularOrderReport() {
         {/* Search Data Filters */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3 mb-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={filters.zone}
-                onChange={(e) => handleFilterChange("zone", e.target.value)}
-                className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
-              >
-                <option value="All Zones">All Zones</option>
-                {zones.map((zone) => (
-                  <option key={zone._id} value={zone._id}>
-                    {zone.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={filters.restaurant}
-                onChange={(e) => handleFilterChange("restaurant", e.target.value)}
-                className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
-              >
-                <option value="All restaurants">All restaurants</option>
-                {restaurants.map((restaurant) => (
-                  <option key={restaurant._id} value={restaurant._id}>
-                    {restaurant.restaurantName || restaurant.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
+            <ReportFilterFields
+              filters={filters}
+              setFilters={(updater) => {
+                setFilters(updater)
+                setCurrentPage(1)
+              }}
+              zones={zones}
+              restaurants={restaurants}
+              categories={categories}
+            />
 
             <div className="relative flex-1 min-w-0">
               <select
@@ -423,26 +355,12 @@ export default function RegularOrderReport() {
                 onChange={(e) => handleFilterChange("customer", e.target.value)}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All customers">All customers</option>
+                <option value="">All customers</option>
                 {customers.map((customer) => (
                   <option key={customer._id} value={customer._id}>
                     {customer.name}
                   </option>
                 ))}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={filters.time}
-                onChange={(e) => handleFilterChange("time", e.target.value)}
-                className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
-              >
-                <option key="all-time" value="All Time">All Time</option>
-                <option key="today" value="Today">Today</option>
-                <option key="this-week" value="This Week">This Week</option>
-                <option key="this-month" value="This Month">This Month</option>
               </select>
               <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
             </div>

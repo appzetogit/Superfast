@@ -11,11 +11,13 @@ import FilterPanel from "@food/components/admin/orders/FilterPanel"
 import ViewOrderDialog from "@food/components/admin/orders/ViewOrderDialog"
 import SettingsDialog from "@food/components/admin/orders/SettingsDialog"
 import RefundModal from "@food/components/admin/orders/RefundModal"
+import CancelOrderModal from "@food/components/admin/orders/CancelOrderModal"
 import { useOrdersManagement } from "@food/components/admin/orders/useOrdersManagement"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 import { OrdersDashboardSkeleton } from "@food/components/ui/loading-skeletons"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
+import { useAdminFilterOptions } from "@food/hooks/useAdminFilterOptions"
 const NEW_ADMIN_SOUND = "/universfield-new-notification-036-485897.mp3"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -45,6 +47,9 @@ export default function OrdersPage({ statusKey = "all" }) {
   const [processingRefund, setProcessingRefund] = useState(null)
   const [processingActionOrderId, setProcessingActionOrderId] = useState(null)
   const [deletingOrderId, setDeletingOrderId] = useState(null)
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState(null)
+  const [cancelingOrderId, setCancelingOrderId] = useState(null)
   const [refundModalOpen, setRefundModalOpen] = useState(false)
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
@@ -53,6 +58,9 @@ export default function OrdersPage({ statusKey = "all" }) {
   const showLoadingSkeleton = useDelayedLoading(isLoading, { delay: 120, minDuration: 360 })
   const seenOrderIdsRef = useRef(new Set())
   const isFirstLoadRef = useRef(true)
+  const serverFiltersRef = useRef({})
+  const serverFiltersMountedRef = useRef(false)
+  const { zones: zoneOptions, categories: categoryOptions } = useAdminFilterOptions({ restaurants: false })
   const fallbackAudioRef = useRef(null)
   const notificationAudioRef = useRef(null)
   const audioContextRef = useRef(null)
@@ -324,6 +332,11 @@ export default function OrdersPage({ statusKey = "all" }) {
               ? "cancelled"
               : statusKey,
         cancelledBy: statusKey === "restaurant-cancelled" ? "restaurant" : undefined,
+        // Zone / category / date are applied by the server so they cover every order, not just the first 1000.
+        zoneId: serverFiltersRef.current.zoneId || undefined,
+        categoryId: serverFiltersRef.current.categoryId || undefined,
+        startDate: serverFiltersRef.current.fromDate || undefined,
+        endDate: serverFiltersRef.current.toDate || undefined,
       }
 
       const response = await adminAPI.getOrders(params)
@@ -587,7 +600,28 @@ export default function OrdersPage({ statusKey = "all" }) {
     handlePrintOrder,
     toggleColumn,
     resetColumns,
-  } = useOrdersManagement(normalizedOrders, statusKey, config.title)
+  } = useOrdersManagement(normalizedOrders, statusKey, config.title, { serverSideDates: true })
+
+  serverFiltersRef.current = {
+    zoneId: filters.zoneId,
+    categoryId: filters.categoryId,
+    fromDate: filters.fromDate,
+    toDate: filters.toDate,
+  }
+  const invalidDateRange = Boolean(filters.fromDate && filters.toDate && filters.fromDate > filters.toDate)
+  const serverFilterKey = invalidDateRange
+    ? "invalid"
+    : [filters.zoneId, filters.categoryId, filters.fromDate, filters.toDate].join("|")
+
+  useEffect(() => {
+    if (!serverFiltersMountedRef.current) {
+      serverFiltersMountedRef.current = true
+      return
+    }
+    if (serverFilterKey === "invalid") return
+    isFirstLoadRef.current = true
+    fetchOrders({ silent: false, withRingCheck: false })
+  }, [serverFilterKey, fetchOrders])
 
   useEffect(() => {
     isFirstLoadRef.current = true
@@ -795,6 +829,37 @@ export default function OrdersPage({ statusKey = "all" }) {
     }
   }
 
+  // Admin force-cancel (restaurant not cancelling / no rider will pick the order).
+  const handleCancelOrder = (order) => {
+    setSelectedOrderForCancel(order)
+    setCancelModalOpen(true)
+  }
+
+  const handleCancelConfirm = async ({ reason, refund }) => {
+    const order = selectedOrderForCancel
+    const orderIdToUse = order?.id || order?._id || order?.orderId
+    if (!orderIdToUse) {
+      toast.error("Order ID not found. Please refresh the page and try again.")
+      return
+    }
+    try {
+      setCancelingOrderId(orderIdToUse)
+      const response = await adminAPI.cancelOrder(orderIdToUse, { reason, refund })
+      if (response.data?.success) {
+        toast.success(response.data?.message || `Order ${order.orderId} cancelled`)
+        setCancelModalOpen(false)
+        setSelectedOrderForCancel(null)
+        await fetchOrders({ silent: true, withRingCheck: false })
+      } else {
+        toast.error(response.data?.message || "Failed to cancel order")
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to cancel order")
+    } finally {
+      setCancelingOrderId(null)
+    }
+  }
+
   // Handle refund button click
   const handleRefund = (order) => {
     setSelectedOrderForRefund(order)
@@ -968,6 +1033,8 @@ export default function OrdersPage({ statusKey = "all" }) {
         onApply={handleApplyFilters}
         onReset={handleResetFilters}
         restaurants={restaurants}
+        zones={zoneOptions}
+        categories={categoryOptions}
       />
       <SettingsDialog
         isOpen={isSettingsOpen}
@@ -981,6 +1048,14 @@ export default function OrdersPage({ statusKey = "all" }) {
         onOpenChange={setIsViewOrderOpen}
         order={selectedOrder}
         onStatusUpdated={() => fetchOrders({ silent: true, withRingCheck: false })}
+      />
+
+      <CancelOrderModal
+        isOpen={cancelModalOpen}
+        onOpenChange={setCancelModalOpen}
+        order={selectedOrderForCancel}
+        onConfirm={handleCancelConfirm}
+        isProcessing={cancelingOrderId !== null}
       />
 
       <RefundModal
@@ -1034,6 +1109,8 @@ export default function OrdersPage({ statusKey = "all" }) {
         onPrintOrder={handlePrintOrder}
         onRefund={handleRefund}
         onDeleteOrder={statusKey === "all" ? handleDeleteOrder : undefined}
+        onCancelOrder={handleCancelOrder}
+        cancelingOrderId={cancelingOrderId}
         onAcceptOrder={statusKey === "all" || statusKey === "pending" ? handleAcceptOrder : undefined}
         onRejectOrder={statusKey === "all" || statusKey === "pending" ? handleRejectOrder : undefined}
         actionLoadingOrderId={processingActionOrderId}

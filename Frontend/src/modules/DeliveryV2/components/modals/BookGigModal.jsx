@@ -57,6 +57,24 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
     }
   };
 
+  const handleCancel = async (gig) => {
+    setBookingIdInProgress(gig._id);
+    try {
+      const res = await gigAPI.cancelGig({ gigId: gig._id, bookingId: gig.bookingId });
+      if (res?.data?.success) {
+        toast.success(res.data.message || 'Booking cancelled');
+        fetchGigs();
+        if (onBookingComplete) onBookingComplete();
+      } else {
+        toast.error(res?.data?.message || 'Failed to cancel booking');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Error cancelling booking');
+    } finally {
+      setBookingIdInProgress(null);
+    }
+  };
+
   const handleCheckIn = async (gig) => {
     setBookingIdInProgress(gig._id);
     try {
@@ -212,6 +230,7 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
                       <span>CHECKED IN & WORKING</span>
                     </div>
                   ) : isBooked ? (
+                    <>
                     <button
                       onClick={() => handleCheckIn(gig)}
                       disabled={bookingIdInProgress === gig._id}
@@ -220,6 +239,14 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
                       <Check className="w-4 h-4 stroke-[3]" />
                       <span>CHECK IN NOW TO START WORKING</span>
                     </button>
+                    <button
+                      onClick={() => handleCancel(gig)}
+                      disabled={bookingIdInProgress === gig._id}
+                      className="w-full bg-red-50 text-red-600 font-black text-xs py-2.5 rounded-2xl active:scale-95 transition-all"
+                    >
+                      CANCEL BOOKING
+                    </button>
+                    </>
                   ) : remainingSlots === 0 ? (
                     <button disabled className="w-full bg-gray-200 dark:bg-gray-800 text-gray-400 font-black text-xs py-3 rounded-2xl cursor-not-allowed text-center">
                       SLOTS FULL

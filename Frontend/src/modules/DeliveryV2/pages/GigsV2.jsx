@@ -358,12 +358,6 @@ export default function GigsV2() {
                           </h3>
                         </div>
 
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Guarantee</p>
-                          <p className="text-lg font-black text-green-600 dark:text-green-400">
-                            ₹{gig.basePay} <span className="text-[10px] text-gray-500">+ ₹{gig.incentiveBonus} Bonus</span>
-                          </p>
-                        </div>
                       </div>
 
                       {/* Capacity Bar */}
@@ -574,9 +568,6 @@ export default function GigsV2() {
                       >
                         {booking.status}
                       </span>
-                      <p className="text-xs font-black text-green-600 dark:text-green-400 mt-1">
-                        ₹{gig.basePay || 350}
-                      </p>
                     </div>
                   </div>
                 );
@@ -670,29 +661,6 @@ export default function GigsV2() {
                       placeholder="12:00"
                       value={gigFormData.endTime}
                       onChange={(e) => setGigFormData({ ...gigFormData, endTime: e.target.value })}
-                      className="w-full bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-800 font-bold outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">Base Pay (₹)</label>
-                    <input
-                      type="number"
-                      required
-                      value={gigFormData.basePay}
-                      onChange={(e) => setGigFormData({ ...gigFormData, basePay: e.target.value })}
-                      className="w-full bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-800 font-bold outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">Incentive Bonus (₹)</label>
-                    <input
-                      type="number"
-                      required
-                      value={gigFormData.incentiveBonus}
-                      onChange={(e) => setGigFormData({ ...gigFormData, incentiveBonus: e.target.value })}
                       className="w-full bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-800 font-bold outline-none"
                     />
                   </div>

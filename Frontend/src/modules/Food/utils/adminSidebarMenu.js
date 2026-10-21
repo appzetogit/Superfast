@@ -202,9 +202,14 @@ export const adminSidebarMenu = [
     label: "REPORT MANAGEMENT",
     permissionKey: "reports",
     items: [
+      { type: "link", label: "Earnings Report", path: "/admin/food/earnings-report", icon: "FileText", permissionKey: "reports" },
       { type: "link", label: "Transaction Report", path: "/admin/food/transaction-report", icon: "FileText", permissionKey: "reports" },
       { type: "link", label: "Order Report", path: "/admin/food/order-report/regular", icon: "FileText", permissionKey: "reports" },
       { type: "link", label: "Tax Report", path: "/admin/food/tax-report", icon: "Receipt", permissionKey: "reports" },
+      { type: "link", label: "Food Report", path: "/admin/food/food-report", icon: "FileText", permissionKey: "reports" },
+      { type: "link", label: "Expense Report", path: "/admin/food/expense-report", icon: "FileText", permissionKey: "reports" },
+      { type: "link", label: "Restaurant Disbursement", path: "/admin/food/disbursement-report/restaurants", icon: "FileText", permissionKey: "reports" },
+      { type: "link", label: "Deliveryman Disbursement", path: "/admin/food/disbursement-report/deliverymen", icon: "FileText", permissionKey: "reports" },
       {
         type: "expandable",
         label: "Restaurant Report",

@@ -63,6 +63,10 @@ router.get('/restaurants', adminController.getRestaurants);
 router.get('/dashboard-stats', adminController.getDashboardStats);
 router.get('/reports/restaurants', adminController.getRestaurantReport);
 router.get('/reports/transactions', adminController.getTransactionReport);
+router.get('/reports/earnings', adminController.getEarningsReport);
+router.get('/reports/disbursement', adminController.getDisbursementReport);
+router.get('/reports/expense', adminController.getExpenseReport);
+router.get('/reports/food', adminController.getFoodReport);
 router.get('/reports/tax', adminController.getTaxReport);
 router.get('/reports/tax/:id', adminController.getTaxReportDetail);
 router.get('/restaurants/pending', adminController.getPendingRestaurants);
@@ -214,6 +218,7 @@ router.patch('/dining/restaurants/:restaurantId', diningAdminController.updateDi
 router.get('/orders', orderController.listOrdersAdminController);
 router.get('/orders/:orderId', orderController.getOrderByIdAdminController);
 router.post('/orders/:orderId/refund', adminController.processRefund);
+router.post('/orders/:orderId/cancel', orderController.cancelOrderAdminController);
 router.delete('/orders/:orderId', orderController.deleteOrderAdminController);
 router.post('/orders/:orderId/assign', orderController.assignDeliveryPartnerController);
 router.post('/orders/:orderId/reassign', orderController.reassignDeliveryPartnerController);

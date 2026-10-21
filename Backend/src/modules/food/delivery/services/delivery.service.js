@@ -457,6 +457,25 @@ export const updateDeliveryAvailability = async (userId, payload) => {
     }
     await partner.save();
 
+    // Mirror the position to Firebase RTDB so the admin live-location map also works
+    // for online riders who are not on an order (the socket path only writes it during orders).
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+        try {
+            const { getFirebaseDB } = await import('../../../../config/firebase.js');
+            const db = getFirebaseDB();
+            if (db) {
+                db.ref(`delivery_boys/${userId}`).update({
+                    lat: latitude,
+                    lng: longitude,
+                    last_updated: Date.now(),
+                    status: partner.availabilityStatus,
+                }).catch(() => {});
+            }
+        } catch {
+            // Firebase not configured: the DB lastLat/lastLng fallback still applies
+        }
+    }
+
     // Broadcast the status update to admins and the delivery partner
     try {
         const { getIO, rooms } = await import('../../../../config/socket.js');

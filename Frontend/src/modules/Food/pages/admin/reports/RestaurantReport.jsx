@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { useAdminFilterOptions, zoneLabel } from "@food/hooks/useAdminFilterOptions"
+import { DATE_PRESETS, presetToRange, todayInputValue } from "@food/utils/adminDateFilters"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -14,29 +16,18 @@ export default function RestaurantReport() {
   const [searchQuery, setSearchQuery] = useState("")
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
-    zone: "All Zones",
+  const EMPTY_FILTERS = {
+    zone: "",
+    category: "",
     all: "All",
     type: "All types",
-    time: "All Time",
-  })
-  const [zones, setZones] = useState([])
+    time: "",
+    fromDate: "",
+    toDate: "",
+  }
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const { zones, categories } = useAdminFilterOptions({ restaurants: false })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-
-  // Fetch zones for filter dropdown
-  useEffect(() => {
-    const fetchZones = async () => {
-      try {
-        const response = await adminAPI.getZones({ limit: 1000 })
-        if (response?.data?.success && response.data.data?.zones) {
-          setZones(response.data.data.zones)
-        }
-      } catch (error) {
-        debugError("Error fetching zones:", error)
-      }
-    }
-    fetchZones()
-  }, [])
 
   // Fetch restaurant report data
   useEffect(() => {
@@ -44,11 +35,21 @@ export default function RestaurantReport() {
       try {
         setLoading(true)
         
+        const range = filters.time === "custom"
+          ? { fromDate: filters.fromDate, toDate: filters.toDate }
+          : presetToRange(filters.time) || {}
+        if (range.fromDate && range.toDate && range.fromDate > range.toDate) {
+          setRestaurants([])
+          return
+        }
+
         const params = {
-          zone: filters.zone !== "All Zones" ? filters.zone : undefined,
+          zoneId: filters.zone || undefined,
+          categoryId: filters.category || undefined,
           all: filters.all !== "All" ? filters.all : undefined,
           type: filters.type !== "All types" ? filters.type : undefined,
-          time: filters.time !== "All Time" ? filters.time : undefined,
+          fromDate: range.fromDate || undefined,
+          toDate: range.toDate || undefined,
           search: searchQuery || undefined
         }
 
@@ -81,12 +82,7 @@ export default function RestaurantReport() {
   const totalRestaurants = filteredRestaurants.length
 
   const handleReset = () => {
-    setFilters({
-      zone: "All Zones",
-      all: "All",
-      type: "All types",
-      time: "All Time",
-    })
+    setFilters(EMPTY_FILTERS)
     setSearchQuery("")
   }
 
@@ -118,7 +114,7 @@ export default function RestaurantReport() {
     // Filters are already applied via useMemo
   }
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.all !== "All" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = (filters.zone ? 1 : 0) + (filters.category ? 1 : 0) + (filters.all !== "All" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time ? 1 : 0)
 
   const renderStars = (rating, reviews) => {
     if (rating === 0) {
@@ -167,9 +163,26 @@ export default function RestaurantReport() {
                   onChange={(e) => setFilters(prev => ({ ...prev, zone: e.target.value }))}
                   className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="All Zones">All Zones</option>
+                  <option value="">All Zones</option>
                   {zones.map(zone => (
-                    <option key={zone._id} value={zone.name}>{zone.name}</option>
+                    <option key={zone._id} value={zone._id}>{zoneLabel(zone)}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Category
+                </label>
+                <select
+                  value={filters.category}
+                  onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(category => (
+                    <option key={category._id} value={category._id}>{category.name}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -213,17 +226,42 @@ export default function RestaurantReport() {
                 </label>
                 <select
                   value={filters.time}
-                  onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value }))}
+                  onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value, ...(e.target.value === "custom" ? {} : { fromDate: "", toDate: "" }) }))}
                   className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="All Time">All Time</option>
-                  <option value="Today">Today</option>
-                  <option value="This Week">This Week</option>
-                  <option value="This Month">This Month</option>
-                  <option value="This Year">This Year</option>
+                  <option value="">All Time</option>
+                  {DATE_PRESETS.map(preset => (
+                    <option key={preset.value} value={preset.value}>{preset.label}</option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
               </div>
+
+              {filters.time === "custom" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">From</label>
+                    <input
+                      type="date"
+                      value={filters.fromDate}
+                      max={filters.toDate || todayInputValue()}
+                      onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
+                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">To</label>
+                    <input
+                      type="date"
+                      value={filters.toDate}
+                      min={filters.fromDate || undefined}
+                      max={todayInputValue()}
+                      onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
+                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex items-end gap-3">

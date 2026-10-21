@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2 } from "lucide-react"
+import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2, Ban } from "lucide-react"
 
 const getStatusColor = (orderStatus) => {
   const colors = {
@@ -39,6 +39,8 @@ export default function OrdersTable({
   onPrintOrder,
   onRefund,
   onDeleteOrder,
+  onCancelOrder,
+  cancelingOrderId,
   onAcceptOrder,
   onRejectOrder,
   actionLoadingOrderId,
@@ -406,6 +408,21 @@ export default function OrdersTable({
                       >
                         <Printer className="w-4 h-4" />
                       </button>
+                      {onCancelOrder && !["Delivered", "Canceled", "Cancelled by Restaurant", "Cancelled by User", "Payment Failed", "Refunded"].includes(order.orderStatus) && (
+                        <button
+                          onClick={() => onCancelOrder(order)}
+                          disabled={cancelingOrderId === (order.id || order.orderId)}
+                          className="px-2.5 py-1.5 rounded text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                          title="Force cancel this order (refund if paid online)"
+                        >
+                          {cancelingOrderId === (order.id || order.orderId) ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Ban className="w-3.5 h-3.5" />
+                          )}
+                          <span>Cancel</span>
+                        </button>
+                      )}
                       {onDeleteOrder && (
                         <button
                           onClick={() => onDeleteOrder(order)}

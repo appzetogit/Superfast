@@ -27,6 +27,13 @@ import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
 import { FoodSupportTicket } from '../../user/models/supportTicket.model.js';
 import { FoodRestaurantSupportTicket } from '../../restaurant/models/supportTicket.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
+import {
+    REPORT_TIMEZONE,
+    buildOrderScopeFilter,
+    cleanFilterValue,
+    resolveCategoryItemIds,
+    resolveDateRange
+} from './adminFilters.service.js';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurantWithdrawal.model.js';
 import {
@@ -817,17 +824,233 @@ function formatTimeAgo(date) {
 }
 
 
+function escapeRegexLiteral(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+/**
+ * Day-wise earnings with zone / category / restaurant / date filters.
+ * Earnings count delivered orders only; cancelled orders are reported as a count.
+ * Days are bucketed in IST so an evening order lands on the day the admin sees it.
+ */
+export async function getEarningsReport(query = {}) {
+    const emptyResult = {
+        summary: {
+            totalOrders: 0, deliveredOrders: 0, cancelledOrders: 0, grossSales: 0, foodSales: 0, tax: 0,
+            discount: 0, deliveryFee: 0, platformFee: 0, restaurantCommission: 0,
+            adminEarning: 0, restaurantEarning: 0, deliverymanEarning: 0
+        },
+        days: [], restaurants: [], zones: [], categories: [], timezone: REPORT_TIMEZONE
+    };
+
+    const { filter, empty } = await buildOrderScopeFilter(query);
+    if (empty) return emptyResult;
+
+    const num = (path) => ({ $ifNull: [path, 0] });
+    const delivered = { $eq: ['$orderStatus', 'delivered'] };
+    const onlyDelivered = (expr) => ({ $cond: [delivered, expr, 0] });
+
+    const orderFields = {
+        isCancelled: { $regexMatch: { input: { $ifNull: ['$orderStatus', ''] }, regex: '^cancelled' } },
+        day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: REPORT_TIMEZONE } },
+        gross: num('$pricing.total'),
+        foodSubtotal: num('$pricing.subtotal'),
+        orderTax: num('$pricing.tax'),
+        orderDiscount: num('$pricing.discount'),
+        orderDeliveryFee: num('$pricing.deliveryFee'),
+        orderPlatformFee: num('$pricing.platformFee'),
+        commission: num('$pricing.restaurantCommission'),
+        rider: num('$riderEarning')
+    };
+    const earningFields = {
+        restaurantShare: { $max: [0, { $subtract: [{ $add: ['$foodSubtotal', num('$pricing.packagingFee')] }, '$commission'] }] },
+        adminShare: {
+            $cond: [
+                { $gt: [num('$platformProfit'), 0] },
+                '$platformProfit',
+                { $max: [0, { $subtract: [{ $add: ['$orderPlatformFee', '$orderDeliveryFee', '$commission'] }, '$rider'] }] }
+            ]
+        }
+    };
+
+    const baseStages = [
+        { $match: filter },
+        { $addFields: orderFields },
+        { $addFields: earningFields }
+    ];
+
+    const [dayRows, restaurantRows, zoneRows, categoryRows] = await Promise.all([
+        FoodOrder.aggregate([
+            ...baseStages,
+            {
+                $group: {
+                    _id: '$day',
+                    totalOrders: { $sum: 1 },
+                    deliveredOrders: { $sum: { $cond: [delivered, 1, 0] } },
+                    cancelledOrders: { $sum: { $cond: ['$isCancelled', 1, 0] } },
+                    grossSales: { $sum: onlyDelivered('$gross') },
+                    foodSales: { $sum: onlyDelivered('$foodSubtotal') },
+                    tax: { $sum: onlyDelivered('$orderTax') },
+                    discount: { $sum: onlyDelivered('$orderDiscount') },
+                    deliveryFee: { $sum: onlyDelivered('$orderDeliveryFee') },
+                    platformFee: { $sum: onlyDelivered('$orderPlatformFee') },
+                    restaurantCommission: { $sum: onlyDelivered('$commission') },
+                    adminEarning: { $sum: onlyDelivered('$adminShare') },
+                    restaurantEarning: { $sum: onlyDelivered('$restaurantShare') },
+                    deliverymanEarning: { $sum: onlyDelivered('$rider') }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]),
+        FoodOrder.aggregate([
+            ...baseStages,
+            { $match: { orderStatus: 'delivered', restaurantId: { $ne: null } } },
+            {
+                $group: {
+                    _id: '$restaurantId',
+                    orders: { $sum: 1 },
+                    grossSales: { $sum: '$gross' },
+                    adminEarning: { $sum: '$adminShare' },
+                    restaurantEarning: { $sum: '$restaurantShare' },
+                    deliverymanEarning: { $sum: '$rider' }
+                }
+            },
+            { $lookup: { from: 'food_restaurants', localField: '_id', foreignField: '_id', as: 'restaurant' } },
+            { $unwind: { path: '$restaurant', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 1, orders: 1, grossSales: 1, adminEarning: 1, restaurantEarning: 1, deliverymanEarning: 1,
+                    restaurantName: { $ifNull: ['$restaurant.restaurantName', 'Unknown restaurant'] },
+                    zoneId: '$restaurant.zoneId'
+                }
+            },
+            { $sort: { grossSales: -1 } }
+        ]),
+        FoodOrder.aggregate([
+            ...baseStages,
+            { $match: { orderStatus: 'delivered' } },
+            { $lookup: { from: 'food_restaurants', localField: 'restaurantId', foreignField: '_id', as: 'restaurant' } },
+            { $addFields: { effectiveZoneId: { $ifNull: ['$zoneId', { $arrayElemAt: ['$restaurant.zoneId', 0] }] } } },
+            {
+                $group: {
+                    _id: '$effectiveZoneId',
+                    orders: { $sum: 1 },
+                    grossSales: { $sum: '$gross' },
+                    adminEarning: { $sum: '$adminShare' },
+                    restaurantEarning: { $sum: '$restaurantShare' },
+                    deliverymanEarning: { $sum: '$rider' }
+                }
+            },
+            { $lookup: { from: 'food_zones', localField: '_id', foreignField: '_id', as: 'zone' } },
+            { $unwind: { path: '$zone', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    zoneId: '$_id', orders: 1, grossSales: 1, adminEarning: 1, restaurantEarning: 1, deliverymanEarning: 1,
+                    zoneName: { $ifNull: ['$zone.name', { $ifNull: ['$zone.zoneName', 'No zone'] }] }
+                }
+            },
+            { $sort: { grossSales: -1 } }
+        ]),
+        (async () => {
+            const categoryFilter = await resolveCategoryItemIds(query.categoryId ?? query.category);
+            return FoodOrder.aggregate([
+                { $match: filter },
+                { $match: { orderStatus: 'delivered' } },
+                { $unwind: '$items' },
+                { $match: { 'items.type': 'food', ...(categoryFilter.itemIds ? { 'items.itemId': { $in: categoryFilter.itemIds } } : {}) } },
+                { $addFields: { itemObjectId: { $convert: { input: '$items.itemId', to: 'objectId', onError: null, onNull: null } } } },
+                { $lookup: { from: 'food_items', localField: 'itemObjectId', foreignField: '_id', as: 'foodItem' } },
+                { $unwind: { path: '$foodItem', preserveNullAndEmptyArrays: true } },
+                { $lookup: { from: 'food_categories', localField: 'foodItem.categoryId', foreignField: '_id', as: 'category' } },
+                { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+                {
+                    $group: {
+                        _id: { $toLower: { $ifNull: ['$category.name', { $ifNull: ['$foodItem.categoryName', 'Uncategorized'] }] } },
+                        name: { $first: { $ifNull: ['$category.name', { $ifNull: ['$foodItem.categoryName', 'Uncategorized'] }] } },
+                        sales: { $sum: { $multiply: [{ $ifNull: ['$items.price', 0] }, { $ifNull: ['$items.quantity', 0] }] } },
+                        units: { $sum: { $ifNull: ['$items.quantity', 0] } },
+                        orderIds: { $addToSet: '$_id' }
+                    }
+                },
+                { $project: { _id: 0, name: 1, sales: 1, units: 1, orders: { $size: '$orderIds' } } },
+                { $sort: { sales: -1 } }
+            ]);
+        })()
+    ]);
+
+    const days = dayRows.map((row) => ({
+        date: row._id,
+        totalOrders: row.totalOrders,
+        deliveredOrders: row.deliveredOrders,
+        cancelledOrders: row.cancelledOrders,
+        grossSales: roundMoney(row.grossSales),
+        foodSales: roundMoney(row.foodSales),
+        tax: roundMoney(row.tax),
+        discount: roundMoney(row.discount),
+        deliveryFee: roundMoney(row.deliveryFee),
+        platformFee: roundMoney(row.platformFee),
+        restaurantCommission: roundMoney(row.restaurantCommission),
+        adminEarning: roundMoney(row.adminEarning),
+        restaurantEarning: roundMoney(row.restaurantEarning),
+        deliverymanEarning: roundMoney(row.deliverymanEarning)
+    }));
+
+    const summary = days.reduce((acc, day) => {
+        for (const key of Object.keys(acc)) acc[key] += day[key] || 0;
+        return acc;
+    }, { ...emptyResult.summary });
+    for (const key of Object.keys(summary)) summary[key] = roundMoney(summary[key]);
+
+    const restaurants = restaurantRows.map((row) => ({
+        restaurantId: row._id,
+        restaurantName: row.restaurantName,
+        orders: row.orders,
+        grossSales: roundMoney(row.grossSales),
+        adminEarning: roundMoney(row.adminEarning),
+        restaurantEarning: roundMoney(row.restaurantEarning),
+        deliverymanEarning: roundMoney(row.deliverymanEarning)
+    }));
+
+    const zones = zoneRows.map((row) => ({
+        zoneId: row.zoneId || null,
+        zoneName: row.zoneName,
+        orders: row.orders,
+        grossSales: roundMoney(row.grossSales),
+        adminEarning: roundMoney(row.adminEarning),
+        restaurantEarning: roundMoney(row.restaurantEarning),
+        deliverymanEarning: roundMoney(row.deliverymanEarning)
+    }));
+
+    const categories = categoryRows.map((row) => ({ ...row, sales: roundMoney(row.sales) }));
+
+    return { summary, days, restaurants, zones, categories, timezone: REPORT_TIMEZONE };
+}
+
 export async function getTransactionReport(query = {}) {
     try {
-        const { fromDate, toDate, zone, restaurant, search } = query;
+        const { search } = query;
         const match = {};
+        const emptyReport = { transactions: [], summary: { completedTransaction: 0, refundedTransaction: 0, adminEarning: 0, restaurantEarning: 0, deliverymanEarning: 0 } };
 
-        if (fromDate && toDate) {
-            match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+        const dateRange = resolveDateRange(query);
+        if (dateRange) {
+            match.createdAt = dateRange;
+        }
+
+        // Zone / restaurant / category apply to the order each transaction belongs to.
+        const scope = await buildOrderScopeFilter({ ...query, fromDate: undefined, toDate: undefined, startDate: undefined, endDate: undefined, time: undefined });
+        if (scope.empty) return emptyReport;
+        const hasScope = Boolean(scope.filter.$and?.length);
+        if (hasScope) {
+            const scopedOrders = await FoodOrder.find(scope.filter).select('_id').lean();
+            if (!scopedOrders.length) return emptyReport;
+            match.orderId = { $in: scopedOrders.map((o) => o._id) };
         }
 
         if (search) {
-            const searchRegex = new RegExp(String(search).trim(), "i");
+            const searchRegex = new RegExp(escapeRegexLiteral(String(search).trim()), "i");
             const matchingOrders = await FoodOrder.find({ orderId: { $regex: searchRegex } })
                 .select('_id')
                 .lean();
@@ -836,35 +1059,6 @@ export async function getTransactionReport(query = {}) {
                 { orderReadableId: { $regex: searchRegex } },
                 { orderId: { $in: matchingOrders.map((order) => order._id) } }
             ];
-        }
-
-        let restaurantIds = null;
-        if (zone || restaurant) {
-            const restFilter = {};
-            if (zone && zone !== "All Zones") {
-                if (mongoose.Types.ObjectId.isValid(zone)) {
-                    restFilter.zoneId = new mongoose.Types.ObjectId(zone);
-                } else {
-                    const matchedZone = await FoodZone.findOne({
-                        $or: [{ name: zone }, { zoneName: zone }]
-                    }).select('_id').lean();
-                    if (matchedZone) {
-                        restFilter.zoneId = matchedZone._id;
-                    } else {
-                        return { transactions: [], summary: { completedTransaction: 0, refundedTransaction: 0, adminEarning: 0, restaurantEarning: 0, deliverymanEarning: 0 } };
-                    }
-                }
-            }
-            if (restaurant && restaurant !== 'All restaurants') {
-                const restDoc = await FoodRestaurant.findOne({ restaurantName: restaurant }).lean();
-                if (restDoc) restFilter._id = restDoc._id;
-            }
-
-            if (Object.keys(restFilter).length > 0) {
-                const restaurantsList = await FoodRestaurant.find(restFilter).select('_id').lean();
-                restaurantIds = restaurantsList.map(r => r._id);
-                match.restaurantId = { $in: restaurantIds };
-            }
         }
 
         let transactionRows = await FoodTransaction.find(match)
@@ -878,14 +1072,14 @@ export async function getTransactionReport(query = {}) {
         // Fallback: If FoodTransaction table has no rows for these filters, query FoodOrder directly
         if (!transactionRows || transactionRows.length === 0) {
             const orderMatch = {};
-            if (fromDate && toDate) {
-                orderMatch.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+            if (dateRange) {
+                orderMatch.createdAt = dateRange;
             }
-            if (restaurantIds && restaurantIds.length > 0) {
-                orderMatch.restaurantId = { $in: restaurantIds };
+            if (hasScope) {
+                orderMatch.$and = scope.filter.$and;
             }
             if (search) {
-                const searchRegex = new RegExp(String(search).trim(), "i");
+                const searchRegex = new RegExp(escapeRegexLiteral(String(search).trim()), "i");
                 orderMatch.$or = [
                     { orderId: { $regex: searchRegex } },
                     { customerName: { $regex: searchRegex } }
@@ -1086,6 +1280,18 @@ export async function getRestaurantReport(query = {}) {
         }
     }
 
+    const categoryRaw = cleanFilterValue(query.categoryId ?? query.category);
+    if (categoryRaw) {
+        const { itemIds, empty: noCategoryItems } = await resolveCategoryItemIds(categoryRaw);
+        if (noCategoryItems) {
+            return { restaurants: [], total: 0, page, limit };
+        }
+        const categoryRestaurants = await FoodItem.distinct('restaurantId', {
+            _id: { $in: itemIds.map((id) => new mongoose.Types.ObjectId(id)) }
+        });
+        restaurantFilter._id = { $in: categoryRestaurants };
+    }
+
     const typeRaw = String(query.type || '').trim().toLowerCase();
     if (typeRaw === 'commission') {
         const commissionRows = await FoodRestaurantCommission.find({ status: { $ne: false } })
@@ -1096,10 +1302,15 @@ export async function getRestaurantReport(query = {}) {
             .filter((id) => mongoose.Types.ObjectId.isValid(id))
             .map((id) => new mongoose.Types.ObjectId(id));
 
-        if (!commissionRestaurantIds.length) {
+        const categoryScoped = restaurantFilter._id?.$in?.map(String);
+        const scopedCommissionIds = categoryScoped
+            ? commissionRestaurantIds.filter((id) => categoryScoped.includes(String(id)))
+            : commissionRestaurantIds;
+
+        if (!scopedCommissionIds.length) {
             return { restaurants: [], total: 0, page, limit };
         }
-        restaurantFilter._id = { $in: commissionRestaurantIds };
+        restaurantFilter._id = { $in: scopedCommissionIds };
     }
 
     const searchRaw = String(query.search || '').trim();
@@ -1130,7 +1341,7 @@ export async function getRestaurantReport(query = {}) {
         return { restaurants: [], total, page, limit };
     }
 
-    const orderCreatedAtFilter = parseTimeRange(query.time);
+    const orderCreatedAtFilter = resolveDateRange(query) || parseTimeRange(query.time);
     const orderMatch = {
         orderType: 'food',
         restaurantId: { $in: restaurantIds },
@@ -1223,17 +1434,19 @@ export async function getRestaurantReport(query = {}) {
 }
 
 export async function getTaxReport(query = {}) {
-    const { fromDate, toDate, search, calculateTax, taxRate } = query;
+    const { search, calculateTax, taxRate } = query;
+    const emptyTaxReport = { reports: [], stats: { totalIncome: '₹0.00', totalTax: '₹0.00' } };
+
+    const scope = await buildOrderScopeFilter(query);
+    if (scope.empty) return emptyTaxReport;
+
     const match = {
+        ...scope.filter,
         orderStatus: 'delivered'
     };
 
-    if (fromDate && toDate) {
-        match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
-    }
-
     if (search) {
-        match.orderId = { $regex: search, $options: 'i' };
+        match.orderId = { $regex: escapeRegexLiteral(String(search).trim()), $options: 'i' };
     }
 
     const parsedTaxRate = taxRate && taxRate !== 'Select Tax Rate'
@@ -1326,16 +1539,15 @@ export async function getTaxReportDetail(restaurantId, query = {}) {
         throw new ValidationError('Invalid restaurant ID');
     }
 
-    const { fromDate, toDate } = query;
+    // The detail view must use the same zone / category / date filters as the summary row.
+    const scope = await buildOrderScopeFilter({ ...query, restaurantId: undefined, restaurant: undefined });
     const match = {
+        ...scope.filter,
         orderType: 'food',
         restaurantId: new mongoose.Types.ObjectId(restaurantId),
         orderStatus: 'delivered'
     };
-
-    if (fromDate && toDate) {
-        match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
-    }
+    if (scope.empty) match._id = null;
 
     const orders = await FoodOrder.find(match)
         .select('orderId pricing createdAt orderStatus')

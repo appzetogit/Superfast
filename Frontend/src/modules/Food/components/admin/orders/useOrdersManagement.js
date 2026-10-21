@@ -89,7 +89,7 @@ const imageUrlToDataUrl = async (url) => {
   }
 }
 
-export function useOrdersManagement(orders, statusKey, title) {
+export function useOrdersManagement(orders, statusKey, title, { serverSideDates = false } = {}) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -103,6 +103,8 @@ export function useOrdersManagement(orders, statusKey, title) {
     fromDate: "",
     toDate: "",
     restaurant: "",
+    zoneId: "",
+    categoryId: "",
   })
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
@@ -215,7 +217,7 @@ export function useOrdersManagement(orders, statusKey, title) {
       return new Date(dateStr)
     }
 
-    if (filters.fromDate) {
+    if (filters.fromDate && !serverSideDates) {
       result = result.filter(order => {
         const orderDate = parseOrderDate(order.date)
         const fromDate = new Date(filters.fromDate)
@@ -223,7 +225,7 @@ export function useOrdersManagement(orders, statusKey, title) {
       })
     }
 
-    if (filters.toDate) {
+    if (filters.toDate && !serverSideDates) {
       result = result.filter(order => {
         const orderDate = parseOrderDate(order.date)
         const toDate = new Date(filters.toDate)
@@ -233,7 +235,7 @@ export function useOrdersManagement(orders, statusKey, title) {
     }
 
     return result
-  }, [orders, searchQuery, filters])
+  }, [orders, searchQuery, filters, serverSideDates])
 
   const count = filteredOrders.length
 
@@ -255,6 +257,8 @@ export function useOrdersManagement(orders, statusKey, title) {
       fromDate: "",
       toDate: "",
       restaurant: "",
+      zoneId: "",
+      categoryId: "",
     })
   }
 

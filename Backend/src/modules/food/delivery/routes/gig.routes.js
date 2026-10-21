@@ -4,6 +4,7 @@ import { requireRoles } from '../../../../core/roles/role.middleware.js';
 import {
   listZoneGigsController,
   bookGigController,
+  cancelGigBookingController,
   checkInGigController,
   checkOutGigController,
   getMyGigsController,
@@ -16,6 +17,7 @@ const router = express.Router();
 // ----- Delivery Partner Gig Routes -----
 router.get('/zone-gigs', authMiddleware, requireRoles('DELIVERY_PARTNER'), listZoneGigsController);
 router.post('/book', authMiddleware, requireRoles('DELIVERY_PARTNER'), bookGigController);
+router.post('/cancel', authMiddleware, requireRoles('DELIVERY_PARTNER'), cancelGigBookingController);
 router.post('/check-in', authMiddleware, requireRoles('DELIVERY_PARTNER'), checkInGigController);
 router.post('/check-out', authMiddleware, requireRoles('DELIVERY_PARTNER'), checkOutGigController);
 router.get('/my-gigs', authMiddleware, requireRoles('DELIVERY_PARTNER'), getMyGigsController);

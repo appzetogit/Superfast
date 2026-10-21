@@ -1166,6 +1166,25 @@ export const useDeliveryNotifications = () => {
       }
     });
 
+    // Gig reminders (30m / 15m before shift start)
+    const handleGigReminder = (data) => {
+      toast.info(data?.message || 'Your shift starts soon. Please go online!', { duration: 10000 });
+    };
+    socketRef.current.on('gig:reminder_30min', handleGigReminder);
+    socketRef.current.on('gig:reminder_15min', handleGigReminder);
+
+    // Shift ended -> server set the rider offline; mirror it so the toggle is not stale
+    socketRef.current.on('availability_status_changed', (data) => {
+      if (data?.availabilityStatus !== 'offline') return;
+      toast.info(data?.message || 'Your shift has ended. You are now offline.');
+      try {
+        useDeliveryStore.getState().setOnline(false);
+        localStorage.removeItem('app:isOnline');
+      } catch (err) {
+        console.warn('Could not update online status in store directly:', err);
+      }
+    });
+
     socketRef.current.on('handover_processed', (data) => {
       debugLog('🚨 Handover processed event received:', data);
       stopAlertLoop();

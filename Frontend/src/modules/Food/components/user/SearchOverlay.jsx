@@ -5,12 +5,18 @@ import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { searchAPI } from "@/services/api"
 import { getImageUrl } from "../../../../shared/utils/imageHelper"
+import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
+import { useZone } from "@food/hooks/useZone"
 
 const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
 
 export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchChange }) {
   const navigate = useNavigate()
   const inputRef = useRef(null)
+  const { location: userCoords } = useGeoLocation()
+  const { zoneId: detectedZoneId, zoneStatus } = useZone(userCoords)
+  // Fall back to the zone cached by the home screen while detection is still running.
+  const zoneId = detectedZoneId || (zoneStatus === "loading" ? localStorage.getItem("userZoneId") : null) || undefined
   const [recentSuggestions, setRecentSuggestions] = useState([])
   const [liveCategories, setLiveCategories] = useState([])
   const [liveDishes, setLiveDishes] = useState([])
@@ -49,10 +55,27 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
     if (!isOpen) return
 
     const term = searchValue.trim()
+
+    // Never show unfiltered results: wait for the zone, and show nothing outside the service area.
+    if (zoneStatus === "loading" && !zoneId && userCoords?.latitude) return undefined
+    if (zoneStatus === "OUT_OF_SERVICE") {
+      setLiveCategories([])
+      setLiveDishes([])
+      setLiveRestaurants([])
+      setLoading(false)
+      return undefined
+    }
+
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await searchAPI.unifiedSearch({ q: term, limit: 30 })
+        const res = await searchAPI.unifiedSearch({
+          q: term,
+          limit: 30,
+          zoneId,
+          lat: userCoords?.latitude,
+          lng: userCoords?.longitude,
+        })
         if (res.data?.success) {
           const payload = res.data.data || {}
           setLiveCategories(payload.categories || [])
@@ -67,7 +90,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
     }, 200)
 
     return () => clearTimeout(timer)
-  }, [searchValue, isOpen])
+  }, [searchValue, isOpen, zoneId, zoneStatus, userCoords?.latitude, userCoords?.longitude])
 
   useEffect(() => {
     const handleEscape = (e) => {

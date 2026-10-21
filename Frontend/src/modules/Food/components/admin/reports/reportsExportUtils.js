@@ -5,7 +5,7 @@ import autoTable from "jspdf-autotable"
 export const exportReportsToCSV = (data, headers, filename = "report") => {
   const rows = data.map((item, index) => {
     return headers.map(header => {
-      const value = item[header.key] || item[header] || ""
+      const value = item[header.key] ?? item[header] ?? ""
       return typeof value === 'object' ? JSON.stringify(value) : value
     })
   })
@@ -30,7 +30,7 @@ export const exportReportsToCSV = (data, headers, filename = "report") => {
 export const exportReportsToExcel = (data, headers, filename = "report") => {
   const rows = data.map((item) => {
     return headers.map(header => {
-      const value = item[header.key] || item[header] || ""
+      const value = item[header.key] ?? item[header] ?? ""
       return typeof value === 'object' ? JSON.stringify(value) : value
     })
   })

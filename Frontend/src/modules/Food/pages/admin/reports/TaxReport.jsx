@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/componen
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import ReportFilterFields, { EMPTY_REPORT_FILTERS, buildReportParams, hasInvalidDateRange } from "@food/components/admin/reports/ReportFilterFields"
+import { useAdminFilterOptions } from "@food/hooks/useAdminFilterOptions"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -13,10 +15,11 @@ const debugError = (...args) => {}
 
 export default function TaxReport() {
   const [filters, setFilters] = useState({
-    dateRangeType: "All Time",
+    ...EMPTY_REPORT_FILTERS,
     calculateTax: "Percentage",
     taxRate: "Select Tax Rate",
   })
+  const { zones, categories, restaurants } = useAdminFilterOptions()
   const [reports, setReports] = useState([])
   const [stats, setStats] = useState({
     totalIncome: "₹0.00",
@@ -32,29 +35,13 @@ export default function TaxReport() {
     try {
       setFetching(true)
       
-      let fromDate = null
-      let toDate = null
-      const now = new Date()
-      
-      if (filters.dateRangeType === "Today") {
-        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-      } else if (filters.dateRangeType === "This Week") {
-        const dayOfWeek = now.getDay()
-        const diff = now.getDate() - dayOfWeek
-        fromDate = new Date(now.getFullYear(), now.getMonth(), diff)
-        toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59)
-      } else if (filters.dateRangeType === "This Month") {
-        fromDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-      } else if (filters.dateRangeType === "This Year") {
-        fromDate = new Date(now.getFullYear(), 0, 1)
-        toDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
+      if (hasInvalidDateRange(filters)) {
+        setReports([])
+        return
       }
 
       const params = {
-        fromDate: fromDate ? fromDate.toISOString() : undefined,
-        toDate: toDate ? toDate.toISOString() : undefined,
+        ...buildReportParams(filters),
         calculateTax: filters.calculateTax,
         taxRate: filters.taxRate !== "Select Tax Rate" ? filters.taxRate : undefined,
         limit: 1000
@@ -88,11 +75,11 @@ export default function TaxReport() {
 
   useEffect(() => {
     fetchTaxReport()
-  }, [filters.dateRangeType, filters.calculateTax, filters.taxRate])
+  }, [filters])
 
   const handleReset = () => {
     setFilters({
-      dateRangeType: "All Time",
+      ...EMPTY_REPORT_FILTERS,
       calculateTax: "Percentage",
       taxRate: "Select Tax Rate",
     })
@@ -106,30 +93,7 @@ export default function TaxReport() {
     setSelectedReport(report)
     setDetailLoading(true)
     try {
-      let fromDate = null
-      let toDate = null
-      const now = new Date()
-      
-      if (filters.dateRangeType === "Today") {
-        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-      } else if (filters.dateRangeType === "This Week") {
-        const dayOfWeek = now.getDay()
-        const diff = now.getDate() - dayOfWeek
-        fromDate = new Date(now.getFullYear(), now.getMonth(), diff)
-        toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59)
-      } else if (filters.dateRangeType === "This Month") {
-        fromDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-      } else if (filters.dateRangeType === "This Year") {
-        fromDate = new Date(now.getFullYear(), 0, 1)
-        toDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
-      }
-
-      const params = {
-        fromDate: fromDate ? fromDate.toISOString() : undefined,
-        toDate: toDate ? toDate.toISOString() : undefined,
-      }
+      const params = buildReportParams(filters)
 
       const response = await adminAPI.getTaxReportDetail(report.id, params)
       if (response?.data?.success) {
@@ -179,25 +143,11 @@ export default function TaxReport() {
             To generate you tax report please select & input following field and submit for the result.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="relative">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Date Range Type
-              </label>
-              <select
-                value={filters.dateRangeType}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateRangeType: e.target.value }))}
-                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="All Time">All Time</option>
-                <option value="Today">Today</option>
-                <option value="This Week">This Week</option>
-                <option value="This Month">This Month</option>
-                <option value="This Year">This Year</option>
-              </select>
-              <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
-            </div>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 mb-4">
+            <ReportFilterFields filters={filters} setFilters={setFilters} zones={zones} restaurants={restaurants} categories={categories} />
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="relative">
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Select How to calculate tax

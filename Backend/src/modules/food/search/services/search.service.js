@@ -30,16 +30,18 @@ const buildZoneRestaurantConstraint = async (zoneIdRaw) => {
         return null;
     }
 
-    const zoneClauses = [
-        { zoneId: new mongoose.Types.ObjectId(trimmedZoneId) },
-        { zoneId: { $exists: false } },
-        { zoneId: null },
-        { zoneId: "" }
-    ];
+    // A restaurant assigned to this zone always counts. One with no zone assigned counts only
+    // when it physically sits inside the zone's area; restaurants of other zones never do.
+    const zoneClauses = [{ zoneId: new mongoose.Types.ObjectId(trimmedZoneId) }];
     const zoneDoc = await FoodZone.findOne({ _id: trimmedZoneId, isActive: true }).lean();
     const polygon = zoneToPolygon(zoneDoc);
     if (polygon) {
-        zoneClauses.push({ location: { $geoWithin: { $geometry: polygon } } });
+        zoneClauses.push({
+            $and: [
+                { $or: [{ zoneId: { $exists: false } }, { zoneId: null }] },
+                { location: { $geoWithin: { $geometry: polygon } } }
+            ]
+        });
     }
 
     return { $or: zoneClauses };
@@ -81,10 +83,14 @@ export const searchUnified = async (query = {}, options = {}) => {
     
     console.log(`[Search-Service] Querying with term: "${term}", categoryId: "${categoryId}", zoneId: "${zoneId}"`);
 
+    let zoneConstraint = null;
+    let zoneRestaurantIds = null; // ObjectIds of restaurants serving the requested zone
     if (!devFilter.isDevMode || !devFilter.bypassLocation) {
-        const zoneConstraint = await buildZoneRestaurantConstraint(zoneId);
+        zoneConstraint = await buildZoneRestaurantConstraint(zoneId);
         if (zoneConstraint) {
             restaurantFilter.$and = [...(restaurantFilter.$and || []), zoneConstraint];
+            const inZone = await FoodRestaurant.find({ status: { $ne: 'rejected' }, ...zoneConstraint }).select('_id').lean();
+            zoneRestaurantIds = inZone.map((r) => r._id);
         }
     }
 
@@ -143,10 +149,15 @@ export const searchUnified = async (query = {}, options = {}) => {
     if (regex) {
         // A. Search Categories
         try {
-            matchedCategories = await FoodCategory.find({
-                name: { $regex: regex },
-                isActive: { $ne: false }
-            }).limit(10).lean();
+            const categoryFilter = { name: { $regex: regex }, isActive: { $ne: false } };
+            if (zoneConstraint && mongoose.Types.ObjectId.isValid(zoneId)) {
+                categoryFilter.$or = [
+                    { zoneId: new mongoose.Types.ObjectId(String(zoneId)) },
+                    { zoneId: { $exists: false } },
+                    { zoneId: null }
+                ];
+            }
+            matchedCategories = await FoodCategory.find(categoryFilter).limit(10).lean();
         } catch (catErr) {
             console.warn('[Search-Service] Category search error:', catErr);
         }
@@ -156,6 +167,9 @@ export const searchUnified = async (query = {}, options = {}) => {
         if (isVeg === 'true') foodFilters.foodType = 'Veg';
         if (devFilter.isDevMode && devFilter.demoIds && devFilter.demoIds.length > 0) {
             foodFilters.restaurantId = { $in: devFilter.demoIds };
+        }
+        if (zoneRestaurantIds) {
+            foodFilters.restaurantId = { $in: zoneRestaurantIds };
         }
         
         const matchedFoods = await FoodItem.find({
@@ -179,6 +193,7 @@ export const searchUnified = async (query = {}, options = {}) => {
 
         const foodRestaurants = await FoodRestaurant.find({
             status: { $ne: 'rejected' },
+            ...(zoneConstraint ? zoneConstraint : {}),
             _id: { $in: validOids }
         }).lean();
 
@@ -302,6 +317,7 @@ export const searchUnified = async (query = {}, options = {}) => {
         // E. Global Fallback Search (If zero items matched, search without restrictive filters)
         if (restaurantDetailsMap.size === 0 && matchedDishes.length === 0) {
             const fallbackFoods = await FoodItem.find({
+                ...(zoneRestaurantIds ? { restaurantId: { $in: zoneRestaurantIds } } : {}),
                 $or: [
                     { name: { $regex: regex } },
                     { foodName: { $regex: regex } },
@@ -315,6 +331,7 @@ export const searchUnified = async (query = {}, options = {}) => {
             const fallbackOids = fallbackFoodRestIds.filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
 
             const fallbackRestaurants = await FoodRestaurant.find({
+                ...(zoneRestaurantIds ? { _id: { $in: zoneRestaurantIds } } : {}),
                 $or: [
                     { restaurantName: { $regex: regex } },
                     { restaurantNameNormalized: { $regex: regex } },
