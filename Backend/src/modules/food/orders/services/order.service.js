@@ -7,6 +7,7 @@ import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
 import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { isRestaurantOpenByTimings, getOutletTimingsMap } from '../../restaurant/services/timingsSync.service.js';
 
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
@@ -332,6 +333,57 @@ function angleBetweenPickupVectors(userPoint, firstPoint, secondPoint) {
   return Math.acos(cosine) * (180 / Math.PI);
 }
 
+/**
+ * Every restaurant in the cart must be taking orders. Opening hours are skipped for scheduled
+ * orders (the slot is validated separately), but a manual "offline" toggle always blocks.
+ * The "currently closed" wording is matched by the user cart to show alternatives.
+ */
+function assertFoodSourcesOpen(sourceMap, foodSourceIds = [], { scheduled = false } = {}) {
+  for (const id of foodSourceIds) {
+    const source = sourceMap.get(String(id));
+    if (!source) continue;
+    if (source.isAcceptingOrders === false || (!scheduled && source.isOpenByTimings === false)) {
+      throw new ValidationError(
+        `${source.sourceName || "Restaurant"} is currently closed and not accepting orders`
+      );
+    }
+  }
+}
+
+const DEFAULT_MAX_RIDER_ACTIVE_ORDERS = 4;
+const RIDER_IN_PROGRESS_STATUSES = ["confirmed", "preparing", "ready_for_pickup", "picked_up"];
+
+/** Admin-set limit (Fee Settings) of orders one rider can carry at once. */
+export async function getMaxRiderActiveOrders() {
+  const doc = await FoodFeeSettings.findOne({ isActive: true })
+    .sort({ createdAt: -1 })
+    .select("maxRiderActiveOrders")
+    .lean();
+  const value = Number(doc?.maxRiderActiveOrders);
+  return Number.isInteger(value) && value >= 1 ? value : DEFAULT_MAX_RIDER_ACTIVE_ORDERS;
+}
+
+/**
+ * In-progress orders a rider holds. With includeAssigned, orders the admin assigned that the
+ * rider has not accepted yet also take a slot (so the admin can't over-assign).
+ */
+async function countRiderActiveOrders(partnerId, { includeAssigned = false, excludeOrderId = null } = {}) {
+  return FoodOrder.countDocuments({
+    ...(excludeOrderId ? { _id: { $ne: excludeOrderId } } : {}),
+    "dispatch.deliveryPartnerId": partnerId,
+    "dispatch.status": includeAssigned ? { $in: ["assigned", "accepted"] } : "accepted",
+    orderStatus: { $in: RIDER_IN_PROGRESS_STATUSES },
+  });
+}
+
+/** Admin-set minimum item subtotal (₹) for orders from restaurants in this zone; 0 = no minimum. */
+async function getZoneMinOrderAmount(zoneId) {
+  if (!zoneId || !mongoose.isValidObjectId(String(zoneId))) return 0;
+  const zone = await FoodZone.findById(zoneId).select("minOrderAmount").lean();
+  const amount = Number(zone?.minOrderAmount);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
 async function fetchPickupSourcesByType(items = []) {
   const foodSourceIds = [...new Set(items.filter((item) => item.type === "food").map((item) => item.sourceId).filter(Boolean))];
   const quickSourceIds = [...new Set(items.filter((item) => item.type === "quick").map((item) => item.sourceId).filter(Boolean))];
@@ -339,7 +391,7 @@ async function fetchPickupSourcesByType(items = []) {
   const [restaurants, sellers] = await Promise.all([
     foodSourceIds.length
       ? FoodRestaurant.find({ _id: { $in: foodSourceIds.filter((id) => mongoose.isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id)) } })
-        .select("restaurantName location addressLine1 area city state zoneId status isAcceptingOrders")
+        .select("restaurantName location addressLine1 area city state zoneId status isAcceptingOrders openingTime closingTime")
         .lean()
       : [],
     quickSourceIds.length
@@ -349,6 +401,10 @@ async function fetchPickupSourcesByType(items = []) {
       : [],
   ]);
 
+  // isAcceptingOrders is only re-synced with opening hours by a once-a-minute cron (and not at all
+  // when background jobs are off), so check the hours directly too.
+  const timingsMap = await getOutletTimingsMap(restaurants.map((r) => r._id));
+
   const sourceMap = new Map();
   for (const restaurant of restaurants) {
     sourceMap.set(String(restaurant._id), {
@@ -357,6 +413,7 @@ async function fetchPickupSourcesByType(items = []) {
       sourceName: restaurant.restaurantName || restaurant.name || "Restaurant",
       status: restaurant.status,
       isAcceptingOrders: restaurant.isAcceptingOrders,
+      isOpenByTimings: isRestaurantOpenByTimings(restaurant, timingsMap.get(String(restaurant._id))),
       location: restaurant.location,
       zoneId: restaurant.zoneId || null,
       address:
@@ -1830,8 +1887,9 @@ export async function calculateOrder(userId, dto) {
   if (!primaryRestaurant) throw new ValidationError("Restaurant not found");
   if (primaryRestaurant.status !== "approved")
     throw new ValidationError("Restaurant not available");
-  if (primaryRestaurant.isAcceptingOrders === false)
-    throw new ValidationError("Restaurant is currently offline and not accepting orders");
+  assertFoodSourcesOpen(sourceMap, [primaryRestaurantId, ...foodSourceIds], {
+    scheduled: Boolean(dto.scheduledAt),
+  });
 
   let calculatedDistKm = 0;
   // Geofencing & Distance Validation for Delivery Address
@@ -1875,6 +1933,10 @@ export async function calculateOrder(userId, dto) {
       `${inactiveQuickSource.sourceName || "Quick store"} is not available`,
     );
   }
+
+  // Not thrown here: the cart still needs a bill to show "add ₹X more". createOrder enforces it.
+  const minOrderAmount = await getZoneMinOrderAmount(primaryRestaurant.zoneId);
+  const minOrderShortfall = Math.max(0, Math.ceil(minOrderAmount - subtotal));
 
   const packagingFee = 0;
   const platformFee = feeSettings.platformFee;
@@ -2040,6 +2102,8 @@ export async function calculateOrder(userId, dto) {
       sameDirection: eligibility.sameDirection,
       eligibilityReason: eligibility.reason,
       pickupPoints,
+      minOrderAmount,
+      minOrderShortfall,
     },
   };
 }
@@ -2095,8 +2159,9 @@ export async function createOrder(userId, dto) {
     if (!primaryRestaurant) throw new ValidationError("Restaurant not found");
     if (primaryRestaurant.status !== "approved")
       throw new ValidationError("Restaurant not accepting orders");
-    if (primaryRestaurant.isAcceptingOrders === false)
-      throw new ValidationError("Restaurant is currently offline and not accepting orders");
+    assertFoodSourcesOpen(sourceMap, [primaryRestaurantId, ...foodSourceIds], {
+      scheduled: Boolean(dto.scheduledAt),
+    });
 
     // Geofencing & Distance Validation for Delivery Address
     if (dto.address) {
@@ -2204,6 +2269,18 @@ export async function createOrder(userId, dto) {
     if (!Number.isFinite(price) || !Number.isFinite(qty)) return sum;
     return sum + Math.max(0, price) * Math.max(0, qty);
   }, 0);
+
+  // Zone minimum order: checked on the server-side item total (DB prices), never the client's pricing.
+  if (hasFoodItems && primaryRestaurant) {
+    const minOrderAmount = await getZoneMinOrderAmount(primaryRestaurant.zoneId);
+    if (minOrderAmount > 0 && computedSubtotal < minOrderAmount) {
+      const shortfall = Math.ceil(minOrderAmount - computedSubtotal);
+      throw new ValidationError(
+        `Minimum order amount is ₹${minOrderAmount}. Add items worth ₹${shortfall} more to place this order.`
+      );
+    }
+  }
+
   const normalizedPricing = {
     subtotal: Number(dto.pricing?.subtotal ?? computedSubtotal),
     tax: Number(dto.pricing?.tax ?? 0),
@@ -3722,14 +3799,20 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
 }
 
 export async function getCurrentTripDelivery(deliveryPartnerId) {
+  const trips = await listActiveTripsDelivery(deliveryPartnerId);
+  return trips[0] || null;
+}
+
+/** Every accepted, unfinished order of this rider (multi-order), most recently updated first. */
+export async function listActiveTripsDelivery(deliveryPartnerId) {
   if (!deliveryPartnerId) throw new ValidationError("Delivery partner ID required");
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
 
-  // Find the active order assigned to or accepted by this rider.
+  // Find the active orders assigned to or accepted by this rider.
   // An active current delivery trip MUST be accepted by the delivery partner!
   // Two separate $or clauses must live under $and; a duplicate `$or` key in one object
   // literal silently drops the first one (which is the "belongs to THIS rider" check).
-  const order = await FoodOrder.findOne({
+  const orders = await FoodOrder.find({
     $and: [
       {
         $or: [
@@ -3754,11 +3837,13 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
     .sort({ updatedAt: -1 })
     .lean();
 
-  if (!order) return null;
-  await populateQuickOrderSellers(order);
-  return buildDeliveryOrderView(order, deliveryPartnerId, {
-    assignedDispatchLeg: getAssignedDispatchLeg(order, deliveryPartnerId),
-  });
+  if (!orders.length) return [];
+  await populateQuickOrderSellers(orders);
+  return orders.map((order) =>
+    buildDeliveryOrderView(order, deliveryPartnerId, {
+      assignedDispatchLeg: getAssignedDispatchLeg(order, deliveryPartnerId),
+    }),
+  );
 }
 
 // ----- Delivery: available, accept, reject, status -----
@@ -3777,6 +3862,8 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
         },
         $or: [
           { "dispatch.offeredTo.partnerId": partnerObjectId },
+          // Admin manual assign sets the partner without an offeredTo entry.
+          { "dispatch.status": "assigned", "dispatch.deliveryPartnerId": partnerObjectId },
           { "dispatch.status": "unassigned" },
           { "dispatchPlan.legs.partnerCandidates.partnerId": partnerObjectId },
         ],
@@ -3865,21 +3952,10 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
     throw new NotFoundError("Order not found");
   }
 
-  // Multi-Slot Check: Max 2 active accepted orders per delivery partner
-  const activeOrdersCount = await FoodOrder.countDocuments({
-    "dispatch.deliveryPartnerId": partnerId,
-    "dispatch.status": "accepted",
-    orderStatus: {
-      $nin: [
-        "delivered",
-        "cancelled_by_user",
-        "cancelled_by_restaurant",
-        "cancelled_by_admin",
-      ],
-    },
-  });
+  // Multi-Slot Check: admin-set max active accepted orders per delivery partner
+  const activeOrdersCount = await countRiderActiveOrders(partnerId);
 
-  const MAX_RIDER_ACTIVE_SLOTS = 2;
+  const MAX_RIDER_ACTIVE_SLOTS = await getMaxRiderActiveOrders();
   const isAlreadyAssignedThisOrder = String(order.dispatch?.deliveryPartnerId || "") === String(deliveryPartnerId);
 
   if (activeOrdersCount >= MAX_RIDER_ACTIVE_SLOTS && !isAlreadyAssignedThisOrder) {
@@ -5089,17 +5165,15 @@ export async function assignDeliveryPartnerAdmin(
     }
   }
 
-  const activeCount = await FoodOrder.countDocuments({
-    $or: [
-      { "dispatch.deliveryPartnerId": partner._id },
-      { "dispatchPlan.legs.deliveryPartnerId": partner._id }
-    ],
-    orderStatus: {
-      $nin: ["delivered", "cancelled_by_user", "cancelled_by_restaurant", "cancelled_by_admin"]
-    }
+  const maxActiveOrders = await getMaxRiderActiveOrders();
+  const activeCount = await countRiderActiveOrders(partner._id, {
+    includeAssigned: true,
+    excludeOrderId: order._id,
   });
-  if (activeCount >= 1) {
-    throw new ValidationError("Delivery partner is busy with another order");
+  if (activeCount >= maxActiveOrders) {
+    throw new ValidationError(
+      `Delivery partner already has ${activeCount} active orders (max ${maxActiveOrders}).`
+    );
   }
 
   order.dispatch.status = 'assigned';
@@ -5392,14 +5466,14 @@ export async function getAvailableDriversForOrder(orderId) {
     .select("_id name phone rating totalRatings lastLat lastLng lastLocation")
     .lean();
 
-  // Busy = same rule as auto-dispatch: accepted, in-progress orders, max 2 at a time.
+  // Busy = same rule as auto-dispatch: accepted, in-progress orders, up to the admin-set max.
   // Merely being offered an order (dispatch.status "assigned") or a stale dispatchPlan leg
   // must not hide a rider from the admin.
-  const MAX_RIDER_ACTIVE_SLOTS = 2;
+  const MAX_RIDER_ACTIVE_SLOTS = await getMaxRiderActiveOrders();
   const busyDocs = await FoodOrder.find({
     "dispatch.status": "accepted",
     "dispatch.deliveryPartnerId": { $in: onlineDrivers.map((d) => d._id) },
-    orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }
+    orderStatus: { $in: RIDER_IN_PROGRESS_STATUSES }
   }).select("dispatch.deliveryPartnerId").lean();
   const activeCountByPartner = {};
   for (const doc of busyDocs) {
@@ -5458,14 +5532,11 @@ export async function reassignDeliveryPartnerAdmin(orderId, { newDriverId, reaso
     }
   }
 
-  // Keep in sync with getAvailableDriversForOrder: accepted, in-progress orders, max 2 slots.
-  const activeCount = await FoodOrder.countDocuments({
-    ...(existingOrder?._id ? { _id: { $ne: existingOrder._id } } : {}),
-    "dispatch.status": "accepted",
-    "dispatch.deliveryPartnerId": partner._id,
-    orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }
+  // Keep in sync with getAvailableDriversForOrder: accepted, in-progress orders, admin-set max.
+  const activeCount = await countRiderActiveOrders(partner._id, {
+    excludeOrderId: existingOrder?._id || null,
   });
-  if (activeCount >= 2) {
+  if (activeCount >= (await getMaxRiderActiveOrders())) {
     throw new ValidationError("Proposed driver is busy with another order");
   }
 

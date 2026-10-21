@@ -36,8 +36,10 @@ async function listNearbyOnlineDeliveryPartners(
   }
 
   // Find all delivery partners currently busy with active accepted trips
-  // Rider can accept up to 2 orders simultaneously (MAX_RIDER_ACTIVE_SLOTS = 2)
-  const MAX_RIDER_ACTIVE_SLOTS = 2;
+  // Rider can carry up to the admin-set number of orders at once (Fee Settings, default 4).
+  // Dynamic import: order.service imports this module lazily, keep it that way to avoid a cycle.
+  const { getMaxRiderActiveOrders } = await import("./order.service.js");
+  const MAX_RIDER_ACTIVE_SLOTS = await getMaxRiderActiveOrders();
   const busyPartnerDocs = await FoodOrder.find({
     "dispatch.status": "accepted",
     orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }

@@ -3,6 +3,7 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { getPrimaryPickupLocation, normalizeLocationPoint, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
 import { useNavigate } from 'react-router-dom';
+import { getTripStatusForOrder } from '@/modules/DeliveryV2/utils/activeTrips';
 
 /**
  * useOrderManager - Professional hook for real-world trip lifecycle actions.
@@ -276,6 +277,9 @@ export const useOrderManager = () => {
     if (activeOrder) {
       const orderId = activeOrder.orderId || activeOrder._id || activeOrder.id;
       removeActiveOrder(orderId);
+      // Multi-order: the next trip must start from its own step, not the finished one's COMPLETED.
+      const nextOrder = useDeliveryStore.getState().activeOrder;
+      if (nextOrder) updateTripStatus(getTripStatusForOrder(nextOrder) || 'PICKING_UP');
     } else {
       clearActiveOrder();
     }

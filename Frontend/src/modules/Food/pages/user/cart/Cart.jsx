@@ -26,6 +26,7 @@ import { calculateDistance } from "@food/utils/common"
 import { getCompanyNameAsync } from "@common/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import ClosedRestaurantAlternatives from "@food/components/user/ClosedRestaurantAlternatives"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import zoopSound from "@food/assets/audio/zomato_sms.mp3"
 import deliveryBoyGif from "@/assets/Delivery Boy.gif"
@@ -396,6 +397,28 @@ export default function Cart() {
       return []
     }
   }, [isScheduled, scheduledDate, restaurantData])
+
+  // Restaurant closed/offline right now. Re-checked every minute so an open cart notices closing time.
+  // Outside opening hours a scheduled order is still allowed; the manual offline toggle always blocks.
+  const [availabilityTick, setAvailabilityTick] = useState(() => Date.now())
+  const [restaurantClosedMessage, setRestaurantClosedMessage] = useState("")
+  useEffect(() => {
+    const timer = window.setInterval(() => setAvailabilityTick(Date.now()), 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  useEffect(() => {
+    setRestaurantClosedMessage("")
+  }, [restaurantData?._id])
+  const restaurantAvailability = useMemo(
+    () => (restaurantData ? getRestaurantAvailabilityStatus(restaurantData, new Date(availabilityTick)) : null),
+    [restaurantData, availabilityTick]
+  )
+  const isRestaurantManuallyOffline =
+    restaurantAvailability?.reason === "not-accepting-orders" || restaurantAvailability?.reason === "inactive"
+  const isRestaurantClosed =
+    Boolean(restaurantClosedMessage) ||
+    isRestaurantManuallyOffline ||
+    (!isScheduled && restaurantAvailability?.isOpen === false)
 
   // Reset scheduledTime if it's no longer valid in the new slots
   useEffect(() => {
@@ -1184,6 +1207,10 @@ export default function Cart() {
 
   // Use backend pricing if available, otherwise fallback to database fee settings
   const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
+  // Admin-set minimum order for the restaurant's zone (sent by calculateOrder; the backend also enforces it).
+  const minOrderAmount = Number(pricing?.minOrderAmount) || 0
+  const minOrderShortfall = Math.max(0, Math.ceil(minOrderAmount - subtotal))
+  const isBelowMinOrder = minOrderAmount > 0 && minOrderShortfall > 0
   const fallbackDeliveryFee = (() => {
     if (appliedCoupon?.freeDelivery) {
       return 0
@@ -1605,6 +1632,16 @@ export default function Cart() {
 
     if (cart.length === 0) {
       alert("Your cart is empty")
+      return
+    }
+
+    if (isRestaurantClosed) {
+      toast.error(`${restaurantName} is closed right now. Please order from another restaurant.`)
+      return
+    }
+
+    if (isBelowMinOrder) {
+      toast.error(`Minimum order is ${RUPEE_SYMBOL}${minOrderAmount}. Add items worth ${RUPEE_SYMBOL}${minOrderShortfall} more.`)
       return
     }
 
@@ -2081,6 +2118,22 @@ export default function Cart() {
         errorMessage = error.message
       }
 
+      // Backend says the restaurant closed (e.g. it went offline while the cart was open):
+      // show the closed banner with open alternatives instead of a bare alert.
+      if (/currently (closed|offline)|not accepting orders/i.test(String(errorMessage))) {
+        setRestaurantClosedMessage(errorMessage)
+        toast.error(errorMessage)
+        setIsPlacingOrder(false)
+        window.scrollTo({ top: 0, behavior: "smooth" })
+        return
+      }
+
+      if (/minimum order amount/i.test(String(errorMessage))) {
+        toast.error(errorMessage)
+        setIsPlacingOrder(false)
+        return
+      }
+
       alert(errorMessage)
       setIsPlacingOrder(false)
     }
@@ -2187,6 +2240,37 @@ export default function Cart() {
           <div className="max-w-3xl mx-auto">
             {/* Main Cart Content */}
             <div className="space-y-2 md:space-y-4">
+              {isRestaurantClosed && (
+                <ClosedRestaurantAlternatives
+                  zoneId={restaurantData?.zoneId?._id || restaurantData?.zoneId || zoneId}
+                  excludeRestaurantId={restaurantData?._id || restaurantData?.restaurantId || restaurantId}
+                  restaurantName={restaurantName}
+                  message={
+                    restaurantClosedMessage ||
+                    (isRestaurantManuallyOffline
+                      ? "It has gone offline and is not accepting orders right now. Try one of these open restaurants nearby."
+                      : "It is outside its opening hours. Schedule this order for later, or try one of these open restaurants nearby.")
+                  }
+                />
+              )}
+
+              {!isRestaurantClosed && isBelowMinOrder && (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                    Add items worth {RUPEE_SYMBOL}{minOrderShortfall} more
+                  </p>
+                  <p className="text-xs text-amber-700/90 dark:text-amber-300/80 mt-0.5">
+                    Minimum order amount for your area is {RUPEE_SYMBOL}{minOrderAmount}.
+                  </p>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-amber-100 dark:bg-amber-900/40">
+                    <div
+                      className="h-full rounded-full bg-amber-500 transition-all"
+                      style={{ width: `${Math.min(100, Math.round((subtotal / minOrderAmount) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Cart Items */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="space-y-3 md:space-y-4">
@@ -2906,7 +2990,7 @@ export default function Cart() {
             {/* Place Order Button */}
             <button
               onClick={handlePlaceOrder}
-              disabled={isPlacingOrder || hasUnavailableItems || (selectedPaymentMethod === "wallet" && walletBalance < total)}
+              disabled={isPlacingOrder || hasUnavailableItems || isRestaurantClosed || isBelowMinOrder || (selectedPaymentMethod === "wallet" && walletBalance < total)}
               className="w-full bg-gradient-to-r from-[#008226] to-[#09962e] hover:from-[#006f20] hover:to-[#088027] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#008226]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
             >
               {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
@@ -2918,6 +3002,10 @@ export default function Cart() {
               <div className="flex items-center gap-1 mx-auto text-sm md:text-lg tracking-wide">
                 {isPlacingOrder
                   ? "Processing..."
+                  : isRestaurantClosed
+                    ? "Restaurant closed"
+                  : isBelowMinOrder
+                    ? `Add ${RUPEE_SYMBOL}${minOrderShortfall} more`
                   : hasUnavailableItems
                     ? "Remove unavailable items"
                     : !hasSavedAddress

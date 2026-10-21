@@ -51,6 +51,12 @@ const zoneSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
             index: true
+        },
+        /** Minimum item total (₹) for an order from a restaurant in this zone. 0 = no minimum. */
+        minOrderAmount: {
+            type: Number,
+            default: 0,
+            min: 0
         }
     },
     {

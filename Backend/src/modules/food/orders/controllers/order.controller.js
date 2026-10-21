@@ -282,8 +282,16 @@ export async function updateOrderStatusDeliveryController(req, res, next) {
 export async function getCurrentTripDeliveryController(req, res, next) {
     try {
         const deliveryPartnerId = req.user?.userId;
-        const order = await orderService.getCurrentTripDelivery(deliveryPartnerId);
-        return sendResponse(res, 200, 'Current trip retrieved', { activeOrder: order });
+        const [activeOrders, maxSlots] = await Promise.all([
+            orderService.listActiveTripsDelivery(deliveryPartnerId),
+            orderService.getMaxRiderActiveOrders(),
+        ]);
+        // activeOrder kept for older app builds that only read one trip.
+        return sendResponse(res, 200, 'Current trip retrieved', {
+            activeOrder: activeOrders[0] || null,
+            activeOrders,
+            maxSlots,
+        });
     } catch (err) {
         next(err);
     }

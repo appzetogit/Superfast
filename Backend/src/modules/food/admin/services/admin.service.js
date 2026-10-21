@@ -2316,6 +2316,7 @@ export async function upsertFeeSettings(body) {
         else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
         if (body.mixedOrderDistanceLimit !== undefined) $set.mixedOrderDistanceLimit = body.mixedOrderDistanceLimit;
         if (body.mixedOrderAngleLimit !== undefined) $set.mixedOrderAngleLimit = body.mixedOrderAngleLimit;
+        if (body.maxRiderActiveOrders !== undefined) $set.maxRiderActiveOrders = body.maxRiderActiveOrders;
         if (body.isIncentiveEnabled !== undefined) $set.isIncentiveEnabled = body.isIncentiveEnabled;
         if (body.incentiveThreshold === null) $unset.incentiveThreshold = 1;
         else if (body.incentiveThreshold !== undefined) $set.incentiveThreshold = body.incentiveThreshold;
@@ -2355,6 +2356,7 @@ export async function upsertFeeSettings(body) {
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
     if (body.mixedOrderDistanceLimit !== undefined) payload.mixedOrderDistanceLimit = body.mixedOrderDistanceLimit;
     if (body.mixedOrderAngleLimit !== undefined) payload.mixedOrderAngleLimit = body.mixedOrderAngleLimit;
+    if (body.maxRiderActiveOrders !== undefined) payload.maxRiderActiveOrders = body.maxRiderActiveOrders;
     if (body.isIncentiveEnabled !== undefined) payload.isIncentiveEnabled = body.isIncentiveEnabled;
     if (body.incentiveThreshold !== undefined && body.incentiveThreshold !== null) payload.incentiveThreshold = body.incentiveThreshold;
     if (body.incentivePercentage !== undefined && body.incentivePercentage !== null) payload.incentivePercentage = body.incentivePercentage;
@@ -5612,6 +5614,11 @@ export async function getZoneById(id) {
     return FoodZone.findById(id).lean();
 }
 
+const normalizeMinOrderAmount = (value) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : 0;
+};
+
 export async function createZone(body) {
     const name = typeof body.name === 'string' ? body.name.trim() : (body.zoneName && body.zoneName.trim()) || '';
     if (!name) return { error: 'Zone name is required' };
@@ -5630,7 +5637,8 @@ export async function createZone(body) {
         serviceLocation: (body.serviceLocation && body.serviceLocation.trim()) || name,
         unit: body.unit === 'miles' ? 'miles' : 'kilometer',
         coordinates: normalized,
-        isActive: body.isActive !== false
+        isActive: body.isActive !== false,
+        minOrderAmount: normalizeMinOrderAmount(body.minOrderAmount)
     });
     await zone.save();
     return { zone: zone.toObject() };
@@ -5646,6 +5654,7 @@ export async function updateZone(id, body) {
     if (body.serviceLocation !== undefined) zone.serviceLocation = String(body.serviceLocation).trim();
     if (body.unit !== undefined) zone.unit = body.unit === 'miles' ? 'miles' : 'kilometer';
     if (body.isActive !== undefined) zone.isActive = body.isActive !== false;
+    if (body.minOrderAmount !== undefined) zone.minOrderAmount = normalizeMinOrderAmount(body.minOrderAmount);
     if (Array.isArray(body.coordinates) && body.coordinates.length >= 3) {
         zone.coordinates = body.coordinates.map((c) => ({
             latitude: Number(c.latitude) || 0,

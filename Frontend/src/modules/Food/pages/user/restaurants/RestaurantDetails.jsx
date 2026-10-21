@@ -49,6 +49,7 @@ import AddToCartAnimation from "@food/components/user/AddToCartAnimation"
 import { getCompanyNameAsync } from "@common/utils/businessSettings"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import ClosedRestaurantAlternatives from "@food/components/user/ClosedRestaurantAlternatives"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import {
   buildCartLineId,
@@ -614,6 +615,7 @@ function RestaurantDetailsContent() {
             isActive: actualRestaurant?.isActive !== false, // Default to true if not specified
             manualOffline: actualRestaurant?.manualOffline === true || apiRestaurant?.manualOffline === true,
             isAcceptingOrders: actualRestaurant?.isAcceptingOrders !== false, // Default to true if not specified
+            zoneId: String(actualRestaurant?.zoneId?._id || actualRestaurant?.zoneId || apiRestaurant?.zoneId || "") || null,
           }
 
           debugLog('? Transformed restaurant:', transformedRestaurant)
@@ -2038,12 +2040,14 @@ function RestaurantDetailsContent() {
 
   const availabilityStatus = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick))
   const isRestaurantOffline = !availabilityStatus.isOpen
+  // Disables add buttons. The page-wide grey filter is only for out-of-service, so the
+  // open-alternatives banner of an offline restaurant stays in colour.
   const shouldShowGrayscale = isOutOfService || isRestaurantOffline
 
   return (
     <AnimatedPage
       id="scrollingelement"
-      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pb-36 transition-all duration-300 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
+      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pb-36 transition-all duration-300 ${isOutOfService ? 'grayscale opacity-75' : ''
         }`}
     >
       {/* Header - Back, Search, Menu */}
@@ -2164,8 +2168,12 @@ function RestaurantDetailsContent() {
 
 
         {isRestaurantOffline && (
-          <div className="max-w-7xl mx-auto mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700">
-            This restaurant is currently offline. Orders are unavailable.
+          <div className="max-w-7xl mx-auto mt-3">
+            <ClosedRestaurantAlternatives
+              zoneId={restaurant?.zoneId || zoneId}
+              excludeRestaurantId={restaurant?.restaurantId || restaurant?.id}
+              restaurantName={restaurant?.name}
+            />
           </div>
         )}
           

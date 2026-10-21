@@ -59,17 +59,85 @@ const getTimingForDay = (timingDoc, targetDay) => {
     return null;
 };
 
+const getIstNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+
+/**
+ * Whether a restaurant is inside its opening hours right now (IST), from its outlet timings
+ * with the restaurant's own openingTime/closingTime as fallback. Ignores the manual toggle.
+ */
+export const isRestaurantOpenByTimings = (restaurant, timingDoc, istDate = getIstNow()) => {
+    const currentDayIndex = istDate.getDay();
+    const currentDay = DAY_NAMES[currentDayIndex];
+    const prevDay = DAY_NAMES[(currentDayIndex - 1 + 7) % 7];
+    const currentTotalMinutes = istDate.getHours() * 60 + istDate.getMinutes();
+
+    const todayTiming = getTimingForDay(timingDoc, currentDay);
+    const yesterdayTiming = getTimingForDay(timingDoc, prevDay);
+
+    let isOpenNow = false;
+
+    // Check today's shift
+    const openOpt = todayTiming?.openingTime || restaurant?.openingTime;
+    const closeClt = todayTiming?.closingTime || restaurant?.closingTime;
+    const isDayOpen = todayTiming ? todayTiming.isOpen !== false : true;
+
+    if (isDayOpen && openOpt && closeClt) {
+        const openMins = parseTimeToMinutes(openOpt);
+        const closeMins = parseTimeToMinutes(closeClt);
+
+        if (openMins !== null && closeMins !== null) {
+            if (closeMins > openMins) {
+                // Normal day shift (e.g. 10:00 AM to 9:00 PM / 10:00 to 21:00)
+                if (currentTotalMinutes >= openMins && currentTotalMinutes <= closeMins) {
+                    isOpenNow = true;
+                }
+            } else if (closeMins < openMins) {
+                // Overnight shift starting today (e.g. 18:00 to 02:00)
+                if (currentTotalMinutes >= openMins) {
+                    isOpenNow = true;
+                }
+            } else {
+                // 24 hours open if openingTime === closingTime
+                isOpenNow = true;
+            }
+        } else {
+            isOpenNow = true;
+        }
+    } else if (isDayOpen && !openOpt && !closeClt) {
+        // Default to open if no specific time window is set
+        isOpenNow = true;
+    }
+
+    // Check yesterday's overnight shift (if not already open)
+    if (!isOpenNow && yesterdayTiming && yesterdayTiming.isOpen !== false) {
+        const openMins = parseTimeToMinutes(yesterdayTiming.openingTime);
+        const closeMins = parseTimeToMinutes(yesterdayTiming.closingTime);
+
+        if (openMins !== null && closeMins !== null && closeMins < openMins) {
+            // Overnight shift started yesterday and extending into today
+            if (currentTotalMinutes <= closeMins) {
+                isOpenNow = true;
+            }
+        }
+    }
+
+    return isOpenNow;
+};
+
+/** Map of restaurantId -> outlet timings doc, for checking open-now on a few restaurants at once. */
+export const getOutletTimingsMap = async (restaurantIds = []) => {
+    const ids = restaurantIds
+        .map((id) => String(id))
+        .filter((id) => mongoose.isValidObjectId(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+    if (!ids.length) return new Map();
+    const docs = await FoodRestaurantOutletTimings.find({ restaurantId: { $in: ids } }).lean();
+    return new Map(docs.map((t) => [t.restaurantId.toString(), t]));
+};
+
 export const syncAllRestaurantTimings = async () => {
     try {
-        const dateStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
-        const istDate = new Date(dateStr);
-        
-        const currentDayIndex = istDate.getDay();
-        const currentDay = DAY_NAMES[currentDayIndex];
-        const prevDayIndex = (currentDayIndex - 1 + 7) % 7;
-        const prevDay = DAY_NAMES[prevDayIndex];
-
-        const currentTotalMinutes = istDate.getHours() * 60 + istDate.getMinutes();
+        const istDate = getIstNow();
 
         // 1. Fetch all timings and approved restaurants
         const allTimings = await FoodRestaurantOutletTimings.find({}).lean();
@@ -88,56 +156,7 @@ export const syncAllRestaurantTimings = async () => {
         for (const restaurant of restaurants) {
             const restIdStr = restaurant._id.toString();
             const timingDoc = timingsMap.get(restIdStr);
-
-            const todayTiming = getTimingForDay(timingDoc, currentDay);
-            const yesterdayTiming = getTimingForDay(timingDoc, prevDay);
-
-            let isOpenNow = false;
-
-            // Check today's shift
-            const openOpt = todayTiming?.openingTime || restaurant.openingTime;
-            const closeClt = todayTiming?.closingTime || restaurant.closingTime;
-            const isDayOpen = todayTiming ? todayTiming.isOpen !== false : true;
-
-            if (isDayOpen && openOpt && closeClt) {
-                const openMins = parseTimeToMinutes(openOpt);
-                const closeMins = parseTimeToMinutes(closeClt);
-
-                if (openMins !== null && closeMins !== null) {
-                    if (closeMins > openMins) {
-                        // Normal day shift (e.g. 10:00 AM to 9:00 PM / 10:00 to 21:00)
-                        if (currentTotalMinutes >= openMins && currentTotalMinutes <= closeMins) {
-                            isOpenNow = true;
-                        }
-                    } else if (closeMins < openMins) {
-                        // Overnight shift starting today (e.g. 18:00 to 02:00)
-                        if (currentTotalMinutes >= openMins) {
-                            isOpenNow = true;
-                        }
-                    } else {
-                        // 24 hours open if openingTime === closingTime
-                        isOpenNow = true;
-                    }
-                } else {
-                    isOpenNow = true;
-                }
-            } else if (isDayOpen && !openOpt && !closeClt) {
-                // Default to open if no specific time window is set
-                isOpenNow = true;
-            }
-
-            // Check yesterday's overnight shift (if not already open)
-            if (!isOpenNow && yesterdayTiming && yesterdayTiming.isOpen !== false) {
-                const openMins = parseTimeToMinutes(yesterdayTiming.openingTime);
-                const closeMins = parseTimeToMinutes(yesterdayTiming.closingTime);
-
-                if (openMins !== null && closeMins !== null && closeMins < openMins) {
-                    // Overnight shift started yesterday and extending into today
-                    if (currentTotalMinutes <= closeMins) {
-                        isOpenNow = true;
-                    }
-                }
-            }
+            const isOpenNow = isRestaurantOpenByTimings(restaurant, timingDoc, istDate);
 
             // Calculate final target state
             const currentIsAccepting = Boolean(restaurant.isAcceptingOrders);

@@ -32,6 +32,7 @@ export default function AddZone() {
     country: "India",
     zoneName: "",
     unit: "kilometer",
+    minOrderAmount: "",
   })
 
   const [coordinates, setCoordinates] = useState([])
@@ -128,6 +129,7 @@ export default function AddZone() {
           country: zoneData.country || "India",
           zoneName: zoneData.name || zoneData.zoneName || "",
           unit: zoneData.unit || "kilometer",
+          minOrderAmount: Number(zoneData.minOrderAmount) > 0 ? String(zoneData.minOrderAmount) : "",
         })
 
         if (zoneData.coordinates && zoneData.coordinates.length > 0) {
@@ -535,6 +537,7 @@ export default function AddZone() {
         zoneName: formData.zoneName,
         country: formData.country,
         unit: formData.unit || "kilometer",
+        minOrderAmount: Math.max(0, Number(formData.minOrderAmount) || 0),
         coordinates: validCoordinates,
         isActive: true
       }
@@ -665,6 +668,26 @@ export default function AddZone() {
                       <option value="kilometer">Kilometers (km)</option>
                       <option value="miles">Miles (mi)</option>
                     </select>
+                  </div>
+
+                  {/* Minimum Order Amount */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Minimum Order Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={formData.minOrderAmount}
+                      onChange={(e) => handleInputChange("minOrderAmount", e.target.value)}
+                      placeholder="e.g. 149 (leave empty for no minimum)"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Users can't place an order below this item total from restaurants in this zone.
+                    </p>
                   </div>
                 </div>
               </div>

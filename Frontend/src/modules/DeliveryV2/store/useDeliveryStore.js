@@ -28,7 +28,7 @@ export const useDeliveryStore = create(
       riderLocation: null, // { lat, lng }
       
       // --- Multi-Slot Trip State ---
-      maxSlots: 2, // Default 2 active slots
+      maxSlots: 4, // Admin-set limit; overwritten from /orders/current (maxSlots)
       activeOrders: [], // Array of accepted active orders
       activeOrder: null, // Currently focused active order for map/actions
       tripStatus: 'IDLE', // 'IDLE' | 'PICKING_UP' | 'REACHED_PICKUP' | 'PICKED_UP' | 'DELIVERING' | 'REACHED_DROP' | 'COMPLETED'
@@ -108,6 +108,11 @@ export const useDeliveryStore = create(
           tripStatus: nextActive ? (state.tripStatus === 'IDLE' ? 'PICKING_UP' : state.tripStatus) : 'IDLE'
         };
       }),
+
+      setMaxSlots: (value) => {
+        const n = Number(value);
+        if (Number.isInteger(n) && n >= 1) set({ maxSlots: n });
+      },
 
       updateTripStatus: (status) => set({ tripStatus: status }),
 

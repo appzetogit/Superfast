@@ -19,6 +19,7 @@ export default function FeeSettings() {
     isIncentiveEnabled: false,
     incentiveThreshold: "",
     incentivePercentage: "",
+    maxRiderActiveOrders: 4,
     // Toggle switches for each fee model
     enableRangeFee: true,
     enablePerKmFee: true,
@@ -104,6 +105,7 @@ export default function FeeSettings() {
           isIncentiveEnabled: saved.isIncentiveEnabled ?? false,
           incentiveThreshold: saved.incentiveThreshold ?? "",
           incentivePercentage: saved.incentivePercentage ?? "",
+          maxRiderActiveOrders: saved.maxRiderActiveOrders ?? 4,
           enableRangeFee: saved.enableRangeFee ?? true,
           enablePerKmFee: saved.enablePerKmFee ?? true,
           enableZoneFees: saved.enableZoneFees ?? true,
@@ -125,6 +127,7 @@ export default function FeeSettings() {
           isIncentiveEnabled: false,
           incentiveThreshold: "",
           incentivePercentage: "",
+          maxRiderActiveOrders: 4,
           enableRangeFee: true,
           enablePerKmFee: true,
           enableZoneFees: true,
@@ -181,6 +184,7 @@ export default function FeeSettings() {
         isIncentiveEnabled: nextSettings.isIncentiveEnabled,
         incentiveThreshold: nextSettings.incentiveThreshold === "" ? undefined : Number(nextSettings.incentiveThreshold),
         incentivePercentage: nextSettings.incentivePercentage === "" ? undefined : Number(nextSettings.incentivePercentage),
+        maxRiderActiveOrders: nextSettings.maxRiderActiveOrders === "" ? undefined : Number(nextSettings.maxRiderActiveOrders),
         enableRangeFee: nextSettings.enableRangeFee,
         enablePerKmFee: nextSettings.enablePerKmFee,
         enableZoneFees: nextSettings.enableZoneFees,
@@ -216,6 +220,7 @@ export default function FeeSettings() {
             isIncentiveEnabled: saved.isIncentiveEnabled ?? false,
             incentiveThreshold: saved.incentiveThreshold ?? "",
             incentivePercentage: saved.incentivePercentage ?? "",
+          maxRiderActiveOrders: saved.maxRiderActiveOrders ?? 4,
             enableRangeFee: saved.enableRangeFee ?? true,
             enablePerKmFee: saved.enablePerKmFee ?? true,
             enableZoneFees: saved.enableZoneFees ?? true,
@@ -1273,6 +1278,30 @@ export default function FeeSettings() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Rider multi-order limit */}
+          <div className="border border-slate-200 rounded-xl p-5">
+            <h3 className="text-lg font-bold text-slate-900">Rider Multi-Order Limit</h3>
+            <p className="text-sm text-slate-500 mt-1 mb-4">
+              How many orders one delivery partner can carry at the same time (accept, admin assign and reassign all follow this).
+            </p>
+            <div className="max-w-xs space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                Max active orders per rider
+              </label>
+              <input
+                type="number"
+                value={feeSettings.maxRiderActiveOrders}
+                onChange={(e) => setFeeSettings({ ...feeSettings, maxRiderActiveOrders: e.target.value })}
+                min="1"
+                max="10"
+                step="1"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="e.g. 4"
+              />
+              <p className="text-xs text-slate-500">Between 1 and 10. Default 4.</p>
+            </div>
           </div>
 
           {/* Section 6: Delivery Partner Incentive Section */}

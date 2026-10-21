@@ -63,6 +63,7 @@ const callCustomer = async (order) => {
   window.location.href = `tel:${phone}`;
 };
 import { getPrimaryPickupLocation, normalizePickupPoints } from '@/modules/DeliveryV2/utils/orderRouting';
+import { applyActiveTripsResponse } from '@/modules/DeliveryV2/utils/activeTrips';
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import { useNavigate } from 'react-router-dom';
 import useNotificationInbox from "@food/hooks/useNotificationInbox";
@@ -399,71 +400,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     const syncWithServer = async () => {
       try {
         const response = await deliveryAPI.getCurrentDelivery();
-        const rawData = response?.data?.data?.activeOrder || response?.data?.data;
-        const serverData = (rawData && (rawData._id || rawData.orderId)) ? rawData : null;
-
-        if (serverData) {
-          // Robust location mapping (Same as acceptOrder logic)
-          const getLoc = (ref, keysLat, keysLng) => {
-            if (!ref) return null;
-            if (ref.location) {
-              if (Array.isArray(ref.location.coordinates) && ref.location.coordinates.length >= 2) {
-                return {
-                  lat: ref.location.coordinates[1],
-                  lng: ref.location.coordinates[0]
-                };
-              }
-              return {
-                lat: ref.location.latitude || ref.location.lat,
-                lng: ref.location.longitude || ref.location.lng
-              };
-            }
-            for (const k of keysLat) { if (ref[k] != null) return { lat: ref[k], lng: ref[keysLng[keysLat.indexOf(k)]] }; }
-            return null;
-          };
-
-          const resLoc = getLoc(serverData.restaurantId, ['latitude', 'lat'], ['longitude', 'lng']) ||
-            getLoc(serverData, ['restaurant_lat', 'restaurantLat', 'latitude'], ['restaurant_lng', 'restaurantLng', 'longitude']);
-
-          const cusLoc = getLoc(serverData.deliveryAddress, ['latitude', 'lat'], ['longitude', 'lng']) ||
-            getLoc(serverData, ['customer_lat', 'customerLat', 'latitude'], ['customer_lng', 'customerLng', 'longitude']);
-
-          const syncedOrder = {
-            ...serverData,
-            pickupPoints: normalizePickupPoints(serverData),
-            restaurantLocation: getPrimaryPickupLocation(serverData) || resLoc,
-            customerLocation: cusLoc
-          };
-
-          setActiveOrder(syncedOrder);
-
-          const backendStatus = String(serverData.deliveryStatus || serverData.orderState?.status || serverData.orderStatus || serverData.status || '').toLowerCase();
-          const dispatchStatus = String(serverData.dispatch?.status || '').toLowerCase();
-          const handoverStatus = String(serverData.handoverStatus || serverData.handover?.status || serverData.handoverRequest?.status || '').toLowerCase();
-          const currentPhase = serverData.deliveryState?.currentPhase;
-
-          const isFinishedOrHandedOver = [
-            'delivered', 'completed', 'cancelled', 'cancelled_by_user', 
-            'cancelled_by_restaurant', 'cancelled_by_admin', 'handed_over', 
-            'handover_requested', 'handover_pending', 'handover_completed', 'transferred', 'reassigned'
-          ].some(st => backendStatus === st || dispatchStatus === st || handoverStatus === st);
-
-          if (isFinishedOrHandedOver) {
-            clearActiveOrder();
-          } else if (['delivered', 'completed'].includes(backendStatus)) {
-            updateTripStatus('COMPLETED');
-          } else if (currentPhase === 'at_drop' || ['reached_drop', 'REACHED_DROP'].includes(backendStatus)) {
-            updateTripStatus('REACHED_DROP');
-          } else if (['picked_up', 'PICKED_UP', 'delivering'].includes(backendStatus)) {
-            updateTripStatus('PICKED_UP');
-          } else if (currentPhase === 'at_pickup' || ['reached_pickup', 'REACHED_PICKUP'].includes(backendStatus)) {
-            updateTripStatus('REACHED_PICKUP');
-          } else if (['created', 'confirmed', 'preparing', 'ready_for_pickup'].includes(backendStatus)) {
-            updateTripStatus('PICKING_UP');
-          }
-        } else {
-          clearActiveOrder();
-        }
+        // All accepted trips (multi-order), not just the latest one.
+        applyActiveTripsResponse(response);
       } catch (err) {
         console.error('Order Sync Failed:', err);
         clearActiveOrder();
@@ -703,59 +641,20 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
   }, [activeOrder, incomingOrder]);
 
+  // Keeps the active trips in sync even while one is running, so orders the rider takes on
+  // top (multi-order) or the admin assigns show up. activeOrder is deliberately not a dependency:
+  // each sync replaces it, which would restart this effect in a loop.
   useEffect(() => {
     if (!isOnline) return;
-    if (activeOrder) return;
 
     let cancelled = false;
 
     const hydrateAvailableOrder = async () => {
       try {
         const currentResponse = await deliveryAPI.getCurrentDelivery();
-        const currentPayload =
-          currentResponse?.data?.data?.activeOrder ||
-          currentResponse?.data?.data ||
-          null;
-
-        if (!cancelled && currentPayload && (currentPayload._id || currentPayload.orderId)) {
-          const backendStatus = String(currentPayload.deliveryStatus || currentPayload.orderState?.status || currentPayload.orderStatus || currentPayload.status || '').toLowerCase();
-          const dispatchStatus = String(currentPayload.dispatch?.status || '').toLowerCase();
-          const handoverStatus = String(currentPayload.handoverStatus || currentPayload.handover?.status || currentPayload.handoverRequest?.status || '').toLowerCase();
-          const currentPhase = currentPayload.deliveryState?.currentPhase;
-
-          const isFinishedOrHandedOver = [
-            'delivered', 'completed', 'cancelled', 'cancelled_by_user', 
-            'cancelled_by_restaurant', 'cancelled_by_admin', 'handed_over', 
-            'handover_requested', 'handover_pending', 'handover_completed', 'transferred', 'reassigned'
-          ].some(st => backendStatus === st || dispatchStatus === st || handoverStatus === st);
-
-          if (isFinishedOrHandedOver) {
-            clearActiveOrder();
-            return;
-          }
-
-          setActiveOrder({
-            ...currentPayload,
-            pickupPoints: normalizePickupPoints(currentPayload),
-            restaurantLocation: getPrimaryPickupLocation(currentPayload) || currentPayload.restaurantLocation,
-          });
-
-          if (['delivered', 'completed'].includes(backendStatus)) {
-            updateTripStatus('COMPLETED');
-          } else if (currentPhase === 'at_drop' || ['reached_drop', 'REACHED_DROP'].includes(backendStatus)) {
-            updateTripStatus('REACHED_DROP');
-          } else if (['picked_up', 'PICKED_UP', 'delivering'].includes(backendStatus)) {
-            updateTripStatus('PICKED_UP');
-          } else if (currentPhase === 'at_pickup' || ['reached_pickup', 'REACHED_PICKUP'].includes(backendStatus)) {
-            updateTripStatus('REACHED_PICKUP');
-          } else if (['created', 'confirmed', 'preparing', 'ready_for_pickup'].includes(backendStatus)) {
-            updateTripStatus('PICKING_UP');
-          } else if (currentPayload.dispatch?.status === 'accepted') {
-            updateTripStatus('PICKING_UP');
-          }
-
-          return;
-        }
+        // Loads every accepted trip (multi-order). Empty list: leave the store alone so a
+        // just-completed trip keeps its summary screen.
+        if (!cancelled) applyActiveTripsResponse(currentResponse, { clearWhenEmpty: false });
       } catch (error) {
         console.warn('[DeliveryHomeV2] Available order fallback sync failed:', error?.message || error);
       }
@@ -787,7 +686,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('fcm-order-update', onFcmOrderUpdate);
     };
-  }, [activeOrder, currentTab, isOnline, isSocketConnected, setActiveOrder]);
+  }, [currentTab, isOnline, isSocketConnected]);
 
   // Poll COD cash limit status — lightweight wallet check
   useEffect(() => {

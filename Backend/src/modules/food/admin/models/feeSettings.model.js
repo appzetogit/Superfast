@@ -31,6 +31,8 @@ const feeSettingsSchema = new mongoose.Schema(
         gstRate: { type: Number, min: 0, max: 100 },
         mixedOrderDistanceLimit: { type: Number, min: 0, default: 2 },
         mixedOrderAngleLimit: { type: Number, min: 0, default: 35 },
+        /** How many accepted, in-progress orders one rider may carry at once. */
+        maxRiderActiveOrders: { type: Number, min: 1, max: 10, default: 4 },
         isIncentiveEnabled: { type: Boolean, default: false },
         incentiveThreshold: { type: Number, min: 0 },
         incentivePercentage: { type: Number, min: 0 },
