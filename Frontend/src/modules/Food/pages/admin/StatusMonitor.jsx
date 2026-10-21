@@ -926,7 +926,7 @@ export default function StatusMonitor() {
                     <option value="">Select a driver...</option>
                     {availableDrivers.map((driver) => (
                       <option key={driver._id} value={driver._id}>
-                        {driver.name} ({driver.distanceKm} km away)
+                        {driver.name} ({driver.distanceKm != null ? `${driver.distanceKm} km away` : "location unknown"}{driver.activeOrders ? `, ${driver.activeOrders} active` : ""})
                       </option>
                     ))}
                   </select>

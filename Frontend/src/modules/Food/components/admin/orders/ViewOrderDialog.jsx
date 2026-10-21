@@ -20,7 +20,9 @@ const getStatusColor = (orderStatus) => {
     "Scheduled": "bg-blue-100 text-blue-700",
     "Accepted": "bg-green-100 text-green-700",
     "Processing": "bg-orange-100 text-orange-700",
+    "Ready": "bg-violet-100 text-violet-700",
     "Food On The Way": "bg-yellow-100 text-yellow-700",
+    "Out For Delivery": "bg-yellow-100 text-yellow-700",
     "Canceled": "bg-rose-100 text-rose-700",
     "Cancelled by Restaurant": "bg-red-100 text-red-700",
     "Cancelled by User": "bg-orange-100 text-orange-700",
@@ -42,8 +44,8 @@ const getPaymentStatusColor = (paymentStatus) => {
 // Status options: { label shown in UI -> raw DB enum value }
 const ADMIN_STATUS_OPTIONS = [
   { label: 'Pending', value: 'placed' },
-  { label: 'Processing', value: 'preparing' },
-  { label: 'Handover', value: 'ready_for_pickup' },
+  { label: 'Accepted', value: 'preparing' },
+  { label: 'Ready', value: 'ready_for_pickup' },
   { label: 'Out For Delivery', value: 'picked_up' },
   { label: 'Delivered', value: 'delivered' },
   { label: 'Cancelled', value: 'cancelled_by_admin' },
@@ -56,7 +58,7 @@ const resolveCanonicalRawStatus = (orderObj) => {
   const str = String(raw).trim().toLowerCase();
   
   if (['ready_for_pickup', 'ready', 'handover'].includes(str)) return 'ready_for_pickup';
-  if (['preparing', 'processing'].includes(str)) return 'preparing';
+  if (['preparing', 'processing', 'accepted'].includes(str)) return 'preparing';
   if (['placed', 'created', 'pending', 'confirmed'].includes(str)) return 'placed';
   if (['picked_up', 'pickedup', 'out_for_delivery', 'food on the way', 'out for delivery'].includes(str)) return 'picked_up';
   if (['delivered'].includes(str)) return 'delivered';
@@ -913,7 +915,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                       <option value="">Select a driver...</option>
                       {availableDrivers.map((driver) => (
                         <option key={driver._id} value={driver._id}>
-                          {driver.name} ({driver.distanceKm} km away)
+                          {driver.name} ({driver.distanceKm != null ? `${driver.distanceKm} km away` : "location unknown"}{driver.activeOrders ? `, ${driver.activeOrders} active` : ""})
                         </option>
                       ))}
                     </select>

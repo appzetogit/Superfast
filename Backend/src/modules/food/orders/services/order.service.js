@@ -5378,49 +5378,57 @@ export async function getAvailableDriversForOrder(orderId) {
     throw new ValidationError("Order does not have pickup location coordinates");
   }
 
-  const pipeline = [
-    {
-      $geoNear: {
-        near: { type: "Point", coordinates: pickupCoords },
-        distanceField: "distanceMeters",
-        spherical: true,
-        query: {
-          status: "approved",
-          availabilityStatus: "online"
-        }
-      }
-    }
-  ];
-
+  // Not $geoNear: it silently drops online riders whose `lastLocation` was never written
+  // (e.g. went online via gig check-in, or no GPS heartbeat yet). Use lastLat/lastLng like auto-dispatch.
+  const driverQuery = { status: "approved", availabilityStatus: "online" };
   if (order.dispatch?.deliveryPartnerId) {
-    pipeline[0].$geoNear.query._id = { $ne: order.dispatch.deliveryPartnerId };
+    driverQuery._id = { $ne: order.dispatch.deliveryPartnerId };
   }
+  const onlineDrivers = await FoodDeliveryPartner.find(driverQuery)
+    .select("_id name phone rating totalRatings lastLat lastLng lastLocation")
+    .lean();
 
-  const rawDrivers = await FoodDeliveryPartner.aggregate(pipeline);
+  // Busy = same rule as auto-dispatch: accepted, in-progress orders, max 2 at a time.
+  // Merely being offered an order (dispatch.status "assigned") or a stale dispatchPlan leg
+  // must not hide a rider from the admin.
+  const MAX_RIDER_ACTIVE_SLOTS = 2;
+  const busyDocs = await FoodOrder.find({
+    "dispatch.status": "accepted",
+    "dispatch.deliveryPartnerId": { $in: onlineDrivers.map((d) => d._id) },
+    orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }
+  }).select("dispatch.deliveryPartnerId").lean();
+  const activeCountByPartner = {};
+  for (const doc of busyDocs) {
+    const pid = String(doc.dispatch.deliveryPartnerId);
+    activeCountByPartner[pid] = (activeCountByPartner[pid] || 0) + 1;
+  }
 
   const availableDrivers = [];
-  for (const driver of rawDrivers) {
-    const activeCount = await FoodOrder.countDocuments({
-      $or: [
-        { "dispatch.deliveryPartnerId": driver._id },
-        { "dispatchPlan.legs.deliveryPartnerId": driver._id }
-      ],
-      orderStatus: {
-        $nin: ["delivered", "cancelled_by_user", "cancelled_by_restaurant", "cancelled_by_admin"]
-      }
-    });
-    if (activeCount === 0) {
-      availableDrivers.push({
-        _id: driver._id,
-        name: driver.name,
-        phone: driver.phone,
-        rating: driver.rating || 0,
-        totalRatings: driver.totalRatings || 0,
-        distanceKm: Math.round((driver.distanceMeters / 1000) * 10) / 10
-      });
+  for (const driver of onlineDrivers) {
+    const activeOrders = activeCountByPartner[String(driver._id)] || 0;
+    if (activeOrders >= MAX_RIDER_ACTIVE_SLOTS) continue;
+
+    let driverCoords = null;
+    if (Number.isFinite(driver.lastLng) && Number.isFinite(driver.lastLat)) {
+      driverCoords = [driver.lastLng, driver.lastLat];
+    } else if (driver.lastLocation?.coordinates?.length >= 2) {
+      driverCoords = driver.lastLocation.coordinates;
     }
+
+    availableDrivers.push({
+      _id: driver._id,
+      name: driver.name,
+      phone: driver.phone,
+      rating: driver.rating || 0,
+      totalRatings: driver.totalRatings || 0,
+      activeOrders,
+      distanceKm: driverCoords
+        ? Math.round(getDistanceKm(pickupCoords, driverCoords) * 10) / 10
+        : null
+    });
   }
 
+  availableDrivers.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
   return availableDrivers;
 }
 
@@ -5446,16 +5454,14 @@ export async function reassignDeliveryPartnerAdmin(orderId, { newDriverId, reaso
     }
   }
 
+  // Keep in sync with getAvailableDriversForOrder: accepted, in-progress orders, max 2 slots.
   const activeCount = await FoodOrder.countDocuments({
-    $or: [
-      { "dispatch.deliveryPartnerId": partner._id },
-      { "dispatchPlan.legs.deliveryPartnerId": partner._id }
-    ],
-    orderStatus: {
-      $nin: ["delivered", "cancelled_by_user", "cancelled_by_restaurant", "cancelled_by_admin"]
-    }
+    ...(existingOrder?._id ? { _id: { $ne: existingOrder._id } } : {}),
+    "dispatch.status": "accepted",
+    "dispatch.deliveryPartnerId": partner._id,
+    orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "picked_up"] }
   });
-  if (activeCount >= 1) {
+  if (activeCount >= 2) {
     throw new ValidationError("Proposed driver is busy with another order");
   }
 
