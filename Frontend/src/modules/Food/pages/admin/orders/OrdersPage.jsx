@@ -498,6 +498,8 @@ export default function OrdersPage({ statusKey = "all" }) {
 
       const items = Array.isArray(order.items)
         ? order.items.map((item) => ({
+            // itemId is needed by the order dialog's "Edit Items" (admin quantity edit).
+            itemId: item.itemId,
             quantity: item.quantity || 1,
             name: item.name || item.foodName || item.title || "Item",
             price: item.price || 0,

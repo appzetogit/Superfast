@@ -46,6 +46,7 @@ import {
 } from '../../../../core/payments/transaction.service.js';
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
 import { sendNotificationToOwner } from '../../../../core/notifications/firebase.service.js';
+import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
@@ -5716,6 +5717,40 @@ export async function getWithdrawals(query = {}) {
     return { requests, total, page, limit };
 }
 
+/** Tell the restaurant / rider (push + inbox) that admin approved or rejected their withdrawal. */
+async function notifyWithdrawalDecision(ownerType, ownerId, withdrawal, nextStatus, rejectionReason) {
+    if (!ownerId) return;
+    const approved = nextStatus === 'approved';
+    const title = approved ? 'Withdrawal Approved' : 'Withdrawal Rejected';
+    const body = approved
+        ? `Your withdrawal request for ₹${withdrawal.amount} has been successfully approved.`
+        : `Your withdrawal request for ₹${withdrawal.amount} was rejected${rejectionReason ? `: ${rejectionReason}` : '.'}`;
+    const type = approved ? 'WITHDRAWAL_APPROVED' : 'WITHDRAWAL_REJECTED';
+    try {
+        await sendNotificationToOwner({
+            ownerType,
+            ownerId: String(ownerId),
+            payload: { title, body, data: { type, withdrawalId: String(withdrawal._id) } }
+        });
+    } catch (err) {
+        console.error('Failed to send FCM notification for withdrawal decision:', err);
+    }
+    try {
+        await createInboxNotifications({
+            notifications: [{
+                ownerType,
+                ownerId: String(ownerId),
+                title,
+                message: body,
+                category: 'withdrawal',
+                metadata: { type, withdrawalId: String(withdrawal._id), amount: withdrawal.amount }
+            }]
+        });
+    } catch (err) {
+        console.error('Failed to save inbox notification for withdrawal decision:', err);
+    }
+}
+
 export async function updateWithdrawalStatus(id, { status, adminNote, rejectionReason, transactionId }) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid withdrawal ID');
 
@@ -5747,24 +5782,13 @@ export async function updateWithdrawalStatus(id, { status, adminNote, rejectionR
         throw new ValidationError(`Withdrawal is already ${existing.status}`);
     }
 
-    if (update.status === 'approved') {
-        try {
-            await sendNotificationToOwner({
-                ownerType: 'RESTAURANT',
-                ownerId: String(updated.restaurantId?._id || updated.restaurantId),
-                payload: {
-                    title: 'Withdrawal Approved',
-                    body: `Your withdrawal request for ₹${updated.amount} has been successfully approved.`,
-                    data: {
-                        type: 'WITHDRAWAL_APPROVED',
-                        withdrawalId: String(updated._id)
-                    }
-                }
-            });
-        } catch (err) {
-            console.error('Failed to send FCM notification for withdrawal approval:', err);
-        }
-    }
+    await notifyWithdrawalDecision(
+        'RESTAURANT',
+        updated.restaurantId?._id || updated.restaurantId,
+        updated,
+        nextStatus,
+        rejectionReason
+    );
 
     return updated;
 }
@@ -5855,6 +5879,8 @@ export async function updateDeliveryWithdrawalStatus(id, { status, adminNote, re
             }
         }
     }
+
+    await notifyWithdrawalDecision('DELIVERY_PARTNER', claimed.deliveryPartnerId, claimed, nextStatus, rejectionReason);
 
     return FoodDeliveryWithdrawal.findById(id)
         .populate('deliveryPartnerId', 'name phone profilePartnerId')

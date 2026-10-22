@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clock, MapPin, Check, Sparkles, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { gigAPI } from '@food/api';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
+import { requireLocation } from '@/modules/DeliveryV2/utils/requireLocation';
 
 function formatLocalDate(d) {
   const year = d.getFullYear();
@@ -17,14 +18,27 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [bookingIdInProgress, setBookingIdInProgress] = useState(null);
+  const [locationOk, setLocationOk] = useState(true);
+  const [riderZones, setRiderZones] = useState(null);
+  const coordsRef = useRef(null);
   const setOnline = useDeliveryStore((state) => state.setOnline);
 
+  // Gigs are zoned by where the rider is right now, so take a fresh GPS fix every time.
   const fetchGigs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await gigAPI.getZoneGigs({ date: selectedDate });
+      const loc = await requireLocation();
+      setLocationOk(loc.ok);
+      if (!loc.ok) {
+        coordsRef.current = null;
+        setGigs([]);
+        return;
+      }
+      coordsRef.current = { lat: loc.lat, lng: loc.lng };
+      const res = await gigAPI.getZoneGigs({ date: selectedDate, ...coordsRef.current });
       if (res?.data?.success && res.data.data) {
         setGigs(res.data.data.gigs || []);
+        setRiderZones(res.data.data.riderZones || []);
       }
     } catch (err) {
       console.warn('Failed to fetch gigs:', err);
@@ -42,7 +56,7 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
   const handleBook = async (gig) => {
     setBookingIdInProgress(gig._id);
     try {
-      const res = await gigAPI.bookGig(gig._id);
+      const res = await gigAPI.bookGig(gig._id, coordsRef.current);
       if (res?.data?.success) {
         toast.success(res.data.message || 'Gig shift booked successfully!');
         fetchGigs();
@@ -171,9 +185,40 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
           <div className="py-12 text-center text-gray-400 font-bold text-xs">Loading available gigs...</div>
         ) : gigs.length === 0 ? (
           <div className="bg-gray-50 dark:bg-gray-900/60 rounded-2xl p-8 text-center border border-gray-100 dark:border-gray-800">
-            <Clock className="w-10 h-10 text-gray-400 mx-auto mb-2 opacity-60" />
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Shifts Available</h4>
-            <p className="text-xs text-gray-500 mt-1">No active gigs created for this date. Check another date.</p>
+            {!locationOk ? (
+              <>
+                <MapPin className="w-10 h-10 text-red-400 mx-auto mb-2 opacity-80" />
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">Location ON karein</h4>
+                <p className="text-xs text-gray-500 mt-1">Aapke zone ke gigs dikhane ke liye current location chahiye.</p>
+                <button
+                  onClick={fetchGigs}
+                  className="mt-3 px-4 py-2 rounded-xl bg-[#00A669] text-white text-xs font-black active:scale-95 transition-all"
+                >
+                  RETRY
+                </button>
+              </>
+            ) : riderZones && riderZones.length === 0 ? (
+              <>
+                <MapPin className="w-10 h-10 text-amber-400 mx-auto mb-2 opacity-80" />
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">Aap kisi delivery zone mein nahi ho</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  Aapki current location kisi active zone ke andar nahi aati, isliye sirf "All Zones" gigs dikhte hain. Zone ke andar jaakar retry karein ya admin se sampark karein.
+                </p>
+                {coordsRef.current && (
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Location: {coordsRef.current.lat.toFixed(5)}, {coordsRef.current.lng.toFixed(5)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <Clock className="w-10 h-10 text-gray-400 mx-auto mb-2 opacity-60" />
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Shifts Available</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  {riderZones?.length ? `Zone: ${riderZones.join(', ')} • ` : ''}No active gigs created for this date. Check another date.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -225,10 +270,15 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
 
                   {/* Line 4: Full-width Green Button (Matching Screenshot 4) */}
                   {isCheckedIn ? (
-                    <div className="w-full bg-blue-600 text-white font-black text-xs py-3 rounded-2xl text-center flex items-center justify-center gap-2">
+                    // Already checked in: tapping confirms, makes sure the rider is online and closes the sheet.
+                    <button
+                      onClick={() => handleCheckIn(gig)}
+                      disabled={bookingIdInProgress === gig._id}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-3 rounded-2xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>CHECKED IN & WORKING</span>
-                    </div>
+                      <span>{bookingIdInProgress === gig._id ? 'PLEASE WAIT...' : 'CHECKED IN • OK, START WORKING'}</span>
+                    </button>
                   ) : isBooked ? (
                     <>
                     <button

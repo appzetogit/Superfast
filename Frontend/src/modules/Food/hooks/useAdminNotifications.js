@@ -346,6 +346,9 @@ const handleAdminSocketEvent = (payload) => {
     const city = payload?.city ? ` in ${payload.city}` : "";
     playAdminSound();
     showAdminToast("🏪 New restaurant application", `${name}${city} has applied. Tap to review.`, "/admin/food/restaurants/joining-request");
+  } else if (payload?.type === "restaurant_withdrawal_request" || payload?.type === "delivery_withdrawal_request") {
+    playAdminSound();
+    showAdminToast(payload?.title || "💸 Withdrawal request", payload?.message || "", payload?.link);
   }
   adminShared.lastAt = 0;
   dispatchAdminNotificationsUpdated();

@@ -580,6 +580,10 @@ function normalizeOrderForClient(orderDoc) {
     deliveryPartnerId:
       order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerId || null,
     rating: order?.ratings?.restaurant?.rating ?? order?.rating ?? null,
+    // Restaurants store their number as primaryContactNumber/ownerPhone (there is no `phone` field).
+    restaurantPhone:
+      [order?.restaurantPhone, order?.restaurantId?.primaryContactNumber, order?.restaurantId?.ownerPhone]
+        .find((p) => /[1-9]/.test(String(p || ""))) || "",
     deliveryState: {
       ...(order?.deliveryState || {}),
       currentLocation: order?.lastRiderLocation?.coordinates?.length >= 2 ? {
@@ -2900,7 +2904,7 @@ export async function listOrdersUser(userId, query) {
     FoodOrder.find(filter)
       .populate(
         "restaurantId",
-        "restaurantName profileImage area city location rating totalRatings",
+        "restaurantName profileImage area city location rating totalRatings primaryContactNumber ownerPhone",
       )
       .populate("dispatch.deliveryPartnerId", "name phone rating totalRatings")
       .populate("dispatchPlan.legs.deliveryPartnerId", "name phone rating totalRatings")
@@ -2927,7 +2931,7 @@ export async function getOrderById(
   const order = await FoodOrder.findOne(identity)
     .populate(
       "restaurantId",
-      "restaurantName profileImage area city location rating totalRatings",
+      "restaurantName profileImage area city location rating totalRatings primaryContactNumber ownerPhone",
     )
     .populate("dispatch.deliveryPartnerId", "name phone rating totalRatings")
     .populate("dispatchPlan.legs.deliveryPartnerId", "name phone rating totalRatings")

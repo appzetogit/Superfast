@@ -4,6 +4,7 @@ import { FoodRestaurant } from '../models/restaurant.model.js';
 import { getRestaurantFinance } from '../services/restaurantFinance.service.js';
 import { autoPayWithdrawal, checkPayoutReady } from '../../../../core/payments/services/autoPayout.service.js';
 import { logger } from '../../../../utils/logger.js';
+import { notifyAdminEvent } from '../../../../core/notifications/adminAlert.service.js';
 
 export const createWithdrawalRequestController = async (req, res, next) => {
     try {
@@ -52,13 +53,32 @@ export const createWithdrawalRequestController = async (req, res, next) => {
 
         // Automatic payout (Razorpay X). If it can't run (disabled / no bank details) the request stays pending for admin.
         let message = 'Withdrawal request submitted successfully';
+        let paid = false;
         try {
             const payout = await autoPayWithdrawal('restaurant', withdrawal._id);
-            if (payout.paid) message = 'Withdrawal approved - payout initiated to your bank/UPI';
+            paid = Boolean(payout.paid);
+            if (paid) message = 'Withdrawal approved - payout initiated to your bank/UPI';
         } catch (err) {
             logger.error(`Auto payout error (restaurant withdrawal ${withdrawal._id}): ${err.message}`);
         }
         const latest = await FoodRestaurantWithdrawal.findById(withdrawal._id).lean();
+
+        try {
+            const restaurant = await FoodRestaurant.findById(restaurantId).select('restaurantName ownerPhone').lean();
+            const name = restaurant?.restaurantName || 'Restaurant';
+            void notifyAdminEvent({
+                type: 'restaurant_withdrawal_request',
+                title: paid ? '💸 Restaurant Payout Sent' : '💸 Restaurant Withdrawal Request',
+                message: paid
+                    ? `${name} withdrew ₹${amount} of earnings. Auto payout initiated.`
+                    : `${name} requested a withdrawal of ₹${amount} from earnings. Pending admin review.`,
+                link: '/admin/food/restaurant-withdraws',
+                entityId: String(withdrawal._id),
+                metadata: { restaurantName: name, phone: restaurant?.ownerPhone || '', amount, status: latest?.status || '' },
+            });
+        } catch (err) {
+            logger.error(`Admin notify failed (restaurant withdrawal ${withdrawal._id}): ${err.message}`);
+        }
 
         return sendResponse(res, 201, message, latest || withdrawal);
     } catch (error) {

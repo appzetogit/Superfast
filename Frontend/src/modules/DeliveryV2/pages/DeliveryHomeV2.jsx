@@ -36,6 +36,11 @@ import {
 
 import { getHaversineDistance, calculateETA, calculateHeading } from '@/modules/DeliveryV2/utils/geo';
 
+// No GPS fix for this long while online = treat GPS as off.
+const GPS_STALE_MS = 60 * 1000;
+// Server push for "GPS off" is requested at most this often (server throttles too).
+const GPS_REPORT_REPEAT_MS = 5 * 60 * 1000;
+
 /** Phone of the customer who placed the order (dialable), or '' when unknown. */
 const getCustomerPhone = (order) =>
   String(
@@ -198,6 +203,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const scrollContainerRef = useRef(null);
   const lastLocationSentAt = useRef(0);
   const lastCoordRef = useRef(null);
+  const lastGpsFixAtRef = useRef(0);
+  const gpsOffShownRef = useRef(false);
+  const gpsReportedAtRef = useRef(0);
   const rollingSpeedRef = useRef([]);
   const lastAutoArrivalRef = useRef({ PICKING_UP: false, PICKED_UP: false });
 
@@ -210,24 +218,66 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const mapRef = useRef(null);
   const isSimModeRef = useRef(isSimMode);
 
-  const handleGeolocationError = useCallback((error) => {
-    const hasKnownRiderLocation = Boolean(useDeliveryStore.getState().riderLocation);
+  // The app cannot switch GPS on itself: keep a banner up until the rider does it,
+  // and have the server push a notification so it also reaches a backgrounded app.
+  const alertGpsOff = useCallback((denied = false) => {
+    gpsOffShownRef.current = true;
+    toast.error(
+      denied
+        ? 'Location permission blocked hai. App/browser settings me Location allow karein.'
+        : 'GPS band hai. Phone ki Location (GPS) ON karein, warna orders nahi milenge.',
+      {
+        id: 'gps-off',
+        duration: Infinity,
+        action: {
+          label: 'ON karein',
+          onClick: () => {
+            requireLocation().then((loc) => {
+              if (!loc.ok) return;
+              lastGpsFixAtRef.current = Date.now();
+              gpsOffShownRef.current = false;
+              toast.dismiss('gps-off');
+            });
+          },
+        },
+      }
+    );
+    if (Date.now() - gpsReportedAtRef.current >= GPS_REPORT_REPEAT_MS) {
+      gpsReportedAtRef.current = Date.now();
+      gigAPI.reportGpsOff().catch(() => { });
+    }
+  }, []);
 
+  const clearGpsOff = useCallback(() => {
+    lastGpsFixAtRef.current = Date.now();
+    if (!gpsOffShownRef.current) return;
+    gpsOffShownRef.current = false;
+    toast.dismiss('gps-off');
+  }, []);
+
+  const handleGeolocationError = useCallback((error) => {
     if (error && error.code === error.PERMISSION_DENIED) {
-      toast.error('Location permission denied. Please allow location access.');
+      alertGpsOff(true);
       return;
     }
 
     if (error && error.code === error.TIMEOUT) {
+      // A single timeout is usually weak signal; only alert once fixes have stopped for a while.
       console.warn('GPS signal weak or timeout, retrying...');
+      if (Date.now() - lastGpsFixAtRef.current >= GPS_STALE_MS) alertGpsOff();
       return;
     }
 
-    if (!hasKnownRiderLocation) {
-      // Avoid spamming this toast if there's a transient issue like POSITION_UNAVAILABLE
-      console.warn('GPS error:', error);
-    }
-  }, []);
+    // POSITION_UNAVAILABLE: location services are switched off on the device.
+    console.warn('GPS error:', error);
+    alertGpsOff();
+  }, [alertGpsOff]);
+
+  // Going online starts a fresh grace period before a missing fix counts as "GPS off".
+  useEffect(() => {
+    if (isOnline) lastGpsFixAtRef.current = Date.now();
+    else toast.dismiss('gps-off');
+  }, [isOnline]);
 
   useEffect(() => {
     isSimModeRef.current = isSimMode;
@@ -458,7 +508,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     if (!isOnline) return;
     const onVisible = () => {
       if (document.hidden) return;
-      const loc = lastCoordRef.current;
+      // Only resend the last position if it is still fresh; a stale one would mask GPS being off.
+      const loc = Date.now() - lastGpsFixAtRef.current < GPS_STALE_MS ? lastCoordRef.current : null;
       const req = loc
         ? deliveryAPI.updateLocation(loc.lat, loc.lng, true)
         : deliveryAPI.updateOnlineStatus(true);
@@ -475,6 +526,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
 
     const watchId = navigator.geolocation.watchPosition((pos) => {
+      clearGpsOff();
       // CRITICAL: In Simulation Mode, we disable actual GPS to prevent overwriting our test position
       if (isSimMode) return;
 
@@ -551,7 +603,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     });
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isOnline, setRiderLocation, isSimMode, activeOrder, activePolyline, emitLocation, eta, tripStatus, distanceToTarget, reachPickup, reachDrop, handleGeolocationError]);
+  }, [isOnline, setRiderLocation, isSimMode, activeOrder, activePolyline, emitLocation, eta, tripStatus, distanceToTarget, reachPickup, reachDrop, handleGeolocationError, clearGpsOff]);
 
   // 3.5. Background Ping / Heartbeat
   // If watchPosition stops firing (e.g. app in background or device stationary),
@@ -563,19 +615,43 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     const pingInterval = setInterval(() => {
       const now = Date.now();
       // If no natural GPS update happened in the last 15 seconds, force a ping
-      if (now - lastLocationSentAt.current >= 15000 && lastCoordRef.current) {
-        lastLocationSentAt.current = now;
+      if (now - lastLocationSentAt.current < 15000) return;
+      lastLocationSentAt.current = now;
+
+      if (lastCoordRef.current && now - lastGpsFixAtRef.current < GPS_STALE_MS) {
         deliveryAPI.updateLocation(
           lastCoordRef.current.lat,
           lastCoordRef.current.lng,
           true,
           { heading: 0, speed: 0, accuracy: null }
         ).catch(() => { });
+        return;
       }
+
+      // No recent fix. A stationary phone may just have stopped emitting watch updates,
+      // so read once before deciding GPS is off. Never resend the old fix as fresh:
+      // that would hide a switched-off GPS from the server.
+      navigator.geolocation?.getCurrentPosition(
+        (pos) => {
+          clearGpsOff();
+          lastCoordRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          deliveryAPI.updateLocation(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            true,
+            { heading: pos.coords.heading || 0, speed: pos.coords.speed || 0, accuracy: pos.coords.accuracy }
+          ).catch(() => { });
+        },
+        (err) => {
+          deliveryAPI.updateOnlineStatus(true).catch(() => { });
+          alertGpsOff(err?.code === 1);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      );
     }, 10000); // Check every 10 seconds
 
     return () => clearInterval(pingInterval);
-  }, [isOnline]);
+  }, [isOnline, alertGpsOff, clearGpsOff]);
 
   useEffect(() => {
     if (!newOrder) return;

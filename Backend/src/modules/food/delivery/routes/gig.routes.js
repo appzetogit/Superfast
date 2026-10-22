@@ -10,6 +10,7 @@ import {
   getMyGigsController,
   getZoneDriversListController,
   createHandoverRequestController,
+  reportGpsOffController,
 } from '../controllers/gig.controller.js';
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.post('/check-out', authMiddleware, requireRoles('DELIVERY_PARTNER'), chec
 router.get('/my-gigs', authMiddleware, requireRoles('DELIVERY_PARTNER'), getMyGigsController);
 router.get('/zone-drivers', authMiddleware, requireRoles('DELIVERY_PARTNER'), getZoneDriversListController);
 router.post('/handover', authMiddleware, requireRoles('DELIVERY_PARTNER'), createHandoverRequestController);
+router.post('/gps-off', authMiddleware, requireRoles('DELIVERY_PARTNER'), reportGpsOffController);
 
 // Public / Admin fallback route for zone drivers list
 router.get('/public/zone-drivers', getZoneDriversListController);

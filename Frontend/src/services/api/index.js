@@ -3003,12 +3003,13 @@ const getCurrentCoords = () =>
   });
 
 export const gigAPI = {
+  // Callers that already have a fresh fix pass { lat, lng }; otherwise a best-effort one is taken.
   getZoneGigs: async (params = {}) => {
-    const coords = await getCurrentCoords();
+    const coords = params.lat != null && params.lng != null ? {} : await getCurrentCoords();
     return apiClient.get('/food/delivery/gigs/zone-gigs', { params: { ...params, ...coords }, contextModule: 'delivery' });
   },
-  bookGig: async (gigId) => {
-    const coords = await getCurrentCoords();
+  bookGig: async (gigId, knownCoords = null) => {
+    const coords = knownCoords?.lat != null && knownCoords?.lng != null ? knownCoords : await getCurrentCoords();
     return apiClient.post('/food/delivery/gigs/book', { gigId, ...coords }, { contextModule: 'delivery' });
   },
   cancelGig: (data = {}) => apiClient.post('/food/delivery/gigs/cancel', data, { contextModule: 'delivery' }),
@@ -3023,6 +3024,7 @@ export const gigAPI = {
   adminDeleteGig: (id) => apiClient.delete(`/food/admin/gigs/${id}`, { contextModule: 'admin' }),
   // Emergency Handover Requests
   createHandoverRequest: (body = {}) => apiClient.post('/food/delivery/gigs/handover', body, { contextModule: 'delivery' }),
+  reportGpsOff: () => apiClient.post('/food/delivery/gigs/gps-off', {}, { contextModule: 'delivery' }),
   adminGetHandovers: () => apiClient.get('/food/admin/gigs/handovers', { contextModule: 'admin' }),
   adminApproveHandover: (id, body = {}) => apiClient.post(`/food/admin/gigs/handovers/${id}/approve`, body, { contextModule: 'admin' }),
   adminRejectHandover: (id, body = {}) => apiClient.post(`/food/admin/gigs/handovers/${id}/reject`, body, { contextModule: 'admin' }),

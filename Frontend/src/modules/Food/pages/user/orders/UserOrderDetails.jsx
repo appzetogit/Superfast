@@ -108,6 +108,27 @@ export default function UserOrderDetails() {
     fetchOrderDetails()
   }, [orderId, navigate])
 
+  // Admin item edits / status changes arrive as socket events: reload the order quietly so the
+  // items and amounts shown here match what the restaurant and rider see.
+  useEffect(() => {
+    if (!order) return
+    const ids = new Set([orderId, order._id, order.orderId].filter(Boolean).map(String))
+    const onOrderUpdate = async (event) => {
+      const detail = event?.detail || {}
+      const evtIds = [detail.orderMongoId, detail.orderId].filter(Boolean).map(String)
+      if (evtIds.length && !evtIds.some((id) => ids.has(id))) return
+      try {
+        const response = await orderAPI.getOrderDetails(orderId)
+        const fresh = response?.data?.data?.order || response?.data?.order
+        if (fresh && typeof fresh === "object") setOrder(fresh)
+      } catch (error) {
+        debugWarn("Order refresh after update failed:", error)
+      }
+    }
+    window.addEventListener("orderStatusNotification", onOrderUpdate)
+    return () => window.removeEventListener("orderStatusNotification", onOrderUpdate)
+  }, [orderId, order?._id, order?.orderId])
+
   const handleCopyOrderId = async () => {
     if (!order) return
     const id = order.orderId || order._id || orderId

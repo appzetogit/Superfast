@@ -276,15 +276,37 @@ export const createWithdrawalRequestController = async (req, res, next) => {
         // Automatic payout (Razorpay X). If it can't run (disabled / no bank details) the request stays pending for admin.
         let message = 'Withdrawal request submitted successfully';
         let latest = result;
+        let paid = false;
         try {
             const { autoPayWithdrawal } = await import('../../../../core/payments/services/autoPayout.service.js');
             const { FoodDeliveryWithdrawal } = await import('../models/foodDeliveryWithdrawal.model.js');
             const payout = await autoPayWithdrawal('delivery', result._id);
-            if (payout.paid) message = 'Withdrawal approved - payout initiated to your bank/UPI';
+            paid = Boolean(payout.paid);
+            if (paid) message = 'Withdrawal approved - payout initiated to your bank/UPI';
             latest = (await FoodDeliveryWithdrawal.findById(result._id).lean()) || result;
         } catch (err) {
             console.error('Auto payout error (delivery withdrawal):', err?.message || err);
         }
+
+        try {
+            const { FoodDeliveryPartner } = await import('../models/deliveryPartner.model.js');
+            const { notifyAdminEvent } = await import('../../../../core/notifications/adminAlert.service.js');
+            const partner = await FoodDeliveryPartner.findById(deliveryPartnerId).select('name phone').lean();
+            const name = partner?.name || 'Delivery Partner';
+            void notifyAdminEvent({
+                type: 'delivery_withdrawal_request',
+                title: paid ? '💸 Delivery Payout Sent' : '💸 Delivery Withdrawal Request',
+                message: paid
+                    ? `${name} withdrew ₹${latest?.amount ?? ''} of earnings. Auto payout initiated.`
+                    : `${name} requested a withdrawal of ₹${latest?.amount ?? ''} from earnings. Pending admin review.`,
+                link: '/admin/food/delivery-withdrawal',
+                entityId: String(result._id),
+                metadata: { name, phone: partner?.phone || '', amount: latest?.amount, status: latest?.status || '' },
+            });
+        } catch (err) {
+            console.error('Admin notify failed (delivery withdrawal):', err?.message || err);
+        }
+
         return sendResponse(res, 201, message, { withdrawal: latest });
     } catch (error) {
         next(error);
