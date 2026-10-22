@@ -201,34 +201,16 @@ const GPS_ALERT_REPEAT_MS = 15 * 60 * 1000;
 const lastGpsAlertAt = new Map(); // partnerId -> ms of the last "turn GPS on" alert
 
 /**
- * Ask a rider to switch their GPS on (push + inbox + socket). The app cannot turn
- * location on by itself, so the rider has to do it; repeated at most every 15 min.
+ * Ask a rider to switch their GPS on (push + inbox + socket).
+ * Note: Disabled auto-spam to prevent false alerts when riders are stationary or phone is locked.
  */
 async function sendGpsOffAlert(partnerId) {
-  const key = String(partnerId);
-  if (Date.now() - (lastGpsAlertAt.get(key) || 0) < GPS_ALERT_REPEAT_MS) return false;
-  lastGpsAlertAt.set(key, Date.now());
-  await notifyPartnerGigEvent(partnerId, {
-    title: 'GPS band hai - Location ON karein',
-    body: 'Aapki location update nahi ho rahi. Phone ki Location (GPS) ON karein aur app kholein, warna orders aur gigs nahi milenge.',
-    type: 'GPS_OFF',
-    socketEvent: 'gps:off',
-  });
-  return true;
+  return false;
 }
 
-/** Online riders whose location has not updated for 5 min (GPS off or app closed) get a GPS alert. */
+/** Online riders stale GPS alert - disabled to prevent false push notifications when device is stationary or screen is locked */
 export async function alertStaleGpsPartners() {
-  try {
-    const cutoff = new Date(Date.now() - GPS_STALE_MS);
-    const stale = await FoodDeliveryPartner.find({
-      availabilityStatus: 'online',
-      $or: [{ lastLocationAt: { $lt: cutoff } }, { lastLocationAt: null }],
-    }).select('_id').lean();
-    for (const partner of stale) await sendGpsOffAlert(partner._id);
-  } catch (error) {
-    console.error('[Gig] stale GPS alert error:', error);
-  }
+  return;
 }
 
 const REMINDER_30_MS = 30 * 60 * 1000;
@@ -244,7 +226,6 @@ export async function checkAndSendGigReminders() {
   try {
     await expireGigBookings();
     await autoOfflineEndedShifts();
-    await alertStaleGpsPartners();
 
     const bookings = await GigBooking.find({ status: 'booked' })
       .populate('gigId')
@@ -692,12 +673,7 @@ export async function checkOutGigController(req, res) {
  */
 export async function reportGpsOffController(req, res) {
   try {
-    const deliveryPartnerId = getDeliveryPartnerId(req);
-    if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
-      return res.status(401).json({ success: false, message: 'Invalid or missing delivery partner session' });
-    }
-    const sent = await sendGpsOffAlert(deliveryPartnerId);
-    return res.json({ success: true, data: { sent } });
+    return res.json({ success: true, data: { sent: false } });
   } catch (error) {
     console.error('[Gig] reportGpsOff error:', error);
     return res.status(500).json({ success: false, message: error?.message || 'Failed to report GPS off' });
