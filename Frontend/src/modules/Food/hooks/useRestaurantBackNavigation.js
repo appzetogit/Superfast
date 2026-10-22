@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
+import { isModuleAuthenticated } from "@food/utils/auth"
 
 const toRestaurantPath = (value) => {
   if (typeof value !== "string") return null
@@ -86,8 +87,12 @@ const resolveRestaurantBackPath = ({ pathname, state }) => {
 
   if (
     normalizedPath === "/terms" ||
-    normalizedPath === "/privacy"
+    normalizedPath === "/privacy" ||
+    normalizedPath === "/support"
   ) {
+    // These pages are public (opened from the login screen too); a signed-out
+    // restaurant must go back to login, never into the panel.
+    if (!isModuleAuthenticated("restaurant")) return "/food/restaurant/login"
     return explicitBackPath || "/food/restaurant/explore"
   }
 

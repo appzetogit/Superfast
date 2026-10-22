@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { MapPin, Navigation } from 'lucide-react'
+import { MapPin, Navigation, X } from 'lucide-react'
 import { isModuleAuthenticated } from '@food/utils/auth'
 
 /**
@@ -61,7 +61,10 @@ export default function LocationPermissionGate() {
   const [problem, setProblem] = useState(null)
   const [dismissed, setDismissed] = useState(() => {
     try {
-      return sessionStorage.getItem(DISMISS_KEY) === '1'
+      return (
+        sessionStorage.getItem(DISMISS_KEY) === '1' ||
+        localStorage.getItem(DISMISS_KEY) === '1'
+      )
     } catch {
       return false
     }
@@ -72,19 +75,9 @@ export default function LocationPermissionGate() {
     if (!moduleKey || typeof navigator === 'undefined' || !navigator.geolocation || checkingRef.current) return
     checkingRef.current = true
     try {
-      let permission = 'prompt'
-      try {
-        permission = (await navigator.permissions?.query({ name: 'geolocation' }))?.state || 'prompt'
-      } catch {
-        /* Permissions API unavailable (older WebView) - the position request below decides */
-      }
-
-      if (permission === 'denied') {
-        setProblem('denied')
-        return
-      }
-
-      // For "prompt" this triggers the system permission dialog automatically.
+      // Always decide by a real position request: the Permissions API often reports "denied"
+      // inside app WebViews even though location works. For "prompt" this also triggers the
+      // system permission dialog automatically.
       await new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           () => {
@@ -123,39 +116,105 @@ export default function LocationPermissionGate() {
     }
   }, [moduleKey, check])
 
+  // Hide the sheet the moment the person allows location in the browser's site settings.
+  useEffect(() => {
+    if (!moduleKey || !navigator.permissions?.query) return undefined
+    let status
+    const onChange = () => {
+      if (status?.state === 'granted') {
+        setProblem(null)
+        check()
+      }
+    }
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then((s) => {
+        status = s
+        status.addEventListener?.('change', onChange)
+      })
+      .catch(() => {})
+    return () => status?.removeEventListener?.('change', onChange)
+  }, [moduleKey, check])
+
   // While blocked, keep polling so the sheet disappears once location is turned on.
   useEffect(() => {
-    if (!problem) return undefined
+    if (!problem || dismissed) return undefined
     const id = setInterval(check, 5000)
     return () => clearInterval(id)
-  }, [problem, check])
+  }, [problem, dismissed, check])
 
-  if (!target || !problem || (!required && dismissed)) return null
-
-  const handleEnable = async () => {
-    await callNativeBridge(problem === 'off' ? 'openLocationSettings' : 'requestLocationPermission')
-    check()
-  }
-
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     try {
       sessionStorage.setItem(DISMISS_KEY, '1')
+      localStorage.setItem(DISMISS_KEY, '1')
     } catch {
       /* ignore */
     }
     setDismissed(true)
+    setProblem(null)
+  }, [])
+
+  const handleEnable = async () => {
+    try {
+      await callNativeBridge(problem === 'off' ? 'openLocationSettings' : 'requestLocationPermission')
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            setProblem(null)
+          },
+          (err) => {
+            console.warn('[LocationGate] Permission error:', err?.message)
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 },
+        )
+      }
+    } catch (e) {
+      console.warn('[LocationGate] Enable error:', e)
+    } finally {
+      // Dismiss the card so the user is never stuck
+      handleDismiss()
+    }
   }
+
+  // If customer already has an active location saved in storage, don't block them with this modal
+  const hasUserLocation = !required && (() => {
+    try {
+      return Boolean(localStorage.getItem('userLocation'))
+    } catch {
+      return false
+    }
+  })()
+
+  if (!target || !problem || dismissed || hasUserLocation) return null
 
   const isOff = problem === 'off'
 
   return (
-    <div className="fixed inset-0 z-[100001] flex items-end justify-center bg-black/60 sm:items-center">
-      <div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-t-3xl bg-white p-6 text-center shadow-2xl sm:rounded-3xl">
+    <div
+      className="fixed inset-0 z-[100001] flex items-end justify-center bg-black/60 sm:items-center p-0 sm:p-4 transition-opacity animate-in fade-in"
+      onClick={handleDismiss}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        className="relative w-full max-w-md rounded-t-3xl bg-white p-6 pb-8 text-center shadow-2xl sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top-right close button */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-50">
           {isOff ? <Navigation className="h-8 w-8 text-orange-500" /> : <MapPin className="h-8 w-8 text-orange-500" />}
         </div>
         <h2 className="text-lg font-black text-gray-900">
-          {isOff ? 'Turn on your phone\'s location' : 'Location access is needed'}
+          {isOff ? "Turn on your phone's location" : 'Location access is needed'}
         </h2>
         <p className="mt-2 text-sm text-gray-500">
           {required
@@ -175,15 +234,17 @@ export default function LocationPermissionGate() {
         <button
           type="button"
           onClick={handleEnable}
-          className="mt-5 w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white shadow-md active:scale-95"
+          className="mt-5 w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white shadow-md active:scale-95 transition-all hover:bg-orange-600 cursor-pointer"
         >
-          {isOff ? 'I\'ve turned it on' : 'Allow location'}
+          {isOff ? "I've turned it on" : 'Allow location'}
         </button>
-        {!required && (
-          <button type="button" onClick={handleDismiss} className="mt-2 w-full py-2 text-sm font-semibold text-gray-400">
-            Not now
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="mt-3 w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all cursor-pointer"
+        >
+          Not now
+        </button>
       </div>
     </div>
   )
