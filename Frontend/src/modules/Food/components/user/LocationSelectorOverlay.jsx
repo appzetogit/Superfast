@@ -60,11 +60,50 @@ const syncSelectedLocation = (locationData) => {
   }
 }
 
+const SANCHORE_COORDINATES = [24.7533864, 71.7720096] // Sanchore, Rajasthan (343041)
+
+const isLegacyIndoreCoords = (lat, lng) => {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
+  const d1 = Math.hypot(lat - 22.7196, lng - 75.8577)
+  const d2 = Math.hypot(lat - 22.7111, lng - 75.9001)
+  return d1 < 0.25 || d2 < 0.25
+}
+
+const resolveInitialCoordinates = (loc, addrs) => {
+  if (Number.isFinite(loc?.latitude) && Number.isFinite(loc?.longitude)) {
+    const lat = Number(loc.latitude)
+    const lng = Number(loc.longitude)
+    if (!isLegacyIndoreCoords(lat, lng)) {
+      return [lat, lng]
+    }
+  }
+  if (Array.isArray(addrs) && addrs.length > 0) {
+    const def = addrs.find((a) => a.isDefault) || addrs[0]
+    const lat = Number(def?.latitude ?? def?.location?.coordinates?.[1] ?? def?.lat)
+    const lng = Number(def?.longitude ?? def?.location?.coordinates?.[0] ?? def?.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng) && !isLegacyIndoreCoords(lat, lng)) {
+      return [lat, lng]
+    }
+  }
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("userLocation") : null
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const lat = Number(parsed.latitude ?? parsed.lat)
+      const lng = Number(parsed.longitude ?? parsed.lng)
+      if (Number.isFinite(lat) && Number.isFinite(lng) && !isLegacyIndoreCoords(lat, lng)) {
+        return [lat, lng]
+      }
+    }
+  } catch {}
+  return SANCHORE_COORDINATES
+}
+
 export default function LocationSelectorOverlay({ isOpen, onClose }) {
   const { location, loading, requestLocation } = useGeoLocation()
   const { addresses = [], addAddress, updateAddress, setDefaultAddress, userProfile } = useProfile()
   const [showAddressForm, setShowAddressForm] = useState(false)
-  const [mapPosition, setMapPosition] = useState([22.7196, 75.8577]) // Default Indore coordinates [lat, lng]
+  const [mapPosition, setMapPosition] = useState(() => resolveInitialCoordinates(location, addresses))
   const [addressFormData, setAddressFormData] = useState({
     street: "",
     city: "",
@@ -123,23 +162,33 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
   }, [addresses, addressAutocompleteValue])
 
   const searchNominatimWithFallback = async (queryText, refLat, refLng) => {
-    const runQuery = async (term) => {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=10&q=${encodeURIComponent(term)}`
-      const res = await fetch(url, { headers: { Accept: "application/json" } })
+    const safeLat = Number.isFinite(refLat) ? refLat : SANCHORE_COORDINATES[0]
+    const safeLng = Number.isFinite(refLng) ? refLng : SANCHORE_COORDINATES[1]
+    const delta = 1.0
+    const viewbox = `${safeLng - delta},${safeLat + delta},${safeLng + delta},${safeLat - delta}`
+
+    const runQuery = async (term, isBounded = true) => {
+      const boundedParam = isBounded ? "&bounded=1" : "&bounded=0"
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=in&viewbox=${viewbox}${boundedParam}&limit=10&q=${encodeURIComponent(term)}`
+      const res = await fetch(url, { headers: { Accept: "application/json", "Accept-Language": "en" } })
       const json = await res.json()
       return Array.isArray(json) ? json : []
     }
 
-    let list = await runQuery(queryText)
+    let list = await runQuery(queryText, true)
+    if (list.length === 0) {
+      list = await runQuery(queryText, false)
+    }
+
     if (list.length === 0) {
       let cleaned = queryText.replace(/^[A-Z0-9]{2,8}\+[A-Z0-9]{2,3}[,\s]*/i, "").trim()
       if (cleaned && cleaned !== queryText) {
-        list = await runQuery(cleaned)
+        list = await runQuery(cleaned, false)
       }
       if (list.length === 0 && queryText.includes(",")) {
         const parts = queryText.split(",").map((s) => s.trim()).filter(Boolean)
         if (parts.length > 1) {
-          list = await runQuery(parts[parts.length - 1])
+          list = await runQuery(parts[parts.length - 1], false)
         }
       }
     }
@@ -156,8 +205,9 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
       .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lng))
       .map((x) => ({
         ...x,
-        distanceMeters: calculateDistance(refLat, refLng, x.lat, x.lng),
+        distanceMeters: calculateDistance(safeLat, safeLng, x.lat, x.lng),
       }))
+      .filter((x) => (x.distanceMeters ?? Infinity) <= 150000)
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
       .slice(0, 8)
   }
@@ -179,8 +229,8 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
     const t = setTimeout(async () => {
       try {
         setIsKeywordSearching(true)
-        const refLat = Number.isFinite(mapPosition?.[0]) ? Number(mapPosition[0]) : (location?.latitude ?? 22.7196)
-        const refLng = Number.isFinite(mapPosition?.[1]) ? Number(mapPosition[1]) : (location?.longitude ?? 75.8577)
+        const refLat = Number.isFinite(mapPosition?.[0]) ? Number(mapPosition[0]) : (location?.latitude ?? SANCHORE_COORDINATES[0])
+        const refLng = Number.isFinite(mapPosition?.[1]) ? Number(mapPosition[1]) : (location?.longitude ?? SANCHORE_COORDINATES[1])
 
         const results = await searchNominatimWithFallback(q, refLat, refLng)
         setKeywordAddressSuggestions(results)
@@ -491,10 +541,12 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
 
         if (!isMounted || !mapContainerRef.current) return
 
-        // Initial location (Indore center or current location)
-        const initialLocation = location?.latitude && location?.longitude
-          ? { lat: location.latitude, lng: location.longitude }
-          : { lat: 22.7196, lng: 75.8577 }
+        // Initial location (Sanchore center or current location)
+        const initialLocation = (Number.isFinite(mapPosition?.[0]) && Number.isFinite(mapPosition?.[1]) && !isLegacyIndoreCoords(mapPosition[0], mapPosition[1]))
+          ? { lat: mapPosition[0], lng: mapPosition[1] }
+          : (location?.latitude && location?.longitude && !isLegacyIndoreCoords(location.latitude, location.longitude)
+              ? { lat: location.latitude, lng: location.longitude }
+              : { lat: SANCHORE_COORDINATES[0], lng: SANCHORE_COORDINATES[1] })
 
         // Create map
         const map = new google.maps.Map(mapContainerRef.current, {
@@ -2289,8 +2341,8 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
       } else {
         try {
           setIsKeywordSearching(true)
-          const refLat = Number.isFinite(mapPosition?.[0]) ? Number(mapPosition[0]) : (location?.latitude ?? 22.7196)
-          const refLng = Number.isFinite(mapPosition?.[1]) ? Number(mapPosition[1]) : (location?.longitude ?? 75.8577)
+          const refLat = Number.isFinite(mapPosition?.[0]) ? Number(mapPosition[0]) : (location?.latitude ?? SANCHORE_COORDINATES[0])
+          const refLng = Number.isFinite(mapPosition?.[1]) ? Number(mapPosition[1]) : (location?.longitude ?? SANCHORE_COORDINATES[1])
           const results = await searchNominatimWithFallback(q, refLat, refLng)
           if (results.length > 0) {
             setKeywordAddressSuggestions(results)

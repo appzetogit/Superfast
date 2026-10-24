@@ -435,7 +435,7 @@ const AddressesPage = () => {
                                 title="Map Pin Location"
                                 className="w-full h-full border-0 pointer-events-none"
                                 src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                                    [addForm.address, addForm.city, addForm.state, addForm.pincode].filter(Boolean).join(", ") || "Indore, Madhya Pradesh"
+                                    [addForm.address, addForm.city, addForm.state, addForm.pincode].filter(Boolean).join(", ") || "Sanchore, Rajasthan"
                                 )}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
                             />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -583,7 +583,7 @@ const AddressesPage = () => {
                                 title="Map Pin Location"
                                 className="w-full h-full border-0 pointer-events-none"
                                 src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                                    [editForm.address, editForm.city, editForm.state, editForm.pincode].filter(Boolean).join(", ") || "Indore, Madhya Pradesh"
+                                    [editForm.address, editForm.city, editForm.state, editForm.pincode].filter(Boolean).join(", ") || "Sanchore, Rajasthan"
                                 )}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
                             />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

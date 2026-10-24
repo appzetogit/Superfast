@@ -72,7 +72,7 @@ export const geocodeAddress = asyncHandler(async (req, res) => {
 
   // Fallback to OpenStreetMap Nominatim
   try {
-    const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=70.0,26.5,73.5,23.5&bounded=0&q=${encodeURIComponent(
       address
     )}&limit=1`;
     const { data: nomData } = await axios.get(nomUrl, {
@@ -154,57 +154,26 @@ export const reverseGeocode = asyncHandler(async (req, res) => {
     }
   }
 
-  // Fallback 1: BigDataCloud reverse geocode client (fast and generous free tier)
+  // Fallback 1: OpenStreetMap Nominatim (Accurate coordinate-based reverse geocoding)
   try {
-    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
-    const { data: bdc } = await axios.get(bdcUrl, { timeout: 4000 });
-
-    const formatted = [
-      bdc.locality || bdc.subPremise,
-      bdc.city || bdc.localityInfo?.administrative?.[2]?.name,
-      bdc.principalSubdivision,
-      bdc.postcode,
-      bdc.countryName,
-    ]
-      .filter(Boolean)
-      .join(', ');
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        formattedAddress: formatted || `Location (${lat}, ${lng})`,
-        country: bdc.countryName || 'India',
-        state: bdc.principalSubdivision || '',
-        city: bdc.city || bdc.locality || '',
-        area: bdc.locality || '',
-        pincode: bdc.postcode || '',
-        latitude: Number(lat),
-        longitude: Number(lng),
-        placeId: '',
-      },
-    });
-  } catch (bdcErr) {
-    console.warn('[Location] BigDataCloud fallback failed:', bdcErr.message);
-  }
-
-  // Fallback 2: OpenStreetMap Nominatim
-  try {
-    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
     const { data: nom } = await axios.get(nomUrl, {
-      timeout: 4000,
-      headers: { 'User-Agent': 'SuperfastFoodDelivery/1.0' },
+      timeout: 4500,
+      headers: { 'User-Agent': 'SuperfastFoodDelivery/1.0', 'Accept-Language': 'en' },
     });
 
     if (nom && nom.display_name) {
       const addr = nom.address || {};
+      const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+      const area = addr.suburb || addr.neighbourhood || addr.residential || addr.road || '';
       return res.status(200).json({
         success: true,
         data: {
           formattedAddress: nom.display_name,
           country: addr.country || 'India',
           state: addr.state || '',
-          city: addr.city || addr.town || addr.village || addr.county || '',
-          area: addr.suburb || addr.neighbourhood || addr.residential || '',
+          city,
+          area,
           pincode: addr.postcode || '',
           latitude: Number(lat),
           longitude: Number(lng),
@@ -216,16 +185,53 @@ export const reverseGeocode = asyncHandler(async (req, res) => {
     console.warn('[Location] Nominatim fallback failed:', nomErr.message);
   }
 
-  // Fallback 3: Return coordinates as minimal valid payload so client NEVER 500s
+  // Fallback 2: BigDataCloud reverse geocode client (ONLY if lookupSource is coordinates)
+  try {
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+    const { data: bdc } = await axios.get(bdcUrl, { timeout: 4000 });
+
+    // Reject IP geolocation fallbacks (IP routing sends central India / Indore instead of real user location)
+    if (bdc && bdc.lookupSource !== 'ip geolocation') {
+      const formatted = [
+        bdc.locality || bdc.subPremise,
+        bdc.city || bdc.localityInfo?.administrative?.[2]?.name,
+        bdc.principalSubdivision,
+        bdc.postcode,
+        bdc.countryName,
+      ]
+        .filter(Boolean)
+        .join(', ');
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          formattedAddress: formatted || `Location (${lat}, ${lng})`,
+          country: bdc.countryName || 'India',
+          state: bdc.principalSubdivision || '',
+          city: bdc.city || bdc.locality || '',
+          area: bdc.locality || '',
+          pincode: bdc.postcode || '',
+          latitude: Number(lat),
+          longitude: Number(lng),
+          placeId: '',
+        },
+      });
+    }
+  } catch (bdcErr) {
+    console.warn('[Location] BigDataCloud fallback failed:', bdcErr.message);
+  }
+
+  // Fallback 3: Return Sanchore default location or coordinates so client NEVER 500s or defaults to wrong state
+  const isNearSanchore = Math.hypot(Number(lat) - 24.7534, Number(lng) - 71.7720) < 1.0;
   return res.status(200).json({
     success: true,
     data: {
-      formattedAddress: `Coordinates: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`,
+      formattedAddress: isNearSanchore ? 'Sanchore, Rajasthan 343041, India' : `Coordinates: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`,
       country: 'India',
-      state: '',
-      city: '',
-      area: '',
-      pincode: '',
+      state: isNearSanchore ? 'Rajasthan' : '',
+      city: isNearSanchore ? 'Sanchore' : '',
+      area: isNearSanchore ? 'Sanchore' : '',
+      pincode: isNearSanchore ? '343041' : '',
       latitude: Number(lat),
       longitude: Number(lng),
       placeId: '',

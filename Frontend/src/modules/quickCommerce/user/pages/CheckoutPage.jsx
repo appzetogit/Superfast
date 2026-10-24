@@ -1198,8 +1198,8 @@ const CheckoutPage = () => {
 
         // Sync local storage and dispatch event
         const userLocPayload = {
-          latitude: resolvedLoc?.lat || 22.7196,
-          longitude: resolvedLoc?.lng || 75.9001,
+          latitude: resolvedLoc?.lat || 24.7534,
+          longitude: resolvedLoc?.lng || 71.7720,
           address: query,
           formattedAddress: query,
           city: payload.city,
@@ -1329,12 +1329,12 @@ const CheckoutPage = () => {
 
       // Sync local storage and dispatch event
       const userLocPayload = {
-        latitude: location?.lat || currentLocation?.latitude || 22.7196,
-        longitude: location?.lng || currentLocation?.longitude || 75.9001,
+        latitude: location?.lat || currentLocation?.latitude || 24.7534,
+        longitude: location?.lng || currentLocation?.longitude || 71.7720,
         address: formattedAddress || query,
         formattedAddress: formattedAddress || query,
         city: editAddressForm.city.trim(),
-        state: editAddressForm.state || "Madhya Pradesh",
+        state: editAddressForm.state || "Rajasthan",
         postalCode: editAddressForm.zipCode || "",
         street: editAddressForm.address.trim(),
         area: editAddressForm.landmark.trim(),

@@ -173,17 +173,50 @@ const reverseGeocodeDirect = async (latitude, longitude, forceFresh = false) => 
 
       const data = await res.json()
 
+      // Reject IP geolocation (IP routing from mobile telecom/server often sends Indore or other cities)
+      if (data?.lookupSource === 'ip geolocation') {
+        throw new Error('BigDataCloud returned IP geolocation, falling back to Nominatim')
+      }
+
       const value = buildBigDataCloudAddress(data, latitude, longitude)
 
       globalReverseGeocodeLastSuccess = value
       return value
     } catch {
+      // Fallback to Nominatim direct reverse geocoding
+      try {
+        const nomRes = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+          { headers: { 'Accept-Language': 'en', 'User-Agent': 'superfast-food-app' } }
+        )
+        const nom = await nomRes.json()
+        if (nom && nom.display_name) {
+          const addr = nom.address || {}
+          const city = addr.city || addr.town || addr.village || addr.county || 'Sanchore'
+          const state = addr.state || 'Rajasthan'
+          const area = addr.suburb || addr.neighbourhood || addr.road || ''
+          const value = {
+            city,
+            state,
+            area,
+            country: addr.country || 'India',
+            postalCode: addr.postcode || '343041',
+            address: area ? `${area}, ${city}` : city,
+            formattedAddress: nom.display_name,
+          }
+          globalReverseGeocodeLastSuccess = value
+          return value
+        }
+      } catch (nomErr) {}
+
+      const isNearSanchore = Math.hypot(latitude - 24.7534, longitude - 71.7720) < 1.0
       const fallback = {
-        city: "Current Location",
-        address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-        formattedAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        city: isNearSanchore ? "Sanchore" : "Current Location",
+        state: isNearSanchore ? "Rajasthan" : "",
+        postalCode: isNearSanchore ? "343041" : "",
+        address: isNearSanchore ? "Sanchore, Rajasthan" : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        formattedAddress: isNearSanchore ? "Sanchore, Rajasthan 343041, India" : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
       }
-      // Don't cache failures as "success" (keeps retries possible), but still return something usable.
       return fallback
     } finally {
       globalReverseGeocodeInFlight = null

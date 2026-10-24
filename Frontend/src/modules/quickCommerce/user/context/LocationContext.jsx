@@ -80,13 +80,13 @@ export const LocationProvider = ({ children }) => {
   // Default location (used until we can resolve a better one)
   const [currentLocation, setCurrentLocation] = useState(() => {
     const defaultLoc = {
-      name: "214, Rajshri Palace Colony, Pipliyahana, Indore, Madhya Pradesh 452018, India",
+      name: "Sanchore, Rajasthan 343041, India",
       time: "12-15 mins",
-      city: "Indore",
-      state: "Madhya Pradesh",
-      pincode: "452018",
-      latitude: 22.711140989838025,
-      longitude: 75.9001552518043,
+      city: "Sanchore",
+      state: "Rajasthan",
+      pincode: "343041",
+      latitude: 24.7533864,
+      longitude: 71.7720096,
     };
 
     if (typeof window === "undefined") return defaultLoc;
@@ -101,9 +101,9 @@ export const LocationProvider = ({ children }) => {
             return {
               name: parsed.formattedAddress || parsed.address,
               time: "12-15 mins",
-              city: parsed.city || "Indore",
-              state: parsed.state || "Madhya Pradesh",
-              pincode: parsed.postalCode || parsed.zipCode || "452018",
+              city: parsed.city || "Sanchore",
+              state: parsed.state || "Rajasthan",
+              pincode: parsed.postalCode || parsed.zipCode || "343041",
               latitude: parsed.latitude || defaultLoc.latitude,
               longitude: parsed.longitude || defaultLoc.longitude,
             };
@@ -133,9 +133,9 @@ export const LocationProvider = ({ children }) => {
               return {
                 name: addressString || defaultAddr.formattedAddress || defaultAddr.address || "",
                 time: "12-15 mins",
-                city: defaultAddr.city || "Indore",
-                state: defaultAddr.state || "Madhya Pradesh",
-                pincode: defaultAddr.zipCode || defaultAddr.postalCode || "452018",
+                city: defaultAddr.city || "Sanchore",
+                state: defaultAddr.state || "Rajasthan",
+                pincode: defaultAddr.zipCode || defaultAddr.postalCode || "343041",
                 latitude: lat || defaultLoc.latitude,
                 longitude: lng || defaultLoc.longitude,
               };
@@ -275,9 +275,9 @@ export const LocationProvider = ({ children }) => {
           const fallbackFromCoords = (latitude, longitude) => ({
             name: `Lat ${Number(latitude).toFixed(5)}, Lng ${Number(longitude).toFixed(5)}`,
             time: "12-15 mins",
-            city: currentLocation?.city || "Indore",
-            state: currentLocation?.state || "Madhya Pradesh",
-            pincode: currentLocation?.pincode || "452018",
+            city: currentLocation?.city || "Sanchore",
+            state: currentLocation?.state || "Rajasthan",
+            pincode: currentLocation?.pincode || "343041",
             latitude,
             longitude,
           });

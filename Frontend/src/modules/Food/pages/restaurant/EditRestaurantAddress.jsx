@@ -18,8 +18,8 @@ const debugError = (...args) => console.error(...args)
 const ADDRESS_STORAGE_KEY = "restaurant_address"
 
 // Default coordinates for Indore (can be updated based on actual location)
-const DEFAULT_LAT = 22.7196
-const DEFAULT_LNG = 75.8577
+const DEFAULT_LAT = 24.7534
+const DEFAULT_LNG = 71.7720
 
 export default function EditRestaurantAddress() {
   const navigate = useNavigate()

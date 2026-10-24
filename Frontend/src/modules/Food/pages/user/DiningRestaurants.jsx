@@ -198,8 +198,8 @@ export default function DiningRestaurants() {
   }, [heroSearch, openSearch, setSearchValue])
 
   const handleOpenMap = () => {
-    const lat = location?.latitude || 22.7196
-    const lng = location?.longitude || 75.8577
+    const lat = location?.latitude || 24.7534
+    const lng = location?.longitude || 71.7720
     const googleMapsUrl = `https://www.google.com/maps/search/restaurants+near+me/@${lat},${lng},15z`
     window.open(googleMapsUrl, '_blank', 'fullscreen=yes')
   }

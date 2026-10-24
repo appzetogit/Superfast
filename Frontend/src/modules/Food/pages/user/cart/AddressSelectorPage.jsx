@@ -127,6 +127,49 @@ const persistSelectedLocation = (locationData) => {
   }
 }
 
+const SANCHORE_COORDINATES = [24.7533864, 71.7720096] // Sanchore, Rajasthan (343041)
+
+const isLegacyIndoreCoords = (lat, lng) => {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
+  const d1 = Math.hypot(lat - 22.7196, lng - 75.8577)
+  const d2 = Math.hypot(lat - 22.7111, lng - 75.9001)
+  return d1 < 0.25 || d2 < 0.25
+}
+
+const resolveInitialCoordinates = (loc, addrs) => {
+  // 1. Live GPS if valid and not legacy Indore fallback
+  if (Number.isFinite(loc?.latitude) && Number.isFinite(loc?.longitude)) {
+    const lat = Number(loc.latitude)
+    const lng = Number(loc.longitude)
+    if (!isLegacyIndoreCoords(lat, lng)) {
+      return [lat, lng]
+    }
+  }
+  // 2. Saved addresses (default first)
+  if (Array.isArray(addrs) && addrs.length > 0) {
+    const def = addrs.find((a) => a.isDefault) || addrs[0]
+    const lat = Number(def?.latitude ?? def?.location?.coordinates?.[1] ?? def?.lat)
+    const lng = Number(def?.longitude ?? def?.location?.coordinates?.[0] ?? def?.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng) && !isLegacyIndoreCoords(lat, lng)) {
+      return [lat, lng]
+    }
+  }
+  // 3. Stored userLocation if not legacy Indore
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("userLocation") : null
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const lat = Number(parsed.latitude ?? parsed.lat)
+      const lng = Number(parsed.longitude ?? parsed.lng)
+      if (Number.isFinite(lat) && Number.isFinite(lng) && !isLegacyIndoreCoords(lat, lng)) {
+        return [lat, lng]
+      }
+    }
+  } catch {}
+  // 4. Default operating zone: Sanchore, Rajasthan
+  return SANCHORE_COORDINATES
+}
+
 export default function AddressSelectorPage() {
   const navigate = useNavigate()
   const routeLocation = useRouteLocation()
@@ -135,7 +178,8 @@ export default function AddressSelectorPage() {
   const { addresses = [], addAddress, updateAddress, deleteAddress, setDefaultAddress, userProfile } = useProfile()
   const [editingAddressId, setEditingAddressId] = useState(null)
   const [showAddressForm, setShowAddressForm] = useState(false)
-  const [mapPosition, setMapPosition] = useState([22.7196, 75.8577]) // Default Indore coordinates [lat, lng]
+  const userManuallyMovedMapRef = useRef(false)
+  const [mapPosition, setMapPosition] = useState(() => resolveInitialCoordinates(location, addresses))
   const [addressFormData, setAddressFormData] = useState({
     street: "",
     city: "",
@@ -222,6 +266,29 @@ export default function AddressSelectorPage() {
       .map((x) => x.addr)
   }, [addresses, addressAutocompleteValue])
 
+  // Keep mapPosition aligned with detected GPS / saved address unless user manually dragged map
+  useEffect(() => {
+    if (userManuallyMovedMapRef.current) return
+    const resolved = resolveInitialCoordinates(location, addresses)
+    if (resolved && (resolved[0] !== mapPosition[0] || resolved[1] !== mapPosition[1])) {
+      setMapPosition(resolved)
+      if (googleMapRef.current) {
+        googleMapRef.current.panTo({ lat: resolved[0], lng: resolved[1] })
+      }
+    }
+    if (location?.formattedAddress || location?.address) {
+      setCurrentAddress(location.formattedAddress || location.address)
+    }
+  }, [location?.latitude, location?.longitude, addresses])
+
+  // If Google Maps is unavailable or API key is not working, reverse-geocode initial coordinates so inputs & pinned location are filled
+  useEffect(() => {
+    if (!showAddressForm) return
+    if (mapUnavailable || !GOOGLE_MAPS_API_KEY) {
+      handleMapMoveEnd(mapPosition[0], mapPosition[1])
+    }
+  }, [showAddressForm, mapUnavailable, GOOGLE_MAPS_API_KEY])
+
   // Load Google Maps API key
   useEffect(() => {
     if (!MAPS_ENABLED) return
@@ -233,23 +300,36 @@ export default function AddressSelectorPage() {
   }, [])
 
   const searchNominatimWithFallback = async (queryText, refLat, refLng) => {
-    const runQuery = async (term) => {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=10&q=${encodeURIComponent(term)}`
-      const res = await fetch(url, { headers: { Accept: "application/json" } })
+    const safeLat = Number.isFinite(refLat) ? refLat : SANCHORE_COORDINATES[0]
+    const safeLng = Number.isFinite(refLng) ? refLng : SANCHORE_COORDINATES[1]
+    const delta = 1.0 // ~100km radius around user/zone
+    const viewbox = `${safeLng - delta},${safeLat + delta},${safeLng + delta},${safeLat - delta}`
+
+    const runQuery = async (term, isBounded = true) => {
+      const boundedParam = isBounded ? "&bounded=1" : "&bounded=0"
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=in&viewbox=${viewbox}${boundedParam}&limit=10&q=${encodeURIComponent(term)}`
+      const res = await fetch(url, { headers: { Accept: "application/json", "Accept-Language": "en" } })
       const json = await res.json()
       return Array.isArray(json) ? json : []
     }
 
-    let list = await runQuery(queryText)
+    // 1. Try bounded search first (prioritizes local area around user / Sanchore)
+    let list = await runQuery(queryText, true)
+
+    // 2. If no exact match inside local box, try broader search
+    if (list.length === 0) {
+      list = await runQuery(queryText, false)
+    }
+
     if (list.length === 0) {
       let cleaned = queryText.replace(/^[A-Z0-9]{2,8}\+[A-Z0-9]{2,3}[,\s]*/i, "").trim()
       if (cleaned && cleaned !== queryText) {
-        list = await runQuery(cleaned)
+        list = await runQuery(cleaned, false)
       }
       if (list.length === 0 && queryText.includes(",")) {
         const parts = queryText.split(",").map((s) => s.trim()).filter(Boolean)
         if (parts.length > 1) {
-          list = await runQuery(parts[parts.length - 1])
+          list = await runQuery(parts[parts.length - 1], false)
         }
       }
     }
@@ -266,8 +346,10 @@ export default function AddressSelectorPage() {
       .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lng))
       .map((x) => ({
         ...x,
-        distanceMeters: calculateDistance(refLat, refLng, x.lat, x.lng),
+        distanceMeters: calculateDistance(safeLat, safeLng, x.lat, x.lng),
       }))
+      // Filter out locations from other states that are more than 150km away when local delivery is expected
+      .filter((x) => (x.distanceMeters ?? Infinity) <= 150000)
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
       .slice(0, 8)
   }
@@ -285,8 +367,12 @@ export default function AddressSelectorPage() {
     const t = setTimeout(async () => {
       try {
         setIsKeywordSearching(true)
-        const refLat = location?.latitude ?? 22.7196
-        const refLng = location?.longitude ?? 75.8577
+        const refLat = Number.isFinite(mapPosition?.[0])
+          ? Number(mapPosition[0])
+          : (Number.isFinite(location?.latitude) ? Number(location.latitude) : SANCHORE_COORDINATES[0])
+        const refLng = Number.isFinite(mapPosition?.[1])
+          ? Number(mapPosition[1])
+          : (Number.isFinite(location?.longitude) ? Number(location.longitude) : SANCHORE_COORDINATES[1])
         const results = await searchNominatimWithFallback(q, refLat, refLng)
         setKeywordAddressSuggestions(results)
       } catch (e) {
@@ -315,9 +401,15 @@ export default function AddressSelectorPage() {
     const t = setTimeout(async () => {
       try {
         setIsStreetSearching(true)
-        const refLat = location?.latitude ?? 22.7196
-        const refLng = location?.longitude ?? 75.8577
-        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`
+        const refLat = Number.isFinite(mapPosition?.[0])
+          ? Number(mapPosition[0])
+          : (Number.isFinite(location?.latitude) ? Number(location.latitude) : SANCHORE_COORDINATES[0])
+        const refLng = Number.isFinite(mapPosition?.[1])
+          ? Number(mapPosition[1])
+          : (Number.isFinite(location?.longitude) ? Number(location.longitude) : SANCHORE_COORDINATES[1])
+        const delta = 1.5
+        const viewbox = `${refLng - delta},${refLat + delta},${refLng + delta},${refLat - delta}`
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=in&viewbox=${viewbox}&bounded=0&limit=5&q=${encodeURIComponent(q)}`
         const res = await fetch(url, { headers: { Accept: "application/json" } })
         const json = await res.json()
         const mapped = (Array.isArray(json) ? json : []).map(r => ({
@@ -330,6 +422,7 @@ export default function AddressSelectorPage() {
         const withDistance = mapped
           .filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng))
           .map(x => ({ ...x, distanceMeters: calculateDistance(refLat, refLng, x.lat, x.lng) }))
+          .filter(x => (x.distanceMeters ?? Infinity) <= 150000)
           .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
           .slice(0, 4)
         setStreetSuggestions(withDistance)
@@ -374,6 +467,7 @@ export default function AddressSelectorPage() {
         googleMapRef.current = map
 
         map.addListener("dragstart", () => {
+          userManuallyMovedMapRef.current = true
           ignoreReverseGeocodeRef.current = false
         })
 
@@ -418,6 +512,7 @@ export default function AddressSelectorPage() {
 
       if (loc?.latitude) {
         // Update state
+        userManuallyMovedMapRef.current = false
         const newPos = [loc.latitude, loc.longitude]
         setMapPosition(newPos)
         setCurrentAddress(loc.formattedAddress || loc.address || "")
@@ -492,7 +587,16 @@ export default function AddressSelectorPage() {
 
   const handleAddAddressClick = () => {
     setEditingAddressId(null)
+    userManuallyMovedMapRef.current = false
+    const bestCoords = resolveInitialCoordinates(location, addresses)
+    setMapPosition(bestCoords)
+    if (googleMapRef.current) {
+      googleMapRef.current.panTo({ lat: bestCoords[0], lng: bestCoords[1] })
+      googleMapRef.current.setZoom(16)
+    }
     setAddressFormData({ street: "", city: "", state: "", zipCode: "", additionalDetails: "", label: "Home", phone: "" })
+    setStreetSuggestions([])
+    setKeywordAddressSuggestions([])
     setShowAddressForm(true)
   }
 
@@ -503,6 +607,7 @@ export default function AddressSelectorPage() {
 
   const handleEdit = (e, addr) => {
     e.stopPropagation()
+    userManuallyMovedMapRef.current = true
     setAddressFormData({
       street: addr.street || "",
       city: addr.city || "",
@@ -616,6 +721,8 @@ export default function AddressSelectorPage() {
           })
 
           setCurrentAddress(formatted)
+          skipStreetSearchRef.current = true
+          setStreetSuggestions([])
           setAddressFormData(prev => ({
             ...prev,
             street: street || formatted.split(",")[0] || prev.street,
@@ -654,6 +761,8 @@ export default function AddressSelectorPage() {
         const postcode = addr.postcode || ""
 
         setCurrentAddress(prev => prev === formatted ? prev : formatted)
+        skipStreetSearchRef.current = true
+        setStreetSuggestions([])
         setAddressFormData(prev => ({
           ...prev,
           street: street || formatted.split(",")[0] || prev.street,
@@ -786,8 +895,12 @@ export default function AddressSelectorPage() {
       } else {
         try {
           setIsKeywordSearching(true)
-          const refLat = location?.latitude ?? 22.7196
-          const refLng = location?.longitude ?? 75.8577
+          const refLat = Number.isFinite(mapPosition?.[0])
+            ? Number(mapPosition[0])
+            : (Number.isFinite(location?.latitude) ? Number(location.latitude) : SANCHORE_COORDINATES[0])
+          const refLng = Number.isFinite(mapPosition?.[1])
+            ? Number(mapPosition[1])
+            : (Number.isFinite(location?.longitude) ? Number(location.longitude) : SANCHORE_COORDINATES[1])
           const results = await searchNominatimWithFallback(q, refLat, refLng)
           if (results.length > 0) {
             setKeywordAddressSuggestions(results)
