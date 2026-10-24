@@ -6268,7 +6268,7 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
 }
 
 
-// ----- Admin: edit order items (e.g. restaurant is out of an item) -----
+// ----- Admin: edit order items (e.g. restaurant is out of an item or adding extra items from menu) -----
 const ADMIN_ITEM_EDITABLE_STATUSES = ["scheduled", "placed", "created", "confirmed", "preparing", "ready_for_pickup"];
 
 export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], note = "") {
@@ -6289,32 +6289,109 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
   }
   const payMethod = String(order.payment?.method || "").toLowerCase();
   const payStatus = String(order.payment?.status || "").toLowerCase();
-  if (payStatus === "paid" && payMethod !== "cash") {
-    throw new ValidationError("This order is already paid online/by wallet. Cancel and refund it instead of editing items.");
-  }
 
-  // Only quantity changes / removals are allowed; items cannot be added or re-priced here.
   const requested = new Map();
+  const inputEntries = new Map();
   for (const entry of itemsInput) {
     const itemId = String(entry?.itemId || "").trim();
     const quantity = Math.floor(Number(entry?.quantity));
     if (!itemId) throw new ValidationError("itemId is required for every item");
     if (!Number.isFinite(quantity) || quantity < 0) throw new ValidationError("Invalid quantity");
     requested.set(itemId, quantity);
+    inputEntries.set(itemId, entry);
   }
 
   const before = order.items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
   const nextItems = [];
+  const existingItemIds = new Set();
+
+  // 1. Process existing order items
   for (const item of order.items) {
-    if (!requested.has(item.itemId)) {
+    const itemIdStr = String(item.itemId);
+    existingItemIds.add(itemIdStr);
+    if (!requested.has(itemIdStr)) {
       nextItems.push(item);
       continue;
     }
-    const qty = requested.get(item.itemId);
+    const qty = requested.get(itemIdStr);
     if (qty <= 0) continue;
     item.quantity = qty;
     nextItems.push(item);
   }
+
+  // 2. Process newly added items from restaurant menu
+  const newlyAddedEntries = [];
+  for (const [itemId, qty] of requested.entries()) {
+    if (!existingItemIds.has(itemId) && qty > 0) {
+      newlyAddedEntries.push({ itemId, qty, entry: inputEntries.get(itemId) });
+    }
+  }
+
+  if (newlyAddedEntries.length > 0) {
+    const newObjectIds = newlyAddedEntries
+      .map((e) => e.itemId)
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+    const dbFoods = newObjectIds.length > 0
+      ? await FoodItem.find({ _id: { $in: newObjectIds } }).lean()
+      : [];
+    const dbFoodsMap = new Map(dbFoods.map((f) => [String(f._id), f]));
+
+    const restaurantIdStr = String(order.restaurantId?._id || order.restaurantId || "");
+    const restaurantNameStr = order.restaurantId?.restaurantName || order.pickupPoints?.[0]?.sourceName || "";
+
+    for (const { itemId, qty, entry } of newlyAddedEntries) {
+      const dbFood = dbFoodsMap.get(itemId);
+      if (dbFood) {
+        // Security & consistency check: ensure item belongs to this restaurant
+        if (restaurantIdStr && dbFood.restaurantId && String(dbFood.restaurantId) !== restaurantIdStr) {
+          throw new ValidationError(`Item '${dbFood.name}' does not belong to this restaurant.`);
+        }
+
+        let itemName = dbFood.name;
+        let itemPrice = Number(dbFood.price || 0);
+
+        if (entry.variantId && Array.isArray(dbFood.variants)) {
+          const variant = dbFood.variants.find((v) => String(v._id) === String(entry.variantId));
+          if (variant) {
+            itemName = `${dbFood.name} (${variant.name})`;
+            itemPrice = Number(variant.price || itemPrice);
+          }
+        } else if (Number.isFinite(Number(entry.price)) && Number(entry.price) > 0) {
+          itemPrice = Number(entry.price);
+        }
+
+        nextItems.push({
+          itemId: String(dbFood._id),
+          name: entry.name || itemName,
+          type: "food",
+          sourceId: restaurantIdStr || String(dbFood.restaurantId || ""),
+          sourceName: restaurantNameStr,
+          price: itemPrice,
+          quantity: qty,
+          isVeg: dbFood.foodType === "Veg",
+          image: dbFood.image || "",
+          notes: entry.notes || "",
+        });
+      } else if (entry.name && Number.isFinite(Number(entry.price)) && Number(entry.price) >= 0) {
+        nextItems.push({
+          itemId: String(itemId),
+          name: String(entry.name),
+          type: "food",
+          sourceId: restaurantIdStr,
+          sourceName: restaurantNameStr,
+          price: Number(entry.price),
+          quantity: qty,
+          isVeg: entry.isVeg !== false,
+          image: entry.image || "",
+          notes: entry.notes || "",
+        });
+      } else {
+        throw new ValidationError(`Item '${itemId}' not found in restaurant menu.`);
+      }
+    }
+  }
+
   if (nextItems.length === 0) {
     throw new ValidationError("At least one item must remain. To remove every item, cancel the order instead.");
   }
@@ -6325,13 +6402,15 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
   const round2 = (n) => Math.round(n * 100) / 100;
 
   const pricing = order.pricing;
+  const oldTotal = Number(pricing.total || 0);
+
   pricing.subtotal = round2(newSubtotal);
   // Item-based charges scale with the subtotal; fixed fees stay as they were.
   pricing.tax = round2(Number(pricing.tax || 0) * ratio);
   pricing.gstAmount = round2(Number(pricing.gstAmount || 0) * ratio);
   pricing.gst = round2(Number(pricing.gst || 0) * ratio);
   pricing.discount = Math.min(round2(Number(pricing.discount || 0)), pricing.subtotal);
-  // Commission is a share of the item subtotal, so it shrinks with it.
+  // Commission is a share of the item subtotal, so it scales with it.
   pricing.restaurantCommission = round2(Number(pricing.restaurantCommission || 0) * ratio);
   pricing.total = Math.max(
     0,
@@ -6347,13 +6426,58 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
   );
 
   order.items = nextItems;
-  const remainingIds = new Set(nextItems.map((i) => i.itemId));
+
+  // Sync itemIds in pickupPoints
+  const remainingIds = new Set(nextItems.map((i) => String(i.itemId)));
   for (const point of order.pickupPoints || []) {
-    point.itemIds = (point.itemIds || []).filter((id) => remainingIds.has(id));
+    point.itemIds = (point.itemIds || []).filter((id) => remainingIds.has(String(id)));
   }
-  order.payment.amountDue = pricing.total;
+  const foodPickup = (order.pickupPoints || []).find((p) => p.pickupType === "food") || order.pickupPoints?.[0];
+  if (foodPickup) {
+    const existingPickupIds = new Set((foodPickup.itemIds || []).map(String));
+    for (const item of nextItems) {
+      if (!existingPickupIds.has(String(item.itemId))) {
+        foodPickup.itemIds.push(String(item.itemId));
+      }
+    }
+  }
+
+  // Calculate amount due based on payment method
+  if (payStatus === "paid" && payMethod !== "cash") {
+    // If already paid online, customer owes the added difference in cash on delivery
+    const extraDifference = Math.max(0, round2(pricing.total - oldTotal));
+    order.payment.amountDue = extraDifference;
+  } else {
+    // COD or unpaid order: full amount is due
+    order.payment.amountDue = pricing.total;
+  }
+
+  const restaurantShare = Math.max(
+    0,
+    round2(
+      pricing.subtotal +
+        Number(pricing.packagingFee || 0) -
+        pricing.restaurantCommission -
+        (pricing.discountBearer === "restaurant" ? pricing.discount : 0),
+    ),
+  );
+
+  const platformProfit = Math.max(
+    0,
+    round2(
+      Number(pricing.platformFee || 0) +
+        Number(pricing.deliveryFee || 0) +
+        pricing.restaurantCommission -
+        Number(order.riderEarning || 0) -
+        (pricing.discountBearer === "restaurant" ? 0 : pricing.discount),
+    ),
+  );
+
+  order.platformProfit = platformProfit;
   order.markModified("items");
   order.markModified("pickupPoints");
+  order.markModified("pricing");
+  order.markModified("payment");
 
   const after = nextItems.map((i) => `${i.quantity}x ${i.name}`).join(", ");
   pushStatusHistory(order, {
@@ -6374,23 +6498,15 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
         "pricing.discount": pricing.discount,
         "pricing.restaurantCommission": pricing.restaurantCommission,
         "pricing.total": pricing.total,
-        "payment.amountDue": pricing.total,
-        "amounts.totalCustomerPaid": pricing.total,
+        "payment.amountDue": order.payment.amountDue,
+        "amounts.totalCustomerPaid":
+          payStatus === "paid" && payMethod !== "cash"
+            ? oldTotal + order.payment.amountDue
+            : pricing.total,
         "amounts.taxAmount": pricing.tax,
         "amounts.restaurantCommission": pricing.restaurantCommission,
-        "amounts.restaurantShare": Math.max(
-          0,
-          pricing.subtotal +
-            Number(pricing.packagingFee || 0) -
-            pricing.restaurantCommission -
-            (pricing.discountBearer === "restaurant" ? pricing.discount : 0),
-        ),
-        "amounts.platformNetProfit":
-          Number(pricing.platformFee || 0) +
-          Number(pricing.deliveryFee || 0) +
-          pricing.restaurantCommission -
-          Number(order.riderEarning || 0) -
-          (pricing.discountBearer === "restaurant" ? 0 : pricing.discount),
+        "amounts.restaurantShare": restaurantShare,
+        "amounts.platformNetProfit": platformProfit,
       },
       $push: {
         history: {
@@ -6420,12 +6536,19 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
       pricing: {
         subtotal: pricing.subtotal,
         tax: pricing.tax,
+        deliveryFee: pricing.deliveryFee,
+        packagingFee: pricing.packagingFee,
+        platformFee: pricing.platformFee,
+        discount: pricing.discount,
         total: pricing.total,
       },
       totalAmount: pricing.total,
       amountDue: order.payment?.amountDue,
     };
-    const deliveryPartnerId = order.dispatch?.deliveryPartnerId;
+    const deliveryPartnerId =
+      order.dispatch?.deliveryPartnerId ||
+      order.dispatchPlan?.legs?.find((l) => l.deliveryPartnerId)?.deliveryPartnerId;
+
     if (io) {
       // Everyone involved gets the same fresh numbers: restaurant, customer and the assigned rider.
       const targets = [rooms.restaurant(order.restaurantId), rooms.user(order.userId)];
@@ -6436,11 +6559,15 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
       }
     }
     if (deliveryPartnerId) {
+      const riderCollectText =
+        order.payment?.amountDue > 0
+          ? `Amount to collect: ₹${order.payment.amountDue}.`
+          : `Order total: ₹${pricing.total}.`;
       await notifyOwnersSafely(
         [{ ownerType: "DELIVERY_PARTNER", ownerId: deliveryPartnerId }],
         {
           title: "Order updated",
-          body: `Order #${order.orderId} items changed. Amount to collect: ₹${pricing.total}.`,
+          body: `Order #${order.orderId} items changed. ${riderCollectText}`,
           data: {
             type: "order_items_updated",
             orderId: String(order.orderId),
@@ -6454,7 +6581,7 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
       [{ ownerType: "USER", ownerId: order.userId }],
       {
         title: "Your order was updated",
-        body: `Some items in order #${order.orderId} were changed. New total: ₹${pricing.total}.`,
+        body: `Items in order #${order.orderId} were changed. New total: ₹${pricing.total}.`,
         data: {
           type: "order_items_updated",
           orderId: String(order.orderId),
@@ -6467,7 +6594,7 @@ export async function updateOrderItemsAdmin(orderId, adminId, itemsInput = [], n
       [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
       {
         title: "Order items updated",
-        body: `Order #${order.orderId} items were edited by admin.`,
+        body: `Order #${order.orderId} items were edited by admin. New subtotal: ₹${pricing.subtotal}.`,
         data: {
           type: "order_items_updated",
           orderId: String(order.orderId),

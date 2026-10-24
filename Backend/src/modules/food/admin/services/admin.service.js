@@ -2970,6 +2970,11 @@ export async function updateRestaurantById(id, body = {}) {
     validateOpeningClosingTimes(doc.openingTime, doc.closingTime);
     if (body.openDays !== undefined && Array.isArray(body.openDays)) {
         doc.openDays = body.openDays.map(d => toStr(d)).filter(Boolean);
+        if (doc.onboarding?.step2) {
+            doc.onboarding.step2.openDays = doc.openDays;
+            doc.markModified('onboarding');
+        }
+        doc.markModified('openDays');
     }
     if (body.offer !== undefined) doc.offer = toStr(body.offer);
 

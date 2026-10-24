@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2, ChevronDown, Check, Pencil, Minus, Plus, Trash2 } from "lucide-react"
+import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2, ChevronDown, ChevronUp, Check, Pencil, Minus, Plus, Trash2, Search, PlusCircle, Utensils } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -11,6 +11,23 @@ import {
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
+
+const getOrderRestaurantId = (ord) => {
+  if (!ord) return null;
+  if (ord.restaurantId?._id) return String(ord.restaurantId._id);
+  if (ord.restaurantId?.id) return String(ord.restaurantId.id);
+  if (typeof ord.restaurantId === "string" && ord.restaurantId) return ord.restaurantId;
+  if (ord.restaurant?._id) return String(ord.restaurant._id);
+  if (ord.restaurant?.id) return String(ord.restaurant.id);
+  if (typeof ord.restaurant === "string" && /^[0-9a-fA-F]{24}$/.test(ord.restaurant)) return ord.restaurant;
+  const foodPickup = ord.pickupPoints?.find((p) => p.pickupType === "food" && p.sourceId);
+  if (foodPickup?.sourceId) return String(foodPickup.sourceId);
+  const anyPickup = ord.pickupPoints?.find((p) => p.sourceId);
+  if (anyPickup?.sourceId) return String(anyPickup.sourceId);
+  const foodItem = ord.items?.find((i) => i.sourceId);
+  if (foodItem?.sourceId) return String(foodItem.sourceId);
+  return null;
+};
 
 
 const getStatusColor = (orderStatus) => {
@@ -86,6 +103,14 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
   const [isSavingItems, setIsSavingItems] = useState(false);
   const [itemOverrides, setItemOverrides] = useState(null);
 
+  // Restaurant Menu items picker state
+  const [menuItems, setMenuItems] = useState([]);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false);
+  const [menuSearch, setMenuSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [showMenuPicker, setShowMenuPicker] = useState(true);
+  const [selectedVariantMap, setSelectedVariantMap] = useState({});
+
   // Close the status dropdown when clicking outside of it
   useEffect(() => {
     if (!isStatusOpen) return undefined;
@@ -104,6 +129,11 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
     setDraftItems([]);
     setItemOverrides(null);
     setIsStatusOpen(false);
+    setMenuItems([]);
+    setMenuSearch("");
+    setSelectedCategory("All");
+    setShowMenuPicker(true);
+    setSelectedVariantMap({});
   }, [order?.id, order?._id]);
 
   useEffect(() => {
@@ -172,16 +202,88 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
     }
   };
 
+  const fetchRestaurantMenu = async () => {
+    let restId = getOrderRestaurantId(order);
+    setIsLoadingMenu(true);
+    try {
+      const { adminAPI } = await import("@/services/api");
+      if (!restId && order?.restaurant && typeof order.restaurant === "string") {
+        try {
+          const restRes = await adminAPI.getRestaurants({ search: order.restaurant, limit: 1 });
+          const found = restRes?.data?.data?.restaurants?.[0] || restRes?.data?.restaurants?.[0];
+          if (found?._id) restId = String(found._id);
+        } catch (_) {}
+      }
+
+      if (restId) {
+        const res = await adminAPI.getFoods({
+          restaurantId: restId,
+          approvalStatus: "approved",
+          limit: 300,
+        });
+        const list = res?.data?.data?.foods || res?.data?.foods || [];
+        setMenuItems(list);
+      }
+    } catch (err) {
+      console.error("Failed to load restaurant menu:", err);
+    } finally {
+      setIsLoadingMenu(false);
+    }
+  };
+
   const startEditingItems = () => {
     setDraftItems(
       (viewOrder.items || []).map((item) => ({
-        itemId: item.itemId,
-        name: item.name,
+        itemId: String(item.itemId || item.id || item._id),
+        name: item.name || item.foodName || "Item",
         price: Number(item.price || 0),
         quantity: Number(item.quantity || 1),
+        isVeg: item.isVeg,
+        image: item.image || "",
+        variantId: item.variantId,
+        variantName: item.variantName,
       }))
     );
     setIsEditingItems(true);
+    fetchRestaurantMenu();
+  };
+
+  const addItemToDraft = (foodItem, variant = null) => {
+    const rawId = foodItem._id || foodItem.id;
+    const itemId = String(rawId);
+    const price = Number(
+      variant ? variant.price : (foodItem.price !== undefined ? foodItem.price : foodItem.basePrice || 0)
+    );
+    const displayName = variant
+      ? `${foodItem.name} (${variant.name})`
+      : foodItem.name;
+
+    setDraftItems((prev) => {
+      const existingIdx = prev.findIndex(
+        (i) =>
+          String(i.itemId) === itemId &&
+          (!variant || String(i.variantId) === String(variant._id || variant.id))
+      );
+      if (existingIdx >= 0) {
+        return prev.map((item, idx) =>
+          idx === existingIdx ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          itemId,
+          name: displayName,
+          price,
+          quantity: 1,
+          isVeg: foodItem.foodType === "Veg",
+          image: foodItem.image || "",
+          variantId: variant?._id ? String(variant._id) : (variant?.id ? String(variant.id) : undefined),
+          variantName: variant?.name,
+        },
+      ];
+    });
+    toast.success(`Added ${displayName} to order`);
   };
 
   const updateDraftQuantity = (itemId, delta) => {
@@ -204,7 +306,18 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
       const { adminAPI } = await import("@/services/api");
       const response = await adminAPI.updateOrderItems(
         orderId,
-        draftItems.map(({ itemId, quantity }) => ({ itemId, quantity }))
+        draftItems
+          .filter((item) => item.quantity > 0)
+          .map(({ itemId, quantity, variantId, variantName, price, name, isVeg, image }) => ({
+            itemId,
+            quantity,
+            variantId,
+            variantName,
+            price,
+            name,
+            isVeg,
+            image,
+          }))
       );
       const updated = response?.data?.data?.order;
       if (updated) {
@@ -214,10 +327,14 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
           vatTax: updated.pricing?.tax,
           totalAmount: updated.pricing?.total,
           total: updated.pricing?.total,
+          amountDue: updated.payment?.amountDue,
         });
       }
-      toast.success("Order items updated");
+      toast.success(`Order items updated. New total: ₹${(updated?.pricing?.total ?? draftSubtotal).toFixed(2)}`);
       setIsEditingItems(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ordersRefresh"));
+      }
       if (typeof onItemsUpdated === "function") onItemsUpdated(orderId, updated);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to update items");
@@ -252,11 +369,36 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
   // Order as shown: parent data plus any item edits saved from this dialog.
   const viewOrder = itemOverrides ? { ...order, ...itemOverrides } : order
   const canEditItems =
-    ["placed", "preparing", "ready_for_pickup"].includes(localRawStatus || resolveCanonicalRawStatus(order)) &&
+    ["placed", "preparing", "ready_for_pickup", "scheduled", "created", "confirmed"].includes(localRawStatus || resolveCanonicalRawStatus(order)) &&
     Array.isArray(viewOrder.items) &&
     viewOrder.items.length > 0 &&
-    viewOrder.items.every((item) => item.itemId)
+    viewOrder.items.every((item) => item.itemId || item._id || item.id);
   const draftSubtotal = draftItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+  const menuCategories = [
+    "All",
+    ...Array.from(
+      new Set(
+        menuItems
+          .map((m) => m.categoryName || m.category)
+          .filter(Boolean)
+          .map((s) => String(s).trim())
+      )
+    ),
+  ];
+
+  const filteredMenuItems = menuItems.filter((m) => {
+    const matchesSearch =
+      !menuSearch.trim() ||
+      String(m.name || "").toLowerCase().includes(menuSearch.toLowerCase().trim()) ||
+      String(m.categoryName || "").toLowerCase().includes(menuSearch.toLowerCase().trim());
+
+    const matchesCategory =
+      selectedCategory === "All" ||
+      String(m.categoryName || m.category || "").trim().toLowerCase() === selectedCategory.toLowerCase();
+
+    return matchesSearch && matchesCategory;
+  });
 
   // Debug: Log order data to check billImageUrl
   if (order.billImageUrl) {
@@ -577,65 +719,296 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
               </div>
 
               {isEditingItems ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    Item not available at the restaurant? Reduce the quantity or remove it. Tax is adjusted and the
-                    customer and restaurant are notified of the new total.
-                  </p>
-                  {draftItems.map((item) => (
-                    <div
-                      key={item.itemId}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-lg ${item.quantity === 0 ? "bg-red-50 opacity-70" : "bg-slate-50"}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium text-slate-900 truncate ${item.quantity === 0 ? "line-through" : ""}`}>
-                          {item.name || "Unknown Item"}
-                        </p>
-                        <p className="text-xs text-slate-500">₹{item.price.toFixed(2)} each</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => updateDraftQuantity(item.itemId, -1)}
-                          disabled={item.quantity === 0}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40"
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="w-8 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => updateDraftQuantity(item.itemId, 1)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDraftItems((prev) => prev.map((i) => (i.itemId === item.itemId ? { ...i, quantity: 0 } : i)))}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50"
-                          aria-label="Remove item"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="w-20 text-right text-sm font-semibold text-slate-900">
-                        ₹{(item.price * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-1 text-sm">
-                    <span className="text-slate-600">New items subtotal</span>
-                    <span className="font-bold text-slate-900">₹{draftSubtotal.toFixed(2)}</span>
+                <div className="space-y-4">
+                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                    <p className="font-semibold flex items-center gap-1.5">
+                      <span>⚡</span> Edit Order Items & Prices
+                    </p>
+                    <p>
+                      Adjust item quantities, remove unavailable items, or add extra items from the restaurant's menu below. The bill price for the customer, restaurant share, and delivery collection are recalculated automatically upon saving.
+                    </p>
                   </div>
-                  <div className="flex items-center justify-end gap-2">
+
+                  {/* Current draft items list */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Current Order Items ({draftItems.filter((i) => i.quantity > 0).length})
+                    </p>
+                    {draftItems.map((item) => (
+                      <div
+                        key={item.itemId}
+                        className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-all ${
+                          item.quantity === 0
+                            ? "bg-red-50/70 border-red-200 text-slate-400"
+                            : "bg-slate-50 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-sm font-medium truncate ${item.quantity === 0 ? "line-through text-slate-400" : "text-slate-900"}`}>
+                              {item.name || "Unknown Item"}
+                            </p>
+                            {item.quantity === 0 && (
+                              <span className="text-[10px] uppercase font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                                Removed
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500">₹{item.price.toFixed(2)} each</p>
+                        </div>
+
+                        {item.quantity > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => updateDraftQuantity(item.itemId, -1)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 cursor-pointer"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateDraftQuantity(item.itemId, 1)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 cursor-pointer"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDraftItems((prev) => prev.map((i) => (i.itemId === item.itemId ? { ...i, quantity: 0 } : i)))}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 cursor-pointer"
+                              aria-label="Remove item"
+                              title="Remove item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDraftItems((prev) => prev.map((i) => (i.itemId === item.itemId ? { ...i, quantity: 1 } : i)))}
+                            className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Restore
+                          </button>
+                        )}
+                        <p className={`w-20 text-right text-sm font-semibold ${item.quantity === 0 ? "line-through text-slate-400" : "text-slate-900"}`}>
+                          ₹{(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Extra Items from Restaurant Menu Section */}
+                  <div className="border border-orange-200/80 rounded-xl bg-gradient-to-b from-orange-50/40 to-slate-50 overflow-hidden shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowMenuPicker((prev) => !prev)}
+                      className="w-full flex items-center justify-between p-3 bg-orange-100/50 hover:bg-orange-100/80 transition-colors text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <PlusCircle className="w-4 h-4 text-[var(--primary-theme)] shrink-0" />
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate">
+                          Add Items from Restaurant Menu
+                        </span>
+                        {menuItems.length > 0 && (
+                          <span className="text-[11px] bg-orange-200/90 text-orange-900 px-2 py-0.5 rounded-full font-bold shrink-0">
+                            {menuItems.length} items
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-slate-600 font-medium shrink-0 ml-2">
+                        <span>{showMenuPicker ? "Hide" : "Browse Menu"}</span>
+                        {showMenuPicker ? (
+                          <ChevronUp className="w-4 h-4 text-slate-500" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-500" />
+                        )}
+                      </div>
+                    </button>
+
+                    {showMenuPicker && (
+                      <div className="p-3 space-y-3">
+                        {/* Search Input */}
+                        <div className="relative">
+                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            value={menuSearch}
+                            onChange={(e) => setMenuSearch(e.target.value)}
+                            placeholder={`Search ${order.restaurant || "restaurant"} menu...`}
+                            className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 placeholder:text-slate-400 text-slate-800"
+                          />
+                          {menuSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setMenuSearch("")}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Category filter pills if available */}
+                        {menuCategories.length > 1 && (
+                          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+                            {menuCategories.map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-2.5 py-1 rounded-full whitespace-nowrap transition-colors font-medium text-xs cursor-pointer ${
+                                  selectedCategory === cat
+                                    ? "bg-[var(--primary-theme)] text-white shadow-xs font-semibold"
+                                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Scrollable Food Items List */}
+                        <div className="max-h-64 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white p-2">
+                          {isLoadingMenu ? (
+                            <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-500 text-xs">
+                              <Loader2 className="w-5 h-5 animate-spin text-[var(--primary-theme)]" />
+                              <span>Loading restaurant menu items...</span>
+                            </div>
+                          ) : filteredMenuItems.length === 0 ? (
+                            <div className="py-6 text-center text-slate-500 text-xs">
+                              {menuItems.length === 0
+                                ? "No items found for this restaurant."
+                                : `No items matching "${menuSearch}".`}
+                            </div>
+                          ) : (
+                            filteredMenuItems.map((food) => {
+                              const foodId = String(food._id || food.id);
+                              const hasVariants = Array.isArray(food.variants) && food.variants.length > 0;
+                              const selectedVariantId =
+                                selectedVariantMap[foodId] ||
+                                (hasVariants ? String(food.variants[0]._id || food.variants[0].id) : null);
+                              const selectedVariant = hasVariants
+                                ? food.variants.find((v) => String(v._id || v.id) === selectedVariantId) || food.variants[0]
+                                : null;
+                              const effectivePrice = selectedVariant
+                                ? Number(selectedVariant.price || 0)
+                                : Number(food.price !== undefined ? food.price : food.basePrice || 0);
+
+                              const inDraftCount = draftItems
+                                .filter(
+                                  (i) =>
+                                    String(i.itemId) === foodId &&
+                                    (!hasVariants || String(i.variantId) === String(selectedVariant?._id || selectedVariant?.id))
+                                )
+                                .reduce((sum, i) => sum + i.quantity, 0);
+
+                              return (
+                                <div
+                                  key={foodId}
+                                  className={`pt-2 first:pt-0 flex items-center justify-between gap-2 p-2 rounded-lg transition-colors ${
+                                    inDraftCount > 0 ? "bg-orange-50/50" : "hover:bg-slate-50"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <span
+                                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                                        food.foodType === "Veg"
+                                          ? "border-emerald-600 bg-white"
+                                          : "border-red-600 bg-white"
+                                      }`}
+                                      title={food.foodType || "Food"}
+                                    >
+                                      <span
+                                        className={`w-1.5 h-1.5 rounded-full ${
+                                          food.foodType === "Veg" ? "bg-emerald-600" : "bg-red-600"
+                                        }`}
+                                      />
+                                    </span>
+
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-semibold text-slate-900 truncate">
+                                        {food.name}
+                                      </p>
+                                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                        <span className="font-bold text-slate-900">
+                                          ₹{effectivePrice.toFixed(2)}
+                                        </span>
+                                        {food.categoryName && (
+                                          <>
+                                            <span>•</span>
+                                            <span className="truncate">{food.categoryName}</span>
+                                          </>
+                                        )}
+                                      </div>
+
+                                      {hasVariants && (
+                                        <div className="mt-1">
+                                          <select
+                                            value={selectedVariantId || ""}
+                                            onChange={(e) => {
+                                              const vId = e.target.value;
+                                              setSelectedVariantMap((prev) => ({
+                                                ...prev,
+                                                [foodId]: vId,
+                                              }));
+                                            }}
+                                            className="text-[11px] bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                                          >
+                                            {food.variants.map((v) => (
+                                              <option key={v._id || v.id} value={String(v._id || v.id)}>
+                                                {v.name} - ₹{Number(v.price).toFixed(2)}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex items-center gap-1.5">
+                                    {inDraftCount > 0 && (
+                                      <span className="text-[10px] font-bold bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">
+                                        Added ({inDraftCount})
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => addItemToDraft(food, selectedVariant)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-[var(--primary-theme)] hover:opacity-90 rounded-md transition-all shadow-xs active:scale-95 cursor-pointer"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      <span>Add</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-sm">
+                    <span className="text-slate-600 font-medium">New items subtotal</span>
+                    <span className="font-bold text-slate-900 text-base">₹{draftSubtotal.toFixed(2)}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    * Final order total, tax, restaurant share, and delivery collection amount will be automatically updated on save.
+                  </p>
+                  <div className="flex items-center justify-end gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => setIsEditingItems(false)}
                       disabled={isSavingItems}
-                      className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-50"
+                      className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-50 cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -643,7 +1016,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                       type="button"
                       onClick={saveEditedItems}
                       disabled={isSavingItems}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:opacity-90 rounded-lg disabled:opacity-50"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:opacity-90 rounded-lg disabled:opacity-50 cursor-pointer"
                     >
                       {isSavingItems && <Loader2 className="w-4 h-4 animate-spin" />}
                       Save Changes

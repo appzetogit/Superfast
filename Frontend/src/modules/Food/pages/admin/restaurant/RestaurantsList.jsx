@@ -181,6 +181,7 @@ export default function RestaurantsList() {
     openingTime: "",
     closingTime: "",
     isActive: true,
+    openDays: [],
   })
   const [profileImageFile, setProfileImageFile] = useState(null)
   const [profileImagePreview, setProfileImagePreview] = useState("")
@@ -1113,6 +1114,11 @@ export default function RestaurantsList() {
       restaurant.estimatedDeliveryTime ||
       restaurant.onboarding?.step4?.estimatedDeliveryTime ||
       ""
+    const rawOpenDays =
+      (Array.isArray(restaurant.openDays) && restaurant.openDays.length ? restaurant.openDays : null) ||
+      (Array.isArray(restaurant.onboarding?.step2?.openDays) && restaurant.onboarding.step2.openDays.length ? restaurant.onboarding.step2.openDays : null) ||
+      []
+    const normalizedOpenDays = rawOpenDays.map(d => String(d).trim()).filter(Boolean)
 
     return {
       name: restaurant.restaurantName || restaurant.name || "",
@@ -1129,6 +1135,7 @@ export default function RestaurantsList() {
       openingTime: openingTimeValue,
       closingTime: closingTimeValue,
       isActive: restaurant.isActive !== false,
+      openDays: normalizedOpenDays,
     }
   }
 
@@ -1188,6 +1195,7 @@ export default function RestaurantsList() {
         openingTime: normalizedOpeningTime,
         closingTime: normalizedClosingTime,
         isActive: detailsForm.isActive,
+        openDays: Array.isArray(detailsForm.openDays) ? detailsForm.openDays : [],
       }
 
       if (profileImage) {
@@ -1209,6 +1217,7 @@ export default function RestaurantsList() {
                 ownerPhone: updatedRestaurant.ownerPhone || updatedRestaurant.phone || item.ownerPhone,
                 zone: updatedRestaurant.location?.area || updatedRestaurant.location?.city || item.zone,
                 isActive: updatedRestaurant.isActive !== false,
+                openDays: updatedRestaurant.openDays || item.openDays,
                 logo: getPrimaryRestaurantImage(updatedRestaurant, item.logo),
                 originalData: {
                   ...(item.originalData || {}),
@@ -1833,6 +1842,63 @@ export default function RestaurantsList() {
                       <label className="block text-xs text-slate-500 mb-1">Estimated Delivery Time</label>
                       <input type="text" value={detailsForm.estimatedDeliveryTime} onChange={(e) => setDetailsForm((prev) => ({ ...prev, estimatedDeliveryTime: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
                     </div>
+                    <div className="md:col-span-2 pt-2 border-t border-slate-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                          Open Days (Operating Days)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allFull = ALL_WEEKDAYS.map((w) => w.full);
+                            const isAllSelected = detailsForm.openDays?.length === 7;
+                            setDetailsForm((prev) => ({
+                              ...prev,
+                              openDays: isAllSelected ? [] : allFull,
+                            }));
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                        >
+                          {detailsForm.openDays?.length === 7 ? "Deselect All" : "Select All 7 Days"}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {ALL_WEEKDAYS.map(({ full, short }) => {
+                          const cleanDays = (detailsForm.openDays || []).map((d) => String(d).trim().toLowerCase());
+                          const isSelected = cleanDays.includes(full.toLowerCase()) || cleanDays.includes(short.toLowerCase());
+                          return (
+                            <button
+                              key={full}
+                              type="button"
+                              onClick={() => {
+                                setDetailsForm((prev) => {
+                                  const current = Array.isArray(prev.openDays) ? [...prev.openDays] : [];
+                                  const exists = current.some(
+                                    (d) => String(d).trim().toLowerCase() === full.toLowerCase() || String(d).trim().toLowerCase() === short.toLowerCase()
+                                  );
+                                  const updated = exists
+                                    ? current.filter(
+                                        (d) => String(d).trim().toLowerCase() !== full.toLowerCase() && String(d).trim().toLowerCase() !== short.toLowerCase()
+                                      )
+                                    : [...current, full];
+                                  return { ...prev, openDays: updated };
+                                });
+                              }}
+                              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                                isSelected
+                                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                  : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
+                              }`}
+                            >
+                              {full} {isSelected ? "✓" : "+"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1.5">
+                        Click on any day (e.g. <strong>Sunday</strong>) to toggle it open/closed. Green indicates the restaurant will accept orders on that day.
+                      </p>
+                    </div>
                     <div className="md:col-span-2 flex items-center gap-3">
                       <input
                         id="restaurant-status-active"
@@ -2060,7 +2126,16 @@ export default function RestaurantsList() {
                         )}
                         {openDaysVal && (
                           <div>
-                            <p className="text-xs text-slate-500 mb-1">Open Days</p>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <p className="text-xs text-slate-500">Open Days</p>
+                              <button
+                                type="button"
+                                onClick={handleStartEditDetails}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                              >
+                                Edit Days
+                              </button>
+                            </div>
                             {renderOpenDaysGrid(openDaysVal)}
                           </div>
                         )}

@@ -1034,6 +1034,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         onOpenChange={setIsViewOrderOpen}
         order={selectedOrder}
         onStatusUpdated={() => fetchOrders({ silent: true, withRingCheck: false })}
+        onItemsUpdated={() => fetchOrders({ silent: true, withRingCheck: false })}
       />
 
       <RefundModal
