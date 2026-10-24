@@ -32,6 +32,10 @@ let globalReverseGeocodeLastSuccess = null
 // then rely on localStorage/DB. Live watching is enabled only via explicit user action.
 const AUTO_START_LIVE_WATCH = false
 
+// useLocation() is mounted by dozens of components. The launch-time live GPS fetch must
+// run once per page load, not once per mounted hook instance.
+let autoLiveFetchStarted = false
+
 const isMeaningfulAddressValue = (value) => {
   const normalized = String(value || "").trim().toLowerCase()
   return Boolean(
@@ -1294,6 +1298,18 @@ export function useLocation() {
             }
           } catch (e) {}
         }
+
+        if (autoLiveFetchStarted) {
+          if (hasCachedLocation) {
+            try {
+              const parsedCached = JSON.parse(hasCachedLocation);
+              if (parsedCached && typeof parsedCached === "object") setLocation(parsedCached);
+            } catch (e) {}
+          }
+          setLoading(false);
+          return;
+        }
+        autoLiveFetchStarted = true;
 
         // Mark session as started so subsequent in-app route changes respect user selection
         if (typeof sessionStorage !== "undefined") {

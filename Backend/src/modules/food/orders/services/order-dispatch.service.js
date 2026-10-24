@@ -19,6 +19,12 @@ import {
   notifyOwnersSafely,
 } from "./order.helpers.js";
 
+// A rider whose app is closed stays "online" in the DB until the shift ends. The app pings its
+// location every ~15s while open, so a ping older than this means the rider is effectively offline.
+const OFFLINE_PING_MS = 10 * 60 * 1000;
+const hasRecentPing = (p) =>
+  !p.lastLocationAt || Date.now() - new Date(p.lastLocationAt).getTime() <= OFFLINE_PING_MS;
+
 async function listNearbyOnlineDeliveryPartners(
   sourceId,
   { maxKm = 15, limit = 25, sourceType = "food", isCodOrder = false } = {},
@@ -64,13 +70,14 @@ async function listNearbyOnlineDeliveryPartners(
       status: "approved",
       availabilityStatus: "online",
     })
-      .select("_id status name")
+      .select("_id status name lastLocationAt")
       .limit(Math.max(1, limit * 2))
       .lean();
 
     const eligiblePartners = [];
     for (const p of partners) {
       if (busyPartnerIds.has(p._id.toString())) continue;
+      if (!hasRecentPing(p)) continue;
       if (isCodOrder) {
         const ok = await isPartnerEligibleForCodOrder(p._id);
         if (!ok) continue;
@@ -99,6 +106,7 @@ async function listNearbyOnlineDeliveryPartners(
   for (const p of allOnline) {
     if (p.status !== "approved") continue;
     if (busyPartnerIds.has(p._id.toString())) continue;
+    if (!hasRecentPing(p)) continue;
 
     if (isCodOrder) {
       const ok = await isPartnerEligibleForCodOrder(p._id);
@@ -127,11 +135,13 @@ async function listNearbyOnlineDeliveryPartners(
       status: "approved",
       availabilityStatus: "online",
     })
-      .select("_id status name")
+      .select("_id status name lastLocationAt")
       .limit(Math.max(1, limit))
       .lean();
 
-    const availableAnyOnline = anyOnline.filter((p) => !busyPartnerIds.has(p._id.toString()));
+    const availableAnyOnline = anyOnline.filter(
+      (p) => !busyPartnerIds.has(p._id.toString()) && hasRecentPing(p),
+    );
 
     return {
       source,

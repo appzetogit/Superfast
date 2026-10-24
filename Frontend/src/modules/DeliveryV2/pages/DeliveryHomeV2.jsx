@@ -584,7 +584,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         deliveryAPI.updateLocation(lat, lng, true, {
           heading: heading || 0,
           speed: speed || 0,
-          accuracy: pos.coords.accuracy
+          accuracy: pos.coords.accuracy,
+          heartbeat: true
         }).catch(() => { });
 
         // B. SOCKET LIVE (SILKY SMOOTH)
@@ -618,7 +619,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           lastCoordRef.current.lat,
           lastCoordRef.current.lng,
           true,
-          { heading: 0, speed: 0, accuracy: null }
+          { heading: 0, speed: 0, accuracy: null, heartbeat: true }
         ).catch(() => { });
         return;
       }
@@ -633,16 +634,16 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               pos.coords.latitude,
               pos.coords.longitude,
               true,
-              { heading: pos.coords.heading || 0, speed: pos.coords.speed || 0, accuracy: pos.coords.accuracy }
+              { heading: pos.coords.heading || 0, speed: pos.coords.speed || 0, accuracy: pos.coords.accuracy, heartbeat: true }
             ).catch(() => { });
           },
           () => {
-            deliveryAPI.updateOnlineStatus(true).catch(() => { });
+            deliveryAPI.updateLocation(null, null, true, { heartbeat: true }).catch(() => { });
           },
           { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
         );
       } else {
-        deliveryAPI.updateOnlineStatus(true).catch(() => { });
+        deliveryAPI.updateLocation(null, null, true, { heartbeat: true }).catch(() => { });
       }
     }, 10000); // Check every 10 seconds
 

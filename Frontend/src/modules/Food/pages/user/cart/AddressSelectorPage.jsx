@@ -8,7 +8,7 @@ import { Textarea } from "@food/components/ui/textarea"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { toast } from "sonner"
-import { locationAPI, userAPI } from "@food/api"
+import { locationAPI, userAPI, zoneAPI } from "@food/api"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { loadGoogleMaps } from "@/core/services/googleMapsLoader"
@@ -61,8 +61,11 @@ const buildLocationPayloadFromAddress = (address) => {
     latitude = Number(address.location.latitude)
     longitude = Number(address.location.longitude)
   } else {
-    latitude = Number(address.latitude ?? address.lat ?? null)
-    longitude = Number(address.longitude ?? address.lng ?? null)
+    // Number(null) is 0, which would silently become a (0, 0) point and read as "out of delivery"
+    const rawLat = address.latitude ?? address.lat
+    const rawLng = address.longitude ?? address.lng
+    latitude = rawLat == null || rawLat === "" ? NaN : Number(rawLat)
+    longitude = rawLng == null || rawLng === "" ? NaN : Number(rawLng)
   }
 
   const street = String(address.street || "").trim()
@@ -207,7 +210,8 @@ export default function AddressSelectorPage() {
   const [lockMapToAutocomplete, setLockMapToAutocomplete] = useState(true)
   const [GOOGLE_MAPS_API_KEY, setGOOGLE_MAPS_API_KEY] = useState(null)
   const [mapUnavailable, setMapUnavailable] = useState(false)
-  const [formScrollTop, setFormScrollTop] = useState(0)
+  const [pinServiceStatus, setPinServiceStatus] = useState("unknown") // 'unknown' | 'checking' | 'IN_SERVICE' | 'OUT_OF_SERVICE'
+  const geocoderRef = useRef(null)
   const [keyboardInset, setKeyboardInset] = useState(0)
   const [baseMapHeight, setBaseMapHeight] = useState(320)
   const formBodyRef = useRef(null)
@@ -380,9 +384,9 @@ export default function AddressSelectorPage() {
       } finally {
         setIsKeywordSearching(false)
       }
-    }, 350)
+    }, 700) // Nominatim allows ~1 req/s; a longer debounce avoids 429s and request pile-ups
     return () => clearTimeout(t)
-  }, [addressAutocompleteValue, showAddressForm, location, ENABLE_NOMINATIM_SEARCH])
+  }, [addressAutocompleteValue, showAddressForm, location?.latitude, location?.longitude, ENABLE_NOMINATIM_SEARCH])
 
   // Nominatim search for primary street field
   useEffect(() => {
@@ -431,9 +435,9 @@ export default function AddressSelectorPage() {
       } finally {
         setIsStreetSearching(false)
       }
-    }, 400)
+    }, 700)
     return () => clearTimeout(t)
-  }, [addressFormData.street, showAddressForm, location, ENABLE_NOMINATIM_SEARCH])
+  }, [addressFormData.street, showAddressForm, location?.latitude, location?.longitude, ENABLE_NOMINATIM_SEARCH])
 
   // Map Initialization logic
   useEffect(() => {
@@ -690,7 +694,7 @@ export default function AddressSelectorPage() {
     try {
       // 1. Try Google Maps Geocoder first if available
       if (typeof window !== "undefined" && window.google?.maps?.Geocoder) {
-        const geocoder = new window.google.maps.Geocoder()
+        const geocoder = geocoderRef.current || (geocoderRef.current = new window.google.maps.Geocoder())
         const response = await new Promise((resolve) => {
           geocoder.geocode({ location: { lat, lng } }, (results, status) => {
             if (status === "OK" && results?.[0]) resolve(results[0])
@@ -838,10 +842,28 @@ export default function AddressSelectorPage() {
     return () => window.removeEventListener("resize", updateBaseMapHeight)
   }, [showAddressForm])
 
+  // Tell the user right away whether the pinned spot is inside a delivery zone
   useEffect(() => {
     if (!showAddressForm) return
-    setFormScrollTop(0)
-  }, [showAddressForm])
+    const [lat, lng] = mapPosition || []
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+    let cancelled = false
+    setPinServiceStatus("checking")
+    const t = setTimeout(async () => {
+      try {
+        const res = await zoneAPI.detectZone(lat, lng)
+        if (cancelled) return
+        const status = res?.data?.data?.status
+        setPinServiceStatus(status === "IN_SERVICE" ? "IN_SERVICE" : status === "OUT_OF_SERVICE" ? "OUT_OF_SERVICE" : "unknown")
+      } catch {
+        if (!cancelled) setPinServiceStatus("unknown")
+      }
+    }, 600)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [showAddressForm, mapPosition?.[0], mapPosition?.[1]])
 
   useEffect(() => {
     if (!showAddressForm || typeof window === "undefined" || !window.visualViewport) return
@@ -929,20 +951,13 @@ export default function AddressSelectorPage() {
 
         <div
           ref={formBodyRef}
-          onScroll={(e) => {
-            setFormScrollTop(e.currentTarget.scrollTop)
-          }}
           className="flex-1 overflow-y-auto"
           style={{ paddingBottom: `${96 + keyboardInset}px` }}
         >
-          {/* Map Section - Parallax enabled */}
+          {/* Map Section (no scroll-driven transforms: re-rendering the page on every scroll event made it lag) */}
           <div
             className="flex-shrink-0 relative z-0"
-            style={{
-              height: `${mapHeight}px`,
-              transform: `translateY(${formScrollTop * 0.4}px)`,
-              opacity: clamp(1 - (formScrollTop / 500), 0.4, 1)
-            }}
+            style={{ height: `${mapHeight}px` }}
           >
             <div className="absolute top-4 left-4 right-4 z-20">
               <div className="relative group shadow-2xl">
@@ -993,18 +1008,18 @@ export default function AddressSelectorPage() {
 
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="relative mb-8 flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center p-2 mb-[-6px] shadow-sm animate-bounce-short">
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center p-2 mb-[-6px] shadow-sm">
                   <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center border-2 border-white">
-                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-white" />
                   </div>
                 </div>
-                <div className="w-1.5 h-6 bg-green-600 border-x border-white shadow-xl rounded-b-full shadow-green-900/40" />
-                <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[1px] transform scale-x-150 absolute bottom-[-4px]" />
+                <div className="w-1.5 h-6 bg-green-600 border-x border-white rounded-b-full" />
+                <div className="w-3 h-1.5 bg-black/20 rounded-full transform scale-x-150 absolute bottom-[-4px]" />
               </div>
             </div>
 
             {mapLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+              <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-theme)]" />
               </div>
             )}
@@ -1025,6 +1040,12 @@ export default function AddressSelectorPage() {
               <div className="min-w-0">
                 <p className="text-xs font-bold text-orange-800 dark:text-orange-200 uppercase mb-1">Pinnned Location</p>
                 <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{currentAddress || "Select a location on map"}</p>
+                {pinServiceStatus === "OUT_OF_SERVICE" && (
+                  <p className="text-xs font-semibold text-red-600 mt-1">We don't deliver to this spot yet. Move the pin closer to your town centre or pick another location.</p>
+                )}
+                {pinServiceStatus === "IN_SERVICE" && (
+                  <p className="text-xs font-semibold text-green-600 mt-1">Delivery available here</p>
+                )}
               </div>
             </div>
 
