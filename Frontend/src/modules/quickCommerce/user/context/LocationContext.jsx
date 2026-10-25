@@ -476,13 +476,9 @@ export const LocationProvider = ({ children }) => {
             { persist: false, updateSavedHome: false },
           );
         }
-      } else {
-        // If no location is stored, persist the default one immediately
-        updateLocation(currentLocation, {
-          persist: true,
-          updateSavedHome: false,
-        });
       }
+      // No stored location: keep the default city in memory only. Persisting it would make
+      // it look like a real location (and hide the "turn on location" prompt).
     } catch {
       // ignore parse errors
     }
@@ -499,6 +495,18 @@ export const LocationProvider = ({ children }) => {
       }
       fetchAndCacheLocation().catch(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Location permission was just granted (see LocationPermissionGate): fetch the live GPS location.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPermissionGranted = () => {
+      if (localStorage.getItem("deliveryAddressMode") === "saved" && localStorage.getItem("userLocation")) return;
+      fetchAndCacheLocation().catch(() => {});
+    };
+    window.addEventListener("liveLocationPermissionGranted", onPermissionGranted);
+    return () => window.removeEventListener("liveLocationPermissionGranted", onPermissionGranted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

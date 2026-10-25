@@ -36,6 +36,9 @@ const AUTO_START_LIVE_WATCH = false
 // run once per page load, not once per mounted hook instance.
 let autoLiveFetchStarted = false
 
+// Dedupes the live fetch triggered when location permission is granted after launch.
+let permissionRefreshInFlight = null
+
 const isMeaningfulAddressValue = (value) => {
   const normalized = String(value || "").trim().toLowerCase()
   return Boolean(
@@ -1354,9 +1357,35 @@ export function useLocation() {
     // This does NOT trigger browser prompt by itself; it only auto-fetches when permission is already granted.
     checkPermissionAndStart();
 
+    // Permission was granted later (LocationPermissionGate): fetch live GPS once, app-wide.
+    const onPermissionGranted = () => {
+      if (
+        localStorage.getItem("deliveryAddressMode") === "saved" &&
+        localStorage.getItem("userLocation")
+      ) return
+      if (permissionRefreshInFlight) return
+      permissionRefreshInFlight = getLocation(true, true)
+        .then((loc) => {
+          if (loc && loc.formattedAddress !== "Select location" && loc.city !== "Current Location") {
+            setLocation(loc)
+            localStorage.setItem("userLocation", JSON.stringify(loc))
+            localStorage.setItem("deliveryAddressMode", "current")
+            window.dispatchEvent(new CustomEvent("userLocationUpdated", { detail: { location: loc } }))
+            window.dispatchEvent(new Event("deliveryAddressModeChanged"))
+            setPermissionGranted(true)
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          permissionRefreshInFlight = null
+        })
+    }
+    window.addEventListener("liveLocationPermissionGranted", onPermissionGranted)
+
     // Cleanup timeout and watcher
     return () => {
       clearTimeout(loadingTimeout)
+      window.removeEventListener("liveLocationPermissionGranted", onPermissionGranted)
       debugLog("?? Cleaning up location watcher")
       stopWatchingLocation()
     }

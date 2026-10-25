@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { MapPin, Navigation, X } from 'lucide-react'
 import { isModuleAuthenticated } from '@food/utils/auth'
 
@@ -28,6 +28,8 @@ function resolveModule(pathname) {
   if (/^\/admin/.test(pathname) || AUTH_PATH_RE.test(pathname)) return null
   const hit = MODULES.find((m) => pathname.startsWith(m.prefix))
   if (!hit) return null
+  // Customers browse without signing in, so they must be asked for location too.
+  if (!hit.required) return hit
   try {
     return isModuleAuthenticated(hit.module) ? hit : null
   } catch {
@@ -53,6 +55,7 @@ const callNativeBridge = async (handler) => {
 
 export default function LocationPermissionGate() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const target = resolveModule(pathname)
   const moduleKey = target?.module || ''
   const required = Boolean(target?.required)
@@ -60,16 +63,23 @@ export default function LocationPermissionGate() {
   // null = fine / unknown, 'denied' = permission blocked, 'off' = device GPS off
   const [problem, setProblem] = useState(null)
   const [dismissed, setDismissed] = useState(() => {
+    // Session-only: a past "Not now" must not silence the prompt forever.
     try {
-      return (
-        sessionStorage.getItem(DISMISS_KEY) === '1' ||
-        localStorage.getItem(DISMISS_KEY) === '1'
-      )
+      return sessionStorage.getItem(DISMISS_KEY) === '1'
     } catch {
       return false
     }
   })
   const checkingRef = useRef(false)
+  const hadProblemRef = useRef(false)
+
+  // Tell location providers that GPS just became available so they replace the default city.
+  const announceGranted = useCallback(() => {
+    if (hadProblemRef.current) {
+      hadProblemRef.current = false
+      window.dispatchEvent(new Event('liveLocationPermissionGranted'))
+    }
+  }, [])
 
   const check = useCallback(async () => {
     if (!moduleKey || typeof navigator === 'undefined' || !navigator.geolocation || checkingRef.current) return
@@ -82,11 +92,17 @@ export default function LocationPermissionGate() {
         navigator.geolocation.getCurrentPosition(
           () => {
             setProblem(null)
+            announceGranted()
             resolve()
           },
           (err) => {
-            if (err?.code === 1) setProblem('denied')
-            else if (err?.code === 2) setProblem('off')
+            if (err?.code === 1) {
+              hadProblemRef.current = true
+              setProblem('denied')
+            } else if (err?.code === 2) {
+              hadProblemRef.current = true
+              setProblem('off')
+            }
             // code 3 (timeout) is a weak signal, not a blocked location: leave state as is
             resolve()
           },
@@ -96,7 +112,7 @@ export default function LocationPermissionGate() {
     } finally {
       checkingRef.current = false
     }
-  }, [moduleKey])
+  }, [moduleKey, announceGranted])
 
   // Ask right away, and re-check when the person returns from system settings.
   useEffect(() => {
@@ -146,7 +162,6 @@ export default function LocationPermissionGate() {
   const handleDismiss = useCallback(() => {
     try {
       sessionStorage.setItem(DISMISS_KEY, '1')
-      localStorage.setItem(DISMISS_KEY, '1')
     } catch {
       /* ignore */
     }
@@ -161,38 +176,43 @@ export default function LocationPermissionGate() {
         navigator.geolocation.getCurrentPosition(
           () => {
             setProblem(null)
+            announceGranted()
           },
           (err) => {
+            // Still blocked: keep the sheet (with instructions) up; "Not now" closes it.
             console.warn('[LocationGate] Permission error:', err?.message)
           },
-          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
         )
       }
     } catch (e) {
       console.warn('[LocationGate] Enable error:', e)
-    } finally {
-      // Dismiss the card so the user is never stuck
-      handleDismiss()
     }
   }
 
-  // If customer already has an active location saved in storage, don't block them with this modal
+  // Only an address the customer explicitly picked ("saved" mode) skips this prompt.
+  // The auto-filled default city is not a real location.
   const hasUserLocation = !required && (() => {
     try {
-      return Boolean(localStorage.getItem('userLocation'))
+      return (
+        localStorage.getItem('deliveryAddressMode') === 'saved' &&
+        Boolean(localStorage.getItem('userLocation'))
+      )
     } catch {
       return false
     }
   })()
 
-  if (!target || !problem || dismissed || hasUserLocation) return null
+  // Customers (Zomato-style): the home screen stays hidden until location is on or an address is picked.
+  const blocking = !required
+  if (!target || !problem || (dismissed && !blocking) || hasUserLocation) return null
 
   const isOff = problem === 'off'
 
   return (
     <div
-      className="fixed inset-0 z-[100001] flex items-end justify-center bg-black/60 sm:items-center p-0 sm:p-4 transition-opacity animate-in fade-in"
-      onClick={handleDismiss}
+      className={`fixed inset-0 z-[100001] flex items-end justify-center sm:items-center p-0 sm:p-4 transition-opacity animate-in fade-in ${blocking ? 'bg-white' : 'bg-black/60'}`}
+      onClick={blocking ? undefined : handleDismiss}
     >
       <div
         role="alertdialog"
@@ -201,14 +221,16 @@ export default function LocationPermissionGate() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top-right close button */}
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
-          aria-label="Close"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {!blocking && (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
 
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-50">
           {isOff ? <Navigation className="h-8 w-8 text-orange-500" /> : <MapPin className="h-8 w-8 text-orange-500" />}
@@ -238,13 +260,23 @@ export default function LocationPermissionGate() {
         >
           {isOff ? "I've turned it on" : 'Allow location'}
         </button>
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="mt-3 w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all cursor-pointer"
-        >
-          Not now
-        </button>
+        {blocking ? (
+          <button
+            type="button"
+            onClick={() => navigate('/cart/address-selector')}
+            className="mt-3 w-full py-2.5 text-sm font-semibold text-orange-600 hover:text-orange-700 active:scale-95 transition-all cursor-pointer"
+          >
+            Enter location manually
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="mt-3 w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all cursor-pointer"
+          >
+            Not now
+          </button>
+        )}
       </div>
     </div>
   )
