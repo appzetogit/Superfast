@@ -308,6 +308,16 @@ export default function EditRestaurant() {
 
   const handleSaveDetails = async () => {
     if (!restaurantId) return
+    const ownerPhone = String(detailsForm.ownerPhone || "").trim()
+    const primaryPhone = String(detailsForm.primaryContactNumber || "").trim()
+    if (!/^\d{10}$/.test(ownerPhone)) {
+      alert("Owner phone number must be exactly 10 digits")
+      return
+    }
+    if (primaryPhone && !/^\d{10}$/.test(primaryPhone)) {
+      alert("Primary contact number must be exactly 10 digits")
+      return
+    }
     try {
       setSavingDetails(true)
 
@@ -490,11 +500,27 @@ export default function EditRestaurant() {
                 </div>
                 <div>
                   <Label>Owner Phone</Label>
-                  <Input value={detailsForm.ownerPhone} onChange={(e) => setDetailsForm((p) => ({ ...p, ownerPhone: e.target.value }))} />
+                  <Input
+                    value={detailsForm.ownerPhone}
+                    inputMode="numeric"
+                    maxLength={10}
+                    onChange={(e) => setDetailsForm((p) => ({ ...p, ownerPhone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  />
+                  {detailsForm.ownerPhone && detailsForm.ownerPhone.length !== 10 && (
+                    <p className="text-xs text-red-600 mt-1">Phone number must be exactly 10 digits</p>
+                  )}
                 </div>
                 <div>
                   <Label>Primary Contact Number</Label>
-                  <Input value={detailsForm.primaryContactNumber} onChange={(e) => setDetailsForm((p) => ({ ...p, primaryContactNumber: e.target.value }))} />
+                  <Input
+                    value={detailsForm.primaryContactNumber}
+                    inputMode="numeric"
+                    maxLength={10}
+                    onChange={(e) => setDetailsForm((p) => ({ ...p, primaryContactNumber: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  />
+                  {detailsForm.primaryContactNumber && detailsForm.primaryContactNumber.length !== 10 && (
+                    <p className="text-xs text-red-600 mt-1">Phone number must be exactly 10 digits</p>
+                  )}
                 </div>
                 <div>
                   <Label>Estimated Delivery Time (minutes)</Label>

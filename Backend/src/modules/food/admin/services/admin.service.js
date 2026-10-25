@@ -2936,8 +2936,16 @@ export async function updateRestaurantById(id, body = {}) {
 
     if (body.ownerName !== undefined) doc.ownerName = toStr(body.ownerName);
     if (body.ownerEmail !== undefined) doc.ownerEmail = toStr(body.ownerEmail).toLowerCase();
-    if (body.ownerPhone !== undefined) doc.ownerPhone = toStr(body.ownerPhone);
-    if (body.primaryContactNumber !== undefined) doc.primaryContactNumber = toStr(body.primaryContactNumber);
+    // Store phones as plain 10 digits so OTP login (which matches on the number) always finds the restaurant.
+    const normalizePhone = (v, label) => {
+        const digits = toStr(v).replace(/\D/g, '');
+        if (!digits) return '';
+        const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+        if (!/^\d{10}$/.test(national)) throw new ValidationError(`${label} must be a valid 10 digit number`);
+        return national;
+    };
+    if (body.ownerPhone !== undefined) doc.ownerPhone = normalizePhone(body.ownerPhone, 'Owner phone');
+    if (body.primaryContactNumber !== undefined) doc.primaryContactNumber = normalizePhone(body.primaryContactNumber, 'Primary contact number');
 
     if (body.pureVegRestaurant !== undefined) {
         doc.pureVegRestaurant = parseBooleanLike(body.pureVegRestaurant, 'pureVegRestaurant');

@@ -325,6 +325,8 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
     $or: [
       ...phoneOrFields("ownerPhone"),
       ...phoneOrFields("primaryContactNumber"),
+      // Derived from ownerPhone on every save, so it matches even if the raw value has spaces/dashes.
+      ...(last10 ? [{ ownerPhoneLast10: last10 }] : []),
     ],
   });
   if (!restaurant) {
