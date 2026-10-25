@@ -173,25 +173,25 @@ export default function LocationPermissionGate() {
     setProblem(null)
   }, [])
 
-  const handleEnable = async () => {
-    try {
-      await callNativeBridge(problem === 'off' ? 'openLocationSettings' : 'requestLocationPermission')
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          () => {
-            setProblem(null)
-            announceGranted()
-          },
-          (err) => {
-            // Still blocked: keep the sheet (with instructions) up; "Not now" closes it.
-            console.warn('[LocationGate] Permission error:', err?.message)
-          },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
-        )
-      }
-    } catch (e) {
-      console.warn('[LocationGate] Enable error:', e)
-    }
+  const handleEnable = () => {
+    // Native wrappers can open their own settings screen (fire and forget, keep the tap's user gesture).
+    callNativeBridge(problem === 'off' ? 'openLocationSettings' : 'requestLocationPermission')
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    // Called synchronously from the tap: with high accuracy Android Chrome shows the system
+    // permission prompt and, if device location is off, Google's "Turn on" Location Accuracy dialog.
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        gotFixRef.current = true
+        setProblem(null)
+        announceGranted()
+      },
+      (err) => {
+        // Still blocked (e.g. "No, thanks"): keep the screen up with instructions.
+        console.warn('[LocationGate] Permission error:', err?.message)
+        if (err?.code === 1) setProblem('denied')
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+    )
   }
 
   // Only an address the customer explicitly picked ("saved" mode) skips this prompt.
@@ -212,6 +212,40 @@ export default function LocationPermissionGate() {
   if (!target || !problem || (dismissed && !blocking) || hasUserLocation) return null
 
   const isOff = problem === 'off'
+
+  if (blocking) {
+    return (
+      <div className="fixed inset-0 z-[100001] flex flex-col items-center bg-white px-5 pb-8 pt-16">
+        <h2 className="max-w-xs text-center text-lg font-semibold text-gray-900">
+          Set your location to start exploring restaurants near you
+        </h2>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex h-40 w-40 items-center justify-center rounded-full bg-rose-50">
+            <MapPin className="h-20 w-20 text-rose-500" />
+          </div>
+        </div>
+        {problem === 'denied' && (
+          <p className="mb-3 max-w-xs text-center text-xs text-gray-500">
+            Location is blocked. Open the app/browser Settings &rarr; Permissions &rarr; Location, choose &ldquo;Allow&rdquo;, then come back.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={handleEnable}
+          className="w-full max-w-md rounded-lg bg-[#f4505e] py-3.5 text-sm font-semibold text-white shadow-md active:scale-95 transition-all cursor-pointer"
+        >
+          Enable Device Location
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/cart/address-selector')}
+          className="mt-3 w-full max-w-md rounded-lg border border-[#f4505e] py-3.5 text-sm font-semibold text-[#f4505e] active:scale-95 transition-all cursor-pointer"
+        >
+          Enter Your Location Manually
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div
