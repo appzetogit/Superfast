@@ -334,6 +334,10 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
     ],
   });
   if (!restaurant) {
+    logger.warn(
+      { phone, last10, db: mongoose.connection.name, restaurants: await FoodRestaurant.estimatedDocumentCount() },
+      "Restaurant login: no restaurant matched verified phone, asking to register",
+    );
     // Phone has been successfully verified, but no restaurant exists yet.
     // Frontend will use this to redirect into registration/onboarding.
     return {
