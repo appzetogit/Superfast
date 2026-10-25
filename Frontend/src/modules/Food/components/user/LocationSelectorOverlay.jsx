@@ -207,7 +207,6 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         ...x,
         distanceMeters: calculateDistance(safeLat, safeLng, x.lat, x.lng),
       }))
-      .filter((x) => (x.distanceMeters ?? Infinity) <= 150000)
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
       .slice(0, 8)
   }

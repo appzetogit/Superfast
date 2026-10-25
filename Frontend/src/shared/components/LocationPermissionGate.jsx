@@ -72,6 +72,7 @@ export default function LocationPermissionGate() {
   })
   const checkingRef = useRef(false)
   const hadProblemRef = useRef(false)
+  const gotFixRef = useRef(false)
 
   // Tell location providers that GPS just became available so they replace the default city.
   const announceGranted = useCallback(() => {
@@ -91,6 +92,7 @@ export default function LocationPermissionGate() {
       await new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           () => {
+            gotFixRef.current = true
             setProblem(null)
             announceGranted()
             resolve()
@@ -99,14 +101,16 @@ export default function LocationPermissionGate() {
             if (err?.code === 1) {
               hadProblemRef.current = true
               setProblem('denied')
-            } else if (err?.code === 2) {
+            } else if (err?.code === 2 || (err?.code === 3 && !gotFixRef.current)) {
+              // Phone GPS switched off usually shows up as "unavailable" or as a timeout when
+              // we have never received a fix, so treat both as "location is off".
               hadProblemRef.current = true
               setProblem('off')
             }
-            // code 3 (timeout) is a weak signal, not a blocked location: leave state as is
             resolve()
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+          // maximumAge 0: a cached fix must not hide the fact that GPS is now off
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
         )
       })
     } finally {

@@ -352,8 +352,6 @@ export default function AddressSelectorPage() {
         ...x,
         distanceMeters: calculateDistance(safeLat, safeLng, x.lat, x.lng),
       }))
-      // Filter out locations from other states that are more than 150km away when local delivery is expected
-      .filter((x) => (x.distanceMeters ?? Infinity) <= 150000)
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
       .slice(0, 8)
   }

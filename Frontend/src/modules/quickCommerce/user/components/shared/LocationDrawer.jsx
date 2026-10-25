@@ -136,6 +136,27 @@ const LocationDrawer = ({ isOpen, onClose }) => {
 
   const handleSelectPlace = useCallback(
     (prediction) => {
+      if (prediction?.osm) {
+        const { lat, lng, address = {}, name } = prediction.osm;
+        updateLocation(
+          {
+            name,
+            time: "12-15 mins",
+            city: address.city || address.town || address.village || address.county || currentLocation.city,
+            state: address.state || currentLocation.state,
+            pincode: address.postcode || currentLocation.pincode,
+            latitude: lat,
+            longitude: lng,
+          },
+          { persist: true, updateSavedHome: false, mode: "saved" },
+        );
+        setSearchQuery("");
+        setPlacePredictions([]);
+        setPlacesError("");
+        setIsSearchFocused(false);
+        onClose();
+        return;
+      }
       const geocoder = geocoderRef.current;
       if (!geocoder || !prediction?.place_id) return;
 
@@ -195,14 +216,44 @@ const LocationDrawer = ({ isOpen, onClose }) => {
     }
 
     const timer = setTimeout(async () => {
-      const ready = await initGooglePlaces();
-      if (!ready || !autocompleteServiceRef.current) return;
-
       const requestId = latestPlacesRequestRef.current + 1;
       latestPlacesRequestRef.current = requestId;
 
+      // OpenStreetMap search, used when the Google key is missing/rejected.
+      const searchOsm = async () => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=in&limit=${MAX_SUGGESTIONS}&q=${encodeURIComponent(query)}`,
+            { headers: { Accept: "application/json", "Accept-Language": "en" } },
+          );
+          const list = await res.json();
+          if (requestId !== latestPlacesRequestRef.current) return;
+          setPlacePredictions(
+            (Array.isArray(list) ? list : []).map((r) => {
+              const [main, ...rest] = String(r.display_name || "").split(",");
+              return {
+                place_id: `osm-${r.place_id}`,
+                osm: { lat: Number(r.lat), lng: Number(r.lon), address: r.address || {}, name: r.display_name },
+                structured_formatting: { main_text: main, secondary_text: rest.join(",").trim() },
+              };
+            }),
+          );
+        } catch {
+          if (requestId === latestPlacesRequestRef.current) setPlacePredictions([]);
+        } finally {
+          if (requestId === latestPlacesRequestRef.current) setIsSearchingPlaces(false);
+        }
+      };
+
       setIsSearchingPlaces(true);
       setPlacesError("");
+
+      const ready = await initGooglePlaces();
+      if (!ready || !autocompleteServiceRef.current) {
+        setPlacesError("");
+        await searchOsm();
+        return;
+      }
 
       const request = {
         input: query,
@@ -216,11 +267,12 @@ const LocationDrawer = ({ isOpen, onClose }) => {
         (predictions, status) => {
           if (requestId !== latestPlacesRequestRef.current) return;
 
-          setIsSearchingPlaces(false);
           if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+            setIsSearchingPlaces(false);
             setPlacePredictions(predictions.slice(0, MAX_SUGGESTIONS));
           } else {
-            setPlacePredictions([]);
+            // REQUEST_DENIED / key problems / no results: fall back to OpenStreetMap
+            searchOsm();
           }
         },
       );
