@@ -316,9 +316,12 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
   const digits = String(phone || "").replace(/\D/g, "");
   const last10 = digits.slice(-10);
   const phoneCandidates = [phone, digits, last10].filter(Boolean);
+  // Stored numbers can contain spaces/dashes (e.g. "91 8852-052445"), so allow non-digits between digits.
+  const looseLast10 = last10 ? new RegExp(last10.split("").join("\\D*") + "\\D*$") : null;
   const phoneOrFields = (field) => [
     { [field]: { $in: phoneCandidates } },
     ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
+    ...(looseLast10 ? [{ [field]: { $regex: looseLast10 } }] : []),
   ];
 
   const restaurant = await FoodRestaurant.findOne({
@@ -327,6 +330,7 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
       ...phoneOrFields("primaryContactNumber"),
       // Derived from ownerPhone on every save, so it matches even if the raw value has spaces/dashes.
       ...(last10 ? [{ ownerPhoneLast10: last10 }] : []),
+      ...(digits ? [{ ownerPhoneDigits: { $in: [digits, last10] } }] : []),
     ],
   });
   if (!restaurant) {

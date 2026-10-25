@@ -2186,6 +2186,34 @@ export default function RestaurantOnboarding() {
     return () => { cancelled = true }
   }, [step])
 
+  // Auto-fill the restaurant location as soon as location permission is available
+  // (already granted, or just allowed from the permission gate) - no manual tap needed.
+  const autoLocationRef = useRef({ run: null, hasLocation: false, tried: false })
+  autoLocationRef.current.run = handleUseCurrentLocation
+  autoLocationRef.current.hasLocation = Boolean(step1?.location?.latitude && step1?.location?.longitude)
+
+  useEffect(() => {
+    if (step !== 1) return undefined
+    const tryAuto = () => {
+      const ref = autoLocationRef.current
+      if (ref.hasLocation || ref.tried) return
+      ref.tried = true
+      ref.run?.()
+    }
+    const onGranted = () => {
+      autoLocationRef.current.tried = false
+      tryAuto()
+    }
+    window.addEventListener("liveLocationPermissionGranted", onGranted)
+    if (!zonesLoading && navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "geolocation" })
+        .then((s) => { if (s.state === "granted") tryAuto() })
+        .catch(() => {})
+    }
+    return () => window.removeEventListener("liveLocationPermissionGranted", onGranted)
+  }, [step, zonesLoading])
+
   const renderStep2 = () => (
     <div className="space-y-6">
       {/* Images section */}

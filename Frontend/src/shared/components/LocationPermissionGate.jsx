@@ -73,11 +73,15 @@ export default function LocationPermissionGate() {
   const checkingRef = useRef(false)
   const hadProblemRef = useRef(false)
   const gotFixRef = useRef(false)
+  const announcedRef = useRef(false)
 
   // Tell location providers that GPS just became available so they replace the default city.
+  // Also fires on the very first fix: when the browser/iOS prompt is answered with "Allow" there
+  // was never a "denied" state, yet nobody has fetched the live location yet.
   const announceGranted = useCallback(() => {
-    if (hadProblemRef.current) {
+    if (hadProblemRef.current || !announcedRef.current) {
       hadProblemRef.current = false
+      announcedRef.current = true
       window.dispatchEvent(new Event('liveLocationPermissionGranted'))
     }
   }, [])
@@ -110,7 +114,9 @@ export default function LocationPermissionGate() {
             resolve()
           },
           // maximumAge 0: a cached fix must not hide the fact that GPS is now off
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+          // iOS Safari counts the time the permission prompt is open towards the timeout, so a
+          // short timeout expires before the person taps "Allow" and wrongly reports "GPS off".
+          { enableHighAccuracy: false, timeout: 30000, maximumAge: 0 },
         )
       })
     } finally {

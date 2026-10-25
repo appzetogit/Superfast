@@ -306,8 +306,9 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
       const { adminAPI } = await import("@/services/api");
       const response = await adminAPI.updateOrderItems(
         orderId,
+        // Send removed items too (quantity 0): the backend keeps any existing item that is
+        // missing from the payload, so dropping them here made deletes silently do nothing.
         draftItems
-          .filter((item) => item.quantity > 0)
           .map(({ itemId, quantity, variantId, variantName, price, name, isVeg, image }) => ({
             itemId,
             quantity,

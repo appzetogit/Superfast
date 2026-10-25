@@ -5492,6 +5492,72 @@ export async function rejectDeliveryPartner(id, reason) {
     return updated;
 }
 
+export async function updateDeliveryPartnerById(id, body = {}) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const partner = await FoodDeliveryPartner.findById(id);
+    if (!partner) return null;
+
+    const toStr = (v) => (v != null ? String(v).trim() : '');
+    const set = {};
+
+    if (body.name !== undefined) {
+        const name = toStr(body.name);
+        if (!name) throw new ValidationError('Name cannot be empty');
+        set.name = name;
+    }
+    if (body.email !== undefined) set.email = toStr(body.email).toLowerCase();
+
+    if (body.phone !== undefined) {
+        const digits = toStr(body.phone).replace(/\D/g, '');
+        const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+        if (!/^\d{10}$/.test(national)) throw new ValidationError('Phone number must be a valid 10 digit number');
+        const clash = await FoodDeliveryPartner.findOne({
+            _id: { $ne: partner._id },
+            phone: { $regex: new RegExp(`${national}($|-vc)`) }
+        }).select('_id').lean();
+        if (clash) throw new ValidationError('Another delivery partner already uses this phone number');
+        // Keep the "-vc-" suffix of vehicle-change records untouched.
+        if (!String(partner.phone || '').includes('-vc')) set.phone = national;
+    }
+
+    if (body.aadharNumber !== undefined) {
+        const v = toStr(body.aadharNumber).replace(/\s/g, '');
+        if (v && !/^\d{12}$/.test(v)) throw new ValidationError('Aadhar number must be 12 digits');
+        set.aadharNumber = v;
+    }
+    if (body.panNumber !== undefined) {
+        const v = toStr(body.panNumber).toUpperCase();
+        if (v && !/^[A-Z]{5}\d{4}[A-Z]$/.test(v)) throw new ValidationError('PAN number must be in format ABCDE1234F');
+        set.panNumber = v;
+    }
+    if (body.drivingLicenseNumber !== undefined) {
+        set.drivingLicenseNumber = toStr(body.drivingLicenseNumber).toUpperCase();
+    }
+
+    const getUrl = (v) => (v && typeof v === 'object' ? (v.url || v.secure_url) : v);
+    for (const key of ['profilePhoto', 'aadharPhoto', 'panPhoto', 'drivingLicensePhoto']) {
+        if (body[key] !== undefined) {
+            const url = toStr(getUrl(body[key]));
+            if (url && !/^https?:\/\//i.test(url)) throw new ValidationError(`Invalid ${key} URL`);
+            set[key] = url;
+        }
+    }
+
+    if (Object.keys(set).length === 0) return getDeliveryPartnerById(id);
+
+    const phoneChanged = set.phone !== undefined && set.phone !== partner.phone;
+    try {
+        await FoodDeliveryPartner.updateOne({ _id: partner._id }, { $set: set }, { runValidators: true });
+    } catch (e) {
+        if (e?.code === 11000) throw new ValidationError('Another delivery partner already uses this phone number');
+        throw e;
+    }
+    // Old number's sessions must not stay logged in after the number changes.
+    if (phoneChanged) await FoodRefreshToken.deleteMany({ userId: partner._id });
+
+    return getDeliveryPartnerById(id);
+}
+
 export async function deleteDeliveryPartner(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const partner = await FoodDeliveryPartner.findByIdAndUpdate(

@@ -1309,6 +1309,25 @@ export async function getContactMessages(req, res, next) {
     }
 }
 
+export async function updateDeliveryPartnerById(req, res, next) {
+    try {
+        const delivery = await adminService.updateDeliveryPartnerById(req.params.id, req.body || {});
+        if (!delivery) {
+            return res.status(404).json({
+                success: false,
+                message: 'Delivery partner not found'
+            });
+        }
+        res.status(200).json({
+            success: true,
+            message: 'Delivery partner updated successfully',
+            data: { delivery }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getDeliveryPartnerById(req, res, next) {
     try {
         const delivery = await adminService.getDeliveryPartnerById(req.params.id);

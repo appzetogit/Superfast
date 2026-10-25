@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { Search, Download, ChevronDown, Eye, User, Star, ChevronsUpDown, ChevronUp, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, PowerOff, X } from "lucide-react"
-import { adminAPI } from "@food/api"
+import { adminAPI, uploadAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportDeliverymenToExcel, exportDeliverymenToPDF } from "@food/components/admin/deliveryman/deliverymanExportUtils"
@@ -269,6 +269,100 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
       alert(err.response?.data?.message || "Failed to load details")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState(null)
+  const [editErrors, setEditErrors] = useState({})
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [uploadingDoc, setUploadingDoc] = useState(null)
+
+  const DOC_FIELDS = [
+    { key: "aadharPhoto", label: "Aadhar Card Photo" },
+    { key: "panPhoto", label: "PAN Card Photo" },
+    { key: "drivingLicensePhoto", label: "Driving License Photo" },
+    { key: "profilePhoto", label: "Profile Photo" },
+  ]
+
+  const validateEditForm = (f) => {
+    const errors = {}
+    if (!f.name.trim()) errors.name = "Name is required"
+    if (!/^\d{10}$/.test(f.phone)) errors.phone = "Phone number must be exactly 10 digits"
+    if (f.aadharNumber && !/^\d{12}$/.test(f.aadharNumber)) errors.aadharNumber = "Aadhar number must be exactly 12 digits"
+    if (f.panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(f.panNumber)) errors.panNumber = "PAN must be in format ABCDE1234F"
+    return errors
+  }
+
+  const updateEditField = (key, value) => {
+    setEditForm((prev) => {
+      const next = { ...prev, [key]: value }
+      setEditErrors(validateEditForm(next))
+      return next
+    })
+  }
+
+  const handleEdit = async (deliveryman) => {
+    try {
+      const response = await adminAPI.getDeliveryPartnerById(deliveryman._id)
+      const d = response?.data?.data?.delivery
+      if (!d) {
+        alert("Failed to load details")
+        return
+      }
+      setEditForm({
+        id: d._id,
+        name: d.name || "",
+        phone: String(d.phone || "").replace(/\D/g, "").slice(-10),
+        aadharNumber: d.aadharNumber || "",
+        panNumber: d.panNumber || "",
+        drivingLicenseNumber: d.drivingLicenseNumber || "",
+        aadharPhoto: d.aadharPhoto || "",
+        panPhoto: d.panPhoto || "",
+        drivingLicensePhoto: d.drivingLicensePhoto || "",
+        profilePhoto: d.profilePhoto || "",
+      })
+      setEditErrors({})
+      setIsEditOpen(true)
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to load details")
+    }
+  }
+
+  const handleDocUpload = async (key, file) => {
+    if (!file) return
+    try {
+      setUploadingDoc(key)
+      const res = await uploadAPI.uploadMedia(file, { folder: "food/delivery/documents" })
+      const url = (res?.data?.data || res?.data)?.url
+      if (!url) throw new Error("Upload failed")
+      setEditForm((prev) => ({ ...prev, [key]: url }))
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || "Failed to upload document")
+    } finally {
+      setUploadingDoc(null)
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    const errors = validateEditForm(editForm)
+    setEditErrors(errors)
+    if (Object.keys(errors).length > 0) return
+    try {
+      setSavingEdit(true)
+      const { id, ...payload } = editForm
+      await adminAPI.updateDeliveryPartner(id, payload)
+      toast.success("Delivery partner updated successfully")
+      setIsEditOpen(false)
+      setDeliverymen((prev) =>
+        prev.map((dm) => (String(dm._id) === String(id)
+          ? { ...dm, name: payload.name, phone: payload.phone, profilePhoto: payload.profilePhoto || dm.profilePhoto }
+          : dm))
+      )
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to update delivery partner")
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -847,6 +941,13 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
+                                onClick={() => handleEdit(dm)}
+                                className="p-1.5 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                title="Edit Phone & Documents"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => handleDelete(dm)}
                                 disabled={deletingDeliveryId === String(dm._id)}
                                 className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
@@ -1281,6 +1382,83 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
               className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             >
               Close
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Phone & Documents Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl bg-white p-0 max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200">
+            <DialogTitle className="text-xl font-bold text-slate-900">Edit Delivery Partner</DialogTitle>
+          </DialogHeader>
+          {editForm && (
+            <div className="px-6 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { key: "name", label: "Name" },
+                  { key: "phone", label: "Phone Number", digits: 10 },
+                  { key: "aadharNumber", label: "Aadhar Number", digits: 12 },
+                  { key: "panNumber", label: "PAN Number", upper: true, max: 10 },
+                  { key: "drivingLicenseNumber", label: "Driving License Number", upper: true },
+                ].map((f) => (
+                  <div key={f.key}>
+                    <label className="text-xs font-semibold text-slate-500 uppercase">{f.label}</label>
+                    <input
+                      value={editForm[f.key]}
+                      inputMode={f.digits ? "numeric" : undefined}
+                      maxLength={f.digits || f.max}
+                      onChange={(e) => {
+                        let v = e.target.value
+                        if (f.digits) v = v.replace(/\D/g, "").slice(0, f.digits)
+                        if (f.upper) v = v.toUpperCase()
+                        updateEditField(f.key, v)
+                      }}
+                      className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {editErrors[f.key] && <p className="text-xs text-red-600 mt-1">{editErrors[f.key]}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {DOC_FIELDS.map((d) => (
+                  <div key={d.key}>
+                    <label className="text-xs font-semibold text-slate-500 uppercase">{d.label}</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      {editForm[d.key] && (
+                        <a href={editForm[d.key]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700">
+                          <ExternalLink className="w-3 h-3" /> View
+                        </a>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingDoc === d.key}
+                        onChange={(e) => handleDocUpload(d.key, e.target.files?.[0])}
+                        className="text-xs w-full"
+                      />
+                      {uploadingDoc === d.key && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">Phone number badalne par partner ko naye number se dobara login karna hoga.</p>
+            </div>
+          )}
+          <DialogFooter className="px-6 pb-6 border-t border-slate-200 pt-4">
+            <button
+              onClick={() => setIsEditOpen(false)}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={savingEdit || !!uploadingDoc}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {savingEdit ? "Saving..." : "Save"}
             </button>
           </DialogFooter>
         </DialogContent>
