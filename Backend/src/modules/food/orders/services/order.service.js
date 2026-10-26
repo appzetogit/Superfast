@@ -1822,16 +1822,22 @@ export async function calculateOrder(userId, dto) {
     mixedOrderAngleLimit: 35
   };
 
-  const feeSettings = {
-    ...defaultFeeSettings,
-    ...(feeDoc || {})
-  };
+  // Dev defaults apply only when admin has never saved fee settings. Once a settings document
+  // exists, a field the admin left empty stays empty (no hidden Rs 25 fee / Rs 149 free threshold).
+  const feeSettings = feeDoc
+    ? {
+        mixedOrderDistanceLimit: defaultFeeSettings.mixedOrderDistanceLimit,
+        mixedOrderAngleLimit: defaultFeeSettings.mixedOrderAngleLimit,
+        ...feeDoc,
+      }
+    : { ...defaultFeeSettings };
+  const emptyFallback = feeDoc ? { platformFee: 0, gstRate: 0, deliveryFee: 0, freeDeliveryThreshold: 0 } : defaultFeeSettings;
 
   // Ensure individual fields are numbers and not NaN/undefined even if feeDoc exists
-  feeSettings.platformFee = Number(feeSettings.platformFee ?? defaultFeeSettings.platformFee);
-  feeSettings.gstRate = Number(feeSettings.gstRate ?? defaultFeeSettings.gstRate);
-  feeSettings.deliveryFee = Number(feeSettings.deliveryFee ?? defaultFeeSettings.deliveryFee);
-  feeSettings.freeDeliveryThreshold = Number(feeSettings.freeDeliveryThreshold ?? defaultFeeSettings.freeDeliveryThreshold);
+  feeSettings.platformFee = Number(feeSettings.platformFee ?? emptyFallback.platformFee);
+  feeSettings.gstRate = Number(feeSettings.gstRate ?? emptyFallback.gstRate);
+  feeSettings.deliveryFee = Number(feeSettings.deliveryFee ?? emptyFallback.deliveryFee);
+  feeSettings.freeDeliveryThreshold = Number(feeSettings.freeDeliveryThreshold ?? emptyFallback.freeDeliveryThreshold);
   feeSettings.mixedOrderDistanceLimit = Number(feeSettings.mixedOrderDistanceLimit ?? defaultFeeSettings.mixedOrderDistanceLimit);
   feeSettings.mixedOrderAngleLimit = Number(feeSettings.mixedOrderAngleLimit ?? defaultFeeSettings.mixedOrderAngleLimit);
 
@@ -1850,7 +1856,10 @@ export async function calculateOrder(userId, dto) {
   if (orderType === "quick") {
     const packagingFee = 0;
     const platformFee = feeSettings.platformFee;
-    const deliveryFee = feeSettings.deliveryFee;
+    // Quick orders use the flat fee but still honour the admin's free-delivery threshold.
+    const quickFreeThreshold = Number(feeSettings.freeDeliveryThreshold || 0);
+    const deliveryFee =
+      quickFreeThreshold > 0 && subtotal >= quickFreeThreshold ? 0 : feeSettings.deliveryFee;
     const gstRate = feeSettings.gstRate;
     const tax =
       Number.isFinite(gstRate) && gstRate > 0
@@ -1905,7 +1914,8 @@ export async function calculateOrder(userId, dto) {
       const restLng = primaryRestaurant.location?.coordinates?.[0] ?? primaryRestaurant.location?.longitude ?? primaryRestaurant.longitude;
       if (Number.isFinite(restLat) && Number.isFinite(restLng)) {
         const distKm = haversineKm(restLat, restLng, custLat, custLng);
-        calculatedDistKm = distKm;
+        // Same 0.1 km rounding createOrder uses, so the cart quote and the placed order agree.
+        calculatedDistKm = Math.round(distKm * 10) / 10;
         if (distKm > 25) {
           throw new ValidationError(
             `Delivery location is too far (${Math.round(distKm)} km away) from ${primaryRestaurant.restaurantName || 'this restaurant'}. Maximum delivery radius is 25 km.`
@@ -2038,7 +2048,7 @@ export async function calculateOrder(userId, dto) {
     }
   }
   const quickDeliveryFee = orderType === "mixed"
-    ? Number(feeSettings.deliveryFee || 25)
+    ? Number(feeSettings.deliveryFee ?? 0)
     : 0;
   const normalDeliveryFee =
     orderType === "mixed" ? Math.max(deliveryFee, quickDeliveryFee) : deliveryFee;
@@ -2295,6 +2305,32 @@ export async function createOrder(userId, dto) {
     total: Number(dto.pricing?.total ?? 0),
     currency: String(dto.pricing?.currency || "INR"),
   };
+
+  // Fees, tax and discount are recomputed on the server from DB prices and fee settings;
+  // whatever the client sent in dto.pricing for them is ignored (it could be tampered with).
+  {
+    const { pricing: serverPricing } = await calculateOrder(userId, dto);
+    let serverDeliveryFee = Number(serverPricing.deliveryFee || 0);
+    if (orderType === "mixed" && requestedDeliveryFleet === "express") {
+      const express = (serverPricing.deliveryOptions || []).find((o) => o.code === "express");
+      if (express) serverDeliveryFee = Number(express.deliveryFee || 0);
+    }
+    normalizedPricing.subtotal = Number(serverPricing.subtotal);
+    normalizedPricing.tax = Number(serverPricing.tax || 0);
+    normalizedPricing.packagingFee = Number(serverPricing.packagingFee || 0);
+    normalizedPricing.deliveryFee = serverDeliveryFee;
+    normalizedPricing.platformFee = Number(serverPricing.platformFee || 0);
+    normalizedPricing.discount = Number(serverPricing.discount || 0);
+    normalizedPricing.total = Math.max(
+      0,
+      normalizedPricing.subtotal +
+        normalizedPricing.tax +
+        normalizedPricing.packagingFee +
+        normalizedPricing.deliveryFee +
+        normalizedPricing.platformFee -
+        normalizedPricing.discount,
+    );
+  }
   const computedTotal = Math.max(
     0,
     (Number.isFinite(normalizedPricing.subtotal)
@@ -2382,7 +2418,7 @@ export async function createOrder(userId, dto) {
   const riderEarning = baseRiderEarning + incentiveAmount;
   const quickDeliveryFeeBase =
     orderType === "mixed" && dispatchStrategy === "express_split"
-      ? Number(activeFeeSettings?.deliveryFee || 25)
+      ? Number(activeFeeSettings?.deliveryFee ?? (activeFeeSettings ? 0 : 25))
       : 0;
   const quickLegDeliveryFee =
     orderType === "mixed" && dispatchStrategy === "express_split"

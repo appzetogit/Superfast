@@ -25,17 +25,6 @@ export function computeDeliveryFee({ feeSettings, subtotal, restaurantZoneId, di
   const allRanges = Array.isArray(feeSettings.deliveryFeeRanges) ? feeSettings.deliveryFeeRanges : [];
   const zoneDeliveryFees = Array.isArray(feeSettings.zoneDeliveryFees) ? feeSettings.zoneDeliveryFees : [];
 
-  // ── TEMP DEBUG ──────────────────────────────────────────────────────────────
-  console.log('[FEE DEBUG] restaurantZoneId raw:', restaurantZoneId);
-  console.log('[FEE DEBUG] restZoneIdStr:', restZoneIdStr);
-  console.log('[FEE DEBUG] enableZoneFees:', enableZoneFees);
-  console.log('[FEE DEBUG] enablePerKmFee:', enablePerKmFee);
-  console.log('[FEE DEBUG] enableRangeFee:', enableRangeFee);
-  console.log('[FEE DEBUG] distanceKm:', distanceKm);
-  console.log('[FEE DEBUG] zoneDeliveryFees count:', zoneDeliveryFees.length);
-  console.log('[FEE DEBUG] zoneDeliveryFees:', JSON.stringify(zoneDeliveryFees));
-  // ────────────────────────────────────────────────────────────────────────────
-
 
   // Priority 1: Zone-Specific Order Value Range Fee
   if (enableRangeFee && enableZoneFees && restZoneIdStr) {
@@ -106,8 +95,8 @@ export function computeDeliveryFee({ feeSettings, subtotal, restaurantZoneId, di
       }
     }
 
-    // When Zone-Wise Delivery Fee is enabled, if a zone does not have a fee configured in admin, return 0.
-    return 0;
+    // No usable fee configured for this zone: fall through to the global rules below
+    // (ranges, distance-based, per-km, default) instead of silently making delivery free.
   }
 
   // Priority 3: Global Range-Based Fee (where zoneId is null/undefined)

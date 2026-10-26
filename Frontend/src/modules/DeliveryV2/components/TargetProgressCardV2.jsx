@@ -56,23 +56,20 @@ export default function TargetProgressCardV2({ activeOrder = null }) {
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className="bg-white hover:bg-gray-50 text-gray-900 rounded-full px-3 py-1.5 shadow-md border border-emerald-300/80 flex items-center space-x-2 active:scale-95 transition-all shrink-0 cursor-pointer"
+        className="bg-white hover:bg-gray-50 text-gray-900 rounded-full pl-1.5 pr-2 py-1 shadow-md border border-emerald-300/80 flex items-center gap-1.5 active:scale-95 transition-all shrink-0 cursor-pointer"
       >
         <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
           <Trophy className="w-3.5 h-3.5" />
         </div>
         <div className="flex flex-col items-start text-left leading-tight">
-          <span className="text-[11px] font-black text-gray-900">Bonus Target</span>
-          <span className="text-[9.5px] font-bold text-gray-500">
-            {completedOrdersCount} / {nextTier ? nextTier.ordersCount : maxOrdersTarget} Orders
+          <span className="text-[10.5px] font-black text-gray-900 whitespace-nowrap">
+            {completedOrdersCount}/{nextTier ? nextTier.ordersCount : maxOrdersTarget} Orders
+            {nextTier && <span className="text-emerald-600"> · ₹{nextTier.bonusAmount}</span>}
+          </span>
+          <span className="text-[9px] font-bold text-gray-500 whitespace-nowrap">
+            {totalEarnedToday > 0 ? `Earned ₹${totalEarnedToday}` : 'Bonus Target'}
           </span>
         </div>
-        {nextTier && (
-          <span className="bg-emerald-500 text-white font-black text-[10.5px] px-2 py-0.5 rounded-full shadow-xs">
-            ₹{nextTier.bonusAmount}
-          </span>
-        )}
-        <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
       </button>
 
       {/* ─── LIGHT TARGET DETAILS MODAL ON CLICK (HIGHEST Z-INDEX & BACKDROP CLICK TO CLOSE) ─── */}
