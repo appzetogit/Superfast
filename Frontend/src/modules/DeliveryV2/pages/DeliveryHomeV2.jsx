@@ -210,13 +210,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const lastAutoArrivalRef = useRef({ PICKING_UP: false, PICKED_UP: false });
 
   const [zoom, setZoom] = useState(14);
-  const [isSimMode, setIsSimMode] = useState(false);
-  const [simPath, setSimPath] = useState([]);
-  const [simIndex, setSimIndex] = useState(0);
-  const [simProgress, setSimProgress] = useState(0); // 0 to 1 between points
   const [activePolyline, setActivePolyline] = useState(null);
   const mapRef = useRef(null);
-  const isSimModeRef = useRef(isSimMode);
 
   // The app cannot switch GPS on itself: keep a banner up until the rider does it
   const alertGpsOff = useCallback((denied = false) => {
@@ -273,29 +268,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     else toast.dismiss('gps-off');
   }, [isOnline]);
 
-  useEffect(() => {
-    isSimModeRef.current = isSimMode;
-  }, [isSimMode]);
-
-  const handleSimPathReceived = useCallback((nextPath) => {
-    if (!Array.isArray(nextPath) || nextPath.length < 2) return;
-
-    setSimPath((prevPath) => {
-      if (isSimModeRef.current && Array.isArray(prevPath) && prevPath.length > 1) {
-        return prevPath;
-      }
-
-      const isSamePath =
-        Array.isArray(prevPath) &&
-        prevPath.length === nextPath.length &&
-        prevPath.every((point, index) =>
-          point?.lat === nextPath[index]?.lat && point?.lng === nextPath[index]?.lng,
-        );
-
-      return isSamePath ? prevPath : nextPath;
-    });
-  }, []);
-
   const handlePolylineReceived = useCallback((poly) => {
     const normalizedPolyline =
       typeof poly === 'string' ? poly : (poly?.points || null);
@@ -340,62 +312,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     return () => window.removeEventListener('authRefreshFailed', onAuthFailure);
   }, [handleLogout]);
 
-  // 0. Auto-Simulation Effect (High-Precision Smooth Glide)
-  const lastSimUpdateSentAt = useRef(0);
-  useEffect(() => {
-    let interval;
-    if (isSimMode && simPath.length > 1 && simIndex < simPath.length - 1) {
-      interval = setInterval(() => {
-        setSimProgress(prev => {
-          const nextProgress = prev + 0.08; // 8% movement per tick
-
-          if (nextProgress >= 1) {
-            setSimIndex(idx => idx + 1);
-            return 0; // Move to next segment
-          }
-
-          const currentPoint = simPath[simIndex];
-          const nextPoint = simPath[simIndex + 1];
-
-          if (currentPoint && nextPoint) {
-            // Linear Interpolation (LERP)
-            const lat = currentPoint.lat + (nextPoint.lat - currentPoint.lat) * nextProgress;
-            const lng = currentPoint.lng + (nextPoint.lng - currentPoint.lng) * nextProgress;
-            const heading = calculateHeading(currentPoint.lat, currentPoint.lng, nextPoint.lat, nextPoint.lng);
-
-            setRiderLocation({ lat, lng, heading });
-
-            if (mapRef.current) {
-              mapRef.current.panTo({ lat, lng });
-            }
-
-            // Sync with backend every 2.5 seconds during simulation so customer sees it
-            const now = Date.now();
-            if (now - lastSimUpdateSentAt.current >= 2000) { // Reduced to 2s to match backend throttle
-              lastSimUpdateSentAt.current = now;
-              const payload = {
-                lat,
-                lng,
-                heading,
-                orderId: activeOrder?.orderId || activeOrder?._id,
-                status: 'on_the_way',
-                polyline: activePolyline, // Include polyline in every stream update for resilience
-                eta,
-              };
-              // A. HTTP Backup
-              deliveryAPI.updateLocation(lat, lng, true, { heading }).catch(() => { });
-
-              // B. SOCKET LIVE (SILKY SMOOTH)
-              if (payload.orderId) emitLocation(payload);
-            }
-          }
-          return nextProgress;
-        });
-      }, 50); // 20 FPS movement
-    }
-    return () => clearInterval(interval);
-  }, [isSimMode, simPath, simIndex, activeOrder, emitLocation, activePolyline, eta, tripStatus]);
-
   // Fetch Emergency numbers and Profile (Restored logic)
   useEffect(() => {
     (async () => {
@@ -421,18 +337,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     { title: "Contact Police", subtitle: "Nearest police support", icon: <AlertTriangle className="text-blue-600" />, phone: emergencyNumbers.contactPolice },
     { title: "Insurance", subtitle: "Policy & claim help", icon: <AlertTriangle className="text-green-600" />, phone: emergencyNumbers.insurance },
   ];
-
-  // Reset simulation only when a new trip/mode starts.
-  // Do not reset on every path refresh, or the rider keeps restarting
-  // from the beginning of the simulated route.
-  useEffect(() => {
-    if (isSimMode) {
-      setSimIndex(0);
-      setSimProgress(0);
-    }
-  }, [tripStatus, isSimMode, activeOrder?._id]);
-
-  // Auto-restore modal when status or content changes
 
   // Auto-restore modal when status or content changes
   useEffect(() => {
@@ -521,8 +425,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
     const watchId = navigator.geolocation.watchPosition((pos) => {
       clearGpsOff();
-      // CRITICAL: In Simulation Mode, we disable actual GPS to prevent overwriting our test position
-      if (isSimMode) return;
 
       const { latitude: lat, longitude: lng, heading, speed } = pos.coords;
       const now = Date.now();
@@ -541,8 +443,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
       // ETA update is now handled by a separate globally-synchronized effect
 
-      // Phase 11: Geo-fencing Auto-arrival (within 100m) - Disabled in DEV so UI steps can be tested manually
-      if (!isSimMode && !import.meta.env.DEV && distanceToTarget && distanceToTarget <= 100 && !lastAutoArrivalRef.current[tripStatus]) {
+      // Phase 11: Geo-fencing Auto-arrival (within 100m)
+      if (distanceToTarget && distanceToTarget <= 100 && !lastAutoArrivalRef.current[tripStatus]) {
         if (tripStatus === 'PICKING_UP') {
           lastAutoArrivalRef.current[tripStatus] = true;
           reachPickup().catch(() => { lastAutoArrivalRef.current[tripStatus] = false; });
@@ -598,7 +500,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     });
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isOnline, setRiderLocation, isSimMode, activeOrder, activePolyline, emitLocation, eta, tripStatus, distanceToTarget, reachPickup, reachDrop, handleGeolocationError, clearGpsOff]);
+  }, [isOnline, setRiderLocation, activeOrder, activePolyline, emitLocation, eta, tripStatus, distanceToTarget, reachPickup, reachDrop, handleGeolocationError, clearGpsOff]);
 
   // 3.5. Background Ping / Heartbeat
   // If watchPosition stops firing (e.g. app in background or device stationary),
@@ -873,17 +775,30 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   }, [orderStatusUpdate, resetTrip, clearOrderStatusUpdate]);
 
 
-  const handleCenterMap = () => {
-    if (mapRef.current && useDeliveryStore.getState().riderLocation) {
-      const loc = useDeliveryStore.getState().riderLocation;
-      mapRef.current.panTo({
-        lat: parseFloat(loc.lat || loc.latitude),
-        lng: parseFloat(loc.lng || loc.longitude)
-      });
+  // Always asks the device for a fresh GPS fix so the button works even before the
+  // background watcher has produced a position (or while offline).
+  const handleCenterMap = async () => {
+    const panTo = (lat, lng) => {
+      if (!mapRef.current) return;
+      mapRef.current.panTo({ lat, lng });
       mapRef.current.setZoom(16);
-    } else {
-      toast.error('Location not available yet');
+    };
+
+    const loc = await requireLocation();
+    if (loc.ok) {
+      const prev = useDeliveryStore.getState().riderLocation;
+      setRiderLocation({ lat: loc.lat, lng: loc.lng, heading: prev?.heading || 0 });
+      lastGpsFixAtRef.current = Date.now();
+      clearGpsOff();
+      panTo(loc.lat, loc.lng);
+      return;
     }
+
+    // GPS fix failed (toast already shown): fall back to the last known position if any
+    const last = useDeliveryStore.getState().riderLocation;
+    const lat = parseFloat(last?.lat ?? last?.latitude);
+    const lng = parseFloat(last?.lng ?? last?.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) panTo(lat, lng);
   };
 
   const handleMapClick = (lat, lng) => {
@@ -1065,62 +980,15 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             <LiveMap
               onMapLoad={(m) => mapRef.current = m}
               onMapClick={handleMapClick}
-              onPathReceived={handleSimPathReceived}
               onPolylineReceived={handlePolylineReceived}
               zoom={zoom}
-              simulationPath={simPath}
-              simulationIndex={simIndex}
-              simulationProgress={simProgress}
-              simulationLocked={isSimMode && simPath.length > 1}
             />
-
-            {/* SIMULATION INDICATOR */}
-            {isSimMode && (
-              <div className={`absolute ${codLimitReached ? 'top-[240px]' : 'top-[180px]'} left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl`}>
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 bg-[var(--primary-theme)] rounded-lg flex items-center justify-center animate-pulse">
-                    <Play className="w-4 h-4 text-white fill-current" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[var(--primary-theme)] text-[10px] font-bold uppercase tracking-widest">Auto Navigation Active</span>
-                    <span className="text-white text-[11px] font-medium">Following actual road path...</span>
-                  </div>
-                </div>
-                <button onClick={() => setIsSimMode(false)} className="bg-white/10 text-white/50 hover:text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/10">Stop</button>
-              </div>
-            )}
 
             <div className="absolute right-4 bottom-28 md:bottom-32 flex flex-col gap-4 z-[120]">
               <div className="flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
                 <button onClick={() => setZoom(z => Math.min(22, z + 1))} className="p-3 hover:bg-gray-50 border-b border-gray-100 text-gray-900 active:scale-90 transition-all" aria-label="Zoom in"><Plus className="w-5 h-5 stroke-[2.75]" /></button>
                 <button onClick={() => setZoom(z => Math.max(8, z - 1))} className="p-3 hover:bg-gray-50 text-gray-900 active:scale-90 transition-all" aria-label="Zoom out"><Minus className="w-5 h-5 stroke-[2.75]" /></button>
               </div>
-              <button
-                onClick={() => {
-                  const nextSimState = !isSimMode;
-                  setIsSimMode(nextSimState);
-
-                  if (nextSimState) {
-                    toast.warning('Simulation Mode Active');
-                    // Initialize position if null
-                    if (!useDeliveryStore.getState().riderLocation && activeOrder) {
-                      const target = activeOrder.restaurantLocation || activeOrder.customerLocation;
-                      if (target) {
-                        setRiderLocation({
-                          lat: parseFloat(target.lat || target.latitude) + 0.001,
-                          lng: parseFloat(target.lng || target.longitude) + 0.001,
-                          heading: 0
-                        });
-                      }
-                    }
-                  }
-                }}
-                className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center border border-gray-100 transition-all ${isSimMode ? 'bg-[var(--primary-theme)] text-white' : 'bg-white text-green-500'}`}
-              >
-                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${isSimMode ? 'border-white' : 'border-green-500'}`}>
-                  <Play className={`w-4 h-4 fill-current ml-0.5 ${isSimMode ? 'animate-pulse' : ''}`} />
-                </div>
-              </button>
               <button
                 onClick={() => {
                   if (!activeOrder) {

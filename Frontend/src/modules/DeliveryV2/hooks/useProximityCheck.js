@@ -59,8 +59,7 @@ export const useProximityCheck = () => {
 
   // Dev mode or fallback when location is missing/delayed
   const isDevMode = import.meta.env.VITE_APP_MODE === 'developer' || 
-                    import.meta.env.VITE_ENABLE_RANGE_BYPASS === 'true' ||
-                    import.meta.env.DEV;
+                    import.meta.env.VITE_ENABLE_RANGE_BYPASS === 'true';
 
   // Allow action if within range OR if location is temporarily unavailable so rider is never locked out
   const isWithinRange = isDevMode || distanceToTarget === Infinity || (typeof distanceToTarget === 'number' && distanceToTarget <= actionLimit);
