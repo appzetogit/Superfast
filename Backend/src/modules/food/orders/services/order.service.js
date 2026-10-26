@@ -6077,7 +6077,7 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
         ? 'cod_collected_by_delivery_partner'
         : 'delivered';
       await foodTransactionService.updateTransactionStatus(order._id, ledgerKind, {
-        status: 'success',
+        status: 'captured',
         note: `Order delivered by admin status update`,
         recordedByRole: 'ADMIN',
         recordedById: adminId

@@ -10,7 +10,7 @@ const gigBookingSchema = new mongoose.Schema(
     },
     deliveryPartnerId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'DeliveryPartner',
+      ref: 'FoodDeliveryPartner',
       required: true,
       index: true,
     },
