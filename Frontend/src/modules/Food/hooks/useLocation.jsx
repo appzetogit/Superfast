@@ -1286,21 +1286,11 @@ export function useLocation() {
           return;
         }
 
-        const addressMode = localStorage.getItem("deliveryAddressMode") || "saved";
         const hasCachedLocation = localStorage.getItem("userLocation");
 
-        // If user has chosen a saved address or custom location, DO NOT overwrite with live GPS!
-        if (addressMode === "saved" && hasCachedLocation) {
-          try {
-            const parsed = JSON.parse(hasCachedLocation);
-            if (parsed && (parsed.address || parsed.formattedAddress || parsed.city || parsed.area)) {
-              debugLog("📍 deliveryAddressMode is 'saved'; preserving user's chosen address.");
-              setLocation(parsed);
-              setLoading(false);
-              return;
-            }
-          } catch (e) {}
-        }
+        // Browsing location (home/restaurants/zone) always follows live GPS on app launch/refresh.
+        // The saved delivery address is kept separately via deliveryAddressMode === "saved"
+        // (Cart uses it for delivery), so it is NOT touched here.
 
         if (autoLiveFetchStarted) {
           if (hasCachedLocation) {
@@ -1332,7 +1322,10 @@ export function useLocation() {
               setLocation(location);
               try {
                 localStorage.setItem("userLocation", JSON.stringify(location));
-                localStorage.setItem("deliveryAddressMode", "current");
+                // Keep the user's saved delivery address: only switch to "current" if no saved mode.
+                if (localStorage.getItem("deliveryAddressMode") !== "saved") {
+                  localStorage.setItem("deliveryAddressMode", "current");
+                }
                 window.dispatchEvent(
                   new CustomEvent("userLocationUpdated", {
                     detail: { location },
@@ -1359,17 +1352,15 @@ export function useLocation() {
 
     // Permission was granted later (LocationPermissionGate): fetch live GPS once, app-wide.
     const onPermissionGranted = () => {
-      if (
-        localStorage.getItem("deliveryAddressMode") === "saved" &&
-        localStorage.getItem("userLocation")
-      ) return
       if (permissionRefreshInFlight) return
       permissionRefreshInFlight = getLocation(true, true)
         .then((loc) => {
           if (loc && loc.formattedAddress !== "Select location" && loc.city !== "Current Location") {
             setLocation(loc)
             localStorage.setItem("userLocation", JSON.stringify(loc))
-            localStorage.setItem("deliveryAddressMode", "current")
+            if (localStorage.getItem("deliveryAddressMode") !== "saved") {
+              localStorage.setItem("deliveryAddressMode", "current")
+            }
             window.dispatchEvent(new CustomEvent("userLocationUpdated", { detail: { location: loc } }))
             window.dispatchEvent(new Event("deliveryAddressModeChanged"))
             setPermissionGranted(true)
