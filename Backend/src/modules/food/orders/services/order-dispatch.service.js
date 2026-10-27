@@ -220,13 +220,15 @@ export async function tryAutoAssign(orderId, options = {}) {
     return null;
   }
 
-  // Guard: For food orders, DO NOT assign or send requests to delivery partners until the restaurant marks the order as ready!
+  // Guard: For food orders, DO NOT send requests to delivery partners until the restaurant has
+  // accepted the order (preparing onwards). Riders get the ringing request on accept; "ready" is
+  // only a normal notification afterwards.
   const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
-  const isReadyForPickup = ["ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
+  const isAcceptedByRestaurant = ["confirmed", "preparing", "ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
 
-  if (isFoodOrder && !isReadyForPickup) {
+  if (isFoodOrder && !isAcceptedByRestaurant) {
     logger.info(
-      `tryAutoAssign: Holding delivery assignment for food order ${order._id} (Status is '${order.orderStatus}'). Waiting for restaurant to mark order as 'ready_for_pickup'.`
+      `tryAutoAssign: Holding delivery assignment for food order ${order._id} (Status is '${order.orderStatus}'). Waiting for restaurant to accept the order.`
     );
     await FoodOrder.findByIdAndUpdate(orderId, {
       $unset: { "dispatch.dispatchingAt": "" },

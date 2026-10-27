@@ -3485,11 +3485,18 @@ export async function updateOrderStatusRestaurant(
   try {
     const io = getIO();
     if (io) {
-      // Only trigger delivery partner dispatch when order is marked as ready_for_pickup or ready.
-      const isInitialDispatchTrigger = (
-        ["ready_for_pickup", "ready"].includes(String(orderStatus)) &&
-        !["ready_for_pickup", "ready"].includes(String(from))
-      );
+      // Delivery request goes out (with ring) as soon as the restaurant accepts the order.
+      // Marking it ready later only dispatches if no rider was ever offered (fallback).
+      const wasReadyBefore = ["ready_for_pickup", "ready"].includes(String(from));
+      const isAcceptDispatchTrigger =
+        finalStatus === "preparing" &&
+        !wasReadyBefore &&
+        String(from) !== "preparing";
+      const isReadyDispatchTrigger =
+        finalStatus === "ready_for_pickup" &&
+        !wasReadyBefore &&
+        (order.dispatch?.offeredTo || []).length === 0;
+      const isInitialDispatchTrigger = isAcceptDispatchTrigger || isReadyDispatchTrigger;
       if (isInitialDispatchTrigger) {
         logger.info(
           `Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
@@ -5252,7 +5259,7 @@ export async function resyncState(userId, role) {
       const cutoff = new Date(Date.now() - 60000);
       const missedOrders = await FoodOrder.find({
         "dispatch.status": "unassigned",
-        orderStatus: { $in: ["ready_for_pickup", "ready"] },
+        orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup", "ready"] },
         "dispatch.offeredTo": {
           $elemMatch: {
             partnerId: new mongoose.Types.ObjectId(userId),

@@ -141,6 +141,24 @@ const buildDeliveryOrderNotification = (orderData = {}) => {
   };
 }
 
+// One alert <audio> element for the whole page lifetime. Browsers only allow autoplay on an element
+// that was unlocked by a user gesture; re-creating it on every hook mount silently lost that unlock,
+// which is why the ring sometimes did not play.
+let sharedAlertAudio = null;
+const getSharedAlertAudio = (src) => {
+  if (!sharedAlertAudio) {
+    sharedAlertAudio = new Audio();
+    sharedAlertAudio.preload = 'auto';
+  }
+  if (src && !String(sharedAlertAudio.src || '').includes(String(src).split('/').pop())) {
+    sharedAlertAudio.src = src;
+    sharedAlertAudio.load();
+  }
+  return sharedAlertAudio;
+};
+
+const OFFERABLE_ORDER_STATUSES = ['confirmed', 'preparing', 'ready_for_pickup', 'ready'];
+
 const isActionableDeliveryOffer = (orderData = {}) => {
   if (orderData?.type === 'RETURN_PICKUP') {
     return Boolean(orderData?.returnId);
@@ -157,9 +175,8 @@ const isActionableDeliveryOffer = (orderData = {}) => {
     orderData?.orderStatus || orderData?.status || orderData?.order?.orderStatus || orderData?.orderState?.status || ''
   ).trim().toLowerCase();
 
-  // STAGE GUARD: Delivery Partners MUST ONLY receive actionable offers if status is explicitly ready_for_pickup / ready!
-  const isReady = ['ready_for_pickup', 'ready'].includes(orderStatus);
-  if (!isReady) {
+  // Offers ring as soon as the restaurant accepts (confirmed/preparing) and stay actionable until pickup.
+  if (!OFFERABLE_ORDER_STATUSES.includes(orderStatus)) {
     return false;
   }
 
@@ -249,7 +266,7 @@ export const useDeliveryNotifications = () => {
   const joinedDeliveryRoomRef = useRef(null);
   const ALERT_LOOP_INTERVAL_MS = 4500;
   const ALERT_LOOP_MAX_MS = 120000;
-  const ALERT_DEDUPE_MS = 15000;
+  const ALERT_DEDUPE_MS = 8000;
   const BROWSER_NOTIFICATION_DEDUPE_MS = 20000;
   const NOTIFICATION_PERMISSION_ASKED_KEY = 'delivery_notification_permission_asked';
 
@@ -349,7 +366,7 @@ export const useDeliveryNotifications = () => {
         }
       } else {
         // Initialize audio if not exists
-        audioRef.current = new Audio();
+        audioRef.current = getSharedAlertAudio();
         audioRef.current.src = soundFile;
         audioRef.current.preload = 'auto';
         audioRef.current.volume = 1.0;
@@ -488,7 +505,7 @@ export const useDeliveryNotifications = () => {
         const orderStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
         return (
           ['unassigned', 'assigned'].includes(dispatchStatus) &&
-          ['ready_for_pickup', 'ready'].includes(orderStatus)
+          OFFERABLE_ORDER_STATUSES.includes(orderStatus)
         );
       });
 
@@ -628,7 +645,7 @@ export const useDeliveryNotifications = () => {
         : resolveAudioSource(alertSound, 'delivery-alert');
 
       if (!audioRef.current) {
-        audioRef.current = new Audio(soundFile);
+        audioRef.current = getSharedAlertAudio(soundFile);
         audioRef.current.preload = 'auto';
         audioRef.current.volume = 0.7;
       }
@@ -709,7 +726,7 @@ export const useDeliveryNotifications = () => {
       : resolveAudioSource(alertSound, 'delivery-alert');
 
     if (!audioRef.current) {
-      audioRef.current = new Audio(soundFile);
+      audioRef.current = getSharedAlertAudio(soundFile);
       audioRef.current.preload = 'auto';
       audioRef.current.volume = 0.7;
       debugLog('?? Audio initialized with:', selectedSound === 'original' ? 'Original' : 'Zomato Tone');
@@ -728,7 +745,7 @@ export const useDeliveryNotifications = () => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current = null;
+        audioRef.current = null; // shared element stays alive (and unlocked) for the next mount
       }
     };
   }, []); // Note: This runs once on mount. To update dynamically, we'd need to listen to storage events
@@ -1053,7 +1070,15 @@ export const useDeliveryNotifications = () => {
         orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
       });
       setOrderReady(orderData);
-      playNotificationSound(orderData);
+      // "Ready" is a normal heads-up (push + short buzz), not a ringing offer.
+      try {
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          navigator.vibrate([150, 80, 150]);
+        }
+      } catch { /* ignore */ }
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        showBackgroundOrderNotification({ ...orderData, orderStatus: 'ready_for_pickup' });
+      }
     });
 
     socketRef.current.on('order_status_update', (statusData) => {

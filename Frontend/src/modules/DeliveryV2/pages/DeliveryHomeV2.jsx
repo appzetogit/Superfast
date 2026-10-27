@@ -603,9 +603,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
     const isReassignment = Boolean(newOrder?.isReassignment || newOrder?.reassignmentStatus === 'pending');
 
-    // Guard: Delivery partner modal/list MUST ONLY accept ready_for_pickup status!
+    // Guard: offers are shown once the restaurant has accepted the order (confirmed onwards).
     // Admin reassignments are exempt: the order is already in progress (any status).
-    if (!isReassignment && !['ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
+    if (!isReassignment && !['confirmed', 'preparing', 'ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
       return;
     }
 
