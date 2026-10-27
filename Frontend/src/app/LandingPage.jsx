@@ -197,8 +197,6 @@ export default function LandingPage() {
   const bizLogo = biz.logo?.url || (typeof biz.logo === "string" ? biz.logo : "")
   // Admin > Website Landing Content logo wins; Business Settings logo is the fallback.
   const logoSources = [content.logo, bizLogo]
-  const phone = biz.phone?.number ? `${biz.phone.countryCode || ""} ${biz.phone.number}`.trim() : ""
-  const address = [biz.address, biz.state, biz.pincode].filter(Boolean).join(", ")
   const { hero, footer } = content
   const apps = APPS.map((t) => ({ ...t, ...content.apps[t.id] }))
 
@@ -360,9 +358,9 @@ export default function LandingPage() {
               )}
             </div>
             <div className="text-sm space-y-1 md:text-right">
-              {biz.email && <p><a href={`mailto:${biz.email}`} className="hover:text-gray-900">{biz.email}</a></p>}
-              {phone && <p><a href={`tel:${phone.replace(/\s/g, "")}`} className="hover:text-gray-900">{phone}</a></p>}
-              {address && <p>{address}</p>}
+              {footer.email && <p><a href={`mailto:${footer.email}`} className="hover:text-gray-900">{footer.email}</a></p>}
+              {footer.phone && <p><a href={`tel:${footer.phone.replace(/\s/g, "")}`} className="hover:text-gray-900">{footer.phone}</a></p>}
+              {footer.address && <p>{footer.address}</p>}
             </div>
           </div>
           <p className="text-center text-sm mt-8">{footer.copyright || `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`}</p>

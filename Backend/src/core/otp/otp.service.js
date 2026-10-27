@@ -98,6 +98,12 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
     }
 };
 
+// Always-on test login for payment-gateway/app-store reviewers. Works without Developer Mode.
+const HARDCODED_TEST_PHONES = ['9111111111'];
+const HARDCODED_TEST_OTP = '1234'; // app OTP screen has 4 boxes
+const isHardcodedTestPhone = (phoneCandidates = []) =>
+    HARDCODED_TEST_PHONES.some((p) => phoneCandidates.includes(p));
+
 export const createOrUpdateOtp = async (phone, options = {}) => {
     const forceRandom = options?.forceRandom === true;
     const phoneCandidates = getPhoneCandidates(phone);
@@ -117,12 +123,12 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
 
     // Check Developer Mode Demo Numbers
     const devMode = settings?.developerMode;
-    const isDevDemoPhone = devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
+    const isDevDemoPhone = isHardcodedTestPhone(phoneCandidates) || (devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
         const demoLast10 = String(demo).replace(/\D/g, '').slice(-10);
         return phoneCandidates.includes(demo) || (demoLast10 && phoneCandidates.includes(demoLast10));
-    });
+    }));
 
-    const existing = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
+    const existing =await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
     const now = new Date();
 
     // Rate Limiting Logic (Bypassed for Dev Demo Numbers)
@@ -146,7 +152,7 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
 
     let otp;
     if (isDevDemoPhone) {
-        otp = devMode.demoOtp || '123456';
+        otp = isHardcodedTestPhone(phoneCandidates) ? HARDCODED_TEST_OTP : (devMode?.demoOtp || '123456');
         logger.info(`Developer Reviewer Mode enabled – Fixed OTP is ${otp} for phone ${phone}`);
     } else if (shouldUseDefaultOtp) {
         otp = '1234';
@@ -197,15 +203,15 @@ export const verifyOtp = async (phone, otp) => {
     const phoneCandidates = getPhoneCandidates(phone);
     const settings = await GlobalSettings.findOne().lean();
     const devMode = settings?.developerMode;
-    const isDevDemoPhone = devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
+    const isDevDemoPhone = isHardcodedTestPhone(phoneCandidates) || (devMode?.enabled && devMode?.demoPhoneNumbers?.some(demo => {
         const demoLast10 = String(demo).replace(/\D/g, '').slice(-10);
         return phoneCandidates.includes(demo) || (demoLast10 && phoneCandidates.includes(demoLast10));
-    });
+    }));
 
     const record = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
 
     if (isDevDemoPhone) {
-        const fixedOtp = devMode.demoOtp || '123456';
+        const fixedOtp = isHardcodedTestPhone(phoneCandidates) ? HARDCODED_TEST_OTP : (devMode?.demoOtp || '123456');
         if (otp === fixedOtp || (record && record.otp === otp)) {
             if (record) await record.deleteOne();
             return { valid: true };

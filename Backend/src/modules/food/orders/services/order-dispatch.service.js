@@ -19,13 +19,13 @@ import {
   notifyOwnersSafely,
 } from "./order.helpers.js";
 
-// A rider whose app is closed stays "online" in the DB until the shift ends. The app pings its
-// location every ~15s while open, so a ping older than this means the rider is effectively offline.
 // Riders pinged together in the first dispatch round.
 const PHASE1_RIDER_COUNT = 3;
-const OFFLINE_PING_MS = 10 * 60 * 1000;
-const hasRecentPing = (p) =>
-  !p.lastLocationAt || Date.now() - new Date(p.lastLocationAt).getTime() <= OFFLINE_PING_MS;
+// Re-offer cadence: an ignored offer rolls to the next riders after RETRY_DELAY_MS, and a rider
+// who just rejected is not re-asked before RECYCLE_COOLDOWN_MS (matters when only one rider is online).
+const RETRY_DELAY_MS = 15000;
+const NO_RIDER_RETRY_DELAY_MS = 10000;
+const RECYCLE_COOLDOWN_MS = 10000;
 
 async function listNearbyOnlineDeliveryPartners(
   sourceId,
@@ -79,7 +79,6 @@ async function listNearbyOnlineDeliveryPartners(
     const eligiblePartners = [];
     for (const p of partners) {
       if (busyPartnerIds.has(p._id.toString())) continue;
-      if (!hasRecentPing(p)) continue;
       if (isCodOrder) {
         const ok = await isPartnerEligibleForCodOrder(p._id);
         if (!ok) continue;
@@ -108,7 +107,6 @@ async function listNearbyOnlineDeliveryPartners(
   for (const p of allOnline) {
     if (p.status !== "approved") continue;
     if (busyPartnerIds.has(p._id.toString())) continue;
-    if (!hasRecentPing(p)) continue;
 
     if (isCodOrder) {
       const ok = await isPartnerEligibleForCodOrder(p._id);
@@ -142,7 +140,7 @@ async function listNearbyOnlineDeliveryPartners(
       .lean();
 
     const availableAnyOnline = anyOnline.filter(
-      (p) => !busyPartnerIds.has(p._id.toString()) && hasRecentPing(p),
+      (p) => !busyPartnerIds.has(p._id.toString()),
     );
 
     return {
@@ -302,6 +300,24 @@ export async function tryAutoAssign(orderId, options = {}) {
     );
 
     if (eligible.length === 0 && partners.length > 0) {
+      // Everyone online was already asked. Give the last rider a few seconds before asking again
+      // (a single online rider who just rejected/ignored should be re-asked shortly, not instantly).
+      const lastOfferAt = Math.max(
+        0,
+        ...(order.dispatch?.offeredTo || []).map((o) => new Date(o.at || 0).getTime()),
+      );
+      if (Date.now() - lastOfferAt < RECYCLE_COOLDOWN_MS) {
+        await addOrderJob(
+          {
+            action: "DISPATCH_TIMEOUT_CHECK",
+            orderMongoId: order._id.toString(),
+            orderId: order._id.toString(),
+            attempt,
+          },
+          { delay: RECYCLE_COOLDOWN_MS },
+        );
+        return { ...order.toObject(), notifiedCount: 0 };
+      }
       logger.info(
         `tryAutoAssign: All online partners were offered previously for order ${order._id}. Resetting offered list to re-cycle alerts!`,
       );
@@ -336,7 +352,7 @@ export async function tryAutoAssign(orderId, options = {}) {
           orderId: order._id.toString(),
           attempt: attempt + 1,
         },
-        { delay: 20000 },
+        { delay: NO_RIDER_RETRY_DELAY_MS },
       ); // Retry faster if no one found
 
       return { ...order.toObject(), notifiedCount: 0 };
@@ -439,7 +455,7 @@ export async function tryAutoAssign(orderId, options = {}) {
         orderId: order._id.toString(),
         attempt: attempt + 1,
       },
-      { delay: 25000 },
+      { delay: RETRY_DELAY_MS },
     );
 
     return { ...order.toObject(), notifiedCount: eligible.length };

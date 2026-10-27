@@ -2813,123 +2813,24 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Start or continue a smart cascading dispatch.
- * @param {string} orderId - Mongo ID of the order.
- * @param {object} options - Options (retry count, etc)
+ * Delivery dispatch lives in order-dispatch.service.js (tiered offers, radius expansion, retries).
+ * These wrappers keep the old entry points but always run that single implementation.
  */
 export async function tryAutoAssign(orderId, options = {}) {
-  const order = await FoodOrder.findById(orderId).populate(['restaurantId', 'userId']);
-  if (!order) return null;
-
-  // Guard: only dispatch if unassigned OR if we are doing a timeout-reassign.
-  const isUnassigned = order.dispatch?.status === 'unassigned';
-  const isAssignedButUnaccepted = order.dispatch?.status === 'assigned' && !order.dispatch?.acceptedAt;
-
-  if (!isUnassigned && !isAssignedButUnaccepted) {
-    return order;
-  }
-
-  // Find ineligible partners (who already rejected it or were already offered if we want fresh ones)
-  const offeredIds = (order.dispatch?.offeredTo || []).map(o => o.partnerId.toString());
-
-  // Find nearby online partners
-  const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, { maxKm: 15, limit: 10 });
-
-  // Filter out already offered/rejected partners
-  const eligible = partners.filter(p => !offeredIds.includes(p.partnerId.toString()));
-
-  if (eligible.length === 0) {
-    // No more specific partners to offer to? 
-    // If it's still unassigned, we leave it in the marketplace pool (broadcast was already sent)
-    // or we could expand the search radius.
-    logger.info(`SmartDispatch: No more eligible partners for order ${order.orderId}. Leaving in marketplace.`);
-    return order;
-  }
-
-  // Pick the best (first in sorted list)
-  const best = eligible[0];
-
-  // Assign to this partner
-  order.dispatch.status = 'assigned';
-  order.dispatch.deliveryPartnerId = best.partnerId;
-  order.dispatch.assignedAt = new Date();
-
-  // Record in history
-  order.dispatch.offeredTo.push({
-    partnerId: best.partnerId,
-    at: new Date(),
-    action: 'offered'
-  });
-
-  await order.save();
-
-  // 🚀 Notify the specific partner instantly
-  try {
-    const io = getIO();
-    if (io) {
-      const restaurant = order.restaurantId;
-      const payload = buildDeliverySocketPayload(order, restaurant);
-      io.to(rooms.delivery(best.partnerId)).emit('new_order', payload);
-      io.to(rooms.delivery(best.partnerId)).emit('play_notification_sound', {
-        orderId: payload.orderId,
-        orderMongoId: payload.orderMongoId
-      });
-    }
-    await notifyOwnerSafely(
-      { ownerType: 'DELIVERY_PARTNER', ownerId: best.partnerId },
-      {
-        title: 'New order assigned! 🛵',
-        body: `You have 30 seconds to accept Order #${order.orderId}.`,
-        data: {
-          type: 'new_order',
-          orderId: order.orderId,
-          orderMongoId: order._id.toString(),
-          link: '/delivery'
-        }
-      }
-    );
-  } catch (err) {
-    logger.error(`SmartDispatch: Failed to notify partner ${best.partnerId}: ${err.message}`);
-  }
-
-  // ⏱️ Schedule a timeout check in 30 seconds
-  await addOrderJob({
-    action: 'DISPATCH_TIMEOUT_CHECK',
-    orderMongoId: order._id.toString(),
-    orderId: order.orderId,
-    partnerId: best.partnerId.toString()
-  }, { delay: 30000 }); // 30 seconds
-
-  return order;
+  const dispatch = await import('./order-dispatch.service.js');
+  return dispatch.tryAutoAssign(orderId, options);
 }
 
 /**
- * Triggered by worker after 30 seconds of zero response.
+ * Triggered by the worker. Jobs carrying `attempt` come from the dispatch retry loop;
+ * legacy per-partner timeouts go to the dispatch service's timeout handler.
  */
-export async function processDispatchTimeout(orderId, partnerId) {
-  const order = await FoodOrder.findById(orderId);
-  if (!order) return;
-
-  // Check if the order is still assigned to this specific partner and not accepted
-  const stillAssigned = order.dispatch?.status === 'assigned' &&
-    String(order.dispatch?.deliveryPartnerId) === String(partnerId) &&
-    !order.dispatch?.acceptedAt;
-
-  if (stillAssigned) {
-    logger.info(`SmartDispatch: Timeout for order ${order.orderId} (Partner: ${partnerId}). Moving to next.`);
-
-    // Mark as timeout in history
-    const offer = order.dispatch.offeredTo.find(o => String(o.partnerId) === String(partnerId) && o.action === 'offered');
-    if (offer) offer.action = 'timeout';
-
-    // Unassign and trigger next step
-    order.dispatch.status = 'unassigned';
-    order.dispatch.deliveryPartnerId = null;
-    await order.save();
-
-    // 🔄 Recursively try next partner
-    await tryAutoAssign(orderId);
+export async function processDispatchTimeout(orderId, partnerId, data = {}) {
+  const dispatch = await import('./order-dispatch.service.js');
+  if (data?.attempt) {
+    return dispatch.tryAutoAssign(orderId, { attempt: data.attempt });
   }
+  return dispatch.processDispatchTimeout(orderId, partnerId);
 }
 
 // ----- User: list, get, cancel -----
@@ -3646,48 +3547,11 @@ export async function updateOrderStatusRestaurant(
           if (isSplitDispatchOrder(order)) {
             await notifySplitDispatchOffers(order, { restaurantDoc: restaurant });
           } else {
-            // Broadcast to nearby online partners so someone can accept/claim.
+            // Offers (nearest riders first, then wider rounds/retries) are sent by tryAutoAssign above;
+            // a second blanket broadcast here would bypass reject/re-offer ordering.
             logger.info(
-              `Searching for nearby partners for order ${order.orderId}`,
+              `Order ${order.orderId} offered via dispatch service; skipping extra broadcast.`,
             );
-            const { partners } = await listNearbyOnlineDeliveryPartners(
-              order.restaurantId,
-              { maxKm: 15, limit: 25 },
-            );
-            for (const p of partners) {
-              const targetRoom = rooms.delivery(p.partnerId);
-              io.to(targetRoom).emit("new_order", {
-                ...payload,
-                pickupDistanceKm: p.distanceKm,
-              });
-              io.to(targetRoom).emit("new_order_available", {
-                ...payload,
-                pickupDistanceKm: p.distanceKm,
-              });
-            }
-            await notifyOwnersSafely(
-              partners.slice(0, 15).map((p) => ({
-                ownerType: "DELIVERY_PARTNER",
-                ownerId: p.partnerId,
-              })),
-              {
-                title: "New delivery order available",
-                body: `Order ${payload.orderId} is available near ${restaurant?.restaurantName || "your area"}.`,
-                data: {
-                  type: "new_order_available",
-                  orderId: payload.orderId,
-                  orderMongoId: payload.orderMongoId,
-                  link: "/delivery",
-                },
-              },
-            );
-            // Also trigger a generic sound event for the first few partners.
-            for (const p of partners.slice(0, 15)) {
-              io.to(rooms.delivery(p.partnerId)).emit("play_notification_sound", {
-                orderId: payload.orderId,
-                orderMongoId: payload.orderMongoId,
-              });
-            }
           }
         }
       }
@@ -3716,6 +3580,9 @@ export async function updateOrderStatusRestaurant(
               },
             }
           );
+        } else if ((order.dispatch?.offeredTo || []).length > 0) {
+          // Already offered by the dispatch above; a reset here would re-offer the same riders twice.
+          logger.info(`Order ${order.orderId} already offered to riders. Skipping fresh dispatch.`);
         } else {
           logger.info(`Order ${order.orderId} is ready for pickup but unassigned or unaccepted. Triggering fresh auto-dispatch & FCM push to all online delivery partners!`);
           await FoodOrder.findByIdAndUpdate(order._id, {

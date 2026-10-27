@@ -114,7 +114,7 @@ export default function LandingContentSettings() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Landing Page Content</h1>
           <p className="text-sm text-gray-500">
-            Edit the public website (superfastfood.in). Logo, company name, email, phone and address come from Business Settings.
+            Edit the public website (superfastfood.in). Logo falls back to, and company name comes from, Business Settings. Footer contact details are set below.
           </p>
         </div>
         <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg">
@@ -168,6 +168,11 @@ export default function LandingContentSettings() {
       <section className="bg-white rounded-2xl border p-5 space-y-4">
         <h2 className="font-bold">Footer</h2>
         <Field label="About text"><textarea rows={2} className={inputCls} value={data.footer.about} onChange={(e) => set(["footer", "about"], e.target.value)} /></Field>
+        <div className="grid md:grid-cols-3 gap-4">
+          <Field label="Contact email (leave blank to hide)"><input type="email" className={inputCls} value={data.footer.email} placeholder="support@superfastfood.in" onChange={(e) => set(["footer", "email"], e.target.value)} /></Field>
+          <Field label="Contact phone (leave blank to hide)"><input className={inputCls} value={data.footer.phone} placeholder="+91 98765 43210" onChange={(e) => set(["footer", "phone"], e.target.value)} /></Field>
+          <Field label="Address (leave blank to hide)"><input className={inputCls} value={data.footer.address} onChange={(e) => set(["footer", "address"], e.target.value)} /></Field>
+        </div>
         <Field label="Copyright line (blank = automatic)">
           <input className={inputCls} value={data.footer.copyright} placeholder={`© ${new Date().getFullYear()} Superfast. All rights reserved.`} onChange={(e) => set(["footer", "copyright"], e.target.value)} />
         </Field>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package, Lock, Volume2, VolumeX, ChevronUp, ChevronDown,
@@ -25,6 +25,24 @@ export default function DeliveryOrdersTabV2({
   const [subTab, setSubTab] = useState('new'); // 'new' | 'accepted'
   const [isMuted, setIsMuted] = useState(false);
   const [isCardExpanded, setIsCardExpanded] = useState(true);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Re-render every 30s so "x min ago" stays current.
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // "3:42 PM · 5 min ago" for when the order came in (placed time, else when this app received it).
+  const getReceivedLabel = (ord) => {
+    const raw = ord?.createdAt || ord?.orderCreatedAt || ord?.placedAt || ord?._receivedAt;
+    const ts = raw ? new Date(raw).getTime() : NaN;
+    if (!Number.isFinite(ts)) return '';
+    const mins = Math.max(0, Math.floor((nowMs - ts) / 60000));
+    const ago = mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+    const clock = new Date(ts).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${clock} · ${ago}`;
+  };
 
   // Helper to check if order is completed / handed over / cancelled / reassigned
   const isFinishedOrHandedOver = (ord) => {
@@ -267,6 +285,11 @@ export default function DeliveryOrdersTabV2({
                           <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
                             ₹{orderTotal.toFixed(2)} · <span className="text-gray-500 font-bold">{distanceKm} KM ({etaMins} MINS)</span>
                           </span>
+                          {getReceivedLabel(order) && (
+                            <span className="text-[11px] font-bold text-[#f94e10] flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3" /> Order aaya: {getReceivedLabel(order)}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -486,6 +509,11 @@ export default function DeliveryOrdersTabV2({
                         <span className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5">
                           {statusLabel}
                         </span>
+                        {getReceivedLabel(ord) && (
+                          <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                            Order aaya: {getReceivedLabel(ord)}
+                          </span>
+                        )}
                       </div>
                     </div>
 

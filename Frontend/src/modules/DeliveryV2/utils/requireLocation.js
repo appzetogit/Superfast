@@ -25,12 +25,8 @@ export async function requireLocation() {
   });
 
   if (!result.ok) {
-    toast.error(
-      result.denied
-        ? 'Location permission blocked hai. App/browser settings me Location allow karein, phir online jayein.'
-        : 'Location off hai. Phone ki Location (GPS) ON karein, phir online jayein.',
-      { duration: 6000 }
-    );
+    // Open the same "Enable location" sheet that appears when the app starts.
+    window.dispatchEvent(new CustomEvent('showLocationGate', { detail: { denied: Boolean(result.denied) } }));
   }
   return result;
 }

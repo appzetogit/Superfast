@@ -103,6 +103,21 @@ function getShiftWindow(gig) {
   return { start, end };
 }
 
+/** Booking whose shift is running now (or starts within the check-in window); null if none. */
+export async function findRunningGigBooking(partnerObjectId) {
+  const now = Date.now();
+  const bookings = await GigBooking.find({
+    deliveryPartnerId: partnerObjectId,
+    status: { $in: ['booked', 'checked_in'] },
+  }).populate('gigId').lean();
+  return (
+    bookings.find((b) => {
+      const w = getShiftWindow(b.gigId);
+      return w && now >= w.start.getTime() - CHECK_IN_EARLY_MINUTES * 60 * 1000 && now < w.end.getTime();
+    }) || null
+  );
+}
+
 /** Helper: does the rider still have an undelivered accepted order? */
 async function partnerHasActiveOrder(partnerObjectId) {
   const count = await FoodOrder.countDocuments({
@@ -175,6 +190,7 @@ export async function expireGigBookings() {
  * event lets the open app flip its toggle instead of showing a stale "online".
  */
 export async function autoOfflineEndedShifts() {
+  // Offline is driven only by the gig window (not by app background / stale pings).
   try {
     const now = Date.now();
     const onlinePartners = await FoodDeliveryPartner.find({ availabilityStatus: 'online' }).select('_id').lean();
@@ -200,7 +216,7 @@ export async function autoOfflineEndedShifts() {
 
       await notifyPartnerGigEvent(partner._id, {
         title: 'Shift Ended - You are now Offline',
-        body: 'Aapki gig shift end ho gayi hai. Dubara online aane ke liye nayi gig book karein.',
+        body: 'Aapki gig end ho gayi hai, aap offline ho gaye hain. Orders paane ke liye nayi gig book karke online jaayein.',
         type: 'GIG_SHIFT_ENDED',
         socketEvent: 'availability_status_changed',
         extra: { availabilityStatus: 'offline', reason: 'gig_expired' },

@@ -7,6 +7,7 @@ import { useOrderManager } from '@/modules/DeliveryV2/hooks/useOrderManager';
 import { useDeliveryNotifications } from '@food/hooks/useDeliveryNotifications';
 import { deliveryAPI, gigAPI } from '@food/api';
 import { requireLocation } from '../utils/requireLocation';
+import { findRunningBooking } from '../utils/gigWindow';
 import { toast } from 'sonner';
 import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
 
@@ -118,6 +119,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const [currentTab, setCurrentTab] = useState(tab);
   const [codLimitReached, setCodLimitReached] = useState(false);
   const rejectedOrderIdsRef = useRef(new Set());
+
+  // Another rider accepted the order: remove it from this rider's New Orders list at once.
+  useEffect(() => {
+    const onClaimed = (e) => {
+      const d = e?.detail || {};
+      const ids = [d.orderId, d.orderMongoId, d._id].filter(Boolean).map(String);
+      if (!ids.length) return;
+      ids.forEach((id) => rejectedOrderIdsRef.current.add(id));
+      const matches = (item) =>
+        [item?._id, item?.orderId, item?.id, item?.orderMongoId].filter(Boolean).map(String).some((v) => ids.includes(v));
+      setAvailableOrdersList((prev) => prev.filter((item) => !matches(item)));
+      setIncomingOrder((cur) => (cur && matches(cur) ? null : cur));
+    };
+    window.addEventListener('deliveryOrderClaimed', onClaimed);
+    return () => window.removeEventListener('deliveryOrderClaimed', onClaimed);
+  }, []);
   const timedOutOrdersMapRef = useRef(new Map());
 
   // Track URL changes (Prop changes) to update sub-page content
@@ -382,11 +399,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     if (isOnline) {
       gigAPI.getMyGigs().then((res) => {
         const bookings = res?.data?.data?.bookings || [];
-        const activeBooking = bookings.find(b => b.status === 'booked' || b.status === 'checked_in');
+        const activeBooking = findRunningBooking(bookings);
         if (!activeBooking) {
           useDeliveryStore.getState().setOnline(false);
           deliveryAPI.updateOnlineStatus(false).catch(() => {});
-          toast.error('Gig shift required! Please book a gig shift first to go online.');
+          toast.error('Gig end ho gayi hai ya book nahi hai. Online jaane ke liye gig book karein.');
         } else {
           registerWebPushForCurrentModule('/food/delivery').catch(console.error);
         }
@@ -853,10 +870,10 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                       // Check if rider has a booked gig shift
                       const res = await gigAPI.getMyGigs();
                       const bookings = res?.data?.data?.bookings || [];
-                      const activeBooking = bookings.find(b => b.status === 'booked' || b.status === 'checked_in');
+                      const activeBooking = findRunningBooking(bookings);
 
                       if (!activeBooking) {
-                        toast.error('Gig shift required! Please book a gig shift first to go online.');
+                        toast.error('Online jaane ke liye pehle gig book karein (aapki gig abhi chalu nahi hai).');
                         setShowBookGigModal(true);
                         return;
                       }

@@ -102,6 +102,15 @@ export default function LocationPermissionGate() {
       // Always decide by a real position request: the Permissions API often reports "denied"
       // inside app WebViews even though location works. For "prompt" this also triggers the
       // system permission dialog automatically.
+      // Permission already granted: a missing fix means the phone's GPS is off, so report it
+      // after 10s instead of waiting out the 30s prompt-friendly timeout.
+      let alreadyGranted = false
+      try {
+        const st = await navigator.permissions?.query?.({ name: 'geolocation' })
+        alreadyGranted = st?.state === 'granted'
+      } catch {
+        /* Permissions API unavailable (some WebViews) */
+      }
       await new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           () => {
@@ -127,7 +136,7 @@ export default function LocationPermissionGate() {
           // short timeout expires before the person taps "Allow" and wrongly reports "GPS off".
           // High accuracy is what makes Android show the system "Turn on device location"
           // dialog (Allow -> GPS switches on by itself) instead of failing silently.
-          { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+          { enableHighAccuracy: true, timeout: alreadyGranted ? 10000 : 30000, maximumAge: 0 },
         )
       })
     } finally {
@@ -179,6 +188,25 @@ export default function LocationPermissionGate() {
     const id = setInterval(check, 5000)
     return () => clearInterval(id)
   }, [problem, dismissed, check])
+
+  // Another screen (e.g. the rider's Online toggle) could not get a fix: bring up the same
+  // "turn on location" sheet as at app start, and ask the device to enable location right away.
+  useEffect(() => {
+    if (!moduleKey) return undefined
+    const onShow = (e) => {
+      try {
+        sessionStorage.removeItem(DISMISS_KEY)
+      } catch {
+        /* ignore */
+      }
+      setDismissed(false)
+      hadProblemRef.current = true
+      setProblem(e?.detail?.denied ? 'denied' : 'off')
+      callNativeBridge('requestLocationPermission')
+    }
+    window.addEventListener('showLocationGate', onShow)
+    return () => window.removeEventListener('showLocationGate', onShow)
+  }, [moduleKey])
 
   const handleDismiss = useCallback(() => {
     try {

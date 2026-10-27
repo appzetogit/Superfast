@@ -426,10 +426,9 @@ export const updateDeliveryAvailability = async (userId, payload) => {
     // Require an active booked gig shift to go online. Riders call this endpoint as a location
     // heartbeat every few seconds, so only check on the offline -> online transition.
     if (validStatus === 'online' && statusChanged) {
-        const activeBooking = await GigBooking.findOne({
-            deliveryPartnerId: partner._id,
-            status: { $in: ['booked', 'checked_in'] }
-        });
+        // Dynamic import: the gig controller pulls in the dispatch service, keep it out of module load.
+        const { findRunningGigBooking } = await import('../controllers/gig.controller.js');
+        const activeBooking = await findRunningGigBooking(partner._id);
         if (!activeBooking) {
             throw new ValidationError('Gig shift required! Please book a gig shift first to go online.');
         }

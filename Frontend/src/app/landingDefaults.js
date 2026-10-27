@@ -57,6 +57,9 @@ export const LANDING_DEFAULTS = {
   footer: {
     about: "Food and grocery, delivered superfast.",
     copyright: "",
+    email: "",
+    phone: "",
+    address: "",
     links: [
       { label: "About", url: "/profile/about" },
       { label: "Terms", url: "/profile/terms" },
@@ -109,6 +112,9 @@ export function mergeLanding(remote) {
     footer: {
       about: str(r.footer?.about, D.footer.about),
       copyright: typeof r.footer?.copyright === "string" ? r.footer.copyright : D.footer.copyright,
+      email: typeof r.footer?.email === "string" ? r.footer.email.trim() : "",
+      phone: typeof r.footer?.phone === "string" ? r.footer.phone.trim() : "",
+      address: typeof r.footer?.address === "string" ? r.footer.address.trim() : "",
       links: links && links.length ? links : D.footer.links,
     },
   }

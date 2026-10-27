@@ -1143,6 +1143,7 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_reassigned_elsewhere', (data) => {
       debugLog('?? Order reassigned to another partner:', data);
+      window.dispatchEvent(new CustomEvent('deliveryOrderClaimed', { detail: data || {} }));
       const eventKey = getOrderAlertKey(data || {});
       const activeKey = getOrderAlertKey(activeOrderRef.current || {});
       if (eventKey && eventKey === activeKey) {
@@ -1155,6 +1156,8 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_claimed', (data) => {
       debugLog('?? Order claimed by another partner:', data);
+      // Lets the Orders tab drop the order from "New Orders" right away (not on the next poll).
+      window.dispatchEvent(new CustomEvent('deliveryOrderClaimed', { detail: data || {} }));
       const eventKey = getOrderAlertKey(data || {});
       const activeKey = getOrderAlertKey(activeOrderRef.current || {});
       if (eventKey && eventKey === activeKey) {
