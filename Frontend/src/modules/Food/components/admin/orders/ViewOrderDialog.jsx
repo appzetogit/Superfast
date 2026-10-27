@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2, ChevronDown, ChevronUp, Check, Pencil, Minus, Plus, Trash2, Search, PlusCircle, Utensils } from "lucide-react"
 import { toast } from "sonner"
+import AssignedDriverCard from "@food/components/admin/orders/AssignedDriverCard"
 import {
   Dialog,
   DialogContent,
@@ -1270,6 +1271,8 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                     {reassignMessage.text}
                   </div>
                 )}
+
+                <AssignedDriverCard order={order} />
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Available Drivers</label>

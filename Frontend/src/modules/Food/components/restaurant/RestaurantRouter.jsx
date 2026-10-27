@@ -6,6 +6,7 @@ import Loader from "@food/components/Loader"
 // Lazy Loading Components
 const AllOrdersPage = lazy(() => import("@food/pages/restaurant/AllOrdersPage"))
 const RestaurantNotifications = lazy(() => import("@food/pages/restaurant/Notifications"))
+const PendingOrders = lazy(() => import("@food/pages/restaurant/PendingOrders"))
 const OrderDetails = lazy(() => import("@food/pages/restaurant/OrderDetails"))
 const OrdersMain = lazy(() => import("@food/pages/restaurant/OrdersMain"))
 const RestaurantOnboarding = lazy(() => import("@food/pages/restaurant/Onboarding"))
@@ -66,6 +67,7 @@ export default function RestaurantRouter() {
         <Route path="onboarding" element={<RestaurantOnboarding />} />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantNotifications /></ProtectedRoute>} path="notifications" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AllOrdersPage /></ProtectedRoute>} path="orders/all" />
+        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><PendingOrders /></ProtectedRoute>} path="orders/pending" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OrderDetails /></ProtectedRoute>} path="orders/:orderId" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DeliverySettings /></ProtectedRoute>} path="delivery-settings" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RushHour /></ProtectedRoute>} path="rush-hour" />

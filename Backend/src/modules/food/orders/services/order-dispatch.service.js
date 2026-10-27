@@ -21,6 +21,8 @@ import {
 
 // A rider whose app is closed stays "online" in the DB until the shift ends. The app pings its
 // location every ~15s while open, so a ping older than this means the rider is effectively offline.
+// Riders pinged together in the first dispatch round.
+const PHASE1_RIDER_COUNT = 3;
 const OFFLINE_PING_MS = 10 * 60 * 1000;
 const hasRecentPing = (p) =>
   !p.lastLocationAt || Date.now() - new Date(p.lastLocationAt).getTime() <= OFFLINE_PING_MS;
@@ -270,7 +272,7 @@ export async function tryAutoAssign(orderId, options = {}) {
     // TIERED ALERT LOGIC
     // Phase 2: Broadcast to all (Attempt 3+)
     // Phase 3: Admin Alert (Attempt 5+ or roughly 5 mins)
-    const isPhase2 = attempt >= 3;
+    const isPhase2 = attempt >= 2;
     const isPhase3 = attempt >= 6; // ~6 minutes (60s * 6)
 
     if (isPhase3) {
@@ -334,8 +336,8 @@ export async function tryAutoAssign(orderId, options = {}) {
           orderId: order._id.toString(),
           attempt: attempt + 1,
         },
-        { delay: 30000 },
-      ); // Retry faster (30s) if no one found
+        { delay: 20000 },
+      ); // Retry faster if no one found
 
       return { ...order.toObject(), notifiedCount: 0 };
     }
@@ -379,30 +381,33 @@ export async function tryAutoAssign(orderId, options = {}) {
         logger.warn(`Push notification failed for Phase 2: ${err.message}`);
       }
     } else {
-      // PHASE 1: Target best rider only
-      const p = eligible[0];
-      const roomName = rooms.delivery(p.partnerId);
+      // PHASE 1: Offer to the nearest few riders at once (first to accept wins) instead of
+      // waiting 30s per rider, which made assignment very slow.
+      const phase1Riders = eligible.slice(0, PHASE1_RIDER_COUNT);
       logger.info(
-        `[Phase 1] Offering order ${order._id} to best rider ${p.partnerId} (${p.distanceKm}km)`,
+        `[Phase 1] Offering order ${order._id} to ${phase1Riders.length} nearest rider(s).`,
       );
-      if (io) {
-        io.to(roomName).emit("new_order", {
-          ...payload,
-          pickupDistanceKm: p.distanceKm,
-        });
-        io.to(roomName).emit("new_order_available", {
-          ...payload,
-          pickupDistanceKm: p.distanceKm,
-        });
-        io.to(roomName).emit("play_notification_sound", {
-          orderId: order.orderId,
-          orderMongoId: order._id.toString(),
-        });
+      for (const p of phase1Riders) {
+        const roomName = rooms.delivery(p.partnerId);
+        if (io) {
+          io.to(roomName).emit("new_order", {
+            ...payload,
+            pickupDistanceKm: p.distanceKm,
+          });
+          io.to(roomName).emit("new_order_available", {
+            ...payload,
+            pickupDistanceKm: p.distanceKm,
+          });
+          io.to(roomName).emit("play_notification_sound", {
+            orderId: order.orderId,
+            orderMongoId: order._id.toString(),
+          });
+        }
       }
 
       try {
-        await notifyOwnerSafely(
-          { ownerType: "DELIVERY_PARTNER", ownerId: p.partnerId },
+        await notifyOwnersSafely(
+          phase1Riders.map((p) => ({ ownerType: "DELIVERY_PARTNER", ownerId: p.partnerId })),
           {
             title: "New order assigned!",
             body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
@@ -410,13 +415,11 @@ export async function tryAutoAssign(orderId, options = {}) {
           },
         );
       } catch (err) {
-        logger.warn(
-          `Push notification failed for partner ${p.partnerId}: ${err.message}`,
-        );
+        logger.warn(`Push notification failed for Phase 1: ${err.message}`);
       }
     }
 
-    const offeredPartners = isPhase2 ? eligible : [eligible[0]];
+    const offeredPartners = isPhase2 ? eligible : eligible.slice(0, PHASE1_RIDER_COUNT);
     const offeredToEntries = offeredPartners.map((p) => ({
       partnerId: p.partnerId,
       at: new Date(),
@@ -428,7 +431,7 @@ export async function tryAutoAssign(orderId, options = {}) {
     order.dispatch.offeredTo.push(...offeredToEntries);
     await order.save();
 
-    // Re-check in 60s
+    // Re-check shortly so an ignored offer rolls over to the next riders quickly
     await addOrderJob(
       {
         action: "DISPATCH_TIMEOUT_CHECK",
@@ -436,7 +439,7 @@ export async function tryAutoAssign(orderId, options = {}) {
         orderId: order._id.toString(),
         attempt: attempt + 1,
       },
-      { delay: 30000 },
+      { delay: 25000 },
     );
 
     return { ...order.toObject(), notifiedCount: eligible.length };

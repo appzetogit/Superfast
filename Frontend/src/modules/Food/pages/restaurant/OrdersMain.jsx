@@ -92,6 +92,55 @@ const buildOrderItemsSummary = (items = []) =>
 const getOrderPreviewItem = (items = []) =>
   getRestaurantVisibleItems(items)[0] || null;
 
+// One row per item (qty, name, veg mark, price) instead of a comma-joined line.
+// Repeated lines of the same item are merged, and the header says how many items the order has.
+function OrderItemRows({ items, summary, max, className = "" }) {
+  const raw = Array.isArray(items) ? items : [];
+  if (raw.length === 0) {
+    return <p className={`text-xs text-gray-600 ${className}`}>{summary}</p>;
+  }
+  const merged = new Map();
+  for (const item of raw) {
+    const key = [item.itemId || item._id || item.id || item.name, item.variantName || item.variantId || ""].join("|");
+    const qty = Number(item.quantity) || 1;
+    const prev = merged.get(key);
+    if (prev) prev.quantity += qty;
+    else merged.set(key, { ...item, quantity: qty });
+  }
+  const list = [...merged.values()];
+  const totalQty = list.reduce((n, i) => n + i.quantity, 0);
+  const shown = max ? list.slice(0, max) : list;
+  return (
+    <div className={`space-y-1 ${className}`}>
+      <p className="text-[11px] font-semibold text-gray-500">
+        {totalQty} item{totalQty === 1 ? "" : "s"}
+        {list.length !== totalQty ? ` (${list.length} type${list.length === 1 ? "" : "s"})` : ""}
+      </p>
+      {shown.map((item, i) => {
+        const qty = item.quantity;
+        const price = (Number(item.price) || 0) * qty;
+        return (
+          <div key={i} className="flex items-center justify-between gap-2 text-xs text-gray-700">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-bold text-gray-900">{qty}x</span>
+              <span className="truncate">{item.name || "Item"}</span>
+              {item.isVeg !== undefined && (
+                <span className={`shrink-0 rounded px-1 text-[9px] font-semibold ${item.isVeg ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                  {item.isVeg ? "Veg" : "Non-veg"}
+                </span>
+              )}
+            </span>
+            {price > 0 && <span className="shrink-0 font-semibold">₹{price.toFixed(2)}</span>}
+          </div>
+        );
+      })}
+      {max && list.length > max && (
+        <p className="text-[11px] text-gray-500">+{list.length - max} more item{list.length - max === 1 ? "" : "s"}</p>
+      )}
+    </div>
+  );
+}
+
 const transformOrderForList = (order, defaultETA = 30) => ({
   orderId: order.orderId || order._id,
   mongoId: order._id,
@@ -110,6 +159,7 @@ const transformOrderForList = (order, defaultETA = 30) => ({
   ),
   eta: null,
   itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
   photoUrl: getOrderPreviewItem(order.items)?.image || null,
   photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
   paymentMethod: order.paymentMethod || order.payment?.method || null,
@@ -158,6 +208,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
             deliveredAt:
               order.deliveredAt || order.updatedAt || order.createdAt,
             itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             amount: order.pricing?.total || order.total || 0,
@@ -275,6 +326,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
                       tableOrToken: order.tableOrToken,
                       timePlaced: deliveredDate,
                       itemsSummary: order.itemsSummary,
+                      items: order.items,
                       paymentMethod: order.paymentMethod,
                     })
                   }
@@ -318,9 +370,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
                     </div>
 
                     <div className="mt-2">
-                      <p className="text-xs text-gray-600 line-clamp-1">
-                        {order.itemsSummary}
-                      </p>
+                      <OrderItemRows items={order.items} summary={order.itemsSummary} max={3} />
                     </div>
 
                     <div className="mt-2 flex items-end justify-between gap-2">
@@ -388,6 +438,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
             cancellationReason:
               order.cancellationReason || "No reason provided",
             itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             amount: order.pricing?.total || order.total || 0,
@@ -514,6 +565,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
                       tableOrToken: order.tableOrToken,
                       timePlaced: cancelledDate,
                       itemsSummary: order.itemsSummary,
+                      items: order.items,
                       paymentMethod: order.paymentMethod,
                     })
                   }
@@ -566,9 +618,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
                     </div>
 
                     <div className="mt-2">
-                      <p className="text-xs text-gray-600 line-clamp-1">
-                        {order.itemsSummary}
-                      </p>
+                      <OrderItemRows items={order.items} summary={order.itemsSummary} max={3} />
                       {order.cancellationReason && (
                         <p className="text-[10px] text-red-600 mt-1 line-clamp-1">
                           Reason: {order.cancellationReason}
@@ -1803,9 +1853,7 @@ export default function OrdersMain() {
 
               <div className="mb-3">
                 <p className="text-xs font-medium text-gray-700 mb-1">Items</p>
-                <p className="text-xs text-gray-600">
-                  {selectedOrder.itemsSummary}
-                </p>
+                <OrderItemRows items={selectedOrder.items} summary={selectedOrder.itemsSummary} />
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
@@ -1891,6 +1939,7 @@ function OrderCard({
   timePlaced,
   eta,
   itemsSummary,
+  items,
   paymentMethod,
   photoUrl,
   photoAlt,
@@ -1937,6 +1986,7 @@ function OrderCard({
             timePlaced,
             eta,
             itemsSummary,
+            items,
             paymentMethod,
             mongoId,
           })
@@ -1992,7 +2042,7 @@ function OrderCard({
 
           {/* Middle row */}
           <div className="mt-2">
-            <p className="text-xs text-gray-600 line-clamp-1">{itemsSummary}</p>
+            <OrderItemRows items={items} summary={itemsSummary} max={3} />
           </div>
 
           {/* Bottom row */}
@@ -2133,6 +2183,7 @@ function PreparingOrders({
               initialETA, // Store initial ETA in minutes
               preparingTimestamp, // Store when order started preparing
               itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
               photoUrl: getOrderPreviewItem(order.items)?.image || null,
               photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
               deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
@@ -2386,6 +2437,7 @@ function PreparingOrders({
                 timePlaced={order.timePlaced}
                 eta={etaDisplay}
                 itemsSummary={order.itemsSummary}
+                items={order.items}
                 photoUrl={order.photoUrl}
                 photoAlt={order.photoAlt}
                 paymentMethod={order.paymentMethod}
@@ -2443,6 +2495,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
             }),
             eta: null, // Don't show ETA for ready orders
             itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             paymentMethod: order.paymentMethod || order.payment?.method || null,
@@ -2563,6 +2616,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0, searchTerm = ""
             }),
             eta: null,
             itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             paymentMethod: order.paymentMethod || order.payment?.method || null,
@@ -2677,6 +2731,7 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
             }),
             scheduledAt: order.scheduledAt,
             itemsSummary: buildOrderItemsSummary(order.items),
+  items: getRestaurantVisibleItems(order.items),
             photoUrl: getOrderPreviewItem(order.items)?.image || null,
             photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
             paymentMethod: order.paymentMethod || order.payment?.method || null,

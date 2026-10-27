@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MapPin, Navigation, X } from 'lucide-react'
 import { isModuleAuthenticated } from '@food/utils/auth'
+import { getNativeLocation, isNativeWrapper } from '@shared/utils/nativeLocation'
 
 /**
  * Asks for location as soon as a signed-in user / rider / restaurant / seller opens the app,
@@ -90,6 +91,14 @@ export default function LocationPermissionGate() {
     if (!moduleKey || typeof navigator === 'undefined' || !navigator.geolocation || checkingRef.current) return
     checkingRef.current = true
     try {
+      // App wrapper: the native layer handles permission + switching GPS on, no web prompt needed.
+      const native = await getNativeLocation()
+      if (native) {
+        gotFixRef.current = true
+        setProblem(null)
+        announceGranted()
+        return
+      }
       // Always decide by a real position request: the Permissions API often reports "denied"
       // inside app WebViews even though location works. For "prompt" this also triggers the
       // system permission dialog automatically.
@@ -116,7 +125,9 @@ export default function LocationPermissionGate() {
           // maximumAge 0: a cached fix must not hide the fact that GPS is now off
           // iOS Safari counts the time the permission prompt is open towards the timeout, so a
           // short timeout expires before the person taps "Allow" and wrongly reports "GPS off".
-          { enableHighAccuracy: false, timeout: 30000, maximumAge: 0 },
+          // High accuracy is what makes Android show the system "Turn on device location"
+          // dialog (Allow -> GPS switches on by itself) instead of failing silently.
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
         )
       })
     } finally {
@@ -179,9 +190,21 @@ export default function LocationPermissionGate() {
     setProblem(null)
   }, [])
 
-  const handleEnable = () => {
+  const handleEnable = async () => {
+    // Only awaited inside the app wrapper; in a browser the tap must reach geolocation synchronously.
+    const native = isNativeWrapper() ? await getNativeLocation() : null
+    if (native) {
+      gotFixRef.current = true
+      setProblem(null)
+      announceGranted()
+      return
+    }
     // Native wrappers can open their own settings screen (fire and forget, keep the tap's user gesture).
-    callNativeBridge(problem === 'off' ? 'openLocationSettings' : 'requestLocationPermission')
+    // `requestLocationPermission` should show the native permission + "turn on location" dialogs;
+    // `openLocationSettings` is only a fallback for older app builds.
+    callNativeBridge('requestLocationPermission').then((ok) => {
+      if (!ok && problem === 'off') callNativeBridge('openLocationSettings')
+    })
     if (typeof navigator === 'undefined' || !navigator.geolocation) return
     // Called synchronously from the tap: with high accuracy Android Chrome shows the system
     // permission prompt and, if device location is off, Google's "Turn on" Location Accuracy dialog.

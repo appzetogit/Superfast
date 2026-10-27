@@ -4,6 +4,7 @@ import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import io from "socket.io-client";
+import AssignedDriverCard from "@food/components/admin/orders/AssignedDriverCard";
 import {
   Search,
   MapPin,
@@ -910,6 +911,8 @@ export default function StatusMonitor() {
                   {reassignMessage.text}
                 </div>
               )}
+
+              <AssignedDriverCard order={activeReassignOrder} />
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Available Drivers</label>

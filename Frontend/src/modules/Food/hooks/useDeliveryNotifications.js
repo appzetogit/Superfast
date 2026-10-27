@@ -684,6 +684,22 @@ export const useDeliveryNotifications = () => {
     };
   }, []);
 
+  // Explicit "Enable sound" tap (SoundAlertGate): unlock the alert element inside that gesture.
+  useEffect(() => {
+    const forceUnlock = () => {
+      userInteractedRef.current = true;
+      const el = audioRef.current;
+      if (!el) return;
+      el.muted = true;
+      el.play()
+        .then(() => { el.pause(); el.currentTime = 0; })
+        .catch(() => { })
+        .finally(() => { el.muted = false; });
+    };
+    window.addEventListener('unlock-alert-audio', forceUnlock);
+    return () => window.removeEventListener('unlock-alert-audio', forceUnlock);
+  }, []);
+
   // Initialize audio on mount - use selected preference from localStorage
   useEffect(() => {
     // Get selected alert sound preference from localStorage

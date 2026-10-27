@@ -6,10 +6,13 @@ import {
   Package,
   MessageSquare,
   Compass,
+  BellRing,
 } from "lucide-react"
+import { usePendingOrderCount } from "@food/utils/pendingOrders"
 
 const getOrdersTabs = (basePath = "/restaurant") => [
   { id: "orders", label: "Orders", icon: FileText, route: `${basePath}` },
+  { id: "pending", label: "Pending", icon: BellRing, route: `${basePath}/orders/pending` },
   { id: "inventory", label: "Inventory", icon: Package, route: `${basePath}/inventory` },
   { id: "feedback", label: "Feedback", icon: MessageSquare, route: `${basePath}/feedback` },
   { id: "explore", label: "Explore", icon: Compass, route: `${basePath}/explore` },
@@ -24,6 +27,7 @@ const findActiveTab = (tabs, pathname) =>
 export default function BottomNavOrders() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const pendingCount = usePendingOrderCount()
 
   const basePath = pathname.startsWith("/food/restaurant")
     ? "/food/restaurant"
@@ -68,6 +72,11 @@ export default function BottomNavOrders() {
                     className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-visible rounded-full px-2 py-2"
                     whileTap={{ scale: 0.95 }}
                   >
+                    {tab.id === "pending" && pendingCount > 0 && (
+                      <span className="absolute right-1 top-0 z-20 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                        {pendingCount > 9 ? "9+" : pendingCount}
+                      </span>
+                    )}
                     <Icon
                       className={`relative z-10 h-[20px] w-[20px] transition-all duration-300 ${
                         isActive ? "text-white scale-110" : "text-white/60"

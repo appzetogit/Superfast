@@ -954,11 +954,18 @@ export default function GlobalNewOrderPopup() {
                                     className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${item.isVeg ? "bg-green-500" : "bg-red-500"}`}></div>
                                   <div className="flex-1">
                                     <div className="flex items-start justify-between">
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {item.quantity} x {item.name}
-                                      </p>
-                                      <p className="text-xs text-gray-600 ml-2">
-                                        ₹{item.price * item.quantity}
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-900">
+                                          {item.quantity} x {item.name}
+                                        </p>
+                                        {Number(item.quantity) > 1 && (
+                                          <p className="text-[11px] text-gray-500">
+                                            ₹{Number(item.price) || 0} each
+                                          </p>
+                                        )}
+                                      </div>
+                                      <p className="text-sm font-semibold text-gray-900 ml-2 shrink-0">
+                                        ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
                                       </p>
                                     </div>
                                   </div>

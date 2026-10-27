@@ -255,6 +255,9 @@ const buildMessagePayload = (payload = {}, token) => {
             aps: {
                 alert: { title, body },
                 ...(isTest ? {} : { sound: soundFile || 'default' }),
+                // Lets order alerts ring through Focus / scheduled summary (needs the
+                // "Time Sensitive Notifications" capability in the iOS app; ignored otherwise).
+                ...(isTest ? {} : { 'interruption-level': 'time-sensitive', 'relevance-score': 1 }),
                 badge: 1,
                 'content-available': 1,
                 'mutable-content': 1

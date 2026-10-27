@@ -701,10 +701,13 @@ export const useRestaurantNotifications = () => {
       window.addEventListener('fcm-order-update', handleFcmPushEvent);
     }
 
-    // Load notification sound
-    audioRef.current = new Audio(resolveAudioSource(alertSound));
-    audioRef.current.preload = 'auto';
-    audioRef.current.volume = 1;
+    // Load notification sound. Reuse the element across re-runs: on iOS an element only becomes
+    // playable after it was started from a tap, so a fresh Audio() here would be silent again.
+    if (!audioRef.current) {
+      audioRef.current = new Audio(resolveAudioSource(alertSound));
+      audioRef.current.preload = 'auto';
+      audioRef.current.volume = 1;
+    }
 
     return () => {
       stopAlertLoop();
@@ -714,10 +717,6 @@ export const useRestaurantNotifications = () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
-      }
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
       }
     };
   }, [restaurantId]);
@@ -772,6 +771,25 @@ export const useRestaurantNotifications = () => {
       document.removeEventListener('keydown', handleUserInteraction);
       window.removeEventListener('pointerdown', handleUserInteraction);
     };
+  }, []);
+
+  // Explicit "Enable sound" tap (SoundAlertGate): unlock the alert element inside that gesture.
+  useEffect(() => {
+    const forceUnlock = () => {
+      userInteractedRef.current = true;
+      if (!audioRef.current) {
+        audioRef.current = new Audio(resolveAudioSource(alertSound));
+        audioRef.current.preload = 'auto';
+      }
+      const el = audioRef.current;
+      el.muted = true;
+      el.play()
+        .then(() => { el.pause(); el.currentTime = 0; })
+        .catch(() => { })
+        .finally(() => { el.muted = false; });
+    };
+    window.addEventListener('unlock-alert-audio', forceUnlock);
+    return () => window.removeEventListener('unlock-alert-audio', forceUnlock);
   }, []);
 
   const playNotificationSound = async (orderData = {}) => {

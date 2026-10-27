@@ -60,6 +60,21 @@ async function getPartnerZoneNames(partner, live = null) {
   return names;
 }
 
+/**
+ * Zones the rider may use: the zone(s) they are physically in, or - when the GPS fix is missing or
+ * outside every drawn zone polygon - the zone/city saved on their profile. Without this fallback an
+ * Indore rider with GPS off (or standing just outside the polygon) only saw all-zone gigs.
+ */
+const effectiveZoneNames = (partner, physicalZones) => {
+  if (physicalZones && physicalZones.size > 0) return physicalZones;
+  const names = new Set();
+  for (const v of [partner?.zoneName, partner?.city]) {
+    const n = normZone(v);
+    if (n) names.add(n);
+  }
+  return names;
+};
+
 const gigAllowedForZones = (gig, zoneNames) =>
   isGlobalGigZone(gig?.zoneName) || zoneNames.has(normZone(gig?.zoneName));
 
@@ -321,7 +336,7 @@ export async function listZoneGigsController(req, res) {
     const allGigs = await Gig.find(query)
       .sort({ startTime: 1 })
       .lean();
-    const gigs = allGigs.filter((g) => gigAllowedForZones(g, partnerZones));
+    const gigs = allGigs.filter((g) => gigAllowedForZones(g, effectiveZoneNames(partner, partnerZones)));
 
     // Cross reference driver's existing bookings
     let userBookings = [];
@@ -394,9 +409,9 @@ export async function bookGigController(req, res) {
       return res.status(400).json({ success: false, message: 'This Gig shift has already ended' });
     }
 
-    const bookingPartner = await FoodDeliveryPartner.findById(deliveryPartnerId).select('lastLat lastLng').lean();
+    const bookingPartner = await FoodDeliveryPartner.findById(deliveryPartnerId).select('lastLat lastLng zoneName city adminForceOffline').lean();
     const bookingZones = await getPartnerZoneNames(bookingPartner, { lat: req.body.lat, lng: req.body.lng });
-    if (!gigAllowedForZones(gig, bookingZones)) {
+    if (!gigAllowedForZones(gig, effectiveZoneNames(bookingPartner, bookingZones))) {
       return res.status(403).json({
         success: false,
         message: `This gig is only for the ${gig.zoneName} zone. You can book gigs in the zone you are currently in.`,
@@ -476,13 +491,27 @@ export async function bookGigController(req, res) {
     }
     slotClaimed = false; // slot is now owned by the booking
 
+    // No separate check-in step: if the shift is already open (starts within 30 min or is running),
+    // check the rider in and put them online right away.
+    let autoCheckedIn = false;
+    if (window && !bookingPartner?.adminForceOffline) {
+      const nowMs = Date.now();
+      if (nowMs >= window.start.getTime() - CHECK_IN_EARLY_MINUTES * 60 * 1000 && nowMs < window.end.getTime()) {
+        booking.status = 'checked_in';
+        booking.checkInTime = new Date();
+        await booking.save();
+        await FoodDeliveryPartner.updateOne({ _id: partnerObjectId }, { $set: { availabilityStatus: 'online' } });
+        autoCheckedIn = true;
+      }
+    }
+
     // Instantly check for 30-min reminder if shift starts soon
     setTimeout(checkAndSendGigReminders, 1000);
 
     return res.json({
       success: true,
-      message: 'Gig shift booked successfully',
-      data: { booking },
+      message: autoCheckedIn ? 'Gig booked - you are now online' : 'Gig shift booked successfully',
+      data: { booking, autoCheckedIn },
     });
   } catch (error) {
     if (slotClaimed && claimedGigId) {

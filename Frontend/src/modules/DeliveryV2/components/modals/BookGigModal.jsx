@@ -13,6 +13,18 @@ function formatLocalDate(d) {
   return `${year}-${month}-${day}`;
 }
 
+// Shift times are IST. A booked shift is "open" from 30 min before its start until its end.
+const isShiftOpen = (gig) => {
+  if (!gig?.date || !gig?.startTime || !gig?.endTime) return false;
+  const pad = (t) => String(t).split(':').map((n) => String(Number(n) || 0).padStart(2, '0')).join(':');
+  const start = new Date(`${gig.date}T${pad(gig.startTime)}:00+05:30`);
+  const end = new Date(`${gig.date}T${pad(gig.endTime)}:00+05:30`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+  if (end <= start) end.setDate(end.getDate() + 1);
+  const now = Date.now();
+  return now >= start.getTime() - 30 * 60 * 1000 && now < end.getTime();
+};
+
 export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
   const [gigs, setGigs] = useState([]);
@@ -37,8 +49,25 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
       coordsRef.current = { lat: loc.lat, lng: loc.lng };
       const res = await gigAPI.getZoneGigs({ date: selectedDate, ...coordsRef.current });
       if (res?.data?.success && res.data.data) {
-        setGigs(res.data.data.gigs || []);
+        const list = res.data.data.gigs || [];
+        setGigs(list);
         setRiderZones(res.data.data.riderZones || []);
+
+        // No manual check-in: a booked shift that is already open puts the rider online by itself.
+        const due = list.find((g) => g.bookingStatus === 'booked' && isShiftOpen(g));
+        if (due) {
+          try {
+            const ci = await gigAPI.checkInGig({ gigId: due._id, bookingId: due.bookingId });
+            if (ci?.data?.success) {
+              setOnline(true);
+              toast.success('Your shift is on - you are now online.');
+              if (onBookingComplete) onBookingComplete();
+              if (onClose) onClose();
+            }
+          } catch {
+            // keep the sheet open; the rider can still use the online toggle
+          }
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch gigs:', err);
@@ -59,6 +88,13 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
       const res = await gigAPI.bookGig(gig._id, coordsRef.current);
       if (res?.data?.success) {
         toast.success(res.data.message || 'Gig shift booked successfully!');
+        if (res.data.data?.autoCheckedIn) {
+          // Booked into a shift that is already open: online right away, nothing more to tap.
+          setOnline(true);
+          if (onBookingComplete) onBookingComplete();
+          if (onClose) onClose();
+          return;
+        }
         fetchGigs();
         if (onBookingComplete) onBookingComplete();
       } else {
@@ -84,26 +120,6 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Error cancelling booking');
-    } finally {
-      setBookingIdInProgress(null);
-    }
-  };
-
-  const handleCheckIn = async (gig) => {
-    setBookingIdInProgress(gig._id);
-    try {
-      const res = await gigAPI.checkInGig({ gigId: gig._id, bookingId: gig.bookingId });
-      if (res?.data?.success) {
-        setOnline(true);
-        toast.success('Checked-in to Gig shift! You are now online for orders.');
-        fetchGigs();
-        if (onBookingComplete) onBookingComplete();
-        if (onClose) onClose();
-      } else {
-        toast.error(res?.data?.message || 'Check-in failed');
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Check-in error');
     } finally {
       setBookingIdInProgress(null);
     }
@@ -270,25 +286,15 @@ export function BookGigModal({ isOpen, onClose, onBookingComplete }) {
 
                   {/* Line 4: Full-width Green Button (Matching Screenshot 4) */}
                   {isCheckedIn ? (
-                    // Already checked in: tapping confirms, makes sure the rider is online and closes the sheet.
-                    <button
-                      onClick={() => handleCheckIn(gig)}
-                      disabled={bookingIdInProgress === gig._id}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-3 rounded-2xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
+                    <div className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-black text-xs py-3 rounded-2xl flex items-center justify-center gap-2">
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>{bookingIdInProgress === gig._id ? 'PLEASE WAIT...' : 'CHECKED IN • OK, START WORKING'}</span>
-                    </button>
+                      <span>YOU ARE ONLINE FOR THIS SHIFT</span>
+                    </div>
                   ) : isBooked ? (
                     <>
-                    <button
-                      onClick={() => handleCheckIn(gig)}
-                      disabled={bookingIdInProgress === gig._id}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>CHECK IN NOW TO START WORKING</span>
-                    </button>
+                    <div className="w-full bg-gray-50 text-gray-600 border border-gray-200 font-bold text-[11px] py-3 rounded-2xl text-center">
+                      Booked. You will go online automatically when the shift opens ({gig.startTime}).
+                    </div>
                     <button
                       onClick={() => handleCancel(gig)}
                       disabled={bookingIdInProgress === gig._id}

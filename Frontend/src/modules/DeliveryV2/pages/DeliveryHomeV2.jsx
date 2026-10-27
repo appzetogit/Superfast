@@ -18,6 +18,7 @@ import { PickupActionModal } from '@/modules/DeliveryV2/components/modals/Pickup
 import { DeliveryVerificationModal } from '@/modules/DeliveryV2/components/modals/DeliveryVerificationModal';
 import { OrderSummaryModal } from '@/modules/DeliveryV2/components/modals/OrderSummaryModal';
 import { BookGigModal } from '@/modules/DeliveryV2/components/modals/BookGigModal';
+import ActiveOrderDetailsBar from '@/modules/DeliveryV2/components/ActiveOrderDetailsBar';
 import ActionSlider from '@/modules/DeliveryV2/components/ui/ActionSlider';
 
 // Sub Pages
@@ -399,6 +400,28 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       deliveryAPI.updateOnlineStatus(false).catch(() => { });
     }
   }, [isOnline]);
+
+  // The persisted local flag is lost when the app/WebView storage is cleared, so the toggle showed
+  // "offline" while the server still had the rider online. Trust the server on open and on return.
+  useEffect(() => {
+    let cancelled = false;
+    const syncFromServer = () => {
+      deliveryAPI.getProfile().then((res) => {
+        if (cancelled) return;
+        const profile = res?.data?.data?.profile;
+        if (profile?.availabilityStatus === 'online' && !useDeliveryStore.getState().isOnline) {
+          useDeliveryStore.getState().setOnline(true);
+        }
+      }).catch(() => { });
+    };
+    syncFromServer();
+    const onVisible = () => { if (!document.hidden) syncFromServer(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   // When the app returns to the foreground, re-assert online so a status dropped
   // while backgrounded does not stop order notifications.
@@ -862,7 +885,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 </div>
                 <motion.div animate={{ x: isOnline ? 59 : 0 }} className="absolute left-1 w-6 h-6 bg-white rounded-full shadow-sm" />
               </button>
-              <TargetProgressCardV2 activeOrder={activeOrder} />
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={() => setShowBookGigModal(true)} className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-[#00A669] to-[#008f5a] flex items-center gap-1 text-white text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-lg border border-white/20">
@@ -873,6 +895,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               <button onClick={() => navigate('/food/delivery/help/id-card')} className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20 active:scale-95 transition-all shadow-lg"><Contact className="w-4 h-4" /></button>
               <button onClick={() => navigate('/food/delivery/notifications')} className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-95 transition-all shadow-lg"><Bell className="w-4 h-4" />{notificationUnreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-orange-400 border border-[#1f1f1f]" />}</button>
             </div>
+          </div>
+
+          {/* Bonus target pill gets its own row; sharing the top row with Gigs/alerts overlapped on narrow phones */}
+          <div className="px-4 pb-1 flex">
+            <TargetProgressCardV2 activeOrder={activeOrder} />
           </div>
 
           {/* ─── LIVE STATUS / PROGRESS BADGE (MATCHED PRO SCREENSHOT 3) ─── */}
@@ -1073,7 +1100,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-x-0 top-0 bottom-[92px] z-[300] pointer-events-none flex items-end"
+              className={`fixed inset-x-0 top-0 ${activeOrder && tripStatus !== 'COMPLETED' ? 'bottom-[148px]' : 'bottom-[92px]'} z-[300] pointer-events-none flex items-end`}
             >
               <div className="w-full pointer-events-auto relative">
                 {incomingOrder && currentTab !== 'orders' && (
@@ -1237,6 +1264,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         </AnimatePresence>
       )}
 
+      {isOnline && activeOrder && tripStatus !== 'COMPLETED' && (
+        <ActiveOrderDetailsBar
+          orders={activeOrders && activeOrders.length > 0 ? activeOrders : [activeOrder]}
+          onCall={callCustomer}
+        />
+      )}
+
       {/* ─── MODALS RESTORED FROM OLD UI ─── */}
       <BottomPopup isOpen={showEmergencyPopup} title="Emergency Help" onClose={() => setShowEmergencyPopup(false)}>
         <div className="grid gap-4 py-2">
@@ -1265,7 +1299,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="fixed bottom-[100px] inset-x-0 z-[300] px-6"
+          className={`fixed ${activeOrder && tripStatus !== 'COMPLETED' ? 'bottom-[164px]' : 'bottom-[100px]'} inset-x-0 z-[300] px-6`}
         >
           <button
             onClick={() => setIsModalMinimized(false)}
