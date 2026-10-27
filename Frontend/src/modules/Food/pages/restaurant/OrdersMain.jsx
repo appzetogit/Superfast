@@ -36,6 +36,7 @@ import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotificatio
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton";
+import OrderElapsedTimer from "@food/components/admin/orders/OrderElapsedTimer";
 import { getImageUrl } from "@food/utils/imageUtils";
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging";
 const debugLog = (...args) => { };
@@ -170,6 +171,10 @@ const transformOrderForList = (order, defaultETA = 30) => ({
     : new Date(order.createdAt || Date.now()),
   initialETA: order.estimatedDeliveryTime || defaultETA,
   sortTimestamp: new Date(getAllOrdersTimestamp(order)).getTime(),
+  createdAt: order.createdAt || null,
+  readyAt: order.readyAt || order.tracking?.readyForPickup?.timestamp || null,
+  updatedAt: order.updatedAt || null,
+  statusHistory: order.statusHistory || [],
 });
 
 // Completed Orders List Component
@@ -1951,6 +1956,10 @@ function OrderCard({
   isAccepting = false,
   onMarkReady,
   isMarkingReady = false,
+  createdAt,
+  readyAt,
+  updatedAt,
+  statusHistory,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
   const isReady = normalizedStatus === "ready";
@@ -2037,6 +2046,10 @@ function OrderCard({
               <span className="text-[11px] text-gray-500 text-right whitespace-normal break-words max-w-[120px] leading-tight">
                 {timePlaced}
               </span>
+              <OrderElapsedTimer
+                mode="prep"
+                order={{ createdAt, readyAt, updatedAt, statusHistory, status }}
+              />
             </div>
           </div>
 
@@ -2188,6 +2201,10 @@ function PreparingOrders({
               photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
               deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
               dispatchStatus: order.dispatch?.status || null,
+              createdAt: order.createdAt || null,
+              readyAt: order.readyAt || order.tracking?.readyForPickup?.timestamp || null,
+              updatedAt: order.updatedAt || null,
+              statusHistory: order.statusHistory || [],
               paymentMethod:
                 order.paymentMethod || order.payment?.method || null,
             };
@@ -2443,6 +2460,10 @@ function PreparingOrders({
                 paymentMethod={order.paymentMethod}
                 deliveryPartnerId={order.deliveryPartnerId}
                 dispatchStatus={order.dispatchStatus}
+                createdAt={order.createdAt}
+                readyAt={order.readyAt}
+                updatedAt={order.updatedAt}
+                statusHistory={order.statusHistory}
                 onSelect={onSelectOrder}
                 onCancel={onCancel}
                 onMarkReady={handleMarkReady}
@@ -2501,6 +2522,10 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, searchTerm = "" }) {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            createdAt: order.createdAt || null,
+            readyAt: order.readyAt || order.tracking?.readyForPickup?.timestamp || null,
+            updatedAt: order.updatedAt || null,
+            statusHistory: order.statusHistory || [],
           }));
 
           if (isMounted) {
@@ -2622,6 +2647,10 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0, searchTerm = ""
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            createdAt: order.createdAt || null,
+            readyAt: order.readyAt || order.tracking?.readyForPickup?.timestamp || null,
+            updatedAt: order.updatedAt || null,
+            statusHistory: order.statusHistory || [],
           }));
 
           if (isMounted) {

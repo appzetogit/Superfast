@@ -8,6 +8,7 @@ const router = express.Router();
 
 // Public endpoint for app logo/theme
 router.get('/public', settingsController.getGlobalSettings);
+router.get('/landing', settingsController.getLandingPage);
 
 // Protected admin endpoints
 router.get('/', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), settingsController.getGlobalSettings);
@@ -21,5 +22,8 @@ router.patch('/', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), upload.fie
     { name: 'userLogo', maxCount: 1 },
     { name: 'sellerLogo', maxCount: 1 }
 ]), settingsController.updateGlobalSettings);
+
+router.put('/landing', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), settingsController.updateLandingPage);
+router.post('/landing/image', authMiddleware, requireRoles('ADMIN', 'SUB_ADMIN'), upload.single('image'), settingsController.uploadLandingImage);
 
 export default router;

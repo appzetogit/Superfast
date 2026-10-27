@@ -358,6 +358,14 @@ const orderSchema = new mongoose.Schema(
             ],
             default: 'created'
         },
+        /** When the restaurant marked the food ready; the delivery-phase timer starts here. */
+        readyAt: { type: Date, default: null },
+        /** Stored once the order is delivered: how many minutes each phase took. */
+        timings: {
+            preparationMinutes: { type: Number, default: null },
+            deliveryMinutes: { type: Number, default: null },
+            totalMinutes: { type: Number, default: null }
+        },
         cancellationReason: { type: String, default: null },
         cancelledAt: { type: Date, default: null },
         cancelledBy: { type: String, default: null },
@@ -437,6 +445,35 @@ orderSchema.index({ 'dispatch.deliveryPartnerId': 1, orderStatus: 1 });
 orderSchema.index({ 'dispatch.status': 1, orderStatus: 1 });
 orderSchema.index({ 'payment.status': 1, createdAt: -1 });
 orderSchema.index({ 'payment.method': 1, createdAt: -1 });
+
+const toMinutes = (fromMs, toMs) =>
+    Number.isFinite(fromMs) && Number.isFinite(toMs) && toMs >= fromMs
+        ? Math.round(((toMs - fromMs) / 60000) * 10) / 10
+        : null;
+
+orderSchema.pre('save', function (next) {
+    if (this.isModified('orderStatus')) {
+        const now = new Date();
+        if (this.orderStatus === 'ready_for_pickup' && !this.readyAt) {
+            this.readyAt = now;
+        }
+        if (this.orderStatus === 'delivered' && this.timings?.totalMinutes == null) {
+            const placedMs = new Date(this.createdAt || now).getTime();
+            const doneMs = new Date(this.deliveryState?.deliveredAt || now).getTime();
+            const readyMs = this.readyAt
+                ? new Date(this.readyAt).getTime()
+                : this.deliveryState?.pickedUpAt
+                    ? new Date(this.deliveryState.pickedUpAt).getTime()
+                    : NaN;
+            this.timings = {
+                preparationMinutes: toMinutes(placedMs, readyMs),
+                deliveryMinutes: toMinutes(readyMs, doneMs),
+                totalMinutes: toMinutes(placedMs, doneMs)
+            };
+        }
+    }
+    next();
+});
 
 orderSchema.pre('save', async function (next) {
     if (this.isModified('orderStatus') && ['delivered', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'].includes(this.orderStatus)) {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
+import OrderElapsedTimer from "@food/components/admin/orders/OrderElapsedTimer"
 import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2 } from "lucide-react"
 
 const getStatusColor = (orderStatus) => {
@@ -211,6 +212,7 @@ export default function OrdersTable({
                 {visibleColumns.orderDate && (
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-slate-700">{order.date}, {order.time}</span>
+                    <div className="mt-1 flex flex-wrap gap-1"><OrderElapsedTimer order={order} /><OrderElapsedTimer order={order} mode="delivery" /></div>
                   </td>
                 )}
                 {visibleColumns.orderType && (

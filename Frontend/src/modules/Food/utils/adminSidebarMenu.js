@@ -239,6 +239,7 @@ export const adminSidebarMenu = [
     label: "BANNER SETTINGS",
     permissionKey: "cms",
     items: [
+      { type: "link", label: "Website Landing Content", path: "/admin/food/landing-content", icon: "Image", permissionKey: "cms" },
       { type: "link", label: "Landing Page Management", path: "/admin/food/hero-banner-management", icon: "Image", permissionKey: "cms" },
     ],
   },

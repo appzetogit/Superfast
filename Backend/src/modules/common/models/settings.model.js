@@ -76,6 +76,8 @@ const globalSettingsSchema = new mongoose.Schema(
         showLocationPopup: { type: Boolean, default: true },
         bannedNumbers: { type: [String], default: [] },
         dynamicModuleThemes: { type: Boolean, default: true },
+        // Public marketing landing page content (editable from admin)
+        landingPage: { type: mongoose.Schema.Types.Mixed, default: {} },
         developerMode: {
             enabled: { type: Boolean, default: false },
             demoRestaurantIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant' }],

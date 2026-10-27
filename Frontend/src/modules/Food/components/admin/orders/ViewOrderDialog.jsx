@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react"
 import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2, ChevronDown, ChevronUp, Check, Pencil, Minus, Plus, Trash2, Search, PlusCircle, Utensils } from "lucide-react"
 import { toast } from "sonner"
 import AssignedDriverCard from "@food/components/admin/orders/AssignedDriverCard"
+import OrderElapsedTimer, { CompletedTimings } from "@food/components/admin/orders/OrderElapsedTimer"
+import { getCachedSettings } from "@common/utils/businessSettings"
 import {
   Dialog,
   DialogContent,
@@ -464,13 +466,23 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] bg-white p-0 overflow-y-auto">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 sticky top-0 bg-white z-10">
-          <DialogTitle className="flex items-center gap-2">
-            <Eye className="w-5 h-5 text-[var(--primary-theme)]" />
+          <DialogTitle className="flex items-center gap-2 pr-8">
+            <img
+              src={getCachedSettings()?.logo?.url || "/favicon.png"}
+              alt="Superfast"
+              className="w-8 h-8 rounded-lg object-contain"
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/favicon.png" }}
+            />
             Order Details
+            <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <OrderElapsedTimer order={order} />
+              <OrderElapsedTimer order={order} mode="delivery" />
+            </span>
           </DialogTitle>
           <DialogDescription>
             View complete information about this order
           </DialogDescription>
+          <CompletedTimings order={order} className="mt-2" />
         </DialogHeader>
         <div className="px-6 py-6 space-y-6">
           {/* Basic Order Information */}

@@ -365,3 +365,46 @@ export async function updateGlobalSettings(req, res, next) {
         next(error);
     }
 }
+
+
+// ---------- Public landing page content ----------
+
+export async function getLandingPage(req, res, next) {
+    try {
+        const settings = await GlobalSettings.findOne().select('landingPage').lean();
+        return sendResponse(res, 200, 'Landing page fetched successfully', settings?.landingPage || {});
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateLandingPage(req, res, next) {
+    try {
+        const landingPage = req.body?.landingPage;
+        if (!landingPage || typeof landingPage !== 'object' || Array.isArray(landingPage)) {
+            return res.status(400).json({ success: false, message: 'landingPage object is required' });
+        }
+        let settings = await GlobalSettings.findOne();
+        if (!settings) settings = await GlobalSettings.create({ companyName: 'SUPERFAST', email: 'admin@SUPERFAST.com' });
+        const updated = await GlobalSettings.findOneAndUpdate(
+            { _id: settings._id },
+            { $set: { landingPage, updatedBy: req.user ? req.user.userId : null } },
+            { new: true, lean: true }
+        );
+        try { await invalidateCache('*'); } catch (e) { console.error('Cache invalidation failed:', e); }
+        return sendResponse(res, 200, 'Landing page updated successfully', updated.landingPage || {});
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function uploadLandingImage(req, res, next) {
+    try {
+        const file = req.file;
+        if (!file) return res.status(400).json({ success: false, message: 'Image file is required' });
+        const result = await uploadImageBufferDetailed(file.buffer, 'business/landing');
+        return sendResponse(res, 200, 'Image uploaded', { url: result.secure_url });
+    } catch (error) {
+        next(error);
+    }
+}

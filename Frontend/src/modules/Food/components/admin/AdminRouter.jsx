@@ -125,6 +125,7 @@ const PageMetaData = lazy(() => import("@food/pages/admin/system/PageMetaData"))
 const ReactSite = lazy(() => import("@food/pages/admin/system/ReactSite"));
 const CleanDatabase = lazy(() => import("@food/pages/admin/system/CleanDatabase"));
 const AddonActivation = lazy(() => import("@food/pages/admin/system/AddonActivation"));
+const LandingContentSettings = lazy(() => import("@food/pages/admin/system/LandingContentSettings"));
 const LandingPageManagement = lazy(() => import("@food/pages/admin/system/LandingPageManagement"));
 const DiningManagement = lazy(() => import("@food/pages/admin/system/DiningManagement"));
 const DiningList = lazy(() => import("@food/pages/admin/system/DiningList"));
@@ -331,6 +332,7 @@ export default function AdminRouter() {
             <Route path="react-site" element={<ReactSite />} />
             <Route path="clean-database" element={<CleanDatabase />} />
             <Route path="addon-activation" element={<AddonActivation />} />
+            <Route path="landing-content" element={<LandingContentSettings />} />
             <Route path="hero-banner-management" element={<LandingPageManagement />} />
             <Route path="dining-management" element={<DiningManagement />} />
             <Route path="dining-list" element={<DiningList />} />
