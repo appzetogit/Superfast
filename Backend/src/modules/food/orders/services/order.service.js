@@ -2241,6 +2241,13 @@ export async function createOrder(userId, dto) {
   if (paymentMethod === "razorpay_qr") {
     throw new ValidationError("Invalid payment method for order creation.");
   }
+  // Master switch: keep false until Razorpay approves the website/app, then set to true.
+  const ONLINE_PAYMENT_LIVE = false;
+  if (paymentMethod === "razorpay" && !ONLINE_PAYMENT_LIVE) {
+    throw new ValidationError(
+      "Online payment is currently unavailable. Please choose Cash on Delivery or Wallet.",
+    );
+  }
   if (paymentMethod === "razorpay" && !isRazorpayConfigured()) {
     throw new ValidationError(
       "Online payment is not configured. Please choose Cash on Delivery or Wallet.",

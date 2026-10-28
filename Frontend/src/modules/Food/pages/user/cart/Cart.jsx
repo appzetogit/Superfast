@@ -19,7 +19,7 @@ import { useZone } from "@food/hooks/useZone"
 import { useLocationSelector } from "@food/components/user/UserLayout"
 import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
-import { initRazorpayPayment } from "@food/utils/razorpay"
+import { initRazorpayPayment, ONLINE_PAYMENT_LIVE } from "@food/utils/razorpay"
 import { sanitizeOrderImage, sanitizeOrderNotes } from "@food/utils/orderPayload"
 import { toast } from "sonner"
 import { calculateDistance } from "@food/utils/common"
@@ -3256,7 +3256,7 @@ export default function Cart() {
                 <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
                   {[
                     ...(settings?.onlinePaymentEnabled !== false ? [
-                      {
+                      ...(ONLINE_PAYMENT_LIVE ? [{
                         id: 'razorpay',
                         name: 'Online Payment',
                         description: 'UPI, Cards, Netbanking',
@@ -3264,7 +3264,7 @@ export default function Cart() {
                         color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
                         selectedColor: 'bg-emerald-500 text-white',
                         badge: 'SECURE'
-                      },
+                      }] : []),
                       {
                         id: 'wallet',
                         name: 'Quick Wallet',

@@ -7,7 +7,7 @@ import { Button } from "@food/components/ui/button";
 import { useCart } from "@food/context/CartContext";
 import { useProfile } from "@food/context/ProfileContext";
 import { orderAPI } from "@food/api";
-import { initRazorpayPayment } from "@food/utils/razorpay";
+import { initRazorpayPayment, ONLINE_PAYMENT_LIVE } from "@food/utils/razorpay";
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import { sanitizeOrderImage, sanitizeOrderNotes } from "@food/utils/orderPayload";
 import { useSettings } from "@core/context/SettingsContext";
@@ -497,7 +497,7 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
                 <div className="grid gap-2">
                   {[
                     ...(settings?.codEnabled !== false ? [{ id: "cash", label: "Cash on delivery", icon: Truck }] : []),
-                    ...(settings?.onlinePaymentEnabled !== false ? [{ id: "razorpay", label: "Online payment", icon: CreditCard }] : []),
+                    ...(ONLINE_PAYMENT_LIVE && settings?.onlinePaymentEnabled !== false ? [{ id: "razorpay", label: "Online payment", icon: CreditCard }] : []),
                   ].map((method) => (
                     <button
                       key={method.id}

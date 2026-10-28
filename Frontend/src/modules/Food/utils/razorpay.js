@@ -3,6 +3,10 @@
  * Handles Razorpay payment initialization and verification
  */
 
+// Master switch for the Razorpay "Online Payment" option at checkout.
+// Keep false until Razorpay approves the website/app; then set to true.
+export const ONLINE_PAYMENT_LIVE = false;
+
 let razorpayLoaded = false;
 
 export const loadRazorpayScript = () => {

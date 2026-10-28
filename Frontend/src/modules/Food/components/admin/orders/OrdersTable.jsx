@@ -425,13 +425,27 @@ export default function OrdersTable({
                           )}
                         </button>
                       )}
-                      {/* Show Refund button or Refunded status for cancelled orders with Online/Wallet payment (restaurant or user cancelled) */}
+                      {/* Refund only for PAID Online/Wallet orders cancelled by the restaurant or platform/admin (never user-cancelled) */}
                       {(() => {
-                        // Check if order is cancelled by restaurant or user
-                        const isCancelled = order.orderStatus === "Cancelled by Restaurant" || 
-                                          order.orderStatus === "Cancelled" || 
-                                          order.orderStatus === "Cancelled by User" ||
-                                          (order.status === "cancelled" && (order.cancelledBy === "user" || order.cancelledBy === "restaurant"));
+                        const rawStatus = String(order.rawOrderStatus || "")
+                        const isUserCancelled =
+                          rawStatus === "cancelled_by_user" ||
+                          order.orderStatus === "Cancelled by User" ||
+                          order.cancelledBy === "user"
+                        const isCancelled = !isUserCancelled && (
+                          rawStatus === "cancelled_by_restaurant" ||
+                          rawStatus === "cancelled_by_admin" ||
+                          order.orderStatus === "Cancelled by Restaurant" ||
+                          order.orderStatus === "Cancelled" ||
+                          order.orderStatus === "Canceled" ||
+                          (order.status === "cancelled" && (order.cancelledBy === "restaurant" || order.cancelledBy === "admin")))
+
+                        // Money must actually have been collected (payment status paid / already refunded)
+                        const payStatus = String(order.payment?.status || "").toLowerCase()
+                        const isPaid = payStatus
+                          ? ["paid", "refunded"].includes(payStatus)
+                          : ["paid", "refunded"].includes(String(order.paymentStatus || "").toLowerCase())
+                        if (!isPaid) return false
                         
                         // Check if payment type is Online or Wallet (not Cash on Delivery)
                         const paymentMethod = order.payment?.method || order.paymentMethod;

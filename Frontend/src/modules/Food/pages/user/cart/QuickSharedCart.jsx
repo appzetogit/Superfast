@@ -8,7 +8,7 @@ import { useCart } from "@food/context/CartContext";
 import { useProfile } from "@food/context/ProfileContext";
 import { sanitizeOrderImage, sanitizeOrderNotes } from "@food/utils/orderPayload";
 import { orderAPI } from "@food/api";
-import { initRazorpayPayment } from "@food/utils/razorpay";
+import { initRazorpayPayment, ONLINE_PAYMENT_LIVE } from "@food/utils/razorpay";
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import { useSettings } from "@core/context/SettingsContext";
 
@@ -444,7 +444,7 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
                   </button>
                 )}
 
-                {settings?.onlinePaymentEnabled !== false && (
+                {ONLINE_PAYMENT_LIVE && settings?.onlinePaymentEnabled !== false && (
                 <button
                   type="button"
                   onClick={() => setSelectedPaymentMethod("razorpay")}

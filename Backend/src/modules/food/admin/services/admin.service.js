@@ -1582,8 +1582,10 @@ async function getEligibleFoodCustomerIds() {
 }
 
 export async function getCustomers(query = {}) {
-    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 1000);
-    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    // `all=true` (used by export) returns every matching customer in a single request.
+    const exportAll = String(query.all) === 'true';
+    const limit = exportAll ? 100000 : Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 1000);
+    const page = exportAll ? 1 : Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
     const filter = {
@@ -1641,15 +1643,65 @@ export async function getCustomers(query = {}) {
     else if (sortBy === 'name-desc') sort.name = -1;
     else sort.createdAt = -1;
 
-    const [docs, total] = await Promise.all([
-        FoodUser.find(filter)
-            .sort(sort)
-            .skip(skip)
-            .limit(limit)
-            .select('name email phone countryCode isVerified isActive createdAt profileImage isCodBlocked')
-            .lean(),
-        FoodUser.countDocuments(filter)
-    ]);
+    const userSelect = 'name email phone countryCode isVerified isActive createdAt profileImage isCodBlocked';
+    const chooseFirstRaw = parseInt(query.chooseFirst, 10);
+    const chooseFirstCap = Number.isFinite(chooseFirstRaw) && chooseFirstRaw > 0 ? chooseFirstRaw : null;
+    const sortByOrders = sortBy === 'orders-asc' || sortBy === 'orders-desc';
+
+    let docs = [];
+    let matchedTotal = 0;
+    // "Choose First N" limits the whole result set, so clamp this page to what is left of N.
+    const pageLimit = (matchedCount) => {
+        const available = chooseFirstCap ? Math.min(matchedCount, chooseFirstCap) : matchedCount;
+        return Math.max(0, Math.min(limit, available - skip));
+    };
+
+    if (sortByOrders) {
+        // Order count lives in another collection: count + sort + page inside ONE pipeline (uses the userId index),
+        // so only the requested page ever leaves the database.
+        matchedTotal = await FoodUser.countDocuments(filter);
+        const take = pageLimit(matchedTotal);
+        if (take > 0) {
+            const projection = Object.fromEntries(userSelect.split(' ').map((f) => [f, 1]));
+            docs = await FoodUser.aggregate([
+                { $match: filter },
+                {
+                    $lookup: {
+                        from: FoodOrder.collection.name,
+                        let: { uid: '$_id' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ['$userId', '$$uid'] },
+                                    orderType: { $in: FOOD_CUSTOMER_ORDER_TYPES },
+                                    orderStatus: 'delivered'
+                                }
+                            },
+                            { $count: 'n' }
+                        ],
+                        as: '_oc'
+                    }
+                },
+                { $addFields: { _orderCount: { $ifNull: [{ $first: '$_oc.n' }, 0] } } },
+                { $sort: { _orderCount: sortBy === 'orders-asc' ? 1 : -1, _id: 1 } },
+                { $skip: skip },
+                { $limit: take },
+                { $project: projection }
+            ]);
+        }
+    } else {
+        matchedTotal = await FoodUser.countDocuments(filter);
+        const take = pageLimit(matchedTotal);
+        if (take > 0) {
+            docs = await FoodUser.find(filter)
+                .sort(sort)
+                .skip(skip)
+                .limit(take)
+                .select(userSelect)
+                .lean();
+        }
+    }
+    const total = chooseFirstCap ? Math.min(matchedTotal, chooseFirstCap) : matchedTotal;
 
     const sanitizeUrl = (s) => {
         if (!s) return '';
@@ -1687,7 +1739,7 @@ export async function getCustomers(query = {}) {
         ])
     );
 
-    let customers = docs.map((u) => {
+    const customers = docs.map((u) => {
         const stats = orderStatsMap.get(String(u._id)) || { totalOrder: 0, totalOrderAmount: 0 };
         return ({
             id: u._id,
@@ -1707,11 +1759,6 @@ export async function getCustomers(query = {}) {
             createdAt: u.createdAt
         });
     });
-
-    const chooseFirst = parseInt(query.chooseFirst, 10);
-    if (Number.isFinite(chooseFirst) && chooseFirst > 0) {
-        customers = customers.slice(0, chooseFirst);
-    }
 
     return { customers, total, page, limit };
 }
@@ -6312,7 +6359,8 @@ export async function getSidebarBadges() {
 }
 
 const USER_CANCEL_FULL_REFUND_WINDOW_MS = 30 * 1000;
-const CANCELLED_ORDER_STATUSES_FOR_REFUND = ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
+// Refunds are only issued for restaurant / platform(admin) cancellations - never for user-cancelled orders.
+const CANCELLED_ORDER_STATUSES_FOR_REFUND = ['cancelled_by_restaurant', 'cancelled_by_admin'];
 
 function isOnlinePrepaidMethod(method) {
     return ['razorpay', 'razorpay_qr'].includes(String(method || '').trim().toLowerCase());
@@ -6343,7 +6391,11 @@ export async function processRefund(orderId, refundAmount, refundTo) {
     }
 
     if (!CANCELLED_ORDER_STATUSES_FOR_REFUND.includes(String(order.orderStatus || ''))) {
-        throw new ValidationError('Only cancelled orders can be refunded');
+        throw new ValidationError('Refund is only available for orders cancelled by the restaurant or platform');
+    }
+
+    if (!['paid', 'refunded'].includes(String(order.payment?.status || '').toLowerCase())) {
+        throw new ValidationError('Refund is only available for orders that were paid online');
     }
 
     if (order.payment?.refund?.status === 'processed' || order.payment?.status === 'refunded') {

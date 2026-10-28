@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Search, Download, ChevronDown, Calendar, Eye, Trash2, FileDown, FileSpreadsheet, FileText, X, Mail, Phone, MapPin, Package, IndianRupee, Calendar as CalendarIcon, User, CheckCircle, XCircle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -34,71 +34,24 @@ export default function Customers() {
     chooseFirst: "",
   })
 
-  const filteredCustomers = useMemo(() => {
-    let result = [...customers]
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(customer =>
-        customer.name.toLowerCase().includes(query) ||
-        customer.email.toLowerCase().includes(query) ||
-        customer.phone.includes(query)
-      )
-    }
-
-    // Filter by order date when that field is available in the API payload.
-
-    // Filter by joining date
-    if (filters.joiningDate) {
-      result = result.filter(customer => {
-        // Parse joining date from format "17 Oct 2021"
-        const customerDate = new Date(customer.joiningDate)
-        const filterDate = new Date(filters.joiningDate)
-        return customerDate.toDateString() === filterDate.toDateString()
-      })
-    }
-
-    // Filter by status
-    if (filters.status) {
-      if (filters.status === "active") {
-        result = result.filter(customer => customer.status === true)
-      } else if (filters.status === "inactive") {
-        result = result.filter(customer => customer.status === false)
-      }
-    }
-
-    // Sort by options
-    if (filters.sortBy) {
-      if (filters.sortBy === "name-asc") {
-        result.sort((a, b) => a.name.localeCompare(b.name))
-      } else if (filters.sortBy === "name-desc") {
-        result.sort((a, b) => b.name.localeCompare(a.name))
-      } else if (filters.sortBy === "orders-asc") {
-        result.sort((a, b) => a.totalOrder - b.totalOrder)
-      } else if (filters.sortBy === "orders-desc") {
-        result.sort((a, b) => b.totalOrder - a.totalOrder)
-      }
-    }
-
-    // Limit results if "Choose First" is set
-    if (filters.chooseFirst && parseInt(filters.chooseFirst) > 0) {
-      result = result.slice(0, parseInt(filters.chooseFirst))
-    }
-
-    return result
-  }, [customers, searchQuery, filters])
-
-  const paginatedCustomers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredCustomers.slice(start, start + pageSize)
-  }, [filteredCustomers, currentPage, pageSize])
-
-  const totalPages = Math.ceil(filteredCustomers.length / pageSize) || 1
+  // Search, filters, sorting and pagination are all done by the backend; `customers` is just the current page.
+  const paginatedCustomers = customers
+  const totalPages = Math.ceil(totalCustomers / pageSize) || 1
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, filters, pageSize])
+
+  const buildCustomerParams = (page, limit) => ({
+    limit,
+    page,
+    ...(searchQuery && { search: searchQuery }),
+    ...(filters.status && { status: filters.status }),
+    ...(filters.joiningDate && { joiningDate: filters.joiningDate }),
+    ...(filters.orderDate && { orderDate: filters.orderDate }),
+    ...(filters.sortBy && { sortBy: filters.sortBy }),
+    ...(filters.chooseFirst && { chooseFirst: filters.chooseFirst }),
+  })
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }))
@@ -129,16 +82,7 @@ export default function Customers() {
     const fetchCustomers = async () => {
       try {
         setLoading(true)
-        const params = {
-          limit: 1000,
-          page: 1,
-          ...(searchQuery && { search: searchQuery }),
-          ...(filters.status && { status: filters.status }),
-          ...(filters.joiningDate && { joiningDate: filters.joiningDate }),
-          ...(filters.orderDate && { orderDate: filters.orderDate }),
-          ...(filters.sortBy && { sortBy: filters.sortBy }),
-          ...(filters.chooseFirst && { chooseFirst: filters.chooseFirst }),
-        }
+        const params = buildCustomerParams(currentPage, pageSize)
 
         const response = await adminAPI.getCustomers(params)
         const data = response?.data?.data || response?.data?.data || response?.data
@@ -170,19 +114,17 @@ export default function Customers() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [searchQuery, filters.status, filters.joiningDate, filters.orderDate, filters.sortBy, filters.chooseFirst])
+  }, [searchQuery, filters.status, filters.joiningDate, filters.orderDate, filters.sortBy, filters.chooseFirst, currentPage, pageSize])
 
   const [searchParams] = useSearchParams()
   const userIdFromUrl = searchParams.get("userId")
 
   useEffect(() => {
-    if (userIdFromUrl && customers.length > 0) {
-      const customer = customers.find(c => c.id === userIdFromUrl || c._id === userIdFromUrl)
-      if (customer) {
-        handleViewDetails(customer.id || customer.sl || customer._id)
-      }
+    // Open straight by id: the customer may not be on the page currently loaded.
+    if (userIdFromUrl) {
+      handleViewDetails(userIdFromUrl)
     }
-  }, [userIdFromUrl, customers])
+  }, [userIdFromUrl])
 
   const handleToggleStatus = async (customerId) => {
     try {
@@ -253,25 +195,37 @@ export default function Customers() {
     }
   }
 
-  const handleExport = (format) => {
-    if (filteredCustomers.length === 0) {
+  // Export covers every customer matching the current filters (not just the visible page), in a single request.
+  const fetchAllCustomersForExport = async () => {
+    const response = await adminAPI.getCustomers({ ...buildCustomerParams(1, 1), all: true })
+    const data = response?.data?.data || response?.data
+    return data?.customers || data?.users || []
+  }
+
+  const handleExport = async (format) => {
+    if (totalCustomers === 0) {
       toast.error("No customers to export")
       return
     }
 
     const filename = "customers"
     try {
+      const exportList = await fetchAllCustomersForExport()
+      if (exportList.length === 0) {
+        toast.error("No customers to export")
+        return
+      }
       switch (format) {
         case "csv":
-          exportCustomersToCSV(filteredCustomers, filename)
+          exportCustomersToCSV(exportList, filename)
           toast.success("CSV export started")
           break
         case "excel":
-          exportCustomersToExcel(filteredCustomers, filename)
+          exportCustomersToExcel(exportList, filename)
           toast.success("Excel export started")
           break
         case "pdf":
-          exportCustomersToPDF(filteredCustomers, filename)
+          exportCustomersToPDF(exportList, filename)
           toast.success("PDF download started")
           break
         default:
@@ -412,7 +366,7 @@ export default function Customers() {
               </button>
             </div>
             <div className="text-sm text-slate-600">
-              {loading ? 'Loading...' : `Showing ${filteredCustomers.length} of ${totalCustomers} customers`}
+              {loading ? 'Loading...' : `Showing ${customers.length} of ${totalCustomers} customers`}
             </div>
           </div>
         </div>
@@ -423,7 +377,7 @@ export default function Customers() {
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-slate-900">Customer list</h2>
               <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-                {filteredCustomers.length}
+                {totalCustomers}
               </span>
             </div>
 
@@ -489,7 +443,7 @@ export default function Customers() {
                       <div className="text-sm text-slate-500">Loading customers...</div>
                     </td>
                   </tr>
-                ) : filteredCustomers.length === 0 ? (
+                ) : customers.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-8 text-center">
                       <div className="text-sm text-slate-500">No customers found</div>
@@ -582,11 +536,11 @@ export default function Customers() {
               </tbody>
             </table>
           </div>
-          {filteredCustomers.length > 0 && !loading && (
+          {totalCustomers > 0 && !loading && (
             <Pagination
               page={currentPage}
               totalPages={totalPages}
-              total={filteredCustomers.length}
+              total={totalCustomers}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => {
