@@ -3,7 +3,6 @@
  * Handles Razorpay payment initialization and verification
  */
 
-/*
 let razorpayLoaded = false;
 
 export const loadRazorpayScript = () => {
@@ -32,19 +31,8 @@ export const loadRazorpayScript = () => {
     document.body.appendChild(script);
   });
 };
-*/
-
-export const loadRazorpayScript = async () => {
-  throw new Error('Online Razorpay payments are currently disabled.');
-};
 
 export const initRazorpayPayment = async (options) => {
-  console.warn('Online Razorpay payments are disabled.');
-  if (options?.onError) {
-    options.onError(new Error('Online Razorpay payments are disabled.'));
-  }
-  throw new Error('Online Razorpay payments are currently disabled.');
-  /*
   try {
     // Load Razorpay script if not already loaded
     await loadRazorpayScript();
@@ -91,7 +79,7 @@ export const initRazorpayPayment = async (options) => {
     };
 
     const razorpay = new window.Razorpay(razorpayOptions);
-    
+
     razorpay.on('payment.failed', function(response) {
       console.error('Razorpay payment failed:', response);
       if (options.onError) {
@@ -115,7 +103,6 @@ export const initRazorpayPayment = async (options) => {
     }
     throw error;
   }
-  */
 };
 
 /**
