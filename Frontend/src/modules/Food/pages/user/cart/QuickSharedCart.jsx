@@ -218,7 +218,7 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
       const orderResponse = await orderAPI.createOrder(orderPayload);
       const { order, razorpay } = orderResponse?.data?.data || {};
 
-      if (selectedPaymentMethod === "cash" || order) {
+      if (selectedPaymentMethod === "cash") {
         toast.success("Quick order placed successfully");
         clearCart();
         navigate(`/food/user/orders/${order?._id || order?.orderId || order?.id}?confirmed=true`, {
@@ -227,7 +227,6 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
         return;
       }
 
-      /* Online Razorpay Payment Integration - Disabled
       if (!razorpay?.orderId || !razorpay?.key) {
         throw new Error("Payment gateway is not ready");
       }
@@ -296,7 +295,6 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
           setIsPlacingOrder(false);
         },
       });
-      */
     } catch (error) {
       console.error("Quick shared order failed", error);
       toast.error(
@@ -446,7 +444,7 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
                   </button>
                 )}
 
-                {/* 
+                {settings?.onlinePaymentEnabled !== false && (
                 <button
                   type="button"
                   onClick={() => setSelectedPaymentMethod("razorpay")}
@@ -462,7 +460,7 @@ export default function QuickSharedCart({ initialAddress = null, addressMode = "
                   </span>
                   <span className="text-xs font-bold text-slate-500">UPI / Card</span>
                 </button>
-                */}
+                )}
               </div>
             </div>
 

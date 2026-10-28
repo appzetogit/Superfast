@@ -2236,14 +2236,14 @@ export async function createOrder(userId, dto) {
     if (fallbackPhone) deliveryAddress.phone = fallbackPhone;
   }
 
-  // Online payment (Razorpay) is disabled: orders go straight to the restaurant
-  // as COD / Wallet. To re-enable, restore the lines below and the Razorpay block further down.
-  // const paymentMethod =
-  //   dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
-  const paymentMethod = dto.paymentMethod;
-  if (["razorpay", "card", "razorpay_qr"].includes(paymentMethod)) {
+  const paymentMethod =
+    dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+  if (paymentMethod === "razorpay_qr") {
+    throw new ValidationError("Invalid payment method for order creation.");
+  }
+  if (paymentMethod === "razorpay" && !isRazorpayConfigured()) {
     throw new ValidationError(
-      "Online payment is currently unavailable. Please choose Cash on Delivery or Wallet.",
+      "Online payment is not configured. Please choose Cash on Delivery or Wallet.",
     );
   }
   const isCash = paymentMethod === "cash";
@@ -2543,29 +2543,28 @@ export async function createOrder(userId, dto) {
 
   let razorpayPayload = null;
 
-  // Online payment disabled.
-  // if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
-  //   const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
-  //   if (amountPaise < 100)
-  //     throw new ValidationError("Amount too low for online payment");
-  //   try {
-  //     const rzOrder = await createRazorpayOrder(amountPaise, "INR", orderId);
-  //     order.payment.razorpay = {
-  //       orderId: rzOrder.id,
-  //       paymentId: "",
-  //       signature: "",
-  //     };
-  //     order.payment.status = "created";
-  //     razorpayPayload = {
-  //       key: getRazorpayKeyId(),
-  //       orderId: rzOrder.id,
-  //       amount: rzOrder.amount,
-  //       currency: rzOrder.currency || "INR",
-  //     };
-  //   } catch (err) {
-  //     throw new ValidationError(err?.message || "Payment gateway error");
-  //   }
-  // }
+  if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
+    const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
+    if (amountPaise < 100)
+      throw new ValidationError("Amount too low for online payment");
+    try {
+      const rzOrder = await createRazorpayOrder(amountPaise, "INR", orderId);
+      order.payment.razorpay = {
+        orderId: rzOrder.id,
+        paymentId: "",
+        signature: "",
+      };
+      order.payment.status = "created";
+      razorpayPayload = {
+        key: getRazorpayKeyId(),
+        orderId: rzOrder.id,
+        amount: rzOrder.amount,
+        currency: rzOrder.currency || "INR",
+      };
+    } catch (err) {
+      throw new ValidationError(err?.message || "Payment gateway error");
+    }
+  }
 
   await order.save();
 
@@ -2620,10 +2619,10 @@ export async function createOrder(userId, dto) {
     });
 
     // Restaurant gets new-order request only when payment flow is eligible.
-    if (hasFoodItems) {
+    if (hasFoodItems && !isAwaitingOnlinePayment) {
       await notifyRestaurantNewOrder(order);
     }
-    if (hasQuickItems) {
+    if (hasQuickItems && !isAwaitingOnlinePayment) {
       await notifySellerNewOrders(order, sellerOrders);
     }
 

@@ -1933,8 +1933,7 @@ export default function Cart() {
         return
       }
 
-      /*
-      // Online Razorpay Payment Integration - Disabled
+      // Online Razorpay Payment Integration
       if (!razorpay || !razorpay.orderId || !razorpay.key) {
         debugError("? Razorpay initialization failed:", { razorpay, order })
         throw new Error(razorpay ? "Razorpay payment gateway is not configured. Please contact support." : "Failed to initialize payment")
@@ -2071,7 +2070,6 @@ export default function Cart() {
           setIsPlacingOrder(false)
         }
       })
-      */
     } catch (error) {
       debugError("? Order creation error:", error)
 
@@ -3258,7 +3256,6 @@ export default function Cart() {
                 <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
                   {[
                     ...(settings?.onlinePaymentEnabled !== false ? [
-                      /*
                       {
                         id: 'razorpay',
                         name: 'Online Payment',
@@ -3268,7 +3265,6 @@ export default function Cart() {
                         selectedColor: 'bg-emerald-500 text-white',
                         badge: 'SECURE'
                       },
-                      */
                       {
                         id: 'wallet',
                         name: 'Quick Wallet',
