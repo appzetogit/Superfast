@@ -135,12 +135,11 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const { settings } = useSettings();
 
-  // Online payment disabled: never fall back to Razorpay when COD is off.
-  // useEffect(() => {
-  //   if (settings?.codEnabled === false && selectedPaymentMethod === "cash") {
-  //     setSelectedPaymentMethod("razorpay");
-  //   }
-  // }, [settings?.codEnabled, selectedPaymentMethod]);
+  useEffect(() => {
+    if (settings?.codEnabled === false && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("razorpay");
+    }
+  }, [settings?.codEnabled, selectedPaymentMethod]);
 
   const foodItems = cart.filter((item) => getOrderType(item) === "food");
   const quickItems = cart.filter((item) => getOrderType(item) === "quick");

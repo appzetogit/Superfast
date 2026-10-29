@@ -2243,7 +2243,7 @@ export async function createOrder(userId, dto) {
     throw new ValidationError("Invalid payment method for order creation.");
   }
   // Master switch: keep false until Razorpay approves the website/app, then set to true.
-  const ONLINE_PAYMENT_LIVE = false;
+  const ONLINE_PAYMENT_LIVE = true;
   if (paymentMethod === "razorpay" && !ONLINE_PAYMENT_LIVE) {
     throw new ValidationError(
       "Online payment is currently unavailable. Please choose Cash on Delivery or Wallet.",
@@ -3013,14 +3013,6 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
   const orderStatus = String(order.orderStatus || "").trim().toLowerCase();
   const alwaysCancelableStatuses = ["created", "placed"];
   const cancelWindowStatuses = ["confirmed", "preparing", "ready_for_pickup", "picked_up"];
-  const dispatchStatus = String(order.dispatch?.status || "").trim().toLowerCase();
-  const hasAcceptedDeliveryPartner =
-    dispatchStatus === "accepted" ||
-    Boolean(order.dispatch?.acceptedAt) ||
-    Boolean(order.dispatch?.deliveryPartnerId);
-  const canCancelBeforeDispatchStarts =
-    ["confirmed", "preparing", "ready_for_pickup"].includes(orderStatus) &&
-    !hasAcceptedDeliveryPartner;
 
   if (!alwaysCancelableStatuses.includes(orderStatus)) {
     const cancelWindowStartEntry = [...(order.statusHistory || [])]
@@ -3033,8 +3025,8 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
       Number.isFinite(cancelWindowStartMs) &&
       Date.now() - cancelWindowStartMs <= USER_CANCEL_EDIT_WINDOW_MS;
 
-    if (!isWithinCancelWindow && !canCancelBeforeDispatchStarts) {
-      throw new ValidationError("Order cannot be cancelled");
+    if (!isWithinCancelWindow) {
+      throw new ValidationError("Order is already being prepared or accepted. It cannot be cancelled by user; please contact admin.");
     }
   }
 
@@ -4546,10 +4538,9 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   if (paymentMode === 'cash') {
     order.payment.method = 'cash';
   }
-  // Online payment disabled: QR (Razorpay payment link) collection is not allowed.
-  // else if (paymentMode === 'qr') {
-  //   order.payment.method = 'razorpay_qr';
-  // }
+  else if (paymentMode === 'qr') {
+    order.payment.method = 'razorpay_qr';
+  }
 
   if (
     config.deliveryOtpRequired &&
@@ -4816,9 +4807,7 @@ export async function createCollectQr(
   deliveryPartnerId,
   customerInfo = {},
 ) {
-  // Online payment disabled: no Razorpay payment links. Collect cash instead.
-  throw new ValidationError("Online QR payment is currently unavailable. Please collect cash.");
-  // eslint-disable-next-line no-unreachable
+
   const query = mongoose.Types.ObjectId.isValid(orderId) ? { _id: orderId } : { orderId };
   const order = await FoodOrder.findOne(query)
     .populate("userId", "name email phone")
@@ -5233,12 +5222,15 @@ export async function deleteOrderAdmin(orderId, adminId) {
 }
 
 /**
- * 🕵️ Watchdog: Recovers orders that are in intermediate states for too long.
- * Runs once at server startup (triggered in server.js).
+ * 🕵️ Watchdog: Stuck order detection.
+ * NOTE: Automatic cancellation of orders has been completely disabled per business requirement:
+ * Orders in transient states (placed, confirmed/accepted, preparing/processing, ready_for_pickup, picked_up)
+ * MUST NOT be cancelled automatically by the system.
+ * Orders can only be cancelled manually by an admin via the admin panel.
  */
 export async function recoverStuckOrders() {
   try {
-    const STUCK_THRESHOLD_HOURS = 2; // Orders older than this in a transient state are considered stuck
+    const STUCK_THRESHOLD_HOURS = 2;
     const thresholdDate = new Date(Date.now() - STUCK_THRESHOLD_HOURS * 60 * 60 * 1000);
 
     const transientStates = [
@@ -5250,56 +5242,19 @@ export async function recoverStuckOrders() {
       'picked_up'
     ];
 
-    // Find orders that haven't been updated recently and are in a transient state
     const stuckOrders = await FoodOrder.find({
       orderStatus: { $in: transientStates },
       updatedAt: { $lt: thresholdDate }
-    });
+    }).select('orderId orderStatus updatedAt');
 
     if (stuckOrders.length === 0) {
-      // logger.info('Watchdog: No stuck orders found to recover.');
       return;
     }
 
-    logger.info(`Watchdog: Found ${stuckOrders.length} stuck orders. Mark as cancelled...`);
-
-    const results = await Promise.all(stuckOrders.map(async (order) => {
-      try {
-        const oldStatus = order.orderStatus;
-        order.orderStatus = 'cancelled_by_admin';
-
-        pushStatusHistory(order, {
-          byRole: 'SYSTEM',
-          from: oldStatus,
-          to: 'cancelled_by_admin',
-          note: 'Watchdog auto-recovery: Order was stuck in transient state for more than 2 hours.'
-        });
-
-        await order.save({ validateBeforeSave: false });
-
-        // Sync mixed order seller legs
-        if (order.orderType === 'mixed' || order.orderType === 'quick') {
-          await cancelSellerOrdersForParent(order, "Cancelled by system watchdog");
-        }
-
-        // Enqueue event for housekeeping/finance
-        enqueueOrderEvent('order_cancelled_by_watchdog', {
-          orderMongoId: order._id.toString(),
-          orderId: order.orderId,
-          fromStatus: oldStatus
-        });
-
-        return true;
-      } catch (err) {
-        logger.error(`Watchdog: Failed to recover order ${order.orderId}: ${err.message}`);
-        return false;
-      }
-    }));
-
-    const recoveredCount = results.filter(Boolean).length;
-    logger.info(`Watchdog: Successfully recovered ${recoveredCount}/${stuckOrders.length} stuck orders.`);
+    // Inform admin/logs of delayed orders without auto-cancelling
+    logger.warn(`Watchdog: Found ${stuckOrders.length} active orders pending over ${STUCK_THRESHOLD_HOURS}h. Automatic cancellation is disabled; orders require manual admin review.`);
   } catch (err) {
-    logger.error(`Watchdog Error during recovery: ${err.message}`);
+    logger.error(`Watchdog Error during recovery check: ${err.message}`);
   }
 }
 
@@ -5957,6 +5912,20 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
   }
   if (!order) throw new NotFoundError('Order not found');
 
+  // Guard: Order cannot be marked as delivered without an assigned delivery partner!
+  if (orderStatus === 'delivered') {
+    const hasDeliveryPartner = Boolean(
+      order.dispatch?.deliveryPartnerId ||
+      order.deliveryBoyId ||
+      order.deliveryPartnerId
+    );
+    if (!hasDeliveryPartner) {
+      throw new ValidationError(
+        'Order cannot be marked as delivered without an assigned delivery partner. Please assign a delivery partner first.'
+      );
+    }
+  }
+
   const from = order.orderStatus;
   order.orderStatus = orderStatus;
 
@@ -5971,6 +5940,19 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, canc
   // Handle specific status changes and timestamps
   if (orderStatus === 'delivered') {
     order.deliveredAt = new Date();
+    if (!order.deliveryState) {
+      order.deliveryState = {};
+    }
+    order.deliveryState.currentPhase = 'delivered';
+    order.deliveryState.status = 'delivered';
+    order.deliveryState.deliveredAt = new Date();
+    if (order.dispatch) {
+      order.dispatch.status = 'delivered';
+      order.dispatch.deliveredAt = new Date();
+    }
+    if (order.payment && (order.payment.method === 'cash' || order.payment.method === 'cod')) {
+      order.payment.status = 'paid';
+    }
   }
 
   if (orderStatus === 'cancelled_by_admin') {

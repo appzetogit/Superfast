@@ -336,10 +336,10 @@ export default function Cart() {
 
   useEffect(() => {
     if ((settings?.codEnabled === false || isCodDistanceExceeded) && selectedPaymentMethod === "cash") {
-      setSelectedPaymentMethod("wallet")
+      setSelectedPaymentMethod(ONLINE_PAYMENT_LIVE ? "razorpay" : "wallet")
     }
     if (userProfile?.isCodBlocked && selectedPaymentMethod === "cash") {
-      setSelectedPaymentMethod("wallet")
+      setSelectedPaymentMethod(ONLINE_PAYMENT_LIVE ? "razorpay" : "wallet")
     }
     if (settings?.onlinePaymentEnabled === false && (selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet")) {
       setSelectedPaymentMethod("cash")

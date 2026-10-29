@@ -176,6 +176,21 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
   const handleStatusChange = async (newRawStatus) => {
     const orderId = order?.id || order?._id;
     if (!orderId || !newRawStatus || newRawStatus === localRawStatus) return;
+
+    if (newRawStatus === 'delivered') {
+      const hasDriver = Boolean(
+        order?.deliveryPartnerName ||
+        order?.deliveryPartnerPhone ||
+        order?.dispatch?.deliveryPartnerId ||
+        order?.deliveryPartnerId ||
+        order?.deliveryBoyId
+      );
+      if (!hasDriver) {
+        toast.error("Please assign a delivery partner before marking this order as Delivered.");
+        setShowReassignModal(true);
+        return;
+      }
+    }
     
     let reason = undefined;
     if (newRawStatus === 'cancelled_by_admin') {
@@ -585,10 +600,18 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                               role="listbox"
                               className="absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border border-slate-200 bg-white py-1 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
                             >
-                              {ADMIN_STATUS_OPTIONS.map((opt, idx) => {
+                                                            {ADMIN_STATUS_OPTIONS.map((opt, idx) => {
                                 // Can't go backwards in the workflow; "Cancelled" is always available.
                                 const isOptionDisabled = currentIndex !== -1 && idx < currentIndex && opt.value !== 'cancelled_by_admin';
                                 const isSelected = opt.value === currentStatus;
+                                const hasDriver = Boolean(
+                                  order?.deliveryPartnerName ||
+                                  order?.deliveryPartnerPhone ||
+                                  order?.dispatch?.deliveryPartnerId ||
+                                  order?.deliveryPartnerId ||
+                                  order?.deliveryBoyId
+                                );
+                                const needsDriver = opt.value === 'delivered' && !hasDriver;
                                 return (
                                   <li key={opt.value} role="option" aria-selected={isSelected}>
                                     <button
@@ -596,6 +619,11 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                                       disabled={isOptionDisabled}
                                       onClick={() => {
                                         setIsStatusOpen(false);
+                                        if (needsDriver) {
+                                          toast.error("Please assign a delivery partner before marking this order as Delivered.");
+                                          setShowReassignModal(true);
+                                          return;
+                                        }
                                         handleStatusChange(opt.value);
                                       }}
                                       className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
@@ -606,7 +634,14 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                                             : "text-slate-800 hover:bg-slate-50"
                                       } ${isOptionDisabled ? "opacity-40 cursor-not-allowed hover:bg-transparent" : "cursor-pointer"}`}
                                     >
-                                      <span>{opt.label}</span>
+                                      <span className="flex items-center gap-2">
+                                        {opt.label}
+                                        {needsDriver && (
+                                          <span className="text-[10px] font-normal text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                            Assign Driver First
+                                          </span>
+                                        )}
+                                      </span>
                                       {isSelected && <Check className="w-4 h-4" />}
                                     </button>
                                   </li>

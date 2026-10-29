@@ -337,9 +337,7 @@ export const placeOrder = async (req, res) => {
     const deliveryFee = Number(pricing.deliveryFee || 0);
     const total = Number(pricing.total || 0);
     const orderNumber = `QC${Date.now().toString().slice(-8)}`;
-    // Online payment disabled: always treated as COD.
-    // const isOnlinePayment = String(req.body?.paymentMode || 'COD').toUpperCase() === 'ONLINE';
-    const isOnlinePayment = false;
+    const isOnlinePayment = String(req.body?.paymentMode || 'COD').toUpperCase() === 'ONLINE' || String(req.body?.paymentMode || '').toLowerCase() === 'razorpay';
     const paymentMode = isOnlinePayment ? 'razorpay' : 'cash';
     const sellerPaymentMode = isOnlinePayment ? 'online' : 'cash';
     // Seller must receive/track every order regardless of payment mode (COD/online).

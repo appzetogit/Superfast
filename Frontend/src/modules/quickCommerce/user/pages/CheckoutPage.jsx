@@ -642,17 +642,16 @@ const CheckoutPage = () => {
   ];
 
   const paymentMethods = [
-    // Online payment disabled for now.
-    // ...(settings?.onlinePaymentEnabled === false
-    //   ? []
-    //   : [
-    //       {
-    //         id: "online",
-    //         label: "Pay Online",
-    //         icon: CreditCard,
-    //         sublabel: "UPI / Cards / NetBanking",
-    //       },
-    //     ]),
+    ...(settings?.onlinePaymentEnabled === false
+      ? []
+      : [
+          {
+            id: "online",
+            label: "Pay Online",
+            icon: CreditCard,
+            sublabel: "UPI / Cards / NetBanking",
+          },
+        ]),
     ...(settings?.codEnabled === false
       ? []
       : [
@@ -1640,7 +1639,7 @@ const CheckoutPage = () => {
       const orderData = {
         items: getCheckoutCartItemsForSync(),
         address: buildAddressForOrder(),
-        paymentMode: "COD", // online payment disabled (was: selectedPayment === "online" ? "ONLINE" : "COD")
+        paymentMode: selectedPayment === "online" ? "ONLINE" : "COD",
         discountTotal: discountAmount,
         taxTotal: gstAmount,
         platformFee: platformFee,
@@ -1670,8 +1669,7 @@ const CheckoutPage = () => {
         const placedOrderId =
           order?.orderId || order?.orderNumber || order?.id || order?._id || "";
 
-        /*
-        // Razorpay Online Payment Integration - Disabled
+        // Razorpay Online Payment Integration
         if (selectedPayment === "online" && razorpayData) {
           try {
             const companyName = await getCompanyNameAsync();
@@ -1746,7 +1744,6 @@ const CheckoutPage = () => {
             return;
           }
         }
-        */
 
         // COD flow or fallback if Razorpay missing
         clearCart();
