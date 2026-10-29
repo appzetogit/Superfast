@@ -445,6 +445,10 @@ orderSchema.index({ 'dispatch.deliveryPartnerId': 1, orderStatus: 1 });
 orderSchema.index({ 'dispatch.status': 1, orderStatus: 1 });
 orderSchema.index({ 'payment.status': 1, createdAt: -1 });
 orderSchema.index({ 'payment.method': 1, createdAt: -1 });
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ orderStatus: 1, createdAt: -1 });
+orderSchema.index({ orderType: 1, createdAt: -1 });
+orderSchema.index({ orderStatus: 1, orderType: 1 });
 
 const toMinutes = (fromMs, toMs) =>
     Number.isFinite(fromMs) && Number.isFinite(toMs) && toMs >= fromMs

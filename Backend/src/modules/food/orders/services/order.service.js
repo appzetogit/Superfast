@@ -43,6 +43,7 @@ import {
 import { getIO, rooms } from '../../../../config/socket.js';
 import { config } from '../../../../config/env.js';
 import { notifyAdminEvent } from '../../../../core/notifications/adminAlert.service.js';
+import { invalidateSidebarBadgesCache, invalidateDashboardStatsCache } from '../../admin/services/admin.service.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
 import { fetchPolyline } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
@@ -2653,6 +2654,31 @@ export async function createOrder(userId, dto) {
     });
 
     // Schedule delayed notification if it's a scheduled order
+    try {
+      invalidateSidebarBadgesCache();
+      invalidateDashboardStatsCache();
+
+      const io = getIO();
+      if (io) {
+        const adminOrderDoc = await FoodOrder.findById(order._id)
+          .select('orderId orderStatus rawOrderStatus orderType createdAt orderDate readyAt deliveredAt cancelledAt updatedAt statusHistory pricing payment paymentMethod paymentType paymentStatus items userId restaurantId restaurant dispatch dispatchPlan deliveryAddress customerAddress address deliveryOtp deliveryType scheduledAt')
+          .populate("userId", "name phone email")
+          .populate("restaurantId", "restaurantName area city ownerPhone")
+          .populate("dispatch.deliveryPartnerId", "name phone")
+          .lean();
+
+        io.to(rooms.admins()).emit("admin_new_order", {
+          order: adminOrderDoc || (order.toObject ? order.toObject() : order),
+          orderId: String(orderId),
+          orderMongoId: order._id?.toString?.() || "",
+          restaurantName: primaryRestaurant?.sourceName || "",
+          total: orderTotal,
+          orderType,
+        });
+      }
+    } catch (e) {
+      logger.warn(`Failed to broadcast admin_new_order: ${e?.message || e}`);
+    }
     if (order.orderStatus === "scheduled" && order.scheduledAt) {
       const now = Date.now();
       const scheduledTime = new Date(order.scheduledAt).getTime();
@@ -2798,6 +2824,38 @@ export async function verifyPayment(userId, dto) {
     try {
       await tryAutoAssign(order._id);
     } catch { }
+  }
+
+  try {
+    invalidateSidebarBadgesCache();
+    invalidateDashboardStatsCache();
+
+    const io = getIO();
+    if (io) {
+      const adminOrderDoc = await FoodOrder.findById(order._id)
+        .select('orderId orderStatus rawOrderStatus orderType createdAt orderDate readyAt deliveredAt cancelledAt updatedAt statusHistory pricing payment paymentMethod paymentType paymentStatus items userId restaurantId restaurant dispatch dispatchPlan deliveryAddress customerAddress address deliveryOtp deliveryType scheduledAt')
+        .populate("userId", "name phone email")
+        .populate("restaurantId", "restaurantName area city ownerPhone")
+        .populate("dispatch.deliveryPartnerId", "name phone")
+        .lean();
+
+      io.to(rooms.admins()).emit("admin_new_order", {
+        order: adminOrderDoc || (order.toObject ? order.toObject() : order),
+        orderId: String(order.orderId),
+        orderMongoId: order._id?.toString?.() || "",
+        total: Number(order.pricing?.total || 0),
+        orderType: order.orderType,
+        paymentStatus: "Paid",
+      });
+      io.to(rooms.admins()).emit("order_status_update", {
+        orderId: String(order.orderId),
+        orderMongoId: order._id?.toString?.() || "",
+        orderStatus: order.orderStatus,
+        paymentStatus: "Paid",
+      });
+    }
+  } catch (err) {
+    logger.warn(`Failed to emit admin_new_order on payment verification: ${err?.message || err}`);
   }
 
   return { order: order.toObject(), payment: order.payment };
@@ -5040,6 +5098,7 @@ export async function listOrdersAdmin(query) {
 
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)
+      .select('orderId orderStatus rawOrderStatus orderType createdAt orderDate readyAt deliveredAt cancelledAt updatedAt statusHistory pricing payment paymentMethod paymentType paymentStatus items userId restaurantId restaurant dispatch dispatchPlan deliveryAddress customerAddress address deliveryOtp deliveryType scheduledAt')
       .populate("userId", "name phone email")
       .populate("restaurantId", "restaurantName area city ownerPhone")
       .populate("dispatch.deliveryPartnerId", "name phone")

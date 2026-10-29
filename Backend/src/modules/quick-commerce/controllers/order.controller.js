@@ -20,6 +20,7 @@ import * as foodTransactionService from '../../food/orders/services/foodTransact
 import { emitQuickCommerceStatusUpdate } from '../services/quickStatusRealtime.service.js';
 import { notifyOwnerSafely } from '../../../core/notifications/firebase.service.js';
 import { notifyAdminEvent } from '../../../core/notifications/adminAlert.service.js';
+import { invalidateSidebarBadgesCache, invalidateDashboardStatsCache } from '../../food/admin/services/admin.service.js';
 import {
   createRazorpayOrder,
   getRazorpayKeyId,
@@ -598,6 +599,22 @@ export const placeOrder = async (req, res) => {
         paymentMethod: String(paymentMode || ''),
       },
     });
+
+    try {
+      invalidateSidebarBadgesCache();
+      invalidateDashboardStatsCache();
+      const io = getIO();
+      if (io) {
+        io.to(rooms.admins()).emit('admin_new_order', {
+          order: order.toObject ? order.toObject() : order,
+          orderId: String(order.orderId),
+          orderMongoId: String(order._id),
+          total: quickTotal,
+          orderType: 'quick',
+          paymentMethod: String(paymentMode || ''),
+        });
+      }
+    } catch (_) {}
 
     if (shouldFanOutSellerOrders) {
       void (async () => {

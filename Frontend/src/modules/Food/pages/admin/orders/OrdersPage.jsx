@@ -320,7 +320,7 @@ export default function OrdersPage({ statusKey = "all" }) {
       if (!silent) setIsLoading(true)
       const params = {
         page: 1,
-        limit: 1000,
+        limit: 100,
         status:
           statusKey === "all"
             ? undefined
@@ -614,36 +614,22 @@ export default function OrdersPage({ statusKey = "all" }) {
     : [filters.zoneId, filters.categoryId, filters.fromDate, filters.toDate].join("|")
 
   useEffect(() => {
-    if (!serverFiltersMountedRef.current) {
-      serverFiltersMountedRef.current = true
-      return
-    }
     if (serverFilterKey === "invalid") return
-    isFirstLoadRef.current = true
-    fetchOrders({ silent: false, withRingCheck: false })
-  }, [serverFilterKey, fetchOrders])
-
-  useEffect(() => {
     isFirstLoadRef.current = true
     seenOrderIdsRef.current = new Set()
     fetchOrders({ silent: false, withRingCheck: false })
-  }, [fetchOrders])
+  }, [statusKey, serverFilterKey])
 
   useEffect(() => {
-    if (statusKey !== "all") return undefined
-
-    // Fallback only: new orders arrive instantly through the admin socket below.
     const pollId = setInterval(() => {
       if (document.hidden) return
-      fetchOrders({ silent: true, withRingCheck: true })
+      fetchOrders({ silent: true, withRingCheck: statusKey === "all" })
     }, 30000)
 
     return () => clearInterval(pollId)
   }, [statusKey, fetchOrders])
 
   useEffect(() => {
-    if (statusKey !== "all") return undefined
-
     let backendUrl = ""
     try {
       backendUrl = new URL(API_BASE_URL).origin
@@ -668,7 +654,8 @@ export default function OrdersPage({ statusKey = "all" }) {
     socketRef.current = socket
 
     const handleIncomingRealtimeOrder = (payload = {}) => {
-      const orderId = payload?.orderId || payload?.orderMongoId || ""
+      const incomingOrder = payload?.order
+      const orderId = payload?.orderId || payload?.orderMongoId || incomingOrder?.orderId || ""
       if (!orderId) {
         activeOrderAlertRef.current = payload || { orderId: "socket-new-order" }
         playDefaultRing()
@@ -685,20 +672,66 @@ export default function OrdersPage({ statusKey = "all" }) {
 
       const now = Date.now()
       const lastHandledAt = recentRealtimeOrderRef.current.get(orderId) || 0
-      if (now - lastHandledAt < 8000) return
+      if (now - lastHandledAt < 5000) return
       recentRealtimeOrderRef.current.set(orderId, now)
 
       const title = "New order received"
-      const body = payload?.restaurantName
-        ? `${payload.restaurantName} • ${orderId}`
-        : `Order ${orderId}`
+      const rName = payload?.restaurantName || incomingOrder?.restaurant || incomingOrder?.restaurantName
+      const body = rName ? `${rName} • ${orderId}` : `Order ${orderId}`
 
-      activeOrderAlertRef.current = payload || { orderId }
+      activeOrderAlertRef.current = incomingOrder || payload || { orderId }
       playDefaultRing()
       startAlertLoop()
       toast.info(title, { description: body })
       showBrowserNotification(title, body, `admin-order-${orderId}`)
-      fetchOrders({ silent: true, withRingCheck: false })
+
+      // Instant state update (0ms delay!)
+      if (incomingOrder && (incomingOrder.id || incomingOrder._id || incomingOrder.orderId)) {
+        setOrders((prev) => {
+          const idKey = incomingOrder.id || incomingOrder._id || incomingOrder.orderId
+          const exists = prev.some((o) => (o.id || o._id || o.orderId) === idKey)
+          if (exists) {
+            return prev.map((o) => (o.id || o._id || o.orderId) === idKey ? { ...o, ...incomingOrder } : o)
+          }
+          return [incomingOrder, ...prev]
+        })
+      } else {
+        // Fetch just this single order fast (20ms)
+        adminAPI.getOrderById(orderId).then((res) => {
+          const singleOrder = res?.data?.data?.order || res?.data?.order
+          if (singleOrder) {
+            setOrders((prev) => {
+              const idKey = singleOrder.id || singleOrder._id || singleOrder.orderId
+              const exists = prev.some((o) => (o.id || o._id || o.orderId) === idKey)
+              if (exists) {
+                return prev.map((o) => (o.id || o._id || o.orderId) === idKey ? { ...o, ...singleOrder } : o)
+              }
+              return [singleOrder, ...prev]
+            })
+          }
+        }).catch(() => {
+          fetchOrders({ silent: true, withRingCheck: false })
+        })
+      }
+    }
+
+    const handleOrderStatusUpdate = (payload = {}) => {
+      const orderId = payload?.orderId || payload?.orderMongoId
+      if (!orderId) return
+      const nextStatus = payload?.orderStatus || payload?.status
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id === orderId || o._id === orderId || o.orderId === orderId) {
+            return {
+              ...o,
+              orderStatus: nextStatus || o.orderStatus,
+              rawOrderStatus: nextStatus || o.rawOrderStatus,
+              paymentStatus: payload?.paymentStatus || o.paymentStatus,
+            }
+          }
+          return o
+        })
+      )
     }
 
     socket.on("connect", () => {
@@ -706,17 +739,17 @@ export default function OrdersPage({ statusKey = "all" }) {
     })
     socket.on("admin_new_order", handleIncomingRealtimeOrder)
     socket.on("play_notification_sound", handleIncomingRealtimeOrder)
-    // Backend broadcasts new orders to admins as admin_notification { type: "new_order" }.
-    // The ring check inside fetchOrders raises this page's own alert for the new order.
+    socket.on("order_status_update", handleOrderStatusUpdate)
     const handleAdminNotification = (payload = {}) => {
       if (payload?.type !== "new_order") return
-      fetchOrders({ silent: true, withRingCheck: true })
+      handleIncomingRealtimeOrder(payload)
     }
     socket.on("admin_notification", handleAdminNotification)
 
     return () => {
       socket.off("admin_new_order", handleIncomingRealtimeOrder)
       socket.off("play_notification_sound", handleIncomingRealtimeOrder)
+      socket.off("order_status_update", handleOrderStatusUpdate)
       socket.off("admin_notification", handleAdminNotification)
       socket.disconnect()
       socketRef.current = null
@@ -767,7 +800,13 @@ export default function OrdersPage({ statusKey = "all" }) {
       const response = await adminAPI.acceptOrder(orderIdToUse)
       if (response.data?.success) {
         toast.success(response.data?.message || `Order ${order.orderId} accepted`)
-        await fetchOrders({ silent: true, withRingCheck: false })
+        setOrders((prev) => {
+          if (statusKey === 'pending') {
+            return prev.filter((o) => (o.id || o._id || o.orderId) !== orderIdToUse)
+          }
+          return prev.map((o) => (o.id || o._id || o.orderId) === orderIdToUse ? { ...o, orderStatus: 'Accepted', rawOrderStatus: 'preparing' } : o)
+        })
+        fetchOrders({ silent: true, withRingCheck: false })
       } else {
         toast.error(response.data?.message || "Failed to accept order")
       }
@@ -804,7 +843,13 @@ export default function OrdersPage({ statusKey = "all" }) {
       if (response.data?.success || response.status === 200) {
         toast.success(`Order ${selectedOrderForReject.orderId || orderIdToUse} rejected`)
         setShowRejectModal(false)
-        await fetchOrders({ silent: true, withRingCheck: false })
+        setOrders((prev) => {
+          if (statusKey === 'pending') {
+            return prev.filter((o) => (o.id || o._id || o.orderId) !== orderIdToUse)
+          }
+          return prev.map((o) => (o.id || o._id || o.orderId) === orderIdToUse ? { ...o, orderStatus: 'Canceled', rawOrderStatus: 'cancelled_by_admin' } : o)
+        })
+        fetchOrders({ silent: true, withRingCheck: false })
       } else {
         toast.error(response.data?.message || "Failed to reject order")
       }
@@ -834,7 +879,8 @@ export default function OrdersPage({ statusKey = "all" }) {
       const response = await adminAPI.deleteOrder(orderIdToUse)
       if (response.data?.success) {
         toast.success(response.data?.message || `Order ${order.orderId} deleted`)
-        await fetchOrders({ silent: true, withRingCheck: false })
+        setOrders((prev) => prev.filter((o) => (o.id || o._id || o.orderId) !== orderIdToUse))
+        fetchOrders({ silent: true, withRingCheck: false })
       } else {
         toast.error(response.data?.message || "Failed to delete order")
       }
@@ -991,7 +1037,7 @@ export default function OrdersPage({ statusKey = "all" }) {
     }
   }
 
-  if (showLoadingSkeleton) {
+  if (showLoadingSkeleton && orders.length === 0) {
     return (
       <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 p-4 lg:p-6">
         <OrdersDashboardSkeleton />
@@ -1011,6 +1057,11 @@ export default function OrdersPage({ statusKey = "all" }) {
         onExport={handleExport}
         onSettingsClick={() => setIsSettingsOpen(true)}
       />
+      {isLoading && orders.length > 0 && (
+        <div className="h-1 w-full bg-slate-200 overflow-hidden mb-3 rounded-full">
+          <div className="h-full bg-emerald-500 animate-pulse w-2/3 rounded-full"></div>
+        </div>
+      )}
       <FilterPanel
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}

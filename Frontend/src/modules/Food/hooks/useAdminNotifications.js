@@ -336,6 +336,7 @@ const handleAdminSocketEvent = (payload) => {
     // The admin orders page rings its own alert loop for new orders.
     if (!window.location.pathname.includes("/admin/food/orders")) playAdminSound();
     showAdminToast(payload?.title || "🛒 New order received", payload?.message || "", payload?.link, "View");
+    return;
   } else if (payload?.type === "delivery_partner_application") {
     const name = payload?.name || "Someone";
     const vehicleType = payload?.vehicleType ? ` (${payload.vehicleType})` : "";
