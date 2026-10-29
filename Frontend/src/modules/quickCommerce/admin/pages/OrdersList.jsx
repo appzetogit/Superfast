@@ -145,6 +145,11 @@ const OrdersList = () => {
                     date: formatOrderTimestamp(o.createdAt),
                     payment: o.payment?.method === 'cod' || o.payment?.method === 'cash' ? 'COD' : 'Digital',
                     paymentMethod: String(o.payment?.method || '').toLowerCase(),
+                    paymentStatus: String(o.payment?.status || '').toLowerCase(),
+                    customerPhone: String(o.customer?.phone || ''),
+                    deliveryPartner: o.deliveryPartner?.name || '',
+                    deliveryPartnerPhone: o.deliveryPartner?.phone || '',
+                    address: o.deliveryAddress?.line || '',
                 }));
                 setOrders(formatted);
                 formatted.forEach((row) => {
@@ -479,6 +484,7 @@ const OrdersList = () => {
                                 <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Details</th>
                                 <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</th>
                                 <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Seller</th>
+                                <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery Partner</th>
                                 <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                                 <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
                                 <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
@@ -487,7 +493,7 @@ const OrdersList = () => {
                         <tbody className="divide-y divide-slate-50">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan="6" className="px-4 py-20 text-center">
+                                    <td colSpan="7" className="px-4 py-20 text-center">
                                         <div className="flex justify-center flex-col items-center gap-2">
                                             <div className="h-8 w-8 border-4 border-fuchsia-600 border-t-transparent rounded-full animate-spin"></div>
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Orders...</p>
@@ -536,12 +542,30 @@ const OrdersList = () => {
                                             <div className="h-2 w-2 rounded-full bg-blue-500" />
                                             <span className="text-xs font-black text-slate-700">{order.customer}</span>
                                         </div>
+                                        {order.customerPhone && (
+                                            <p className="mt-1 text-[10px] font-bold text-slate-400">{order.customerPhone}</p>
+                                        )}
+                                        {order.address && (
+                                            <p className="mt-0.5 max-w-[200px] truncate text-[10px] font-medium text-slate-400" title={order.address}>{order.address}</p>
+                                        )}
                                     </td>
                                     <td className="px-4 py-5">
                                         <div className="flex items-center gap-2">
                                             <div className="h-2 w-2 rounded-full bg-emerald-500" />
                                             <span className="text-xs font-black text-slate-700">{order.seller}</span>
                                         </div>
+                                    </td>
+                                    <td className="px-4 py-5">
+                                        {order.deliveryPartner ? (
+                                            <>
+                                                <span className="text-xs font-black text-slate-700">{order.deliveryPartner}</span>
+                                                {order.deliveryPartnerPhone && (
+                                                    <p className="mt-1 text-[10px] font-bold text-slate-400">{order.deliveryPartnerPhone}</p>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="text-xs font-bold text-slate-300">Unassigned</span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-5">
                                         <div className={cn(
@@ -555,7 +579,7 @@ const OrdersList = () => {
                                     <td className="px-4 py-5 text-right">
                                         <div className="flex flex-col items-end">
                                             <span className="text-sm font-black text-slate-900">₹{order.amount.toLocaleString()}</span>
-                                            <span className="text-[10px] font-bold text-slate-400 mt-0.5">{order.payment}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 mt-0.5">{order.payment}{order.paymentStatus ? ` · ${order.paymentStatus}` : ''}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-5 text-right">
@@ -583,7 +607,7 @@ const OrdersList = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="6" className="px-4 py-20 text-center">
+                                    <td colSpan="7" className="px-4 py-20 text-center">
                                         <div className="flex flex-col items-center gap-4">
                                             <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center">
                                                 <Search className="h-10 w-10 text-slate-200" />

@@ -272,6 +272,23 @@ const buildQuickAdminOrderResponse = (order, sellerMap = {}, sellerOrderMap = {}
         }
       : null,
     storeName: seller?.shopName || seller?.name || '',
+    deliveryPartner: order.dispatch?.deliveryPartnerId?.name
+      ? {
+          name: order.dispatch.deliveryPartnerId.name,
+          phone: order.dispatch.deliveryPartnerId.phone || '',
+        }
+      : null,
+    deliveryAddress: {
+      line:
+        [
+          order.deliveryAddress?.street || order.deliveryAddress?.address,
+          order.deliveryAddress?.city,
+          order.deliveryAddress?.pincode || order.deliveryAddress?.zipCode,
+        ]
+          .filter(Boolean)
+          .join(', ') ||
+        [sellerOrder?.address?.address, sellerOrder?.address?.city].filter(Boolean).join(', '),
+    },
     sellerOrder: sellerOrder
       ? {
           _id: sellerOrder._id,
@@ -447,6 +464,18 @@ export const getAdminCategories = async (_req, res) => {
   });
 };
 
+// Same name (case-insensitive) is not allowed twice under the same parent.
+const findDuplicateQuickCategory = async (name, parentId, excludeId) => {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return null;
+  const filter = {
+    name: { $regex: new RegExp(`^\\s*${trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i') },
+    parentId: mongoose.isValidObjectId(parentId) ? parentId : null,
+  };
+  if (excludeId) filter._id = { $ne: excludeId };
+  return QuickCategory.findOne(filter).select('name').lean();
+};
+
 export const createCategory = async (req, res) => {
   const {
     name,
@@ -466,6 +495,11 @@ export const createCategory = async (req, res) => {
 
   if (!name) {
     return res.status(400).json({ success: false, message: 'name is required' });
+  }
+
+  const duplicate = await findDuplicateQuickCategory(name, parentId);
+  if (duplicate) {
+    return res.status(400).json({ success: false, message: `A category named "${duplicate.name}" already exists here` });
   }
 
   const baseSlug = slugify(name);
@@ -522,6 +556,15 @@ export const updateCategory = async (req, res) => {
     handlingFees,
     headerColor,
   } = req.body || {};
+
+  if (name !== undefined || parentId !== undefined) {
+    const nextParent = parentId !== undefined ? parentId : category.parentId;
+    const nextName = name !== undefined ? name : category.name;
+    const duplicate = await findDuplicateQuickCategory(nextName, nextParent, category._id);
+    if (duplicate) {
+      return res.status(400).json({ success: false, message: `A category named "${duplicate.name}" already exists here` });
+    }
+  }
 
   if (name !== undefined) category.name = name;
   if (slug !== undefined) category.slug = slugify(slug || name || category.name);
@@ -848,6 +891,7 @@ export const getAdminOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((currentPage - 1) * perPage)
       .limit(perPage)
+      .populate('dispatch.deliveryPartnerId', 'name phone')
       .lean(),
     QuickOrder.countDocuments(query),
   ]);

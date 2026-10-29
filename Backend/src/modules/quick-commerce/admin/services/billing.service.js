@@ -8,6 +8,7 @@ const DEFAULT_QUICK_FEE_SETTINGS = {
   deliveryFee: 25,
   deliveryFeeRanges: [],
   freeDeliveryThreshold: 0,
+  minOrderValue: 0,
   platformFee: 0,
   gstRate: 0,
   returnDeliveryCommission: 0,
@@ -170,6 +171,9 @@ export async function upsertFeeSettings(body) {
     if (body.freeDeliveryThreshold === null) $unset.freeDeliveryThreshold = 1;
     else if (body.freeDeliveryThreshold !== undefined) $set.freeDeliveryThreshold = body.freeDeliveryThreshold;
 
+    if (body.minOrderValue === null) $unset.minOrderValue = 1;
+    else if (body.minOrderValue !== undefined) $set.minOrderValue = body.minOrderValue;
+
     if (body.platformFee === null) $unset.platformFee = 1;
     else if (body.platformFee !== undefined) $set.platformFee = body.platformFee;
 
@@ -204,6 +208,7 @@ export async function upsertFeeSettings(body) {
   if (body.freeDeliveryThreshold !== undefined && body.freeDeliveryThreshold !== null) {
     payload.freeDeliveryThreshold = body.freeDeliveryThreshold;
   }
+  if (body.minOrderValue !== undefined && body.minOrderValue !== null) payload.minOrderValue = body.minOrderValue;
   if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
   if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
 
@@ -275,6 +280,12 @@ export function calculateDeliveryFeeFromSettings(subtotal, feeSettings = DEFAULT
   }
 
   return Number(feeSettings.deliveryFee || 0);
+}
+
+export async function getMinOrderValue() {
+  const feeSettings = await getActiveFeeSettings();
+  const min = Number(feeSettings.minOrderValue || 0);
+  return Number.isFinite(min) && min > 0 ? min : 0;
 }
 
 export async function calculateQuickPricing({ subtotal = 0, discount = 0, products = [] } = {}) {

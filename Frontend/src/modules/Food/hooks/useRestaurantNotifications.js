@@ -105,6 +105,10 @@ export const useRestaurantNotifications = () => {
   const lastConnectErrorLogRef = useRef(0);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
+  // Orders the restaurant already accepted/rejected (or that were cancelled). A poll/socket reply that was
+  // already in flight can still carry the old "placed" state; without this it would ring again after accept.
+  const dismissedOrderKeysRef = useRef(new Map());
+  const DISMISS_MS = 90000;
   const CONNECT_ERROR_LOG_THROTTLE_MS = 10000;
   const ALERT_LOOP_INTERVAL_MS = 4500;
   const ALERT_LOOP_MAX_MS = 120000;
@@ -123,6 +127,45 @@ export const useRestaurantNotifications = () => {
       ''
     ).trim()
   );
+
+  const orderIdsOf = (orderData = {}) => (
+    [orderData?.orderMongoId, orderData?.order_mongo_id, orderData?.orderId, orderData?.order_id, orderData?._id, orderData?.id]
+      .map((v) => (v == null ? '' : String(v).trim()))
+      .filter(Boolean)
+  );
+
+  // Event for a specific order? Only that order may silence the ring (a status update on order X must not
+  // mute a new-order ring for order Y). An event with no id at all is treated as "applies to the active order".
+  const concernsActiveOrder = (eventData = {}) => {
+    const eventIds = orderIdsOf(eventData);
+    if (eventIds.length === 0) return true;
+    const activeIds = orderIdsOf(activeOrderRef.current || {});
+    if (activeIds.length === 0) return true;
+    return eventIds.some((id) => activeIds.includes(id));
+  };
+
+  const dismissOrder = (orderData) => {
+    const key = getOrderAlertKey(orderData || {});
+    if (key) dismissedOrderKeysRef.current.set(key, Date.now());
+  };
+
+  const isOrderDismissed = (orderData = {}) => {
+    const key = getOrderAlertKey(orderData);
+    if (!key) return false;
+    const at = dismissedOrderKeysRef.current.get(key);
+    if (!at) return false;
+    if (Date.now() - at > DISMISS_MS) {
+      dismissedOrderKeysRef.current.delete(key);
+      return false;
+    }
+    return true;
+  };
+
+  // Tells GlobalNewOrderPopup to close (and stop its own ringing) when the order was handled elsewhere.
+  const announceOrderEnded = (orderData) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('restaurant-order-ended', { detail: orderData || {} }));
+  };
 
   const shouldProcessOrderAlert = (orderData = {}) => {
     const key = getOrderAlertKey(orderData);
@@ -219,6 +262,9 @@ export const useRestaurantNotifications = () => {
   };
 
   const handleIncomingOrderAlert = (orderData) => {
+    if (isOrderDismissed(orderData)) {
+      return;
+    }
     if (!shouldProcessOrderAlert(orderData)) {
       return;
     }
@@ -276,6 +322,7 @@ export const useRestaurantNotifications = () => {
             const st = String(o?.orderStatus || o?.status || "").toLowerCase();
             return ["placed", "created", "pending", "placed_pending"].includes(st);
           })
+          .filter((o) => !isOrderDismissed(o))
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || 0;
             const bt = b?.updatedAt || b?.createdAt || 0;
@@ -283,14 +330,11 @@ export const useRestaurantNotifications = () => {
           });
 
         if (unacceptedNewOrders.length > 0) {
-          unacceptedNewOrders.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
           const newest = unacceptedNewOrders[0];
-          const newestKey = String(
-            newest?.orderMongoId || newest?.order_mongo_id || newest?._id || newest?.orderId || newest?.order_id || ''
-          ).trim();
-          if (newestKey && !activeOrderRef.current) {
-            setNewOrder(newest);
-          }
+          // Open the accept popup too: when the socket is down this poll is the only trigger, and it used
+          // to ring without ever showing the order (activeOrderRef was set before this check ran).
+          setNewOrder((current) => (getOrderAlertKey(current || {}) === getOrderAlertKey(newest) ? current : newest));
+          unacceptedNewOrders.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
         } else {
           // If no unaccepted new orders remain, ensure sound is stopped immediately
           stopAlertLoop();
@@ -637,6 +681,7 @@ export const useRestaurantNotifications = () => {
         orderMongoId: data?.orderMongoId || data?.order_mongo_id,
         ...data
       };
+      if (isOrderDismissed(normalizedData)) return;
       // Force immediate buzz for notification events, even if dedupe would skip.
       activeOrderRef.current = normalizedData || { id: Date.now() };
       playNotificationSound(normalizedData);
@@ -651,7 +696,10 @@ export const useRestaurantNotifications = () => {
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
       const newStatus = String(data?.orderStatus || data?.status || '').toLowerCase();
+      if (!concernsActiveOrder(data)) return;
       if (['accepted', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'on_the_way', 'delivered', 'cancelled', 'cancelled_by_admin', 'cancelled_by_restaurant', 'cancelled_by_user'].includes(newStatus) || newStatus.includes('cancel')) {
+        dismissOrder(data);
+        announceOrderEnded(data);
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -660,6 +708,9 @@ export const useRestaurantNotifications = () => {
 
     const handleOrderEnded = (data) => {
       debugLog('?? Order ended/cancelled:', data);
+      if (!concernsActiveOrder(data)) return;
+      dismissOrder(data);
+      announceOrderEnded(data);
       stopAlertLoop();
       activeOrderRef.current = null;
       setNewOrder(null);
@@ -833,7 +884,9 @@ export const useRestaurantNotifications = () => {
     }
   };
 
-  const clearNewOrder = () => {
+  const clearNewOrder = (handledOrder) => {
+    dismissOrder(handledOrder);
+    dismissOrder(activeOrderRef.current);
     stopAlertLoop();
     activeOrderRef.current = null;
     setNewOrder(null);

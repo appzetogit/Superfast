@@ -140,7 +140,21 @@ self.addEventListener("notificationclick", (event) => {
     event?.notification?.data?.click_action ||
     event?.notification?.data?.targetUrl ||
     "/";
-  const targetUrl = String(rawLink || "/").startsWith("/") ? String(rawLink || "/") : "/";
+  let targetUrl = String(rawLink || "/").startsWith("/") ? String(rawLink || "/") : "/";
+
+  // Carry the order info into the URL so the app can open straight onto the order
+  // (e.g. rider offer popup) even when it was closed / killed when the notification was tapped.
+  try {
+    const data = event?.notification?.data || {};
+    const url = new URL(targetUrl, self.location.origin);
+    ["type", "orderId", "orderMongoId", "orderStatus", "isReassignment"].forEach((key) => {
+      if (data[key]) url.searchParams.set(`fcm_${key}`, String(data[key]));
+    });
+    targetUrl = `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    // keep plain targetUrl
+  }
+
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
       const client = windowClients.find((c) => c.url.includes(self.location.origin));

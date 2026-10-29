@@ -29,6 +29,7 @@ const DEFAULT_QUICK_BILLING_SETTINGS = {
   deliveryFee: 25,
   deliveryFeeRanges: [],
   freeDeliveryThreshold: 0,
+  minOrderValue: 0,
   platformFee: 0,
   gstRate: 0,
 };
@@ -176,6 +177,14 @@ const CartPage = () => {
 
   const categoriesPath = getQuickCategoriesPath();
   const checkoutPath = getQuickCheckoutPath();
+  const minOrderValue = Number(quickBillingSettings?.minOrderValue || 0);
+  const minOrderShortfall =
+    minOrderValue > 0 && cartTotal > 0 && cartTotal < minOrderValue
+      ? Math.ceil(minOrderValue - cartTotal)
+      : 0;
+  const blockIfBelowMin = (event) => {
+    if (minOrderShortfall > 0) event.preventDefault();
+  };
   const itemCount = cart.reduce((count, item) => count + Number(item.quantity || 0), 0);
   const { deliveryFee, handlingFee, platformFee, gstAmount, grandTotal } =
     calculateQuickCartPricing({
@@ -557,9 +566,16 @@ const CartPage = () => {
           </div>
         </section>
 
+        {minOrderShortfall > 0 && (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            Minimum order is {"₹"}{minOrderValue}. Add items worth {"₹"}{minOrderShortfall} more to checkout.
+          </div>
+        )}
+
         <Link
           to={checkoutPath}
           state={{ selectedPayment }}
+          onClick={blockIfBelowMin}
           className="block mt-4"
         >
           <section className="rounded-[24px] bg-white dark:bg-neutral-900 p-5 shadow-sm transition-all hover:shadow-md active:scale-[0.99] border border-transparent dark:border-neutral-800">
@@ -601,11 +617,12 @@ const CartPage = () => {
           <Link
             to={checkoutPath}
             state={{ selectedPayment }}
+            onClick={blockIfBelowMin}
             className="block w-full flex-1 sm:min-w-[220px]"
           >
-            <Button className="h-12 w-full rounded-2xl bg-[#0c831f] dark:bg-emerald-600 px-4 text-sm text-white whitespace-normal sm:whitespace-nowrap hover:bg-[#0b721b] dark:hover:bg-emerald-700">
+            <Button disabled={minOrderShortfall > 0} className="h-12 w-full rounded-2xl bg-[#0c831f] dark:bg-emerald-600 px-4 text-sm text-white whitespace-normal sm:whitespace-nowrap hover:bg-[#0b721b] dark:hover:bg-emerald-700">
               <ShoppingBag size={18} className="mr-2" />
-              Proceed to Checkout
+              {minOrderShortfall > 0 ? `Add ₹${minOrderShortfall} more` : "Proceed to Checkout"}
             </Button>
           </Link>
         </div>

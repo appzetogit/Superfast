@@ -21,6 +21,13 @@ const getRestaurantVisibleItems = (items = []) => {
   return foodItems.length ? foodItems : normalizedItems;
 };
 
+const NEW_ORDER_STATUSES = ['placed', 'created', 'pending', 'placed_pending'];
+
+const orderIdsOf = (orderLike = {}) =>
+  [orderLike?.orderMongoId, orderLike?.order_mongo_id, orderLike?.orderId, orderLike?.order_id, orderLike?._id, orderLike?.id]
+    .map((v) => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
+
 export default function GlobalNewOrderPopup() {
   // New order popup states
   const [showNewOrderPopup, setShowNewOrderPopup] = useState(false);
@@ -47,6 +54,7 @@ export default function GlobalNewOrderPopup() {
   const showNewOrderPopupRef = useRef(false);
   const isMutedRef = useRef(false);
   const newOrderRef = useRef(null);
+  const popupOrderRef = useRef(null);
   const audioUnlockedRef = useRef(false);
 
 
@@ -184,10 +192,17 @@ export default function GlobalNewOrderPopup() {
   useEffect(() => {
     const handleOrderReadyOrUpdated = (event) => {
       const detail = event?.detail || {};
+      // A status change on some OTHER order must not silence the ring for the order being offered.
+      const eventIds = orderIdsOf(detail);
+      const shownIds = orderIdsOf(popupOrderRef.current || newOrderRef.current || {});
+      if (eventIds.length > 0 && shownIds.length > 0 && !eventIds.some((id) => shownIds.includes(id))) {
+        return;
+      }
       const status = String(detail.orderStatus || detail.status || detail.order_status || '').toLowerCase();
       const isReadyOrAdvanced =
         ['ready', 'ready_for_pickup', 'preparing', 'picked_up', 'on_the_way', 'delivered', 'cancelled'].includes(status) ||
-        event?.type === 'order-ready-marked';
+        event?.type === 'order-ready-marked' ||
+        event?.type === 'restaurant-order-ended';
 
       if (isReadyOrAdvanced) {
         if (audioRef.current) {
@@ -198,15 +213,17 @@ export default function GlobalNewOrderPopup() {
         }
         setShowNewOrderPopup(false);
         setPopupOrder(null);
-        if (clearNewOrder) clearNewOrder();
+        if (clearNewOrder) clearNewOrder(detail);
       }
     };
 
+    window.addEventListener('restaurant-order-ended', handleOrderReadyOrUpdated);
     window.addEventListener('order-ready-marked', handleOrderReadyOrUpdated);
     window.addEventListener('fcm-order-update', handleOrderReadyOrUpdated);
     window.addEventListener('orderStatusNotification', handleOrderReadyOrUpdated);
 
     return () => {
+      window.removeEventListener('restaurant-order-ended', handleOrderReadyOrUpdated);
       window.removeEventListener('order-ready-marked', handleOrderReadyOrUpdated);
       window.removeEventListener('fcm-order-update', handleOrderReadyOrUpdated);
       window.removeEventListener('orderStatusNotification', handleOrderReadyOrUpdated);
@@ -225,6 +242,10 @@ export default function GlobalNewOrderPopup() {
   useEffect(() => {
     newOrderRef.current = newOrder;
   }, [newOrder]);
+
+  useEffect(() => {
+    popupOrderRef.current = popupOrder;
+  }, [popupOrder]);
 
   // Best-effort unlock for popup buzzer so it can keep playing when tab is backgrounded.
   useEffect(() => {
@@ -277,14 +298,14 @@ export default function GlobalNewOrderPopup() {
         const targetOrders = response.data.data.orders.filter((order) => {
           if (hasOrderBeenShown(order)) return false;
 
-          const isConfirmed = order.status === "confirmed";
+          // Backend creates orders as "placed"; the restaurant accepting moves them to "preparing".
+          // Only orders still waiting for acceptance may ring.
+          const st = String(order.orderStatus || order.status || "").toLowerCase();
+          const needsAcceptance = NEW_ORDER_STATUSES.includes(st);
 
-          if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed fallback
+          if (needsAcceptance && !order.scheduledAt) return true;
 
-          if (
-            order.scheduledAt &&
-            (order.status === "created" || order.status === "confirmed")
-          ) {
+          if (order.scheduledAt && needsAcceptance) {
             const scheduledTime = new Date(order.scheduledAt).getTime();
             // Show popup if scheduled time is <= 15 mins from now
             if (scheduledTime <= now + 15 * 60000) return true;
@@ -310,7 +331,7 @@ export default function GlobalNewOrderPopup() {
             items: getRestaurantVisibleItems(orderToPopup.items || []),
             total: orderToPopup.pricing?.total || 0,
             customerAddress: orderToPopup.address,
-            status: orderToPopup.status,
+            status: orderToPopup.orderStatus || orderToPopup.status,
             createdAt: orderToPopup.createdAt,
             scheduledAt: orderToPopup.scheduledAt,
             estimatedDeliveryTime: orderToPopup.estimatedDeliveryTime || 30,
@@ -372,18 +393,14 @@ export default function GlobalNewOrderPopup() {
     }
   }, [showNewOrderPopup, isMuted]);
 
-  // Countdown timer
+  // Countdown timer. When it hits 0 the order is NOT cancelled: orders are only
+  // cancelled manually (restaurant reject / admin), so the popup keeps ringing until acted on.
   useEffect(() => {
-    if (showNewOrderPopup) {
-      if (countdown > 0) {
-        const timer = setInterval(() => {
-          setCountdown((prev) => prev - 1);
-        }, 1000);
-        return () => clearInterval(timer);
-      } else {
-        // Automatically reject when countdown hits 0
-        handleAutoReject();
-      }
+    if (showNewOrderPopup && countdown > 0) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
     }
   }, [showNewOrderPopup, countdown]);
 
@@ -424,43 +441,6 @@ export default function GlobalNewOrderPopup() {
       1,
     );
     return { maxTravel };
-  };
-
-  // Handle auto reject on timeout
-  const handleAutoReject = async () => {
-    const orderToReject = popupOrder || newOrder;
-    if (!orderToReject) return;
-
-    const orderId = orderToReject.orderMongoId || orderToReject.orderId || orderToReject?._id;
-    if (!orderId) return;
-
-    try {
-      // Use a special reason for auto-rejection
-      await restaurantAPI.rejectOrder(orderId, "Order timeout - No response from restaurant");
-      toast.info("Order auto-rejected due to timeout");
-      clearOrderTimer(orderId);
-      requestOrdersRefresh();
-    } catch (error) {
-      debugError("Error auto-rejecting order:", error);
-    } finally {
-      // Clean up UI state regardless of API success
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-      setShowRejectPopup(false);
-      setShowNewOrderPopup(false);
-      setPopupOrder(null);
-      clearNewOrder();
-      setRejectReason("");
-      setCountdown(240);
-      setPrepTime(11);
-      setAcceptSwipeProgress(0);
-      setIsAcceptingOrder(false);
-      setTimeout(() => {
-        checkOrdersToPopupRef.current?.();
-      }, 300);
-    }
   };
 
   // Handle accept order
@@ -511,6 +491,12 @@ export default function GlobalNewOrderPopup() {
         }
         setIsAcceptingOrder(false);
         setAcceptSwipeProgress(0);
+        // Accept failed (e.g. server busy): the order is still pending, so the ring must continue.
+        if (audioRef.current && !isMutedRef.current) {
+          audioRef.current.loop = true;
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => { });
+        }
         return;
       }
     }
@@ -519,7 +505,7 @@ export default function GlobalNewOrderPopup() {
 
     setShowNewOrderPopup(false);
     setPopupOrder(null);
-    clearNewOrder();
+    clearNewOrder(orderToAccept);
     setCountdown(240);
     setPrepTime(11);
     setAcceptSwipeProgress(0);
@@ -564,7 +550,7 @@ export default function GlobalNewOrderPopup() {
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
-    clearNewOrder();
+    clearNewOrder(orderToReject);
     setRejectReason("");
     setCountdown(240);
     setPrepTime(11);

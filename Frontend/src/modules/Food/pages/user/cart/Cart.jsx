@@ -2033,19 +2033,7 @@ export default function Cart() {
         },
         onError: async (error) => {
           debugError("? Razorpay payment error:", error)
-          // Clean up the pending order in backend if payment failed
-          try {
-            const cancelId = order?._id || order?.id || order?.orderMongoId
-            if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, {
-                reason: "Payment Failed",
-                note: error?.description || error?.message || "Online payment failed"
-              })
-            }
-          } catch (cancelErr) {
-            debugError("? Failed to auto-cancel order after payment error:", cancelErr)
-          }
-
+          // Orders are never auto-cancelled; only an admin cancels them.
           // Don't show alert for user cancellation
           if (error?.code !== 'PAYMENT_CANCELLED' && error?.message !== 'PAYMENT_CANCELLED') {
             const errorMessage = error?.description || error?.message || "Payment failed. Please try again."
@@ -2055,18 +2043,7 @@ export default function Cart() {
         },
         onClose: async () => {
           debugLog("?? Payment modal closed by user")
-          // Clean up the pending order in backend if user closed the modal without paying
-          try {
-            const cancelId = order?._id || order?.id || order?.orderMongoId
-            if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, {
-                reason: "Payment Cancelled",
-                note: "User closed payment modal"
-              })
-            }
-          } catch (cancelErr) {
-            debugError("? Failed to auto-cancel order after modal close:", cancelErr)
-          }
+          // Orders are never auto-cancelled; only an admin cancels them.
           setIsPlacingOrder(false)
         }
       })

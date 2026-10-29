@@ -137,11 +137,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     if (best) setActiveOrder(best);
   }, [tripStatus, isWithinRange, activeOrders, activeOrder, riderLocation, deliverySettings, setActiveOrder]);
 
-  const { newOrder, clearNewOrder, stopAlertLoop, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
+  const { newOrder, clearNewOrder, stopAlertLoop, ringForOrder, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
   const companyName = useCompanyName();
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
 
   const [incomingOrder, setIncomingOrder] = useState(null);
+  // Offer that arrived while the rider is on a trip: silent banner, tap opens that order.
+  const [tripOfferBanner, setTripOfferBanner] = useState(null);
   const [availableOrdersList, setAvailableOrdersList] = useState([]);
   const [currentTab, setCurrentTab] = useState(tab);
   const [codLimitReached, setCodLimitReached] = useState(false);
@@ -632,7 +634,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
     // Guard: offers are shown once the restaurant has accepted the order (confirmed onwards).
     // Admin reassignments are exempt: the order is already in progress (any status).
-    if (!isReassignment && !['confirmed', 'preparing', 'ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
+    if (!isReassignment && !newOrder?.fromClick && !['confirmed', 'preparing', 'ready_for_pickup', 'ready'].includes(orderStatus) && newOrder?.type !== 'RETURN_PICKUP') {
       return;
     }
 
@@ -643,7 +645,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     );
 
     const processOrder = (ord) => {
-      const socketOrd = { ...ord, _receivedAt: Date.now() };
+      const forceShow = Boolean(newOrder?.fromClick);
+      const socketOrd = { ...ord, _receivedAt: Date.now(), ...(forceShow ? { _forceShow: true } : {}) };
       // 1. Add order to availableOrdersList (Order List / Feed)
       setAvailableOrdersList((prev) => {
         const id = String(socketOrd._id || socketOrd.orderId || socketOrd.id);
@@ -656,8 +659,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       // A COMPLETED trip only lingers for the summary screen; it must not block new offers.
       const hasActiveTrip =
         tripStatus !== 'COMPLETED' && Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
-      if (!hasActiveTrip) {
+      if (!hasActiveTrip || forceShow) {
         setIncomingOrder(socketOrd);
+        setTripOfferBanner(null);
+      } else {
+        setTripOfferBanner(socketOrd);
       }
     };
 
@@ -680,10 +686,33 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   }, [newOrder, activeOrder, activeOrders, tripStatus]);
 
   useEffect(() => {
-    if (activeOrder && tripStatus !== 'COMPLETED' && incomingOrder) {
+    if (activeOrder && tripStatus !== 'COMPLETED' && incomingOrder && !incomingOrder._forceShow) {
       setIncomingOrder(null);
     }
   }, [activeOrder, tripStatus, incomingOrder]);
+
+  // Banner auto-hides after 23s (same as the ring limit) or once the order is gone.
+  useEffect(() => {
+    if (!tripOfferBanner) return undefined;
+    const t = setTimeout(() => setTripOfferBanner(null), 23000);
+    return () => clearTimeout(t);
+  }, [tripOfferBanner]);
+
+  // Ride just finished and another offer is waiting: ring for it (max 23s) and queue its popup.
+  const availableOrdersRef = useRef([]);
+  availableOrdersRef.current = availableOrdersList;
+  useEffect(() => {
+    if (tripStatus !== 'COMPLETED') return;
+    const idOf = (o) => String(o?.orderId || o?._id || o?.id || '');
+    const next = availableOrdersRef.current.find((o) => {
+      const id = idOf(o);
+      return id && !rejectedOrderIdsRef.current.has(id) && !timedOutOrdersMapRef.current.has(id);
+    });
+    if (!next) return;
+    setTripOfferBanner(null);
+    setIncomingOrder({ ...next, _forceShow: true });
+    ringForOrder(next);
+  }, [tripStatus]);
 
   // Keeps the active trips in sync even while one is running, so orders the rider takes on
   // top (multi-order) or the admin assigns show up. activeOrder is deliberately not a dependency:
@@ -1108,7 +1137,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               }
               acceptOrder(o);
               setIncomingOrder(null);
-              clearNewOrder();
+              clearNewOrder(o);
             }}
             onReject={(o) => {
               const targetId = String(o?.orderId || o?._id || o?.id || '');
@@ -1137,6 +1166,27 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       </div>
 
       {/* OVERLAYS (Persistent if active) - Outside flex container to avoid clipping and z-index issues */}
+      {isOnline && tripOfferBanner && !incomingOrder && (
+        <button
+          type="button"
+          onClick={() => {
+            const o = tripOfferBanner;
+            setTripOfferBanner(null);
+            setIsModalMinimized(false);
+            setIncomingOrder({ ...o, _forceShow: true });
+          }}
+          className="fixed inset-x-3 top-3 z-[500] flex items-center justify-between gap-3 rounded-2xl bg-orange-500 px-4 py-3 text-left text-white shadow-2xl active:scale-[0.98]"
+        >
+          <span className="min-w-0">
+            <span className="block text-[11px] font-bold uppercase tracking-wider opacity-80">New order available</span>
+            <span className="block truncate text-sm font-black">
+              #{tripOfferBanner.displayOrderId || tripOfferBanner.orderId || tripOfferBanner._id} · tap to view
+            </span>
+          </span>
+          <span className="text-lg font-black">›</span>
+        </button>
+      )}
+
       {isOnline && (currentTab === 'feed' || activeOrder || incomingOrder) && (
         <AnimatePresence>
           {!isModalMinimized && (
@@ -1149,12 +1199,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               className={`fixed inset-x-0 top-0 ${activeOrder && tripStatus !== 'COMPLETED' ? 'bottom-[148px]' : 'bottom-[92px]'} z-[300] pointer-events-none flex items-end`}
             >
               <div className="w-full pointer-events-auto relative">
-                {incomingOrder && currentTab !== 'orders' && (
+                {incomingOrder && currentTab !== 'orders' && tripStatus !== 'COMPLETED' && (
                   <NewOrderModal
                     order={incomingOrder}
                     onAccept={(o) => { 
                       if (stopAlertLoop) stopAlertLoop();
-                      clearNewOrder(); 
+                      clearNewOrder(o || incomingOrder); 
                       setIncomingOrder(null); 
                       acceptOrder(o); 
                     }}

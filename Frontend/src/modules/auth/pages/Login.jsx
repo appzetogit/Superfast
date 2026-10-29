@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Phone, ArrowRight, ShieldCheck, Loader2, UserRound, Zap, HeadphonesIcon, Pencil } from "lucide-react"
 import { toast } from "sonner"
+import { getFriendlyErrorMessage } from "@/services/api/friendlyError"
 import { authAPI, userAPI } from "@food/api"
 import { isModuleAuthenticated, setAuthData } from "@food/utils/auth"
 import { useAuth } from "@core/context/AuthContext"
@@ -96,7 +97,7 @@ export default function UnifiedOTPFastLogin() {
       setResendTimer(RESEND_COOLDOWN_SECONDS)
       toast.success("OTP sent! Check your phone.")
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to send OTP."
+      const msg = getFriendlyErrorMessage(err, "Failed to send OTP. Please try again.")
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -121,7 +122,7 @@ export default function UnifiedOTPFastLogin() {
       setResendTimer(RESEND_COOLDOWN_SECONDS)
       toast.success("OTP resent successfully.")
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to resend OTP."
+      const msg = getFriendlyErrorMessage(err, "Failed to resend OTP. Please try again.")
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -211,7 +212,7 @@ export default function UnifiedOTPFastLogin() {
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const status = err?.response?.status
-      let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Invalid OTP. Please try again."
+      let msg = getFriendlyErrorMessage(err, "Invalid OTP. Please try again.")
       if (status === 401) {
         if (/deactivat(ed|e)/i.test(String(msg))) {
           msg = "Your account is deactivated. Please contact support."
@@ -267,7 +268,7 @@ export default function UnifiedOTPFastLogin() {
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const status = err?.response?.status
-      let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Failed to save your name."
+      let msg = getFriendlyErrorMessage(err, "Failed to save your name. Please try again.")
       if (status === 401) {
         msg = "Invalid or expired code, or account not active."
       }

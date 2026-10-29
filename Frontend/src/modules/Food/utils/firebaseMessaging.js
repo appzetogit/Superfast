@@ -1013,9 +1013,59 @@ function scheduleForegroundNotification(payload) {
   setTimeout(run, 0);
 }
 
+// The service worker appends fcm_* params to the URL when a push notification is tapped.
+// Turn them back into the same events a foreground push would fire, so the rider offer
+// popup / restaurant order alert opens straight away after a cold start from the lock screen.
+function consumeNotificationClickParams(moduleName) {
+  if (typeof window === "undefined") return;
+  let params;
+  try {
+    params = new URLSearchParams(window.location.search);
+  } catch {
+    return;
+  }
+  const type = params.get("fcm_type");
+  const orderId = params.get("fcm_orderId");
+  const orderMongoId = params.get("fcm_orderMongoId");
+  if (!type && !orderId && !orderMongoId) return;
+
+  const data = {
+    type: type || "",
+    orderId: orderId || orderMongoId || "",
+    orderMongoId: orderMongoId || orderId || "",
+    orderStatus: params.get("fcm_orderStatus") || "",
+    isReassignment: params.get("fcm_isReassignment") || "",
+    // Rider tapped the notification: show this order even if a trip is already running.
+    fromClick: true,
+  };
+
+  ["type", "orderId", "orderMongoId", "orderStatus", "isReassignment"].forEach((key) =>
+    params.delete(`fcm_${key}`),
+  );
+  try {
+    const qs = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`,
+    );
+  } catch {
+    // ignore
+  }
+
+  const kind = String(type || "").toLowerCase();
+  if (moduleName === "delivery" && (kind === "new_order" || kind === "reassignment_request" || kind === "return_pickup")) {
+    window.__fcmPendingDeliveryPopup = data;
+    window.dispatchEvent(new CustomEvent("fcm-delivery-popup", { detail: data }));
+  } else if (moduleName === "restaurant") {
+    window.dispatchEvent(new CustomEvent("ordersRefresh"));
+  }
+}
+
 export function initPushNotificationClient() {
   if (typeof window === "undefined") return;
   const moduleName = resolvePushModule();
+  consumeNotificationClickParams(moduleName);
   pushDebugLog(PUSH_DEBUG_PREFIX, "Initializing push notification client", {
     path: getCurrentAppPath(),
     moduleName,

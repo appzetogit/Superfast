@@ -183,18 +183,17 @@ const startServer = async () => {
         });
 
         // Handle unhandled promise rejections
+        // A single failed background promise (e.g. one bad DB call) must not take the whole API down
+        // for every customer: log it and keep serving. Truly corrupt state is an uncaughtException.
         process.on('unhandledRejection', (err) => {
-            logger.error(`Unhandled Rejection: ${err?.message || err}`);
-            if (config.nodeEnv === 'production') {
-                if (server) server.close(() => process.exit(1));
-                else process.exit(1);
-            }
+            logger.error(`Unhandled Rejection: ${err?.stack || err?.message || err}`);
         });
 
         process.on('uncaughtException', (err) => {
-            logger.error(`Uncaught Exception: ${err?.message || err}`);
+            logger.error(`Uncaught Exception: ${err?.stack || err?.message || err}`);
             if (config.nodeEnv === 'production') {
-                process.exit(1);
+                // Let PM2 restart us, but stop accepting new traffic and finish in-flight requests first.
+                gracefulShutdown('uncaughtException');
             }
         });
 

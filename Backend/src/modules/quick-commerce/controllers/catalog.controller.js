@@ -7,6 +7,9 @@ import { ensureQuickCommerceSeedData } from '../services/seed.service.js';
 import mongoose from 'mongoose';
 import { transformImageFields } from '../../../utils/urlHelper.js';
 import { getDeveloperModeFilter } from '../../common/utils/developerMode.js';
+import { QuickZone } from '../models/quick_zone.model.js';
+import { FoodZone } from '../../food/admin/models/zone.model.js';
+import { isPointInPolygon } from '../../../utils/geo.js';
 
 import {
   getQuickCategories,
@@ -325,12 +328,68 @@ export const getOffers = async (_req, res) => {
   return res.json({ success: true, results: offers });
 };
 
+// Sellers that can deliver to a point: zone polygon contains it, or no zone configured
+// (same rule placeOrder uses when validating the delivery address).
+const getSellerIdsServingPoint = async (lat, lng) => {
+  const sellers = await Seller.find({}).select('_id shopInfo.zoneId shopInfo.zoneSource').lean();
+  const zoneIds = { quick: new Set(), food: new Set() };
+  sellers.forEach((s) => {
+    const zoneId = s.shopInfo?.zoneId;
+    if (zoneId) zoneIds[s.shopInfo?.zoneSource === 'food' ? 'food' : 'quick'].add(String(zoneId));
+  });
+
+  const [quickZones, foodZones] = await Promise.all([
+    zoneIds.quick.size ? QuickZone.find({ _id: { $in: [...zoneIds.quick] } }).lean() : [],
+    zoneIds.food.size ? FoodZone.find({ _id: { $in: [...zoneIds.food] } }).lean() : [],
+  ]);
+  const containing = new Set(
+    [...quickZones, ...foodZones]
+      .filter((z) => isPointInPolygon(lat, lng, z.coordinates))
+      .map((z) => String(z._id)),
+  );
+
+  return sellers
+    .filter((s) => !s.shopInfo?.zoneId || containing.has(String(s.shopInfo.zoneId)))
+    .map((s) => s._id);
+};
+
+const filterCategoriesByServingSellers = async (categories, sellerIds) => {
+  const products = await QuickProduct.find({
+    ...publicProductFilter,
+    sellerId: { $in: sellerIds },
+  }).select('headerId categoryId subcategoryId').lean();
+
+  const allowed = new Set();
+  products.forEach((p) => {
+    [p.headerId, p.categoryId, p.subcategoryId].forEach((id) => id && allowed.add(String(id)));
+  });
+
+  const byId = new Map(categories.map((c) => [String(c._id), c]));
+  [...allowed].forEach((id) => {
+    let parent = byId.get(id)?.parentId;
+    while (parent && !allowed.has(String(parent))) {
+      allowed.add(String(parent));
+      parent = byId.get(String(parent))?.parentId;
+    }
+  });
+
+  return categories.filter((c) => allowed.has(String(c._id)));
+};
+
 export const getCategories = async (req, res) => {
   setPublicCache(res, 300); // 5 minutes cache
   await ensureQuickCommerceSeedData();
 
   const { tree, parentId } = req.query;
-  const categories = await getQuickCategories({ parentId });
+  let categories = await getQuickCategories({ parentId });
+
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  if (req.query.lat !== undefined && req.query.lng !== undefined && Number.isFinite(lat) && Number.isFinite(lng)) {
+    setPublicCache(res, 60);
+    const sellerIds = await getSellerIdsServingPoint(lat, lng);
+    categories = await filterCategoriesByServingSellers(categories, sellerIds);
+  }
   const mapped = categories.map(mapCategory);
 
   if (tree === 'true' || tree === true) {
@@ -367,6 +426,13 @@ export const getProducts = async (req, res) => {
 
   if (devFilter.isDevMode && devFilter.demoStoreIds && devFilter.demoStoreIds.length > 0) {
     andConditions.push({ sellerId: { $in: devFilter.demoStoreIds } });
+  }
+
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  if (req.query.lat !== undefined && req.query.lng !== undefined && Number.isFinite(lat) && Number.isFinite(lng)) {
+    const sellerIds = await getSellerIdsServingPoint(lat, lng);
+    andConditions.push({ sellerId: { $in: sellerIds } });
   }
 
   if (categoryId) {

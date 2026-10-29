@@ -338,18 +338,11 @@ export default function MenuCategoriesPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-semibold text-slate-900">How this works</p>
           <p className="mt-2 text-sm text-slate-600">
-            New categories stay pending until admin approval. Editing an approved category sends it back for review.
-            Only approved categories can be used for food uploads.
+            Categories are created and managed by admin for your zone. Choose from the available
+            categories when adding food items.
           </p>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white"
-        >
-          <Plus className="h-5 w-5" />
-          Add Category
-        </button>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">

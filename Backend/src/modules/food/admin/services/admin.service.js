@@ -3301,16 +3301,35 @@ export async function getCategories(query) {
     return { categories, total, page, limit };
 }
 
+const escapeCategoryRegex = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Same name (case-insensitive) is not allowed twice among admin categories when they share a zone
+// or either one is global (no zone).
+async function assertUniqueAdminCategoryName(name, zoneId, excludeId) {
+    const filter = {
+        name: { $regex: new RegExp(`^${escapeCategoryRegex(name)}$`, 'i') },
+        restaurantId: { $exists: false }
+    };
+    if (excludeId) filter._id = { $ne: excludeId };
+    if (zoneId) {
+        filter.$or = [{ zoneId }, { zoneId: null }, { zoneId: { $exists: false } }];
+    }
+    const existing = await FoodCategory.findOne(filter).select('name').lean();
+    if (existing) {
+        throw new ValidationError(`A category named "${existing.name}" already exists`);
+    }
+}
+
 export async function createCategory(body) {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw new ValidationError('Category name is required');
 
-    const existing = await FoodCategory.findOne({
-        name: { $regex: new RegExp(`^${name}$`, 'i') },
-        restaurantId: { $in: [null, undefined] }
-    });
-    if (existing) {
-        throw new ValidationError(`A global category with the name "${existing.name}" already exists`);
+    {
+        const zid = String(body.zoneId || '').trim();
+        const zoneObjectId = zid && zid !== 'global' && mongoose.Types.ObjectId.isValid(zid)
+            ? new mongoose.Types.ObjectId(zid)
+            : null;
+        await assertUniqueAdminCategoryName(name, zoneObjectId);
     }
 
     const doc = new FoodCategory({
@@ -3390,14 +3409,7 @@ export async function makeCategoryGlobal(id) {
         throw new ValidationError('Only approved categories can be made global');
     }
 
-    const normalizedName = doc.name.trim();
-    const duplicate = await FoodCategory.findOne({
-        name: { $regex: new RegExp(`^${normalizedName}$`, 'i') },
-        restaurantId: { $in: [null, undefined] }
-    });
-    if (duplicate && String(duplicate._id) !== String(doc._id)) {
-        throw new ValidationError(`A global category with the name "${duplicate.name}" already exists`);
-    }
+    await assertUniqueAdminCategoryName(doc.name.trim(), null, doc._id);
 
     doc.createdByRestaurantId = doc.createdByRestaurantId || doc.restaurantId;
     doc.restaurantId = undefined;
@@ -3431,9 +3443,20 @@ export async function updateCategory(id, body) {
     }
 
     if (body.name !== undefined) doc.name = String(body.name || '').trim();
+    if (!doc.name) throw new ValidationError('Category name is required');
     if (body.image !== undefined) doc.image = String(body.image || '').trim();
     if (body.type !== undefined) doc.type = String(body.type || '').trim();
     if (body.foodTypeScope !== undefined) doc.foodTypeScope = nextFoodTypeScope;
+    if (!doc.restaurantId && !doc.createdByRestaurantId && (body.name !== undefined || body.zoneId !== undefined)) {
+        let nextZone = doc.zoneId || null;
+        if (body.zoneId !== undefined) {
+            const raw = String(body.zoneId || '').trim();
+            nextZone = raw && raw !== 'global' && mongoose.Types.ObjectId.isValid(raw)
+                ? new mongoose.Types.ObjectId(raw)
+                : null;
+        }
+        await assertUniqueAdminCategoryName(doc.name, nextZone, doc._id);
+    }
     if (!doc.restaurantId && doc.createdByRestaurantId) {
         doc.zoneId = undefined;
     } else if (body.zoneId !== undefined) {

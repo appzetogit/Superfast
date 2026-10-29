@@ -304,6 +304,8 @@ const PaymentModal = ({ order, otpString, otpRequired = true, onComplete, onClos
 
   const handleCashSelection = () => {
     setSelectedMode("cash");
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    setPaymentStatus((s) => (s === "pending" ? "idle" : s));
     // toast.info("Cash collection selected");
   };
 
@@ -362,7 +364,6 @@ const PaymentModal = ({ order, otpString, otpRequired = true, onComplete, onClos
 
             {!isPaid && (
               <div className="flex flex-col gap-3">
-                {/* 
                 <button
                   onClick={generateQr}
                   disabled={isGeneratingQr}
@@ -376,9 +377,8 @@ const PaymentModal = ({ order, otpString, otpRequired = true, onComplete, onClos
                   ) : (
                     <QrCode className="w-5 h-5" />
                   )}
-                  Show Payment QR
+                  Online Payment (QR)
                 </button>
-                */}
 
                 <button
                   onClick={handleCashSelection}

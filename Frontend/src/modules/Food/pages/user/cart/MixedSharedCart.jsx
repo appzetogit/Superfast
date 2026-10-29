@@ -312,31 +312,11 @@ export default function MixedSharedCart({ initialAddress = null, addressMode = "
           }
         },
         onClose: async () => {
-          try {
-            const cancelId = order?._id || order?.id || order?.orderId;
-            if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, {
-                reason: "Payment Cancelled",
-                note: "User closed payment modal in Mixed Cart",
-              });
-            }
-          } catch (err) {
-            console.error("Failed to cancel mixed order after close", err);
-          }
+          // Orders are never auto-cancelled; only an admin cancels them.
           setIsPlacingOrder(false);
         },
         onError: async (error) => {
-          try {
-            const cancelId = order?._id || order?.id || order?.orderId;
-            if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, {
-                reason: "Payment Failed",
-                note: error?.message || "Payment failed in Mixed Cart",
-              });
-            }
-          } catch (err) {
-            console.error("Failed to cancel mixed order after error", err);
-          }
+          // Orders are never auto-cancelled; only an admin cancels them.
           setIsPlacingOrder(false);
         },
       });

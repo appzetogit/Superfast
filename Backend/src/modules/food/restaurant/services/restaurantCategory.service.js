@@ -69,33 +69,25 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
     const filter = {};
     if (!includeInactive) filter.isActive = true;
 
-    const visibilityFilter = compact
-        ? {
-            $or: [
-                {
-                    $and: [
-                        { $or: GLOBAL_CATEGORY_FILTER },
-                        { $or: APPROVED_CATEGORY_FILTER }
-                    ]
-                },
-                {
-                    restaurantId: context.restaurantId,
-                    $or: APPROVED_CATEGORY_FILTER
-                }
-            ]
-        }
-        : {
-            $or: [
-                {
-                    $and: [
-                        { $or: GLOBAL_CATEGORY_FILTER },
-                        { $or: APPROVED_CATEGORY_FILTER }
-                    ]
-                },
-                { restaurantId: context.restaurantId },
-                { createdByRestaurantId: context.restaurantId }
-            ]
-        };
+    // Restaurants only see admin-created categories. A restaurant's own legacy category stays
+    // visible only while it still has items, so existing menus don't break.
+    const ownedCategoryIds = await FoodItem.distinct('categoryId', {
+        restaurantId: context.restaurantId,
+        categoryId: { $ne: null }
+    });
+    const visibilityFilter = {
+        $or: [
+            {
+                $and: [
+                    { $or: GLOBAL_CATEGORY_FILTER },
+                    { $or: APPROVED_CATEGORY_FILTER }
+                ]
+            },
+            ...(ownedCategoryIds.length
+                ? [{ _id: { $in: ownedCategoryIds }, restaurantId: context.restaurantId }]
+                : [])
+        ]
+    };
 
     filter.$and = [visibilityFilter];
     if (search) {
@@ -241,98 +233,17 @@ export async function listPublicCategories(query = {}) {
     return result;
 }
 
-export async function createRestaurantCategory(restaurantId, body = {}) {
-    const context = await getRestaurantContext(restaurantId);
+const ADMIN_ONLY_CATEGORY_MESSAGE =
+    'Categories are managed by admin. Please choose one of the available categories.';
 
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!name) throw new ValidationError('Category name is required');
-    if (name.length > 200) throw new ValidationError('Category name is too long');
-
-    const foodTypeScopeRaw = typeof body.foodTypeScope === 'string' ? body.foodTypeScope.trim() : '';
-    if (!foodTypeScopeRaw) {
-        throw new ValidationError('Category diet type is required');
-    }
-    const foodTypeScope = normalizeCategoryFoodTypeScope(foodTypeScopeRaw, '');
-    if (!foodTypeScope) {
-        throw new ValidationError('Invalid category diet type');
-    }
-    if (context.pureVegRestaurant && foodTypeScope === 'Non-Veg') {
-        throw new ValidationError('Pure veg restaurants cannot create Non-Veg categories');
-    }
-
-    const doc = new FoodCategory({
-        name,
-        image: typeof body.image === 'string' ? body.image.trim() : '',
-        type: typeof body.type === 'string' ? body.type.trim() : '',
-        foodTypeScope,
-        isActive: body.isActive !== false,
-        sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0,
-        restaurantId: context.restaurantId,
-        createdByRestaurantId: context.restaurantId,
-        approvalStatus: 'pending',
-        isApproved: false,
-        rejectionReason: '',
-        requestedAt: new Date(),
-        zoneId: context.zoneId && mongoose.Types.ObjectId.isValid(context.zoneId)
-            ? new mongoose.Types.ObjectId(context.zoneId)
-            : undefined
-    });
-    await doc.save();
-    return doc.toObject();
+export async function createRestaurantCategory(restaurantId) {
+    await getRestaurantContext(restaurantId);
+    throw new ValidationError(ADMIN_ONLY_CATEGORY_MESSAGE);
 }
 
-export async function updateRestaurantCategory(restaurantId, id, body = {}) {
-    const context = await getRestaurantContext(restaurantId);
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-        throw new ValidationError('Invalid category id');
-    }
-
-    const doc = await FoodCategory.findOne({ _id: id, restaurantId: context.restaurantId });
-    if (!doc) return null;
-
-    const nextFoodTypeScope = body.foodTypeScope !== undefined
-        ? normalizeCategoryFoodTypeScope(body.foodTypeScope, '')
-        : normalizeCategoryFoodTypeScope(doc.foodTypeScope, 'Both');
-    if (body.foodTypeScope !== undefined && !nextFoodTypeScope) {
-        throw new ValidationError('Invalid category diet type');
-    }
-    if (context.pureVegRestaurant && nextFoodTypeScope === 'Non-Veg') {
-        throw new ValidationError('Pure veg restaurants cannot keep Non-Veg categories');
-    }
-
-    if (body.name !== undefined) {
-        const name = String(body.name || '').trim();
-        if (!name) throw new ValidationError('Category name is required');
-        if (name.length > 200) throw new ValidationError('Category name is too long');
-        doc.name = name;
-    }
-    if (body.image !== undefined) doc.image = String(body.image || '').trim();
-    if (body.type !== undefined) doc.type = String(body.type || '').trim();
-    if (body.isActive !== undefined) doc.isActive = body.isActive !== false;
-    if (body.sortOrder !== undefined) doc.sortOrder = Number(body.sortOrder) || 0;
-    if (body.foodTypeScope !== undefined) {
-        const incompatibleFoods = nextFoodTypeScope === 'Both'
-            ? 0
-            : await FoodItem.countDocuments({
-                categoryId: doc._id,
-                foodType: nextFoodTypeScope === 'Veg' ? 'Non-Veg' : 'Veg'
-            });
-        if (incompatibleFoods > 0) {
-            throw new ValidationError(`This category already has ${incompatibleFoods} food item(s) outside the selected diet type`);
-        }
-        doc.foodTypeScope = nextFoodTypeScope;
-    }
-
-    doc.createdByRestaurantId = doc.createdByRestaurantId || context.restaurantId;
-    doc.approvalStatus = 'pending';
-    doc.isApproved = false;
-    doc.rejectionReason = '';
-    doc.requestedAt = new Date();
-    doc.approvedAt = undefined;
-    doc.rejectedAt = undefined;
-
-    await doc.save();
-    return doc.toObject();
+export async function updateRestaurantCategory(restaurantId) {
+    await getRestaurantContext(restaurantId);
+    throw new ValidationError(ADMIN_ONLY_CATEGORY_MESSAGE);
 }
 
 export async function deleteRestaurantCategory(restaurantId, id) {

@@ -7,6 +7,7 @@
  */
 
 import axios from "axios";
+import { sanitizeApiError } from "./friendlyError";
 
 const resolveBaseURL = () => {
   if (typeof window !== "undefined") {
@@ -228,6 +229,14 @@ apiClient.interceptors.response.use(
       // aborted on purpose (navigation / replaced request): says nothing about the server
     } else if (!err?.response || status >= 500) emitApiStatus(false)
     else emitApiStatus(true) // 4xx = the server answered, it is up
+    // Server restarting / overloaded (502-504 or no response): retry reads quietly with backoff
+    // instead of surfacing an error. Writes are never retried automatically (could double-submit).
+    const isTransient = !err?.response ? err?.code !== 'ERR_CANCELED' : [502, 503, 504].includes(status)
+    if (isTransient && original && String(original.method || 'get').toLowerCase() === 'get' && (original._transientRetries || 0) < 2) {
+      original._transientRetries = (original._transientRetries || 0) + 1
+      await new Promise((r) => setTimeout(r, 700 * original._transientRetries + Math.random() * 500))
+      return apiClient(original)
+    }
     if (err?.response?.status === 429) {
       return Promise.reject(err);
     }
@@ -295,6 +304,12 @@ apiClient.interceptors.response.use(
     onRefreshFailed(module);
     return Promise.reject(err);
   }
+);
+
+// Runs last: whatever rejection leaves this client is already safe to show to a user.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (err) => Promise.reject(sanitizeApiError(err))
 );
 
 export default apiClient;

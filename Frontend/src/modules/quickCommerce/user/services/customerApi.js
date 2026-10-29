@@ -17,6 +17,20 @@ const withQuickSession = (config = {}) => ({
 const quickGetWithDedupe = (url, params = {}, options = {}) =>
   getWithDedupe(url, params, withQuickSession(options));
 
+// Categories are zone-wise: send the delivery point so the backend only returns
+// categories that sellers serving that point actually stock.
+const getStoredCoords = () => {
+  try {
+    const raw = localStorage.getItem("location_v2") || localStorage.getItem("userLocation");
+    const parsed = raw ? JSON.parse(raw) : null;
+    const lat = Number(parsed?.latitude);
+    const lng = Number(parsed?.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : {};
+  } catch {
+    return {};
+  }
+};
+
 export const customerApi = {
   getProfile: () =>
     axiosInstance.get("/auth/me", withQuickSession()).then((res) => {
@@ -67,11 +81,12 @@ export const customerApi = {
   createSupportTicket: (data) => axiosInstance.post("/quick-commerce/support/ticket", data, withQuickSession()),
   getSupportTickets: (params = {}) => quickGetWithDedupe("/quick-commerce/support/my-tickets", params),
 
-  getProducts: (params) => quickGetWithDedupe("/quick-commerce/products", params),
-  searchProducts: (params) => quickGetWithDedupe("/quick-commerce/products", params),
-  getCategories: (params = {}) => quickGetWithDedupe("/quick-commerce/categories", params),
+  getProducts: (params) => quickGetWithDedupe("/quick-commerce/products", { ...getStoredCoords(), ...params }),
+  searchProducts: (params) => quickGetWithDedupe("/quick-commerce/products", { ...getStoredCoords(), ...params }),
+  getCategories: (params = {}) =>
+    quickGetWithDedupe("/quick-commerce/categories", { ...getStoredCoords(), ...params }),
   getCategoryProducts: (categoryId, params) =>
-    quickGetWithDedupe("/quick-commerce/products", { categoryId, ...params }),
+    quickGetWithDedupe("/quick-commerce/products", { ...getStoredCoords(), categoryId, ...params }),
   getProductDetails: (productId) => quickGetWithDedupe(`/quick-commerce/products/${productId}`, {}),
 
   getAddresses: () => axiosInstance.get("/quick-commerce/addresses", withQuickSession()),

@@ -135,7 +135,9 @@ const buildDeliveryOrderNotification = (orderData = {}) => {
       : 'A new order is available to accept',
     tag: `delivery-order-${orderId}`,
     data: {
+      type: 'new_order',
       orderId,
+      orderMongoId: orderData.orderMongoId || orderData._id || '',
       targetUrl: '/delivery',
     },
   };
@@ -155,6 +157,47 @@ const getSharedAlertAudio = (src) => {
     sharedAlertAudio.load();
   }
   return sharedAlertAudio;
+};
+
+const alertOrderIds = (orderData = {}) =>
+  [
+    orderData?.returnId,
+    orderData?.orderMongoId,
+    orderData?.order_mongo_id,
+    orderData?.orderId,
+    orderData?.order_id,
+    orderData?._id,
+    orderData?.id,
+    orderData?.order?._id,
+    orderData?.order?.orderId,
+  ]
+    .map((v) => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
+
+// Same order regardless of which id flavour or dispatch leg the event carries.
+const isSameAlertOrder = (a, b) => {
+  const aIds = alertOrderIds(a);
+  const bIds = alertOrderIds(b);
+  return aIds.length > 0 && bIds.length > 0 && aIds.some((id) => bIds.includes(id));
+};
+
+// Orders the rider already accepted / rejected / lost. Module-level so it survives hook remounts.
+// An offer event that was already in flight (or a recovery sync) must not ring again after accept.
+const DISMISSED_ALERT_MS = 45000;
+const dismissedAlertOrders = new Map();
+const dismissAlertOrder = (orderData) => {
+  for (const id of alertOrderIds(orderData || {})) dismissedAlertOrders.set(id, Date.now());
+};
+const isAlertOrderDismissed = (orderData) => {
+  const now = Date.now();
+  let dismissed = false;
+  for (const id of alertOrderIds(orderData || {})) {
+    const at = dismissedAlertOrders.get(id);
+    if (!at) continue;
+    if (now - at > DISMISSED_ALERT_MS) dismissedAlertOrders.delete(id);
+    else dismissed = true;
+  }
+  return dismissed;
 };
 
 const OFFERABLE_ORDER_STATUSES = ['confirmed', 'preparing', 'ready_for_pickup', 'ready'];
@@ -265,7 +308,7 @@ export const useDeliveryNotifications = () => {
   const [deliveryPartnerId, setDeliveryPartnerId] = useState(null);
   const joinedDeliveryRoomRef = useRef(null);
   const ALERT_LOOP_INTERVAL_MS = 4500;
-  const ALERT_LOOP_MAX_MS = 120000;
+  const ALERT_LOOP_MAX_MS = 23000; // ring never runs longer than 23s
   const ALERT_DEDUPE_MS = 8000;
   const BROWSER_NOTIFICATION_DEDUPE_MS = 20000;
   const NOTIFICATION_PERMISSION_ASKED_KEY = 'delivery_notification_permission_asked';
@@ -439,6 +482,9 @@ export const useDeliveryNotifications = () => {
   }, []);
 
   const handleIncomingOrderAlert = useCallback((orderData = {}) => {
+    if (isAlertOrderDismissed(orderData)) {
+      return;
+    }
     if (!shouldProcessOrderAlert(orderData)) {
       return;
     }
@@ -460,6 +506,13 @@ export const useDeliveryNotifications = () => {
       showBackgroundOrderNotification(orderData);
     }
   }, [playNotificationSound, showBackgroundOrderNotification, startAlertLoop]);
+
+  // Rings for an offer the rider already had queued (e.g. right after finishing a trip).
+  const ringForOrder = useCallback((orderData = {}) => {
+    activeOrderRef.current = orderData || { id: Date.now() };
+    playNotificationSound(orderData);
+    startAlertLoop(playNotificationSound);
+  }, [playNotificationSound, startAlertLoop]);
 
   const recoverDeliveryState = useCallback(async () => {
     if (!deliveryPartnerId) return;
@@ -1040,13 +1093,8 @@ export const useDeliveryNotifications = () => {
         orderId: normalizedData?.orderId || normalizedData?.orderMongoId || normalizedData?.order_id,
       });
 
-      // Force immediate buzz for valid notification events, even if dedupe would skip.
-      activeOrderRef.current = normalizedData || { id: Date.now() };
-      playNotificationSound(normalizedData);
-      startAlertLoop(playNotificationSound);
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        showBackgroundOrderNotification(normalizedData);
-      }
+      // Single entry point: it already skips orders that were accepted/dismissed and riders on an active trip,
+      // and dedupes against the new_order / new_order_available event that usually arrives with this one.
       handleIncomingOrderAlert(normalizedData);
     });
 
@@ -1085,18 +1133,14 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_status_update', (statusData) => {
       debugLog('?? Delivery order status update received via socket:', statusData);
-      const statusOrderId = String(
-        statusData?.orderId || statusData?.orderMongoId || ''
-      ).trim();
-      const statusLegId = String(statusData?.legId || '').trim();
-      const activeKey = getOrderAlertKey(activeOrderRef.current || {});
-      const statusKey = [statusOrderId, statusLegId].filter(Boolean).join(':');
+      const statusValue = String(statusData?.orderStatus || statusData?.status || '').trim().toLowerCase();
+      const offerEnded =
+        statusData?.dispatchStatus === 'accepted' ||
+        ['picked_up', 'on_the_way', 'delivered', 'cancelled', 'deleted'].includes(statusValue) ||
+        statusValue.includes('cancel');
 
-      if (
-        statusData?.dispatchStatus === 'accepted' &&
-        statusKey &&
-        statusKey === activeKey
-      ) {
+      if (offerEnded && activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
+        dismissAlertOrder(statusData);
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -1114,6 +1158,12 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_cancelled', (statusData) => {
       debugLog('?? Delivery order cancelled event received via socket:', statusData);
+      if (activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
+        dismissAlertOrder(statusData);
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+      }
       setOrderStatusUpdate({
         ...(statusData || {}),
         status: 'cancelled'
@@ -1122,6 +1172,12 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_deleted', (statusData) => {
       debugLog('?? Delivery order deleted event received via socket:', statusData);
+      if (activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
+        dismissAlertOrder(statusData);
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+      }
       setOrderStatusUpdate({
         ...(statusData || {}),
         status: 'deleted'
@@ -1171,9 +1227,8 @@ export const useDeliveryNotifications = () => {
     socketRef.current.on('order_reassigned_elsewhere', (data) => {
       debugLog('?? Order reassigned to another partner:', data);
       window.dispatchEvent(new CustomEvent('deliveryOrderClaimed', { detail: data || {} }));
-      const eventKey = getOrderAlertKey(data || {});
-      const activeKey = getOrderAlertKey(activeOrderRef.current || {});
-      if (eventKey && eventKey === activeKey) {
+      dismissAlertOrder(data);
+      if (activeOrderRef.current && isSameAlertOrder(data, activeOrderRef.current)) {
         debugLog('?? Removing reassigned order from local state');
         stopAlertLoop();
         activeOrderRef.current = null;
@@ -1185,9 +1240,8 @@ export const useDeliveryNotifications = () => {
       debugLog('?? Order claimed by another partner:', data);
       // Lets the Orders tab drop the order from "New Orders" right away (not on the next poll).
       window.dispatchEvent(new CustomEvent('deliveryOrderClaimed', { detail: data || {} }));
-      const eventKey = getOrderAlertKey(data || {});
-      const activeKey = getOrderAlertKey(activeOrderRef.current || {});
-      if (eventKey && eventKey === activeKey) {
+      dismissAlertOrder(data);
+      if (activeOrderRef.current && isSameAlertOrder(data, activeOrderRef.current)) {
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -1357,7 +1411,9 @@ export const useDeliveryNotifications = () => {
   }, [handleIncomingOrderAlert]);
 
   // Helper functions
-  const clearNewOrder = () => {
+  const clearNewOrder = (handledOrder) => {
+    dismissAlertOrder(handledOrder);
+    dismissAlertOrder(activeOrderRef.current);
     stopAlertLoop();
     activeOrderRef.current = null;
     setNewOrder(null);
@@ -1390,6 +1446,7 @@ export const useDeliveryNotifications = () => {
     clearOrderStatusUpdate,
     isConnected,
     playNotificationSound,
+    ringForOrder,
     emitLocation
   };
 };

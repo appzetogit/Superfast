@@ -14,6 +14,7 @@ const quickFeeSettingsSchema = new mongoose.Schema(
     deliveryFee: { type: Number, min: 0 },
     deliveryFeeRanges: { type: [deliveryFeeRangeSchema], default: [] },
     freeDeliveryThreshold: { type: Number, min: 0 },
+    minOrderValue: { type: Number, min: 0, default: 0 },
     platformFee: { type: Number, min: 0 },
     gstRate: { type: Number, min: 0, max: 100 },
     returnDeliveryCommission: { type: Number, min: 0, default: 0 },

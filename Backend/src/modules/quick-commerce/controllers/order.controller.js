@@ -13,6 +13,7 @@ import { QuickReturnRequest } from '../models/ReturnRequest.model.js';
 import { getSellerCommissionSnapshot } from '../admin/services/commission.service.js';
 import {
   calculateQuickPricing,
+  getMinOrderValue,
   getRiderEarning as getQuickRiderEarning,
 } from '../admin/services/billing.service.js';
 import { haversineKm } from '../../food/orders/services/order.helpers.js';
@@ -328,6 +329,14 @@ export const placeOrder = async (req, res) => {
     }
 
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const minOrderValue = await getMinOrderValue();
+    if (minOrderValue > 0 && subtotal < minOrderValue) {
+      return res.status(400).json({
+        success: false,
+        message: `Minimum order value is ₹${minOrderValue}. Add items worth ₹${Math.ceil(minOrderValue - subtotal)} more to place your order.`,
+        minOrderValue,
+      });
+    }
     const discount = Math.max(0, Number(req.body?.discountTotal || 0));
     const { pricing } = await calculateQuickPricing({
       subtotal,
