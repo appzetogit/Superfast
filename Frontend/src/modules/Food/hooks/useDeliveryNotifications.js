@@ -443,8 +443,10 @@ export const useDeliveryNotifications = () => {
       return;
     }
 
-    const { activeOrder, activeOrders } = useDeliveryStore.getState();
-    const hasActiveTrip = Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
+    const { activeOrder, activeOrders, tripStatus } = useDeliveryStore.getState();
+    // A COMPLETED trip only lingers in the store for the summary screen; it must not mute new offers.
+    const hasActiveTrip =
+      tripStatus !== 'COMPLETED' && Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
 
     // Only ring & loop if rider has no active trip yet.
     // If rider is already on a trip, new multi-orders trigger silent/push notification without ringing.

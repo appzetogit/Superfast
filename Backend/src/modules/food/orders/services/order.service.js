@@ -3602,6 +3602,7 @@ export async function updateOrderStatusRestaurant(
                 type: "new_order",
                 orderId: payload.orderId,
                 orderMongoId: payload.orderMongoId,
+                orderStatus: String(order.orderStatus || "preparing"),
                 link: "/delivery",
               },
             },

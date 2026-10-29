@@ -822,7 +822,14 @@ function showForegroundNotification(payload = {}) {
   // FCM delivery popup MUST ONLY be dispatched if orderStatus is explicitly ready_for_pickup, return_pickup or an admin reassignment!
   const isNewOrderOffer =
     moduleName === 'delivery' &&
-    (payload?.data?.type === 'RETURN_PICKUP' || isReassignmentOffer || ['ready_for_pickup', 'ready'].includes(orderStatus));
+    (
+      payload?.data?.type === 'RETURN_PICKUP' ||
+      isReassignmentOffer ||
+      ['ready_for_pickup', 'ready'].includes(orderStatus) ||
+      // Rider offer sent as soon as the restaurant accepts the order.
+      (['new_order', 'new_order_available'].includes(notificationType) &&
+        ['confirmed', 'preparing'].includes(orderStatus))
+    );
 
   if (isNewOrderOffer && payload?.data) {
     if (typeof window !== 'undefined') {

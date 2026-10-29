@@ -177,12 +177,13 @@ const dispatchSchema = new mongoose.Schema(
         modeAtCreation: { type: String, enum: ['auto', 'manual'], default: 'manual' },
         status: {
             type: String,
-            enum: ['unassigned', 'assigned', 'accepted', 'rejected', 'cancelled'],
+            enum: ['unassigned', 'assigned', 'accepted', 'rejected', 'cancelled', 'delivered'],
             default: 'unassigned'
         },
         deliveryPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null },
         assignedAt: { type: Date },
         acceptedAt: { type: Date },
+        deliveredAt: { type: Date },
         /** List of partners who were offered this order (to avoid repeats and track timeouts) */
         offeredTo: [{
             partnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' },

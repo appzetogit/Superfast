@@ -37,6 +37,9 @@ import {
 } from 'lucide-react';
 
 import { getHaversineDistance, calculateETA, calculateHeading } from '@/modules/DeliveryV2/utils/geo';
+import { calculateDistance } from '@/modules/DeliveryV2/hooks/proximity.utils';
+import { normalizeLocationPoint } from '@/modules/DeliveryV2/utils/orderRouting';
+import { getTripStatusForOrder } from '@/modules/DeliveryV2/utils/activeTrips';
 
 // No GPS fix for this long while online = treat GPS as off.
 const GPS_STALE_MS = 60 * 1000;
@@ -107,9 +110,33 @@ function BottomPopup({ isOpen, onClose, title, children }) {
  */
 export default function DeliveryHomeV2({ tab = 'feed' }) {
   const navigate = useNavigate();
-  const { isOnline, toggleOnline, activeOrder, activeOrders, maxSlots, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
+  const { riderLocation, settings: deliverySettings, isOnline, toggleOnline, activeOrder, activeOrders, maxSlots, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
   const { isWithinRange, distanceToTarget } = useProximityCheck();
   const { acceptOrder, rejectOrder, reachPickup, pickUpOrder, reachDrop, completeDelivery, resetTrip } = useOrderManager();
+  // Multi-order: the drop slider checks the focused order only. When the rider is standing at the
+  // drop of another picked-up order, focus that order so its slider unlocks.
+  useEffect(() => {
+    if (tripStatus !== 'PICKED_UP' || isWithinRange || !Array.isArray(activeOrders) || activeOrders.length < 2) return;
+    const rider = normalizeLocationPoint(riderLocation);
+    if (!rider) return;
+    const limit = deliverySettings?.deliveryRangeLimit || 5000;
+    const currentId = String(activeOrder?.orderId || activeOrder?._id || activeOrder?.id || '');
+    let best = null;
+    let bestDist = Infinity;
+    for (const o of activeOrders) {
+      if (String(o?.orderId || o?._id || o?.id || '') === currentId) continue;
+      if (getTripStatusForOrder(o) !== 'PICKED_UP') continue;
+      const drop = normalizeLocationPoint(o.customerLocation || o.deliveryAddress);
+      if (!drop) continue;
+      const d = calculateDistance(rider.lat, rider.lng, drop.lat, drop.lng);
+      if (d <= limit && d < bestDist) {
+        best = o;
+        bestDist = d;
+      }
+    }
+    if (best) setActiveOrder(best);
+  }, [tripStatus, isWithinRange, activeOrders, activeOrder, riderLocation, deliverySettings, setActiveOrder]);
+
   const { newOrder, clearNewOrder, stopAlertLoop, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
   const companyName = useCompanyName();
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
@@ -626,7 +653,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       });
 
       // 2. Only show full-screen ringing popup modal if rider currently has NO active trip!
-      const hasActiveTrip = Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
+      // A COMPLETED trip only lingers for the summary screen; it must not block new offers.
+      const hasActiveTrip =
+        tripStatus !== 'COMPLETED' && Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
       if (!hasActiveTrip) {
         setIncomingOrder(socketOrd);
       }
@@ -648,13 +677,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           processOrder(newOrder);
         });
     }
-  }, [newOrder, activeOrder, activeOrders]);
+  }, [newOrder, activeOrder, activeOrders, tripStatus]);
 
   useEffect(() => {
-    if (activeOrder && incomingOrder) {
+    if (activeOrder && tripStatus !== 'COMPLETED' && incomingOrder) {
       setIncomingOrder(null);
     }
-  }, [activeOrder, incomingOrder]);
+  }, [activeOrder, tripStatus, incomingOrder]);
 
   // Keeps the active trips in sync even while one is running, so orders the rider takes on
   // top (multi-order) or the admin assigns show up. activeOrder is deliberately not a dependency:

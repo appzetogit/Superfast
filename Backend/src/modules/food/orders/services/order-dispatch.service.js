@@ -392,7 +392,7 @@ export async function tryAutoAssign(orderId, options = {}) {
           {
             title: "New order assigned!",
             body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
-            data: { type: "new_order", orderId: order._id.toString() },
+            data: { type: "new_order", orderId: order._id.toString(), orderMongoId: order._id.toString(), orderStatus: String(order.orderStatus || "preparing"), link: "/delivery" },
           }
         );
       } catch (err) {
@@ -429,7 +429,7 @@ export async function tryAutoAssign(orderId, options = {}) {
           {
             title: "New order assigned!",
             body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
-            data: { type: "new_order", orderId: order._id.toString() },
+            data: { type: "new_order", orderId: order._id.toString(), orderMongoId: order._id.toString(), orderStatus: String(order.orderStatus || "preparing"), link: "/delivery" },
           },
         );
       } catch (err) {
