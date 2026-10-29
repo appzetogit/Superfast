@@ -5,7 +5,8 @@ import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
 import { Textarea } from "@food/components/ui/textarea"
-import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
+import { useLocation as useGeoLocation, resolveDetailedLocation } from "@food/hooks/useLocation"
+import { requestLiveGpsLocation, openNativeLocationSettings, requestNativeLocationPermission } from "@shared/utils/nativeLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { toast } from "sonner"
 import { locationAPI, userAPI, zoneAPI } from "@food/api"
@@ -280,7 +281,7 @@ export default function AddressSelectorPage() {
         googleMapRef.current.panTo({ lat: resolved[0], lng: resolved[1] })
       }
     }
-    if (location?.formattedAddress || location?.address) {
+    if (location?.isLiveGPS || (location?.formattedAddress && location?.deliveryMode === 'current')) {
       setCurrentAddress(location.formattedAddress || location.address)
     }
   }, [location?.latitude, location?.longitude, addresses])
@@ -509,54 +510,86 @@ export default function AddressSelectorPage() {
 
   const handleUseCurrentLocation = async () => {
     try {
-      toast.loading("Getting location...", { id: "geo" })
-      const loc = await requestLocation(true, true)
+      toast.loading("Getting current location...", { id: "geo" })
 
-      if (loc?.latitude) {
-        // Update state
-        userManuallyMovedMapRef.current = false
-        const newPos = [loc.latitude, loc.longitude]
-        setMapPosition(newPos)
-        setCurrentAddress(loc.formattedAddress || loc.address || "")
+      // Request real live GPS (triggers Android Screenshot 1 & 2 if location is off)
+      const gpsCoords = await requestLiveGpsLocation(20000)
 
-        // Persist
-        persistSelectedLocation(loc)
-        try {
-          localStorage.setItem("deliveryAddressMode", "current");
-          window.dispatchEvent(new Event("deliveryAddressModeChanged"));
-        } catch { }
-
-        // Update map
-        if (googleMapRef.current) {
-          googleMapRef.current.panTo({ lat: loc.latitude, lng: loc.longitude })
-          googleMapRef.current.setZoom(17)
-        }
-
-        // Update form data if form is open
-        if (showAddressForm) {
-          setAddressFormData(prev => ({
-            ...prev,
-            street: loc.street || loc.area || prev.street,
-            city: loc.city || prev.city,
-            state: loc.state || prev.state,
-            zipCode: loc.postalCode || prev.zipCode,
-          }))
-          toast.success("Location updated", { id: "geo" })
-          // Don't redirect if they are explicitly in the "Add Address" form
-        } else {
-          toast.success("Location updated", { id: "geo" })
-          // Redirect if they are on the main selection page
-          setTimeout(() => {
-            const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
-            const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
-            navigate(targetRoute, { replace: true })
-          }, 300)
-        }
-      } else {
-        toast.error("Please switch on Location/GPS on your phone to detect location.", { id: "geo", duration: 5000 })
+      if (!gpsCoords?.latitude || !gpsCoords?.longitude) {
+        throw new Error("Unable to get current GPS coordinates")
       }
-    } catch (e) {
-      toast.error("Please switch on Location/GPS on your phone to detect location.", { id: "geo", duration: 5000 })
+
+      toast.loading("Resolving your address...", { id: "geo" })
+      let liveLoc = null
+      try {
+        const detailed = await resolveDetailedLocation(gpsCoords.latitude, gpsCoords.longitude, true)
+        liveLoc = {
+          ...detailed,
+          latitude: gpsCoords.latitude,
+          longitude: gpsCoords.longitude,
+          accuracy: gpsCoords.accuracy || null,
+          isLiveGPS: true,
+        }
+      } catch (geoErr) {
+        liveLoc = {
+          latitude: gpsCoords.latitude,
+          longitude: gpsCoords.longitude,
+          accuracy: gpsCoords.accuracy || null,
+          city: "Current Location",
+          state: "",
+          area: "",
+          address: `${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)}`,
+          formattedAddress: `${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)}`,
+          isLiveGPS: true,
+        }
+      }
+
+      // Update state
+      userManuallyMovedMapRef.current = false
+      const newPos = [liveLoc.latitude, liveLoc.longitude]
+      setMapPosition(newPos)
+      setCurrentAddress(liveLoc.formattedAddress || liveLoc.address || "")
+
+      // Persist live location
+      persistSelectedLocation(liveLoc)
+      try {
+        localStorage.setItem("deliveryAddressMode", "current")
+        localStorage.setItem("userLocation", JSON.stringify(liveLoc))
+        window.dispatchEvent(new CustomEvent("userLocationUpdated", { detail: { location: liveLoc } }))
+        window.dispatchEvent(new Event("deliveryAddressModeChanged"))
+      } catch {}
+
+      // Update map
+      if (googleMapRef.current) {
+        googleMapRef.current.panTo({ lat: liveLoc.latitude, lng: liveLoc.longitude })
+        googleMapRef.current.setZoom(17)
+      }
+
+      // Update form data if form is open
+      if (showAddressForm) {
+        setAddressFormData(prev => ({
+          ...prev,
+          street: liveLoc.street || liveLoc.area || prev.street,
+          city: liveLoc.city || prev.city,
+          state: liveLoc.state || prev.state,
+          zipCode: liveLoc.postalCode || prev.zipCode,
+        }))
+        toast.success("Location updated", { id: "geo" })
+      } else {
+        toast.success("Location updated", { id: "geo" })
+        setTimeout(() => {
+          const from = routeLocation?.state?.from || routeLocation?.state?.backTo || sessionStorage.getItem("address_selector_from")
+          const targetRoute = (from && !from.includes("address-selector")) ? from : "/food/user"
+          navigate(targetRoute, { replace: true })
+        }, 300)
+      }
+    } catch (err) {
+      toast.dismiss("geo")
+      console.warn("Live location error:", err)
+      openNativeLocationSettings().catch(() => {})
+      requestNativeLocationPermission().catch(() => {})
+      window.dispatchEvent(new CustomEvent("showLocationGate", { detail: { denied: err?.code === 1 } }))
+      toast.error("Please turn on Device Location / GPS to use your current location.", { id: "geo", duration: 5000 })
     }
   }
 
@@ -1216,7 +1249,7 @@ export default function AddressSelectorPage() {
             </div>
             <div className="text-left flex-1">
               <p className="font-bold text-[var(--primary-theme)]">Use Current Location</p>
-              <p className="text-xs text-gray-500 line-clamp-1">{currentAddress || "Enable GPS for accuracy"}</p>
+              <p className="text-xs text-gray-500 line-clamp-1">{currentAddress || "Tap to detect your current location"}</p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
           </button>

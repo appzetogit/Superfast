@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { locationAPI, userAPI } from "@food/api"
+import { getNativeLocation, isNativeWrapper } from "@shared/utils/nativeLocation"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -199,15 +200,15 @@ const reverseGeocodeDirect = async (latitude, longitude, forceFresh = false) => 
         const nom = await nomRes.json()
         if (nom && nom.display_name) {
           const addr = nom.address || {}
-          const city = addr.city || addr.town || addr.village || addr.county || 'Sanchore'
-          const state = addr.state || 'Rajasthan'
+          const city = addr.city || addr.town || addr.village || addr.county || addr.state_district || ''
+          const state = addr.state || ''
           const area = addr.suburb || addr.neighbourhood || addr.road || ''
           const value = {
             city,
             state,
             area,
             country: addr.country || 'India',
-            postalCode: addr.postcode || '343041',
+            postalCode: addr.postcode || '',
             address: area ? `${area}, ${city}` : city,
             formattedAddress: nom.display_name,
           }
@@ -216,13 +217,12 @@ const reverseGeocodeDirect = async (latitude, longitude, forceFresh = false) => 
         }
       } catch (nomErr) {}
 
-      const isNearSanchore = Math.hypot(latitude - 24.7534, longitude - 71.7720) < 1.0
       const fallback = {
-        city: isNearSanchore ? "Sanchore" : "Current Location",
-        state: isNearSanchore ? "Rajasthan" : "",
-        postalCode: isNearSanchore ? "343041" : "",
-        address: isNearSanchore ? "Sanchore, Rajasthan" : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-        formattedAddress: isNearSanchore ? "Sanchore, Rajasthan 343041, India" : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        city: 'Current Location',
+        state: '',
+        postalCode: '',
+        address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        formattedAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
       }
       return fallback
     } finally {
@@ -233,6 +233,82 @@ const reverseGeocodeDirect = async (latitude, longitude, forceFresh = false) => 
   globalReverseGeocodeInFlight = run
   return run
 }
+
+/* ===================== LOCATION RESOLUTION (Google Maps + Fallbacks) ===================== */
+  export const resolveDetailedLocation = async (latitude, longitude, forceFresh = false) => {
+    let primaryAddr = null;
+    let fallbackAddr = null;
+
+    const isDetailed = (addr) => {
+      if (!addr) return false;
+      if (!addr.area || addr.area.trim() === "") return false;
+      if (addr.formattedAddress && addr.city && addr.formattedAddress.toLowerCase() === addr.city.toLowerCase()) return false;
+      return true;
+    };
+
+    // 1. Primary API (Backend Google Maps)
+    try {
+      debugLog("📍 Trying Primary API for:", latitude, longitude);
+      // Timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Primary API timeout")), 10000)
+      );
+      const apiPromise = locationAPI.reverseGeocode(latitude, longitude);
+      const res = await Promise.race([apiPromise, timeoutPromise]);
+
+      if (res?.data?.success && res?.data?.data) {
+        const data = res.data.data;
+        primaryAddr = {
+          city: data.city || "Unknown City",
+          state: data.state || "",
+          country: data.country || "",
+          area: data.area || data.locality || "",
+          address: data.formattedAddress || "",
+          formattedAddress: data.formattedAddress || "",
+        };
+        debugLog("✅ Primary API Success:", primaryAddr);
+      }
+    } catch (err) {
+      debugWarn("⚠️ Primary API failed:", err.message);
+    }
+
+    if (isDetailed(primaryAddr)) {
+      return primaryAddr;
+    }
+
+    // 2. Fallback API (BigDataCloud)
+    try {
+      debugLog("⚠️ Primary incomplete/failed. Trying Fallback API for:", latitude, longitude);
+      fallbackAddr = await reverseGeocodeDirect(latitude, longitude, forceFresh);
+      debugLog("✅ Fallback API Success:", fallbackAddr);
+    } catch (err) {
+      debugWarn("⚠️ Fallback API failed:", err.message);
+    }
+
+    // Pick best
+    if (isDetailed(fallbackAddr)) return fallbackAddr;
+
+    // If neither is detailed, try to parse area from formattedAddress of primary
+    if (primaryAddr && primaryAddr.formattedAddress) {
+      const parts = primaryAddr.formattedAddress.split(',').map(p => p.trim());
+      if (parts.length >= 3 && !primaryAddr.area) {
+        const potentialArea = parts[0];
+        const potentialAreaLower = potentialArea.toLowerCase();
+        const cityLower = (primaryAddr.city || "").toLowerCase();
+        const stateLower = (primaryAddr.state || "").toLowerCase();
+        if (potentialAreaLower !== cityLower && potentialAreaLower !== stateLower && !potentialAreaLower.match(/^\d+/)) {
+          primaryAddr.area = potentialArea;
+          debugLog("🎯 FORCE EXTRACTED area (final fallback):", primaryAddr.area);
+        }
+      }
+      if (primaryAddr.area || primaryAddr.city) return primaryAddr;
+    }
+
+    if (fallbackAddr && fallbackAddr.city && fallbackAddr.city !== "Unknown City") return fallbackAddr;
+    if (primaryAddr) return primaryAddr;
+
+    throw new Error("Both geocoding APIs failed to return a valid location");
+  }
 
 export function useLocation() {
   const [location, setLocation] = useState(null)
@@ -388,81 +464,7 @@ export function useLocation() {
     }
   }
 
-  /* ===================== LOCATION RESOLUTION (Google Maps + Fallbacks) ===================== */
-  const resolveDetailedLocation = async (latitude, longitude, forceFresh = false) => {
-    let primaryAddr = null;
-    let fallbackAddr = null;
-
-    const isDetailed = (addr) => {
-      if (!addr) return false;
-      if (!addr.area || addr.area.trim() === "") return false;
-      if (addr.formattedAddress && addr.city && addr.formattedAddress.toLowerCase() === addr.city.toLowerCase()) return false;
-      return true;
-    };
-
-    // 1. Primary API (Backend Google Maps)
-    try {
-      debugLog("📍 Trying Primary API for:", latitude, longitude);
-      // Timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Primary API timeout")), 10000)
-      );
-      const apiPromise = locationAPI.reverseGeocode(latitude, longitude);
-      const res = await Promise.race([apiPromise, timeoutPromise]);
-
-      if (res?.data?.success && res?.data?.data) {
-        const data = res.data.data;
-        primaryAddr = {
-          city: data.city || "Unknown City",
-          state: data.state || "",
-          country: data.country || "",
-          area: data.area || data.locality || "",
-          address: data.formattedAddress || "",
-          formattedAddress: data.formattedAddress || "",
-        };
-        debugLog("✅ Primary API Success:", primaryAddr);
-      }
-    } catch (err) {
-      debugWarn("⚠️ Primary API failed:", err.message);
-    }
-
-    if (isDetailed(primaryAddr)) {
-      return primaryAddr;
-    }
-
-    // 2. Fallback API (BigDataCloud)
-    try {
-      debugLog("⚠️ Primary incomplete/failed. Trying Fallback API for:", latitude, longitude);
-      fallbackAddr = await reverseGeocodeDirect(latitude, longitude, forceFresh);
-      debugLog("✅ Fallback API Success:", fallbackAddr);
-    } catch (err) {
-      debugWarn("⚠️ Fallback API failed:", err.message);
-    }
-
-    // Pick best
-    if (isDetailed(fallbackAddr)) return fallbackAddr;
-
-    // If neither is detailed, try to parse area from formattedAddress of primary
-    if (primaryAddr && primaryAddr.formattedAddress) {
-      const parts = primaryAddr.formattedAddress.split(',').map(p => p.trim());
-      if (parts.length >= 3 && !primaryAddr.area) {
-        const potentialArea = parts[0];
-        const potentialAreaLower = potentialArea.toLowerCase();
-        const cityLower = (primaryAddr.city || "").toLowerCase();
-        const stateLower = (primaryAddr.state || "").toLowerCase();
-        if (potentialAreaLower !== cityLower && potentialAreaLower !== stateLower && !potentialAreaLower.match(/^\d+/)) {
-          primaryAddr.area = potentialArea;
-          debugLog("🎯 FORCE EXTRACTED area (final fallback):", primaryAddr.area);
-        }
-      }
-      if (primaryAddr.area || primaryAddr.city) return primaryAddr;
-    }
-
-    if (fallbackAddr && fallbackAddr.city && fallbackAddr.city !== "Unknown City") return fallbackAddr;
-    if (primaryAddr) return primaryAddr;
-
-    throw new Error("Both geocoding APIs failed to return a valid location");
-  }
+  
 
   /* ===================== DB FETCH ===================== */
   const fetchLocationFromDB = async () => {
@@ -518,7 +520,9 @@ export function useLocation() {
           zipCode: zipCode,
           address: displayAddress,
           formattedAddress: formattedAddress,
-          label: defaultAddr.label || "Saved Address"
+          label: defaultAddr.label || "Saved Address",
+          isLiveGPS: false,
+          isSavedAddress: true
         }
         lastDbLocationRef.current = storedLocation
         lastDbLocationFetchAtRef.current = Date.now()
@@ -542,6 +546,43 @@ export function useLocation() {
       setLocation(dbLocation)
       if (showLoading) setLoading(false)
       return dbLocation
+    }
+
+    // When forceFresh is requested, try native bridge first (shows Screenshot 1 & 2 in Android)
+    if (forceFresh && isNativeWrapper()) {
+      try {
+        const native = await getNativeLocation()
+        if (native && Number.isFinite(native.lat) && Number.isFinite(native.lng)) {
+          let addr = null
+          try {
+            addr = await resolveDetailedLocation(native.lat, native.lng, true)
+          } catch (e) {
+            addr = {
+              city: 'Current Location',
+              state: '',
+              area: '',
+              address: `${native.lat.toFixed(4)}, ${native.lng.toFixed(4)}`,
+              formattedAddress: `${native.lat.toFixed(4)}, ${native.lng.toFixed(4)}`,
+            }
+          }
+          const finalLoc = {
+            ...addr,
+            latitude: native.lat,
+            longitude: native.lng,
+            accuracy: native.accuracy || null,
+            isLiveGPS: true,
+          }
+          localStorage.setItem('userLocation', JSON.stringify(finalLoc))
+          setLocation(finalLoc)
+          setPermissionGranted(true)
+          if (showLoading) setLoading(false)
+          setError(null)
+          if (updateDB) updateLocationInDB(finalLoc).catch(() => {})
+          return finalLoc
+        }
+      } catch (nativeErr) {
+        debugWarn('Native location failed in getLocation:', nativeErr)
+      }
     }
 
     if (!navigator.geolocation) {
@@ -641,7 +682,8 @@ export function useLocation() {
                 longitude,
                 accuracy: accuracy || null,
                 address: displayAddress, // Locality parts for navbar display
-                formattedAddress: completeFormattedAddress || addr.formattedAddress || displayAddress // Complete detailed address
+                formattedAddress: completeFormattedAddress || addr.formattedAddress || displayAddress, // Complete detailed address
+                isLiveGPS: true
               }
 
               // Check if location has placeholder values - don't save placeholders
@@ -804,8 +846,17 @@ export function useLocation() {
                 }
               }
 
-              if (fallback) {
-                debugLog("? Using fallback location:", fallback)
+              if (forceFresh) {
+              debugWarn('❌ Live GPS request failed (forceFresh):', err.message)
+              setError(err.message || 'Location request failed')
+              setPermissionGranted(false)
+              if (showLoading) setLoading(false)
+              reject(err)
+              return
+            }
+
+            if (fallback) {
+              debugLog("? Using fallback location:", fallback)
                 setLocation(fallback)
                 // Don't set error for timeout when we have fallback
                 if (err.code !== 3) {
@@ -1319,6 +1370,7 @@ export function useLocation() {
               location.city !== "Current Location"
             ) {
               debugLog("✅ Live GPS location auto-updated on app launch:", location);
+              location.isLiveGPS = true;
               setLocation(location);
               try {
                 localStorage.setItem("userLocation", JSON.stringify(location));
@@ -1355,7 +1407,8 @@ export function useLocation() {
       if (permissionRefreshInFlight) return
       permissionRefreshInFlight = getLocation(true, true)
         .then((loc) => {
-          if (loc && loc.formattedAddress !== "Select location" && loc.city !== "Current Location") {
+          if (loc && loc.latitude && loc.longitude && loc.formattedAddress !== "Select location") {
+            loc.isLiveGPS = true;
             setLocation(loc)
             localStorage.setItem("userLocation", JSON.stringify(loc))
             if (localStorage.getItem("deliveryAddressMode") !== "saved") {

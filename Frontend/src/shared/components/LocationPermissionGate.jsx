@@ -26,16 +26,22 @@ const AUTH_PATH_RE = /\/(auth|login|signup|otp|terms|privacy|support)(\/|$)/i
 const DISMISS_KEY = 'locationGateDismissed'
 
 function resolveModule(pathname) {
-  if (/^\/admin/.test(pathname) || AUTH_PATH_RE.test(pathname)) return null
+  if (/^\/admin/.test(pathname) || AUTH_PATH_RE.test(pathname) || /^\/account-deletion/.test(pathname)) return null
+  if (pathname.includes('/address-selector')) return null
+
   const hit = MODULES.find((m) => pathname.startsWith(m.prefix))
-  if (!hit) return null
-  // Customers browse without signing in, so they must be asked for location too.
-  if (!hit.required) return hit
-  try {
-    return isModuleAuthenticated(hit.module) ? hit : null
-  } catch {
-    return null
+  if (hit) {
+    if (!hit.required) return hit
+    try {
+      return isModuleAuthenticated(hit.module) ? hit : null
+    } catch {
+      return null
+    }
   }
+  if (isNativeWrapper() || pathname === '/') {
+    return { prefix: '/', module: 'user', label: 'customer', required: false }
+  }
+  return null
 }
 
 const callNativeBridge = async (handler) => {
@@ -266,7 +272,8 @@ export default function LocationPermissionGate() {
 
   // Customers (Zomato-style): the home screen stays hidden until location is on or an address is picked.
   const blocking = !required
-  if (!target || !problem || (dismissed && !blocking) || hasUserLocation) return null
+  // Do not let background-loaded DB saved address hide the prompt if device GPS is off
+  if (!target || !problem || dismissed) return null
 
   const isOff = problem === 'off'
 
@@ -295,7 +302,7 @@ export default function LocationPermissionGate() {
         </button>
         <button
           type="button"
-          onClick={() => navigate('/cart/address-selector')}
+          onClick={() => { handleDismiss(); navigate('/cart/address-selector'); }}
           className="mt-3 w-full max-w-md rounded-lg border border-[#f4505e] py-3.5 text-sm font-semibold text-[#f4505e] active:scale-95 transition-all cursor-pointer"
         >
           Enter Your Location Manually

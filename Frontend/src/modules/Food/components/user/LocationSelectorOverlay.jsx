@@ -5,6 +5,7 @@ import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
 import { Textarea } from "@food/components/ui/textarea"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
+import { requestLiveGpsLocation, openNativeLocationSettings, requestNativeLocationPermission } from "@shared/utils/nativeLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { toast } from "sonner"
 import { locationAPI, userAPI } from "@food/api"
@@ -833,75 +834,19 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
 
       // Increase timeout to 15 seconds to allow GPS to get accurate fix
       // The getLocation function already has a 15-second timeout, so we match it
-      const locationPromise = requestLocation()
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Location request is taking longer than expected. Please check your GPS settings.")), 15000)
-      )
-
-      let locationData
-      try {
-        locationData = await Promise.race([locationPromise, timeoutPromise])
-
-        // Check if we got valid location data
-        if (!locationData || (!locationData.latitude || !locationData.longitude)) {
-          throw new Error("Invalid location data received")
-        }
-      } catch (raceError) {
-        debugWarn("?? Location request failed or timed out:", raceError.message)
-
-        // If timeout or error, try to use cached location as fallback
-        const stored = localStorage.getItem("userLocation")
-        if (stored) {
-          try {
-            const cachedLocation = JSON.parse(stored)
-            if (cachedLocation?.latitude && cachedLocation?.longitude) {
-              debugLog("?? Using cached location as fallback:", cachedLocation)
-              locationData = cachedLocation
-
-              // Show info toast that we're using cached location
-              toast.info("Using your last known location", {
-                id: "location-request",
-                duration: 2000,
-              })
-            } else {
-              throw new Error("Invalid cached location")
-            }
-          } catch (cacheErr) {
-            debugError("? Failed to parse cached location:", cacheErr)
-            // Determine specific error message
-            let errorMessage = "Could not get location. Please try again."
-            if (raceError.message.includes("permission") || raceError.message.includes("denied")) {
-              errorMessage = "Location permission denied. Please enable location access in your browser settings."
-            } else if (raceError.message.includes("timeout") || raceError.message.includes("longer")) {
-              errorMessage = "Location request timed out. Please check your GPS settings and try again."
-            } else if (raceError.message.includes("unavailable")) {
-              errorMessage = "Location information is unavailable. Please check your device settings."
-            }
-
-            toast.error(errorMessage, {
-              id: "location-request",
-              duration: 5000,
-            })
-            return
+      const locationData = await (async () => {
+        try {
+          const coords = await requestLiveGpsLocation(20000);
+          if (coords?.latitude && coords?.longitude) {
+            return await requestLocation();
           }
-        } else {
-          // No cached location available
-          let errorMessage = "Could not get location. Please try again."
-          if (raceError.message.includes("permission") || raceError.message.includes("denied")) {
-            errorMessage = "Location permission denied. Please enable location access in your browser settings."
-          } else if (raceError.message.includes("timeout") || raceError.message.includes("longer")) {
-            errorMessage = "Location request timed out. Please check your GPS settings and try again."
-          } else if (raceError.message.includes("unavailable")) {
-            errorMessage = "Location information is unavailable. Please check your device settings."
-          }
-
-          toast.error(errorMessage, {
-            id: "location-request",
-            duration: 5000,
-          })
-          return
+        } catch (err) {
+          openNativeLocationSettings().catch(() => {});
+          requestNativeLocationPermission().catch(() => {});
+          window.dispatchEvent(new CustomEvent('showLocationGate', { detail: { denied: err?.code === 1 } }));
+          throw err;
         }
-      }
+      })();
 
       // Validate location data
       if (!locationData) {
