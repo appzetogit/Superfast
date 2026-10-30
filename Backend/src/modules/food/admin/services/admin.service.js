@@ -3221,13 +3221,12 @@ export async function getCategories(query) {
     const skip = (page - 1) * limit;
 
     const filter = {};
-    // The admin list is for the live admin categories. Merged/deactivated records and legacy
-    // restaurant-owned categories are hidden unless asked for (includeInactive=true) or when
+    // The admin list shows admin categories including disabled ones (so they can be re-enabled).
+    // Legacy restaurant-owned categories are hidden unless asked for (includeInactive=true) or when
     // reviewing restaurant requests (approvalStatus filter).
     const includeInactive = ['true', '1'].includes(String(query.includeInactive ?? '').toLowerCase());
-    if (!includeInactive) {
-        filter.isActive = { $ne: false };
-        if (!query.approvalStatus) filter.restaurantId = null;
+    if (!includeInactive && !query.approvalStatus) {
+        filter.restaurantId = null;
     }
     if (query.search && String(query.search).trim()) {
         const term = String(query.search).trim();

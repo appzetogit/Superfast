@@ -4,6 +4,7 @@ import SplashScreen from '@/components/ui/SplashScreen'
 import LocationPermissionGate from '@shared/components/LocationPermissionGate'
 import SoundAlertGate from '@shared/components/SoundAlertGate'
 import { WifiOff, RefreshCw } from 'lucide-react'
+import { checkServerHealth } from '@/services/api/axios'
 
 function OfflineBanner() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
@@ -56,6 +57,22 @@ function ApiStatusBanner() {
       window.removeEventListener('app:api-ok', onOk)
     }
   }, [])
+
+  // While the banner is up, keep checking: it goes away by itself the moment the server answers.
+  useEffect(() => {
+    if (!failing) return undefined
+    let cancelled = false
+    const timer = window.setInterval(async () => {
+      if (await checkServerHealth() && !cancelled) {
+        setFailing(false)
+        window.dispatchEvent(new Event('onlineReconnect'))
+      }
+    }, 5000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [failing])
 
   // The browser-offline banner already covers "no internet"; this one covers "server not responding".
   if (!failing || !navigator.onLine) return null

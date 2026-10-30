@@ -203,7 +203,21 @@ apiClient.interceptors.request.use(
 
 // Tell the UI (ApiStatusBanner in App.jsx) when the server is unreachable / failing,
 // so every screen gets a friendly message instead of a silent blank state.
+// The banner means "the server is down", so it is shown only when the server really cannot be
+// reached: a slow request (timeout) or one failing endpoint (a plain 500) must not trigger it, and
+// even repeated connection failures are confirmed with a /health ping before anything is shown.
 let consecutiveApiFailures = 0
+let healthCheckInFlight = false
+
+export const checkServerHealth = async () => {
+  try {
+    const res = await axios.get(`${baseURL || '/api/v1'}/health`, { timeout: 8000, validateStatus: () => true })
+    return res.status === 200
+  } catch {
+    return false
+  }
+}
+
 const emitApiStatus = (ok) => {
   if (typeof window === 'undefined') return
   if (ok) {
@@ -214,7 +228,25 @@ const emitApiStatus = (ok) => {
     return
   }
   consecutiveApiFailures += 1
-  if (consecutiveApiFailures >= 2) window.dispatchEvent(new CustomEvent('app:api-error'))
+  if (consecutiveApiFailures < 3 || healthCheckInFlight) return
+  healthCheckInFlight = true
+  checkServerHealth()
+    .then((up) => {
+      if (up) {
+        consecutiveApiFailures = 0
+        window.dispatchEvent(new CustomEvent('app:api-ok'))
+      } else {
+        window.dispatchEvent(new CustomEvent('app:api-error'))
+      }
+    })
+    .finally(() => { healthCheckInFlight = false })
+}
+
+// Failures that say "the server is unreachable" (not "this request was slow / this endpoint broke").
+const isServerUnreachable = (err) => {
+  const status = err?.response?.status
+  if (!err?.response) return err?.code !== 'ECONNABORTED' && err?.code !== 'ETIMEDOUT'
+  return [502, 503, 504].includes(status)
 }
 
 apiClient.interceptors.response.use(
@@ -227,8 +259,8 @@ apiClient.interceptors.response.use(
     const status = err?.response?.status
     if (axios.isCancel?.(err) || err?.code === 'ERR_CANCELED') {
       // aborted on purpose (navigation / replaced request): says nothing about the server
-    } else if (!err?.response || status >= 500) emitApiStatus(false)
-    else emitApiStatus(true) // 4xx = the server answered, it is up
+    } else if (isServerUnreachable(err)) emitApiStatus(false)
+    else emitApiStatus(true) // any answer (4xx, a plain 500) or a slow timeout: the server is not "down"
     // Server restarting / overloaded (502-504 or no response): retry reads quietly with backoff
     // instead of surfacing an error. Writes are never retried automatically (could double-submit).
     const isTransient = !err?.response ? err?.code !== 'ERR_CANCELED' : [502, 503, 504].includes(status)
