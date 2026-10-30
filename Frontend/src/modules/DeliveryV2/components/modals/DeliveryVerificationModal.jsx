@@ -287,16 +287,21 @@ const PaymentModal = ({ order, otpString, otpRequired = true, onComplete, onClos
         name: order.userName || "Customer",
         phone: order.userPhone || "",
       });
-      const link = res?.data?.data?.shortUrl || res?.data?.shortUrl || null;
-      if (link) {
-        setCollectQrLink(link);
+      const payload = res?.data?.data || res?.data || {};
+      // A real UPI QR image comes ready-made; the payment-link fallback is encoded into a QR here.
+      const qrImage = payload.qrImageUrl
+        || (payload.shortUrl
+          ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload.shortUrl)}`
+          : null);
+      if (qrImage) {
+        setCollectQrLink(qrImage);
         setPaymentStatus("pending");
         setShowQrModal(true);
       } else {
         toast.error("Could not generate QR code");
       }
     } catch (e) {
-      toast.error("QR Generation failed");
+      toast.error(e?.response?.data?.message || "QR Generation failed");
     } finally {
       setIsGeneratingQr(false);
     }
@@ -475,7 +480,7 @@ const PaymentModal = ({ order, otpString, otpRequired = true, onComplete, onClos
 
               <div className="relative p-6 bg-gray-50 rounded-3xl border-2 border-gray-100 mb-8">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(collectQrLink)}`}
+                  src={collectQrLink}
                   alt="Razorpay QR"
                   className="w-56 h-56"
                 />

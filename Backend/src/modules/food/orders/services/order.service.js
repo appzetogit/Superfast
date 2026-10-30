@@ -38,6 +38,8 @@ import {
   getRazorpayKeyId,
   isRazorpayConfigured,
   fetchRazorpayPaymentLink,
+  createRazorpayUpiQr,
+  fetchRazorpayQrStatus,
   initiateRazorpayRefund
 } from '../helpers/razorpay.helper.js';
 import { getIO, rooms } from '../../../../config/socket.js';
@@ -4868,27 +4870,66 @@ export async function createCollectQr(
 
   const amountPaise = Math.round(amountDue * 100);
   const user = order.userId || {};
-  const link = await createPaymentLink({
-    amountPaise,
-    currency: "INR",
-    description: `Order ${order.orderId} - COD collect`,
-    orderId: order.orderId,
-    customerName: customerInfo.name || user.name || "Customer",
-    customerEmail: customerInfo.email || user.email || "customer@example.com",
-    customerPhone: customerInfo.phone || user.phone,
-  });
+  // Preferred: a real fixed-amount UPI QR (opens the customer's UPI app on scan).
+  // Fallback: a Razorpay payment link, whose short URL is encoded into the QR instead.
+  let upiQr = null;
+  try {
+    upiQr = await createRazorpayUpiQr({
+      amountPaise,
+      orderId: order.orderId,
+      description: `Order ${order.orderId} - COD collect`,
+    });
+  } catch (err) {
+    logger.warn(
+      `UPI QR unavailable for order ${order.orderId}, falling back to payment link: ${err?.error?.description || err?.message || err}`,
+    );
+  }
+
+  let link = null;
+  if (!upiQr?.image_url) {
+    try {
+      link = await createPaymentLink({
+        amountPaise,
+        currency: "INR",
+        description: `Order ${order.orderId} - COD collect`,
+        orderId: order.orderId,
+        customerName: customerInfo.name || user.name || "Customer",
+        customerEmail: customerInfo.email || user.email || "customer@example.com",
+        customerPhone: customerInfo.phone || user.phone,
+      });
+    } catch (err) {
+      // The Razorpay SDK rejects with { statusCode, error: { description } }, not an Error.
+      const reason = err?.error?.description || err?.message || "Razorpay rejected the request";
+      logger.error(`COD collect QR failed for order ${order.orderId}: ${reason}`, err?.error || err);
+      throw new ValidationError(`QR payment failed: ${reason}`);
+    }
+  }
+
+  const expiresAt = upiQr?.close_by
+    ? new Date(upiQr.close_by * 1000)
+    : link?.expire_by
+      ? new Date(link.expire_by * 1000)
+      : null;
+  const qrState = upiQr?.image_url
+    ? {
+        qrId: upiQr.id,
+        imageUrl: upiQr.image_url,
+        status: upiQr.status || "active",
+        expiresAt,
+      }
+    : {
+        paymentLinkId: link.id,
+        shortUrl: link.short_url,
+        imageUrl: link.short_url,
+        status: link.status || "created",
+        expiresAt,
+      };
 
   await FoodOrder.findByIdAndUpdate(order._id, {
     $set: {
       "payment.method": "razorpay_qr",
       "payment.status": "pending_qr",
-      "payment.qr": {
-        paymentLinkId: link.id,
-        shortUrl: link.short_url,
-        imageUrl: link.short_url,
-        status: link.status || "created",
-        expiresAt: link.expire_by ? new Date(link.expire_by * 1000) : null,
-      },
+      "payment.qr": qrState,
     },
   });
 
@@ -4905,31 +4946,20 @@ export async function createCollectQr(
     orderMongoId: String(orderId),
     orderId: updated?.orderId || null,
     deliveryPartnerId,
-    paymentLinkId: link.id,
-    shortUrl: link.short_url,
+    paymentLinkId: link?.id || null,
+    qrId: upiQr?.id || null,
+    shortUrl: link?.short_url || null,
     amountDue
   });
 
   // IMPORTANT: return QR payload so frontend can render "Generate QR" / "Show QR".
-  const shortUrl =
-    link?.short_url ?? link?.shortUrl ?? link?.short_url_path ?? null;
-  const imageUrl =
-    link?.short_url ??
-    link?.image_url ??
-    link?.imageUrl ??
-    link?.image ??
-    null;
-
+  // `qrImageUrl` is a ready-made UPI QR image; `shortUrl` is only set for the payment-link fallback.
   return {
-    shortUrl,
-    imageUrl,
+    qrImageUrl: upiQr?.image_url || null,
+    shortUrl: link?.short_url ?? null,
+    imageUrl: upiQr?.image_url || link?.short_url || null,
     amount: amountDue,
-    expiresAt:
-      link?.expire_by
-        ? new Date(link.expire_by * 1000)
-        : link?.expiresAt
-          ? new Date(link.expiresAt)
-          : null,
+    expiresAt,
   };
 }
 
@@ -4946,22 +4976,21 @@ async function syncRazorpayQrPayment(orderDoc) {
   if (orderDoc.payment.method !== "razorpay_qr") return orderDoc.payment;
   if (orderDoc.payment.status === "paid") return orderDoc.payment;
 
-  const paymentLinkId = orderDoc.payment?.qr?.paymentLinkId;
-  if (!paymentLinkId) return orderDoc.payment;
+  const qrRef = orderDoc.payment?.qr;
+  if (!qrRef?.qrId && !qrRef?.paymentLinkId) return orderDoc.payment;
   if (!isRazorpayConfigured()) return orderDoc.payment;
 
-  let link;
+  let linkStatus;
   try {
-    link = await fetchRazorpayPaymentLink(paymentLinkId);
+    linkStatus = await fetchRazorpayQrStatus({ qrId: qrRef.qrId, paymentLinkId: qrRef.paymentLinkId });
   } catch (err) {
     logger.warn(
-      `Razorpay payment-link fetch failed for ${paymentLinkId}: ${err?.message || err
+      `Razorpay QR status fetch failed for ${qrRef.qrId || qrRef.paymentLinkId}: ${err?.error?.description || err?.message || err
       }`
     );
     return orderDoc.payment;
   }
 
-  const linkStatus = String(link?.status || "").toLowerCase();
   if (!linkStatus) return orderDoc.payment;
 
   // Update QR snapshot status.

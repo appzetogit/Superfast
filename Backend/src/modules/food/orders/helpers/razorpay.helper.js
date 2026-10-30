@@ -34,15 +34,18 @@ export function createRazorpayOrder(amountPaise, currency = 'INR', receipt = '')
 export function createPaymentLink({ amountPaise, currency = 'INR', description, orderId, customerName, customerEmail, customerPhone }) {
     const instance = getRazorpayInstance();
     if (!instance) return Promise.reject(new Error('Razorpay not configured'));
+    // Live Razorpay risk checks can decline payments carrying placeholder contact details,
+    // so only send customer fields that are real.
+    const contact = customerPhone ? String(customerPhone).replace(/\D/g, '').slice(-10) : '';
+    const email = String(customerEmail || '').trim();
+    const customer = { name: customerName || 'Customer' };
+    if (/^[6-9]\d{9}$/.test(contact)) customer.contact = contact;
+    if (email && !/@example\.com$/i.test(email)) customer.email = email;
     return instance.paymentLink.create({
         amount: Math.round(amountPaise),
         currency,
         description: description || `Order ${orderId}`,
-        customer: {
-            name: customerName || 'Customer',
-            email: customerEmail || 'customer@example.com',
-            contact: customerPhone ? String(customerPhone).replace(/\D/g, '').slice(-10) : '9999999999'
-        }
+        customer,
     });
 }
 
@@ -106,6 +109,48 @@ export async function fetchRazorpayPaymentLink(paymentLinkId) {
     if (!instance) throw new Error('Razorpay not configured');
     if (!paymentLinkId) throw new Error('paymentLinkId is required');
     return instance.paymentLink.fetch(String(paymentLinkId));
+}
+
+/**
+ * Creates a single-use UPI QR with a fixed amount. Unlike a payment link, the returned
+ * `image_url` is a real scannable UPI QR that opens the customer's UPI app directly.
+ */
+export function createRazorpayUpiQr({ amountPaise, orderId, description }) {
+    const instance = getRazorpayInstance();
+    if (!instance) return Promise.reject(new Error('Razorpay not configured'));
+    return instance.qrCode.create({
+        type: 'upi_qr',
+        name: `Order ${orderId}`,
+        usage: 'single_use',
+        fixed_amount: true,
+        payment_amount: Math.round(amountPaise),
+        description: description || `Order ${orderId}`,
+        close_by: Math.floor(Date.now() / 1000) + 30 * 60,
+        notes: { orderId: String(orderId) },
+    });
+}
+
+/**
+ * Current state of whatever QR was issued for a COD collection (UPI QR or payment link),
+ * normalised to the status words the sync code already understands:
+ * 'paid' | 'expired' | 'created'.
+ */
+export async function fetchRazorpayQrStatus(qr = {}) {
+    const instance = getRazorpayInstance();
+    if (!instance) throw new Error('Razorpay not configured');
+    if (qr?.qrId) {
+        const code = await instance.qrCode.fetch(String(qr.qrId));
+        const received = Number(code?.payments_amount_received || 0);
+        if (Number(code?.payments_count_received || 0) > 0 && received >= Number(code?.payment_amount || 0)) {
+            return 'paid';
+        }
+        return String(code?.status || '').toLowerCase() === 'closed' ? 'expired' : 'created';
+    }
+    if (qr?.paymentLinkId) {
+        const link = await instance.paymentLink.fetch(String(qr.paymentLinkId));
+        return String(link?.status || '').toLowerCase();
+    }
+    return '';
 }
 
 /**

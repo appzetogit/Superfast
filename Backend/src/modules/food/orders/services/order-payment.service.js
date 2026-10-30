@@ -10,6 +10,7 @@ import { logger } from '../../../../utils/logger.js';
 import {
   createPaymentLink,
   fetchRazorpayPaymentLink,
+  fetchRazorpayQrStatus,
   isRazorpayConfigured,
 } from '../helpers/razorpay.helper.js';
 import * as foodTransactionService from './foodTransaction.service.js';
@@ -26,22 +27,21 @@ async function syncRazorpayQrPayment(orderDoc) {
   if (payment.method !== 'razorpay_qr') return payment;
   if (payment.status === 'paid') return payment;
 
-  const paymentLinkId = payment?.qr?.paymentLinkId;
-  if (!paymentLinkId || !isRazorpayConfigured()) return orderDoc.payment;
+  const qrRef = payment?.qr?.qrId || payment?.qr?.paymentLinkId ? payment.qr : orderDoc?.payment?.qr;
+  if ((!qrRef?.qrId && !qrRef?.paymentLinkId) || !isRazorpayConfigured()) return orderDoc.payment;
 
-  let link;
+  let linkStatus;
   try {
-    link = await fetchRazorpayPaymentLink(paymentLinkId);
+    linkStatus = await fetchRazorpayQrStatus({ qrId: qrRef.qrId, paymentLinkId: qrRef.paymentLinkId });
   } catch (error) {
     logger.warn(
-      `Razorpay payment-link fetch failed for ${paymentLinkId}: ${
-        error?.message || error
+      `Razorpay QR status fetch failed for ${qrRef.qrId || qrRef.paymentLinkId}: ${
+        error?.error?.description || error?.message || error
       }`,
     );
     return orderDoc.payment;
   }
 
-  const linkStatus = String(link?.status || '').toLowerCase();
   if (!linkStatus) return orderDoc.payment;
 
   // Write back to FoodTransaction (ledger) only.
