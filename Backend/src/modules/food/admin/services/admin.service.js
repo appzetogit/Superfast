@@ -415,7 +415,8 @@ export async function getRestaurants(query) {
     }
     const [restaurants, total] = await Promise.all([
         FoodRestaurant.find(filter)
-            .sort({ createdAt: -1 })
+            .sort({ restaurantName: 1 })
+            .collation({ locale: 'en', strength: 2 })
             .skip(skip)
             .limit(limit)
             .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId priority pureVegRestaurant')
@@ -3268,7 +3269,8 @@ export async function getCategories(query) {
     const [list, total] = await Promise.all([
         FoodCategory.find(filter)
             .populate('zoneId', 'name zoneName')
-            .sort({ sortOrder: 1, createdAt: -1 })
+            .sort({ name: 1 })
+            .collation({ locale: 'en', strength: 2 })
             .skip(skip)
             .limit(limit)
             .lean(),
@@ -3732,7 +3734,8 @@ export async function getFoods(query) {
 
     const [list, total] = await Promise.all([
         FoodItem.find(filter)
-            .sort({ createdAt: -1 })
+            .sort({ name: 1 })
+            .collation({ locale: 'en', strength: 2 })
             .skip(skip)
             .limit(limit)
             .lean(),

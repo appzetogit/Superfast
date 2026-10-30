@@ -702,6 +702,23 @@ export async function checkOutGigController(req, res) {
     booking.earnings = (gig?.basePay || 0) + (gig?.incentiveBonus || 0);
     await booking.save();
 
+    // Shift ended by the rider: go offline right now so no new request is dispatched
+    // (the per-minute cron would leave up to a minute of exposure).
+    const flipped = await FoodDeliveryPartner.updateOne(
+      { _id: partnerObjectId, availabilityStatus: 'online' },
+      { $set: { availabilityStatus: 'offline' } }
+    );
+    if (flipped.modifiedCount) {
+      try {
+        const io = getIO();
+        if (io) {
+          io.to(rooms.admins()).emit('driver_status_updated', { partnerId: deliveryPartnerId, status: 'offline' });
+        }
+      } catch {
+        // socket is best-effort
+      }
+    }
+
     return res.json({
       success: true,
       message: 'Completed Gig shift successfully',

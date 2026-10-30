@@ -70,10 +70,8 @@ const buildMenuFromFoods = async (foods = []) => {
         });
     }
 
-    const orderedGroups = Array.from(byCategory.values()).sort((a, b) => {
-        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
-        return String(a.name || '').localeCompare(String(b.name || ''));
-    });
+    const byName = (a, b) => String(a || '').localeCompare(String(b || ''), 'en', { sensitivity: 'base' });
+    const orderedGroups = Array.from(byCategory.values()).sort((a, b) => byName(a.name, b.name));
 
     const sections = orderedGroups.map((group, idx) => ({
         id: group.id || `section-${idx}`,
@@ -82,11 +80,7 @@ const buildMenuFromFoods = async (foods = []) => {
         image: group.image || '',
         sortOrder: Number.isFinite(Number(group.sortOrder)) ? Number(group.sortOrder) : 0,
         itemCount: group.items.length,
-        items: group.items.sort((a, b) => {
-            const at = new Date(a.createdAt || a.requestedAt || 0).getTime();
-            const bt = new Date(b.createdAt || b.requestedAt || 0).getTime();
-            return bt - at;
-        }),
+        items: group.items.sort((a, b) => byName(a.name, b.name)),
         subsections: []
     }));
 

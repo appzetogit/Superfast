@@ -137,7 +137,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     if (best) setActiveOrder(best);
   }, [tripStatus, isWithinRange, activeOrders, activeOrder, riderLocation, deliverySettings, setActiveOrder]);
 
-  const { newOrder, clearNewOrder, stopAlertLoop, ringForOrder, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
+  const { newOrder, clearNewOrder, stopAlertLoop, ringForOrder, setAcceptInFlight, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
   const companyName = useCompanyName();
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
 
@@ -691,6 +691,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
   }, [activeOrder, tripStatus, incomingOrder]);
 
+  // Any accept path (popup, feed list, recovery) lands here: once a trip is running, the ring must stop.
+  useEffect(() => {
+    if (activeOrder && tripStatus !== 'COMPLETED' && tripStatus !== 'IDLE') {
+      stopAlertLoop();
+    }
+  }, [activeOrder, tripStatus, stopAlertLoop]);
+
   // Banner auto-hides after 23s (same as the ring limit) or once the order is gone.
   useEffect(() => {
     if (!tripOfferBanner) return undefined;
@@ -1204,9 +1211,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                     order={incomingOrder}
                     onAccept={(o) => { 
                       if (stopAlertLoop) stopAlertLoop();
-                      clearNewOrder(o || incomingOrder); 
-                      setIncomingOrder(null); 
-                      acceptOrder(o); 
+                      setAcceptInFlight(true);
+                      clearNewOrder(o || incomingOrder);
+                      setIncomingOrder(null);
+                      Promise.resolve(acceptOrder(o))
+                        .catch(() => {})
+                        .finally(() => setAcceptInFlight(false));
                     }}
                     onReject={(o) => {
                       if (stopAlertLoop) stopAlertLoop();

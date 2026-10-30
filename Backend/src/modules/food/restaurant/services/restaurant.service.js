@@ -1710,7 +1710,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         if (sortBy === 'price-low') return { isAcceptingOrders: -1, featuredPrice: 1, createdAt: -1 };
         if (sortBy === 'price-high') return { isAcceptingOrders: -1, featuredPrice: -1, createdAt: -1 };
         if (sortBy === 'deliveryTime') return { isAcceptingOrders: -1, estimatedDeliveryTimeMinutes: 1, createdAt: -1 };
-        return { isAcceptingOrders: -1, effectivePriority: 1, createdAt: -1 };
+        return { isAcceptingOrders: -1, restaurantName: 1 };
     })();
 
     const basePipeline = [
@@ -1742,7 +1742,7 @@ export const listApprovedRestaurants = async (query = {}) => {
             { $limit: limit },
             recommendedItemsLookup,
             { $project: projection }
-        ]),
+        ]).collation({ locale: 'en', strength: 2 }),
         FoodRestaurant.aggregate([...basePipeline, { $count: 'total' }])
     ]);
 

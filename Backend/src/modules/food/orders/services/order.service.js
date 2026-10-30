@@ -1733,9 +1733,32 @@ export async function notifySplitDispatchOffersForOrder(orderId) {
 }
 
 /** Triggered by BullMQ 15 minutes before scheduledAt. */
+// An online (non cash/wallet) order whose payment hasn't been confirmed yet. Such orders must stay
+// invisible to restaurants, sellers, riders and admins until verifyPayment marks them paid.
+const UNPAID_ONLINE_STATUSES = ["created", "pending"];
+export function isUnpaidOnlineOrder(order) {
+  const method = String(order?.payment?.method || "").toLowerCase();
+  const status = String(order?.payment?.status || "").toLowerCase();
+  return !["cash", "wallet"].includes(method) && UNPAID_ONLINE_STATUSES.includes(status);
+}
+// Mongo filter matching everything except unpaid online orders (failed payments stay visible to admin).
+const EXCLUDE_UNPAID_ONLINE_FILTER = {
+  $nor: [
+    {
+      "payment.method": { $nin: ["cash", "wallet"] },
+      "payment.status": { $in: UNPAID_ONLINE_STATUSES },
+    },
+  ],
+};
+
 export async function processScheduledOrderNotification(orderMongoId) {
   const order = await FoodOrder.findById(orderMongoId);
   if (!order) return { success: false, reason: "Order not found" };
+
+  // Payment pending: verifyPayment re-enqueues this once the customer has paid.
+  if (isUnpaidOnlineOrder(order)) {
+    return { success: false, reason: "Payment not completed" };
+  }
 
   // If order was cancelled or already confirmed, skip
   if (order.orderStatus !== "scheduled") {
@@ -2638,7 +2661,8 @@ export async function createOrder(userId, dto) {
     const sourceLabel = orderType === "quick"
       ? "Quick commerce"
       : primaryRestaurant?.sourceName || "Restaurant";
-    void notifyAdminEvent({
+    // Admin hears about online orders only after payment (verifyPayment emits admin_new_order then).
+    if (!isAwaitingOnlinePayment) void notifyAdminEvent({
       type: "new_order",
       title: "🛒 New Order Received",
       message: `Order #${orderId} • ${sourceLabel} • ₹${orderTotal.toFixed(0)} (${String(paymentMethod || "").toUpperCase()})`,
@@ -2659,7 +2683,7 @@ export async function createOrder(userId, dto) {
       invalidateDashboardStatsCache();
 
       const io = getIO();
-      if (io) {
+      if (io && !isAwaitingOnlinePayment) {
         const adminOrderDoc = await FoodOrder.findById(order._id)
           .select('orderId orderStatus rawOrderStatus orderType createdAt orderDate readyAt deliveredAt cancelledAt updatedAt statusHistory pricing payment paymentMethod paymentType paymentStatus items userId restaurantId restaurant dispatch dispatchPlan deliveryAddress customerAddress address deliveryOtp deliveryType scheduledAt')
           .populate("userId", "name phone email")
@@ -2679,7 +2703,7 @@ export async function createOrder(userId, dto) {
     } catch (e) {
       logger.warn(`Failed to broadcast admin_new_order: ${e?.message || e}`);
     }
-    if (order.orderStatus === "scheduled" && order.scheduledAt) {
+    if (order.orderStatus === "scheduled" && order.scheduledAt && !isAwaitingOnlinePayment) {
       const now = Date.now();
       const scheduledTime = new Date(order.scheduledAt).getTime();
       const notificationTime = scheduledTime - 15 * 60 * 1000;
@@ -2690,7 +2714,7 @@ export async function createOrder(userId, dto) {
         orderMongoId: order._id.toString(),
       }, { delay });
 
-      logger.info(`Scheduled notification for order ${order.orderId} with delay of ${delay}ms`);
+      logger.info(`Scheduled notification for order${order.orderId} with delay of ${delay}ms`);
     }
   } catch {
     // Don't block order placement on socket failures.
@@ -3333,6 +3357,9 @@ export async function updateOrderStatusRestaurant(
 
   let order = await FoodOrder.findOne(orderQuery);
   if (!order) throw new NotFoundError("Order not found");
+  if (isUnpaidOnlineOrder(order)) {
+    throw new ValidationError("Customer payment is pending for this order");
+  }
 
   const from = order.orderStatus;
   const targetStatus = String(orderStatus || "").trim().toLowerCase();
@@ -3822,8 +3849,15 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
 
+  // An offline rider must not see (or be shown) any new delivery request.
+  const requester = await FoodDeliveryPartner.findById(partnerObjectId).select("availabilityStatus").lean();
+  if (requester?.availabilityStatus !== "online") {
+    return buildPaginatedResult({ docs: [], total: 0, page, limit });
+  }
+
   const filter = {
     createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    ...EXCLUDE_UNPAID_ONLINE_FILTER,
     $or: [
       {
         "dispatch.status": { $in: ["unassigned", "assigned"] },
@@ -3886,6 +3920,11 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
+
+  const acceptingPartner = await FoodDeliveryPartner.findById(partnerId).select("availabilityStatus").lean();
+  if (acceptingPartner?.availabilityStatus !== "online") {
+    throw new ValidationError("You are offline. Go online to accept delivery requests.");
+  }
 
   let order = await FoodOrder.findOne({
     ...identity,
@@ -5081,6 +5120,9 @@ export async function listOrdersAdmin(query) {
     }
     andConditions.push({ $or: searchConditions });
   }
+
+  // Orders still waiting for online payment don't exist for admin yet.
+  andConditions.push(EXCLUDE_UNPAID_ONLINE_FILTER);
 
   if (andConditions.length > 0) {
     filter.$and = andConditions;

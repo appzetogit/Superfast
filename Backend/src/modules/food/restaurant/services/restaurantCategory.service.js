@@ -101,7 +101,8 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
     }
 
     const queryBuilder = FoodCategory.find(filter)
-        .sort({ sortOrder: 1, createdAt: -1 })
+        .sort({ name: 1 })
+        .collation({ locale: 'en', strength: 2 })
         .skip(skip)
         .limit(limit)
         .select(
@@ -217,7 +218,8 @@ export async function listPublicCategories(query = {}) {
 
     const [list, total] = await Promise.all([
         FoodCategory.find(filter)
-            .sort({ sortOrder: 1, createdAt: -1 })
+            .sort({ name: 1 })
+            .collation({ locale: 'en', strength: 2 })
             .skip(skip)
             .limit(limit)
             .select('name image type foodTypeScope zoneId sortOrder createdAt updatedAt')

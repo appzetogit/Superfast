@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { MapPin, Navigation, X } from 'lucide-react'
 import { isModuleAuthenticated } from '@food/utils/auth'
 import { getNativeLocation, isNativeWrapper } from '@shared/utils/nativeLocation'
@@ -62,7 +62,6 @@ const callNativeBridge = async (handler) => {
 
 export default function LocationPermissionGate() {
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const target = resolveModule(pathname)
   const moduleKey = target?.module || ''
   const required = Boolean(target?.required)
@@ -190,10 +189,11 @@ export default function LocationPermissionGate() {
 
   // While blocked, keep polling so the sheet disappears once location is turned on.
   useEffect(() => {
-    if (!problem || dismissed) return undefined
+    // Customers have no sheet to wait on; re-polling would keep re-opening the system dialog.
+    if (!problem || dismissed || !required) return undefined
     const id = setInterval(check, 5000)
     return () => clearInterval(id)
-  }, [problem, dismissed, check])
+  }, [problem, dismissed, required, check])
 
   // Another screen (e.g. the rider's Online toggle) could not get a fix: bring up the same
   // "turn on location" sheet as at app start, and ask the device to enable location right away.
@@ -257,64 +257,16 @@ export default function LocationPermissionGate() {
     )
   }
 
-  // Only an address the customer explicitly picked ("saved" mode) skips this prompt.
-  // The auto-filled default city is not a real location.
-  const hasUserLocation = !required && (() => {
-    try {
-      return (
-        localStorage.getItem('deliveryAddressMode') === 'saved' &&
-        Boolean(localStorage.getItem('userLocation'))
-      )
-    } catch {
-      return false
-    }
-  })()
-
-  // Customers (Zomato-style): the home screen stays hidden until location is on or an address is picked.
-  const blocking = !required
-  // Do not let background-loaded DB saved address hide the prompt if device GPS is off
-  if (!target || !problem || dismissed) return null
+  // Customers get no custom screen/sheet: the system "Turn on device location" dialog
+  // (triggered by check()) is all they see. The sheet below is for delivery/restaurant/seller only.
+  if (!target || !problem || dismissed || !required) return null
 
   const isOff = problem === 'off'
 
-  if (blocking) {
-    return (
-      <div className="fixed inset-0 z-[100001] flex flex-col items-center bg-white px-5 pb-8 pt-16">
-        <h2 className="max-w-xs text-center text-lg font-semibold text-gray-900">
-          Set your location to start exploring restaurants near you
-        </h2>
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex h-40 w-40 items-center justify-center rounded-full bg-rose-50">
-            <MapPin className="h-20 w-20 text-rose-500" />
-          </div>
-        </div>
-        {problem === 'denied' && (
-          <p className="mb-3 max-w-xs text-center text-xs text-gray-500">
-            Location is blocked. Open the app/browser Settings &rarr; Permissions &rarr; Location, choose &ldquo;Allow&rdquo;, then come back.
-          </p>
-        )}
-        <button
-          type="button"
-          onClick={handleEnable}
-          className="w-full max-w-md rounded-lg bg-[#f4505e] py-3.5 text-sm font-semibold text-white shadow-md active:scale-95 transition-all cursor-pointer"
-        >
-          Enable Device Location
-        </button>
-        <button
-          type="button"
-          onClick={() => { handleDismiss(); navigate('/cart/address-selector'); }}
-          className="mt-3 w-full max-w-md rounded-lg border border-[#f4505e] py-3.5 text-sm font-semibold text-[#f4505e] active:scale-95 transition-all cursor-pointer"
-        >
-          Enter Your Location Manually
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div
-      className={`fixed inset-0 z-[100001] flex items-end justify-center sm:items-center p-0 sm:p-4 transition-opacity animate-in fade-in ${blocking ? 'bg-white' : 'bg-black/60'}`}
-      onClick={blocking ? undefined : handleDismiss}
+      className="fixed inset-0 z-[100001] flex items-end justify-center sm:items-center p-0 sm:p-4 transition-opacity animate-in fade-in bg-black/60"
+      onClick={handleDismiss}
     >
       <div
         role="alertdialog"
@@ -323,16 +275,14 @@ export default function LocationPermissionGate() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top-right close button */}
-        {!blocking && (
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-50">
           {isOff ? <Navigation className="h-8 w-8 text-orange-500" /> : <MapPin className="h-8 w-8 text-orange-500" />}
@@ -362,23 +312,13 @@ export default function LocationPermissionGate() {
         >
           {isOff ? "I've turned it on" : 'Allow location'}
         </button>
-        {blocking ? (
-          <button
-            type="button"
-            onClick={() => navigate('/cart/address-selector')}
-            className="mt-3 w-full py-2.5 text-sm font-semibold text-orange-600 hover:text-orange-700 active:scale-95 transition-all cursor-pointer"
-          >
-            Enter location manually
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="mt-3 w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all cursor-pointer"
-          >
-            Not now
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="mt-3 w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all cursor-pointer"
+        >
+          Not now
+        </button>
       </div>
     </div>
   )

@@ -294,6 +294,7 @@ export const useDeliveryNotifications = () => {
   const audioRef = useRef(null);
   const audioUnlockAttemptedRef = useRef(false);
   const activeOrderRef = useRef(null);
+  const acceptInFlightRef = useRef(false);
   const alertLoopTimerRef = useRef(null);
   const alertLoopStartedAtRef = useRef(0);
   const userInteractedRef = useRef(false);
@@ -491,8 +492,10 @@ export const useDeliveryNotifications = () => {
 
     const { activeOrder, activeOrders, tripStatus } = useDeliveryStore.getState();
     // A COMPLETED trip only lingers in the store for the summary screen; it must not mute new offers.
+    // acceptInFlightRef covers the gap between tapping Accept and the trip landing in the store.
     const hasActiveTrip =
-      tripStatus !== 'COMPLETED' && Boolean(activeOrder || (activeOrders && activeOrders.length > 0));
+      acceptInFlightRef.current ||
+      (tripStatus !== 'COMPLETED' && Boolean(activeOrder || (activeOrders && activeOrders.length > 0)));
 
     // Only ring & loop if rider has no active trip yet.
     // If rider is already on a trip, new multi-orders trigger silent/push notification without ringing.
@@ -1419,6 +1422,15 @@ export const useDeliveryNotifications = () => {
     setNewOrder(null);
   };
 
+  // While true, incoming offers do not ring (rider just accepted a trip that isn't in the store yet).
+  const setAcceptInFlight = useCallback((value) => {
+    acceptInFlightRef.current = Boolean(value);
+    if (value) {
+      stopAlertLoop();
+      activeOrderRef.current = null;
+    }
+  }, [stopAlertLoop]);
+
   const clearOrderReady = () => {
     setOrderReady(null);
   };
@@ -1447,6 +1459,7 @@ export const useDeliveryNotifications = () => {
     isConnected,
     playNotificationSound,
     ringForOrder,
+    setAcceptInFlight,
     emitLocation
   };
 };

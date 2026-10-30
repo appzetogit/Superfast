@@ -54,6 +54,7 @@ export const useFoodHomeData = ({
   if (prevZoneIdRef.current !== zoneId) {
     prevZoneIdRef.current = zoneId;
     globalHomeCache.restaurants = null;
+    globalHomeCache.bootstrap = null; // categories/banners are zone-scoped
   }
 
   // --- Bootstrap State ---
@@ -141,25 +142,17 @@ export const useFoodHomeData = ({
           : "/food/hero-banners/public"
         ),
         (async () => {
-          let list = [];
-          try {
-            const resCat = await publicGetOnce("/food/hero-banners/landing/categories/public");
-            if (resCat?.data?.success && Array.isArray(resCat?.data?.data?.categories) && resCat.data.data.categories.length > 0) {
-              list = resCat.data.data.categories;
-            }
-          } catch (e) {
-            // fallback if error
-          }
-          if (!list || list.length === 0) {
-            const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
-            list = res?.data?.data?.categories || res?.data?.categories || [];
-          }
-          return list.map((cat, idx) => ({
-            id: String(cat?.id || cat?._id || cat?.slug || idx),
-            name: cat?.name || cat?.label || "",
-            slug: cat?.slug || String(cat?.name || cat?.label || "").toLowerCase().replace(/\s+/g, "-"),
-            image: normalizeImageUrl(cat?.image || cat?.imageUrl) || "",
-          }));
+          // Only global categories + categories of the selected zone (zone filter is applied server-side).
+          const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
+          const list = res?.data?.data?.categories || res?.data?.categories || [];
+          return list
+            .map((cat, idx) => ({
+              id: String(cat?.id || cat?._id || cat?.slug || idx),
+              name: cat?.name || cat?.label || "",
+              slug: cat?.slug || String(cat?.name || cat?.label || "").toLowerCase().replace(/\s+/g, "-"),
+              image: normalizeImageUrl(cat?.image || cat?.imageUrl) || "",
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
         })(),
         publicGetOnce("/food/explore-icons/public"),
         (() => {
