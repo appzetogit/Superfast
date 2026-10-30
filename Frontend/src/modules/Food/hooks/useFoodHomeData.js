@@ -68,8 +68,6 @@ export const useFoodHomeData = ({
   // --- Categories State ---
   const [realCategories, setRealCategories] = useState(globalHomeCache.bootstrap?.categories || []);
   const [loadingRealCategories, setLoadingRealCategories] = useState(!hasData);
-  const [menuCategories, setMenuCategories] = useState([]);
-  const [loadingMenuCategories, setLoadingMenuCategories] = useState(false);
   const [landingCategories, setLandingCategories] = useState([]);
   
   // --- Landing Config State ---
@@ -99,8 +97,6 @@ export const useFoodHomeData = ({
 
   // --- Internal Refs ---
   const restaurantsRequestSeqRef = useRef(0);
-  const menuUnionRequestSeqRef = useRef(0);
-  const menuUnionCacheRef = useRef(new Map());
   const publicCategoriesCacheRef = useRef(new Map());
 
   // --- Image Helpers ---
@@ -345,58 +341,6 @@ export const useFoodHomeData = ({
     fetchRestaurants(appliedFilters);
   }, [appliedFilters, fetchRestaurants]);
 
-  // --- Menu Context Fetching (Veg Mode) ---
-  const menuUnionRestaurantIdsKey = restaurantsData.map(r => r.mongoId || r.id).join(",");
-  useEffect(() => {
-    const restaurantIds = menuUnionRestaurantIdsKey.split(",").filter(Boolean);
-    const shouldFetchMenuMeta = vegMode || realCategories.length === 0;
-    if (!menuUnionRestaurantIdsKey || !shouldFetchMenuMeta) {
-      setMenuCategories([]);
-      return;
-    }
-
-    const fetchMenu = async () => {
-      const requestSeq = ++menuUnionRequestSeqRef.current;
-      setLoadingMenuCategories(true);
-      try {
-        const categoryMap = new Map();
-        for (let i = 0; i < restaurantIds.length; i += 4) {
-          const batch = restaurantIds.slice(i, i + 4);
-          const res = await Promise.all(batch.map(async id => {
-            if (menuUnionCacheRef.current.has(id)) return menuUnionCacheRef.current.get(id);
-            try {
-              const r = await restaurantAPI.getMenuByRestaurantId(id);
-              const m = r.data?.data?.menu || null;
-              menuUnionCacheRef.current.set(id, m);
-              return m;
-            } catch { return null; }
-          }));
-          if (requestSeq !== menuUnionRequestSeqRef.current) return;
-          
-          res.forEach(menu => {
-            if (!menu?.sections) return;
-            menu.sections.forEach(section => {
-              const slug = slugifyCategory(section.name);
-              if (!slug) return;
-              if (!categoryMap.has(slug)) {
-                categoryMap.set(slug, {
-                  id: slug,
-                  name: section.name,
-                  slug,
-                  image: normalizeImageUrl(section.items?.[0]?.image) || "",
-                });
-              }
-            });
-          });
-        }
-        setMenuCategories(Array.from(categoryMap.values()));
-      } finally {
-        if (requestSeq === menuUnionRequestSeqRef.current) setLoadingMenuCategories(false);
-      }
-    };
-    fetchMenu();
-  }, [menuUnionRestaurantIdsKey, vegMode, realCategories.length, normalizeImageUrl, slugifyCategory]);
-
   const deferredRestaurants = useDeferredValue(restaurantsData);
 
   // --- Memoized Derived Data ---
@@ -459,14 +403,15 @@ export const useFoodHomeData = ({
   const visibleRestaurants = useMemo(() => 
     filteredRestaurants.slice(0, visibleRestaurantCount), [filteredRestaurants, visibleRestaurantCount]);
 
+  // Only admin-created categories (global + the user's zone) belong in "What's on your mind?".
+  // Restaurant menu section names (e.g. "Paneer", "Palak paneer") are dishes, not categories.
   const displayCategories = useMemo(() => {
     if (realCategories.length > 0) return realCategories;
-    if (menuCategories.length > 0) return menuCategories;
-    return (landingCategories || []).map((cat, idx) => ({
+    return (landingCategories || []).map((cat) => ({
       ...cat,
       image: normalizeImageUrl(cat.image) || "",
     }));
-  }, [realCategories, menuCategories, landingCategories, normalizeImageUrl]);
+  }, [realCategories, landingCategories, normalizeImageUrl]);
 
   const recommendedForYouRestaurants = useMemo(() => {
     if (!restaurantsData || restaurantsData.length === 0) return [];
@@ -515,7 +460,7 @@ export const useFoodHomeData = ({
 
   return {
     banners: { images: heroBannerImages, data: heroBannersData, loading: loadingBanners },
-    categories: { display: displayCategories, loading: loadingRealCategories || loadingMenuCategories },
+    categories: { display: displayCategories, loading: loadingRealCategories },
     restaurants: { 
       visible: visibleRestaurants, 
       loading: loadingRestaurants, 
