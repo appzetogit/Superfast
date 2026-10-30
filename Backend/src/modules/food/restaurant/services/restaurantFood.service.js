@@ -95,15 +95,12 @@ const getRestaurantContext = async (restaurantId) => {
     };
 };
 
-const getAccessibleCategoryFilter = (context) => ({
-    $or: [
-        { restaurantId: context.restaurantId, $or: APPROVED_CATEGORY_FILTER },
-        {
-            $and: [
-                { $or: GLOBAL_CATEGORY_FILTER },
-                { $or: APPROVED_CATEGORY_FILTER }
-            ]
-        }
+// Restaurants can only file items under the admin's categories (global, approved). They cannot
+// create categories, and legacy restaurant-owned ones are no longer selectable.
+const getAccessibleCategoryFilter = () => ({
+    $and: [
+        { $or: GLOBAL_CATEGORY_FILTER },
+        { $or: APPROVED_CATEGORY_FILTER }
     ]
 });
 
@@ -188,6 +185,9 @@ export async function createRestaurantFood(restaurantId, body = {}) {
     const foodType = normalizeFoodType(body.foodType);
     const preparationTime = toStr(body.preparationTime);
     const { categoryObjectId, categoryName } = await resolveCategoryForRestaurant(context, { ...body, foodType });
+    if (!categoryObjectId) {
+        throw new ValidationError('Please select a category for this item');
+    }
 
     const doc = await FoodItem.create({
         restaurantId,

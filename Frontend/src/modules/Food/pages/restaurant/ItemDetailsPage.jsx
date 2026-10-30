@@ -113,9 +113,12 @@ export default function ItemDetailsPage() {
   const [loadingItem, setLoadingItem] = useState(false)
 
   const displayedCategories = useMemo(() => {
+    // A "Both" category takes Veg and Non-Veg items; only the opposite scope is hidden.
     let filtered = categories
     if (foodType === "Veg") {
-      filtered = filtered.filter(cat => cat.foodTypeScope === "Veg")
+      filtered = filtered.filter(cat => cat.foodTypeScope !== "Non-Veg")
+    } else if (foodType === "Non-Veg") {
+      filtered = filtered.filter(cat => cat.foodTypeScope !== "Veg")
     }
     return filtered
   }, [categories, foodType])
@@ -315,7 +318,8 @@ export default function ItemDetailsPage() {
           if (!selectedCategoryId && formattedCategories.length > 0) {
             const preferredName = String(category || defaultCategory || "").trim()
             const matchedByName = formattedCategories.find((cat) => cat.name === preferredName)
-            const nextCategory = matchedByName || (isNewItem ? formattedCategories[0] : null)
+            // No silent default for a new item: the restaurant must pick the category itself.
+            const nextCategory = matchedByName || null
             if (nextCategory) {
               setSelectedCategoryId(nextCategory.id)
               setCategory(nextCategory.name)
@@ -1344,34 +1348,6 @@ export default function ItemDetailsPage() {
               <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-bold text-gray-900">Select category</h2>
                 <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const currentDraft = {
-                          itemName,
-                          category,
-                          selectedCategoryId,
-                          itemDescription,
-                          foodType,
-                          basePrice,
-                          variants,
-                          preparationTime,
-                          images,
-                        }
-                        sessionStorage.setItem('item_form_draft', JSON.stringify(currentDraft))
-                        setIsCategoryPopupOpen(false)
-                        navigate('/food/restaurant/menu-categories', {
-                          state: {
-                            backTo: location.pathname,
-                            id: id, // Pass current ID to help return
-                          }
-                        })
-                      }}
-                      className="p-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-colors flex items-center gap-1.5"
-                      title="Add Category"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span className="text-sm font-medium">Add</span>
-                    </button>
                   <button
                     onClick={() => setIsCategoryPopupOpen(false)}
                     className="p-1 rounded-full hover:bg-gray-100"
@@ -1386,18 +1362,13 @@ export default function ItemDetailsPage() {
                     <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
                   </div>
                 ) : categories.length === 0 ? (
-                  <div className="text-center py-12 space-y-4">
+                  <div className="text-center py-12 space-y-2">
                     <p className="text-sm text-gray-500">No categories available</p>
-                    <button
-                      onClick={() => {
-                        setIsCategoryPopupOpen(false)
-                        navigate('/restaurant/menu-categories')
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Add Category
-                    </button>
+                    <p className="text-xs text-gray-400">Categories are managed by admin.</p>
+                  </div>
+                ) : displayedCategories.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-sm text-gray-500">No categories available for this food type</p>
                   </div>
                 ) : (
                   <div className="space-y-2">

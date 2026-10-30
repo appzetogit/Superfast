@@ -69,23 +69,13 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
     const filter = {};
     if (!includeInactive) filter.isActive = true;
 
-    // Restaurants only see admin-created categories. A restaurant's own legacy category stays
-    // visible only while it still has items, so existing menus don't break.
-    const ownedCategoryIds = await FoodItem.distinct('categoryId', {
-        restaurantId: context.restaurantId,
-        categoryId: { $ne: null }
-    });
+    // Restaurants see exactly the admin-created categories (global/zone, approved, active) and
+    // nothing else. Items that were filed under old restaurant-owned categories were moved to the
+    // matching admin category.
     const visibilityFilter = {
-        $or: [
-            {
-                $and: [
-                    { $or: GLOBAL_CATEGORY_FILTER },
-                    { $or: APPROVED_CATEGORY_FILTER }
-                ]
-            },
-            ...(ownedCategoryIds.length
-                ? [{ _id: { $in: ownedCategoryIds }, restaurantId: context.restaurantId }]
-                : [])
+        $and: [
+            { $or: GLOBAL_CATEGORY_FILTER },
+            { $or: APPROVED_CATEGORY_FILTER }
         ]
     };
 
@@ -189,26 +179,54 @@ export async function listPublicCategories(query = {}) {
         $and: [{ $or: GLOBAL_CATEGORY_FILTER }, { $or: APPROVED_CATEGORY_FILTER }]
     };
 
-    if (devFilter.isDevMode && Array.isArray(devFilter.demoLandingCategoryIds) && devFilter.demoLandingCategoryIds.length > 0) {
-        const catObjIds = devFilter.demoLandingCategoryIds
-            .map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null)
-            .filter(Boolean);
-        if (catObjIds.length > 0) {
-            filter._id = { $in: catObjIds };
-        }
-    } else {
-        const approvedCategoryIds = await FoodItem.distinct('categoryId', {
-            approvalStatus: 'approved',
-            categoryId: { $ne: null }
+    // Customers only see categories that actually have items to show: approved items of approved
+    // restaurants in their zone (restaurants without a zone count for every zone).
+    const itemFilter = { approvalStatus: 'approved', categoryId: { $ne: null } };
+    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
+        const zoneRestaurantIds = await FoodRestaurant.distinct('_id', {
+            status: 'approved',
+            $or: [
+                { zoneId: new mongoose.Types.ObjectId(zoneIdRaw) },
+                { zoneId: { $exists: false } },
+                { zoneId: null }
+            ]
         });
-
-        if (!approvedCategoryIds.length) {
-            const result = { categories: [], total: 0, page, limit };
-            publicCategoriesCache.set(cacheKey, { data: result, lastFetched: now });
-            return result;
-        }
-        filter._id = { $in: approvedCategoryIds };
+        itemFilter.restaurantId = { $in: zoneRestaurantIds };
     }
+    const itemCountRows = await FoodItem.aggregate([
+        { $match: itemFilter },
+        { $group: { _id: '$categoryId', count: { $sum: 1 } } }
+    ]);
+    const approvedCategoryIds = itemCountRows.map((row) => row._id);
+
+    let visibleCategoryIds = approvedCategoryIds;
+    if (devFilter.isDevMode && Array.isArray(devFilter.demoLandingCategoryIds) && devFilter.demoLandingCategoryIds.length > 0) {
+        const demoIds = new Set(
+            devFilter.demoLandingCategoryIds
+                .filter(id => mongoose.Types.ObjectId.isValid(id))
+                .map(id => String(id))
+        );
+        if (demoIds.size > 0) {
+            visibleCategoryIds = approvedCategoryIds.filter(id => demoIds.has(String(id)));
+        }
+    }
+
+    // A category with only one or two items in the zone reads like a dish, not a category, so it
+    // stays off the browse list. When that would leave a thin list (new/small zones) show them all.
+    if (!search) {
+        const MIN_ITEMS_PER_CATEGORY = 3;
+        const MIN_CATEGORIES_AFTER_FILTER = 8;
+        const itemCountById = new Map(itemCountRows.map((row) => [String(row._id), row.count]));
+        const wellStocked = visibleCategoryIds.filter((id) => (itemCountById.get(String(id)) || 0) >= MIN_ITEMS_PER_CATEGORY);
+        if (wellStocked.length >= MIN_CATEGORIES_AFTER_FILTER) visibleCategoryIds = wellStocked;
+    }
+
+    if (!visibleCategoryIds.length) {
+        const result = { categories: [], total: 0, page, limit };
+        publicCategoriesCache.set(cacheKey, { data: result, lastFetched: now });
+        return result;
+    }
+    filter._id = { $in: visibleCategoryIds };
 
     if (search) {
         const term = escapeRegex(search.slice(0, 80));
@@ -228,6 +246,8 @@ export async function listPublicCategories(query = {}) {
     ]);
 
     await backfillLegacyCategoryWorkflow(list);
+
+    // `list` is already A-Z (case-insensitive collation), the same order admin and restaurants see.
     const categories = list.map((category) => serializeCategoryForResponse(category));
 
     const result = { categories, total, page, limit };

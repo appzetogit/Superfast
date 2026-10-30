@@ -83,19 +83,15 @@ export default function CategoryPage() {
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, " ")
       .trim()
+  const singularToken = (token) => (token.length > 3 && token.endsWith("s") ? token.slice(0, -1) : token)
+  // A dish belongs to a category only when its category (menu section) IS that category. Matching
+  // on words inside dish names made "Paneer" list every kaju/matar/palak paneer dish.
+  // keywords[0] is always the full category name.
   const matchesCategoryText = (value, keywords) => {
-    const normalizedValue = normalizeCategoryToken(value)
-    if (!normalizedValue) return false
-
-    return keywords.some((keyword) => {
-      const normalizedKeyword = normalizeCategoryToken(keyword)
-      if (!normalizedKeyword) return false
-      return (
-        normalizedValue === normalizedKeyword ||
-        normalizedValue.includes(normalizedKeyword) ||
-        slugify(normalizedValue) === slugify(normalizedKeyword)
-      )
-    })
+    const normalizedValue = singularToken(normalizeCategoryToken(value))
+    const categoryName = singularToken(normalizeCategoryToken(keywords?.[0]))
+    if (!normalizedValue || !categoryName) return false
+    return normalizedValue === categoryName
   }
   const uniqueByRestaurant = (list) => {
     const seen = new Set()
@@ -593,13 +589,15 @@ export default function CategoryPage() {
           // Transform API categories to match expected format
           const transformedCategories = [
             { id: 'all', name: "All", image: offerImage, slug: 'all' },
-            ...categoriesArray.map((cat) => ({
-              id: cat.slug || cat.id,
-              name: cat.name,
-              image: cat.image || cat.imageUrl || "",
-              slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-              type: cat.type,
-            }))
+            ...categoriesArray
+              .map((cat) => ({
+                id: cat.slug || cat.id,
+                name: cat.name,
+                image: cat.image || cat.imageUrl || "",
+                slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+                type: cat.type,
+              }))
+              .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
           ]
 
           setCategories(transformedCategories)
