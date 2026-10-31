@@ -80,10 +80,34 @@ const formatSaleTime = (hhmm) => {
   return `${h % 12 === 0 ? 12 : h % 12}:${match[2]} ${h < 12 ? "AM" : "PM"}`
 }
 
+const saleTimeToMinutes = (hhmm) => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""))
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null
+}
+
+// Live check in India time. The public menu API is cached, so the server's `availableNow`
+// can be a few minutes stale; the from/to times set by the restaurant are the source of truth.
+const isItemOutsideSaleWindow = (item) => {
+  const from = saleTimeToMinutes(item?.availableFrom)
+  const to = saleTimeToMinutes(item?.availableTo)
+  if (from === null || to === null || from === to) return item?.availableNow === false
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date())
+    const now = Number(parts.find((p) => p.type === "hour")?.value || 0) * 60 +
+      Number(parts.find((p) => p.type === "minute")?.value || 0)
+    const inside = from < to ? now >= from && now < to : now >= from || now < to
+    return !inside
+  } catch {
+    return item?.availableNow === false
+  }
+}
+
 // Shown under an item that is only sold during certain hours, when it is currently outside them.
 // Plain English: the app-wide translator renders it in the language the user picked.
 function SaleWindowNotice({ item }) {
-  if (item?.availableNow !== false) return null
+  if (!isItemOutsideSaleWindow(item)) return null
   const from = formatSaleTime(item?.availableFrom)
   const to = formatSaleTime(item?.availableTo)
   if (!from || !to) return null
@@ -2064,7 +2088,7 @@ function RestaurantDetailsContent() {
   // Disables add buttons. The page-wide grey filter is only for out-of-service, so the
   // open-alternatives banner of an offline restaurant stays in colour.
   const shouldShowGrayscale = isOutOfService || isRestaurantOffline
-  const modalBlocked = shouldShowGrayscale || selectedItem?.availableNow === false
+  const modalBlocked = shouldShowGrayscale || isItemOutsideSaleWindow(selectedItem)
 
   return (
     <AnimatedPage
@@ -2384,7 +2408,7 @@ function RestaurantDetailsContent() {
                     <div className="space-y-0">
                       {sectionItems.map((item) => {
                         const quantity = getDishQuantity(item)
-                        const itemBlocked = shouldShowGrayscale || item?.availableNow === false
+                        const itemBlocked = shouldShowGrayscale || isItemOutsideSaleWindow(item)
                         // Determine veg/non-veg based on foodType
                         const isVeg = item.foodType === "Veg"
 
@@ -2589,7 +2613,7 @@ function RestaurantDetailsContent() {
                               <div className="space-y-0">
                                 {subsectionItems.map((item) => {
                                   const quantity = getDishQuantity(item)
-                                  const itemBlocked = shouldShowGrayscale || item?.availableNow === false
+                                  const itemBlocked = shouldShowGrayscale || isItemOutsideSaleWindow(item)
                                   // Determine veg/non-veg based on foodType
                                   const isVeg = item.foodType === "Veg"
 
