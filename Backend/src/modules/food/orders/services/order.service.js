@@ -51,6 +51,7 @@ import { fetchPolyline } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import { isStatusAdvance } from './order.helpers.js';
+import { isWithinAvailabilityWindow, formatAvailabilityTime12h } from '../../shared/foodAvailabilityWindow.js';
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
@@ -280,6 +281,9 @@ async function syncItemsWithDatabase(items = []) {
       item.image = dbItem.image || item.image || '';
       item.isVeg = dbItem.foodType === 'Veg';
       item.isAvailable = dbItem.isAvailable !== false;
+      item.availableFrom = dbItem.availableFrom || '';
+      item.availableTo = dbItem.availableTo || '';
+      item.outsideSaleWindow = !isWithinAvailabilityWindow(dbItem.availableFrom, dbItem.availableTo);
 
       const rawPrice = Number(dbItem.price || 0);
       const variants = Array.isArray(dbItem.variants) ? dbItem.variants : [];
@@ -2172,6 +2176,14 @@ export async function createOrder(userId, dto) {
 
   const items = normalizeOrderItems(dto.items, dto.orderType);
   await syncItemsWithDatabase(items);
+
+  const outsideWindowItems = items.filter((item) => item.type === "food" && item.outsideSaleWindow === true);
+  if (outsideWindowItems.length > 0) {
+    const detail = outsideWindowItems
+      .map((item) => `${item.name} (available ${formatAvailabilityTime12h(item.availableFrom)} - ${formatAvailabilityTime12h(item.availableTo)})`)
+      .join(', ');
+    throw new ValidationError(`Some items can only be ordered at certain times: ${detail}`);
+  }
 
 
   const hasFoodItems = items.some((item) => item.type === "food");

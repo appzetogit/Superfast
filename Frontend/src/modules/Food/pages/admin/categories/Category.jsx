@@ -28,6 +28,7 @@ const defaultFormData = {
   type: "",
   zoneId: "global",
   foodTypeScope: "Both",
+  parentId: "",
 }
 
 const approvalBadgeClass = (status) => {
@@ -64,6 +65,8 @@ export default function Category() {
   const [zonesLoading, setZonesLoading] = useState(false)
   const [zoneFilter, setZoneFilter] = useState("all")
   const [formData, setFormData] = useState(defaultFormData)
+  // "category" = create/edit a main category, "subcategory" = create/edit one under a category.
+  const [modalMode, setModalMode] = useState("category")
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -148,7 +151,8 @@ export default function Category() {
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      const params = {}
+      // Backend defaults to 100 rows; load all so parents and their subcategories are present together.
+      const params = { limit: 1000 }
       if (searchQuery) params.search = searchQuery
       if (showPendingOnly) params.approvalStatus = "pending"
 
@@ -187,7 +191,12 @@ export default function Category() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  const handleAddNew = () => {
+  const handleAddSubCategory = () => {
+    handleAddNew("subcategory")
+  }
+
+  const handleAddNew = (mode = "category") => {
+    setModalMode(mode === "subcategory" ? "subcategory" : "category")
     setEditingCategory(null)
     setFormData(defaultFormData)
     setSelectedImageFile(null)
@@ -196,6 +205,7 @@ export default function Category() {
   }
 
   const handleEdit = (category) => {
+    setModalMode(category?.parentId ? "subcategory" : "category")
     setEditingCategory(category)
     const zoneIdValue =
       typeof category?.zoneId === "string"
@@ -209,6 +219,7 @@ export default function Category() {
       type: category?.type || "",
       zoneId: zoneIdValue || "global",
       foodTypeScope: category?.foodTypeScope || "Both",
+      parentId: category?.parentId || "",
     })
     setSelectedImageFile(null)
     setImagePreview(category?.image || null)
@@ -355,6 +366,11 @@ export default function Category() {
   const handleSubmit = async (event) => {
     event.preventDefault()
 
+    if (modalMode === "subcategory" && !formData.parentId) {
+      toast.error("Please select the Category for this Sub Category")
+      return
+    }
+
     try {
       setUploadingImage(true)
       let imageUrl = String(formData.image || "").trim()
@@ -372,6 +388,7 @@ export default function Category() {
         image: imageUrl || undefined,
         zoneId: formData.zoneId || "global",
         foodTypeScope: formData.foodTypeScope,
+        parentId: modalMode === "subcategory" ? formData.parentId || "" : "",
       }
 
       if (editingCategory) {
@@ -463,11 +480,19 @@ export default function Category() {
             </button>
 
             <button
-              onClick={handleAddNew}
+              onClick={() => handleAddNew("category")}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white"
             >
               <Plus className="h-4 w-4" />
               Add Category
+            </button>
+
+            <button
+              onClick={handleAddSubCategory}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Add Sub Category
             </button>
           </div>
         </div>
@@ -523,7 +548,10 @@ export default function Category() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-lg font-semibold leading-6 text-slate-900">{category?.name || "-"}</p>
+                            <p className="truncate text-lg font-semibold leading-6 text-slate-900">
+                              {category?.parentName ? `${category.parentName} › ` : ""}
+                              {category?.name || "-"}
+                            </p>
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                               <span>{category?.type || "No type"}</span>
                               <span className="text-slate-300">•</span>
@@ -662,7 +690,7 @@ export default function Category() {
                   >
                     <div className="flex items-center justify-between border-b px-6 py-4">
                       <div>
-                        <h2 className="text-xl font-bold text-slate-900">{editingCategory ? "Edit Category" : "Add Category"}</h2>
+                        <h2 className="text-xl font-bold text-slate-900">{`${editingCategory ? "Edit" : "Add"} ${modalMode === "subcategory" ? "Sub Category" : "Category"}`}</h2>
                         <p className="text-xs text-slate-500">
                           Admin categories are approved immediately. Restaurant-created categories can also be updated here.
                         </p>
@@ -695,6 +723,38 @@ export default function Category() {
                           </select>
                         </div>
 
+                        {(() => {
+                          const editingId = String(editingCategory?._id || editingCategory?.id || "")
+                          const hasChildren = Boolean(editingId) && categories.some((c) => String(c?.parentId || "") === editingId)
+                          const isAdminCategory = !editingCategory || !editingCategory.restaurantId
+                          if (!isAdminCategory || modalMode !== "subcategory") return null
+                          const parentOptions = categories.filter(
+                            (c) => !c?.restaurantId && !c?.parentId && String(c?._id || c?.id) !== editingId,
+                          )
+                          return (
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">Category (this Sub Category goes under)</label>
+                              <select
+                                value={formData.parentId}
+                                disabled={hasChildren}
+                                onChange={(event) => setFormData((prev) => ({ ...prev, parentId: event.target.value }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-900 disabled:bg-slate-100"
+                              >
+                                <option value="">Select category</option>
+                                {parentOptions.map((c) => {
+                                  const id = String(c._id || c.id)
+                                  return <option key={id} value={id}>{c.name}</option>
+                                })}
+                              </select>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {hasChildren
+                                  ? "This category has sub categories, so it cannot become a sub category."
+                                  : "Choose a category to make this a Sub Category under it. Food items stay exactly as they are."}
+                              </p>
+                            </div>
+                          )
+                        })()}
+
                         <div>
                           <label className="mb-2 block text-sm font-medium text-slate-700">Diet Scope</label>
                           <select
@@ -720,7 +780,7 @@ export default function Category() {
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-700">Category Name</label>
+                          <label className="mb-2 block text-sm font-medium text-slate-700">{modalMode === "subcategory" ? "Sub Category Name" : "Category Name"}</label>
                           <input
                             type="text"
                             required

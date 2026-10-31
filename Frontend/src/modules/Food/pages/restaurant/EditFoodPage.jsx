@@ -151,6 +151,7 @@ export default function EditFoodPage() {
             id: category?._id || category?.id,
             name: String(category?.name || "").trim(),
             foodTypeScope: category?.foodTypeScope || "Both",
+            parentId: category?.parentId ? String(category.parentId) : "",
           }))
           .filter((category) => category.id && category.name)
 
@@ -348,6 +349,17 @@ export default function EditFoodPage() {
       ...source,
     ]
   })()
+
+  // The saved categoryId is always the innermost (sub)category; its parent is derived from the list.
+  const selectedCategoryId = String(formData.category || "").trim()
+  const selectedCategoryOption = categoryOptions.find((c) => String(c.id) === selectedCategoryId)
+  const optionIds = new Set(categoryOptions.map((c) => String(c.id)))
+  const topLevelCategoryOptions = categoryOptions.filter((c) => !c.parentId || !optionIds.has(String(c.parentId)))
+  const selectedParentId =
+    selectedCategoryOption?.parentId && optionIds.has(String(selectedCategoryOption.parentId))
+      ? String(selectedCategoryOption.parentId)
+      : selectedCategoryId
+  const subCategoryOptions = categoryOptions.filter((c) => String(c.parentId || "") === selectedParentId)
 
   const handleImageUpload = async (field, file) => {
     if (file) {
@@ -590,11 +602,11 @@ export default function EditFoodPage() {
                     Category
                   </label>
                   <select
-                    value={formData.category}
+                    value={selectedParentId}
                     onChange={(e) => handleInputChange("category", e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
                   >
-                    {categoryOptions.map((category) => (
+                    {topLevelCategoryOptions.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}{category.foodTypeScope ? ` (${category.foodTypeScope})` : ""}
                       </option>
@@ -606,6 +618,26 @@ export default function EditFoodPage() {
                     </p>
                   )}
                 </div>
+
+                {subCategoryOptions.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sub Category
+                    </label>
+                    <select
+                      value={selectedCategoryId === selectedParentId ? "" : selectedCategoryId}
+                      onChange={(e) => handleInputChange("category", e.target.value || selectedParentId)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    >
+                      <option value="">None (directly in category)</option>
+                      {subCategoryOptions.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}{category.foodTypeScope ? ` (${category.foodTypeScope})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

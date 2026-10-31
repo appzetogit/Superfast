@@ -3276,6 +3276,7 @@ export async function getCategories(query) {
     const [list, total] = await Promise.all([
         FoodCategory.find(filter)
             .populate('zoneId', 'name zoneName')
+            .populate('parentId', 'name')
             .sort({ name: 1 })
             .collation({ locale: 'en', strength: 2 })
             .skip(skip)
@@ -3329,9 +3330,35 @@ async function assertUniqueAdminCategoryName(name, zoneId, excludeId) {
     }
 }
 
+// Resolves a requested parent category for an admin category. Returns an ObjectId, or null for "no parent".
+// One level only: the parent must be a top-level admin category, and a category that already has
+// subcategories cannot become a subcategory itself. Foods are never touched.
+async function resolveCategoryParentId(rawParentId, selfId) {
+    const raw = String(rawParentId ?? '').trim();
+    if (!raw || raw === 'none' || raw === 'null') return null;
+    if (!mongoose.Types.ObjectId.isValid(raw)) throw new ValidationError('Invalid parent category');
+    if (selfId && String(selfId) === raw) throw new ValidationError('A category cannot be its own parent');
+
+    const parent = await FoodCategory.findById(raw).select('parentId restaurantId').lean();
+    if (!parent) throw new ValidationError('Parent category not found');
+    if (parent.restaurantId) throw new ValidationError('Parent must be an admin category');
+    if (parent.parentId) throw new ValidationError('Parent category is already a subcategory');
+
+    if (selfId) {
+        const childCount = await FoodCategory.countDocuments({ parentId: selfId });
+        if (childCount > 0) {
+            throw new ValidationError('This category has subcategories, so it cannot become a subcategory');
+        }
+    }
+    return new mongoose.Types.ObjectId(raw);
+}
+
+import { readAvailabilityWindow } from '../../shared/foodAvailabilityWindow.js';
+
 export async function createCategory(body) {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw new ValidationError('Category name is required');
+    const parentId = await resolveCategoryParentId(body.parentId, null);
 
     {
         const zid = String(body.zoneId || '').trim();
@@ -3346,6 +3373,7 @@ export async function createCategory(body) {
         image: typeof body.image === 'string' ? body.image.trim() : '',
         type: typeof body.type === 'string' ? body.type.trim() : '',
         foodTypeScope: normalizeCategoryFoodTypeScope(body.foodTypeScope, 'Both'),
+        parentId: parentId || undefined,
         zoneId:
             body.zoneId && String(body.zoneId).trim()
                 ? (() => {
@@ -3451,11 +3479,16 @@ export async function updateCategory(id, body) {
         }
     }
 
+    const previousName = String(doc.name || '').trim();
+    const previousZone = doc.zoneId ? String(doc.zoneId) : '';
     if (body.name !== undefined) doc.name = String(body.name || '').trim();
     if (!doc.name) throw new ValidationError('Category name is required');
     if (body.image !== undefined) doc.image = String(body.image || '').trim();
     if (body.type !== undefined) doc.type = String(body.type || '').trim();
     if (body.foodTypeScope !== undefined) doc.foodTypeScope = nextFoodTypeScope;
+    if (body.parentId !== undefined && !doc.restaurantId) {
+        doc.parentId = (await resolveCategoryParentId(body.parentId, doc._id)) || undefined;
+    }
     if (!doc.restaurantId && !doc.createdByRestaurantId && (body.name !== undefined || body.zoneId !== undefined)) {
         let nextZone = doc.zoneId || null;
         if (body.zoneId !== undefined) {
@@ -3464,7 +3497,13 @@ export async function updateCategory(id, body) {
                 ? new mongoose.Types.ObjectId(raw)
                 : null;
         }
-        await assertUniqueAdminCategoryName(doc.name, nextZone, doc._id);
+        // Only re-validate when the name or zone actually changed, so editing image/status/diet
+        // of an existing category is never blocked by the duplicate check.
+        const nameChanged = doc.name.toLowerCase() !== previousName.toLowerCase();
+        const zoneChanged = (nextZone ? String(nextZone) : '') !== previousZone;
+        if (nameChanged || zoneChanged) {
+            await assertUniqueAdminCategoryName(doc.name, nextZone, doc._id);
+        }
     }
     if (!doc.restaurantId && doc.createdByRestaurantId) {
         doc.zoneId = undefined;
@@ -3491,6 +3530,9 @@ export async function deleteCategory(id) {
     const inUse = await FoodItem.countDocuments({ categoryId: id });
     if (inUse > 0) {
         throw new ValidationError('Cannot delete category while it has items');
+    }
+    if (await FoodCategory.countDocuments({ parentId: id }) > 0) {
+        throw new ValidationError('Cannot delete category while it has subcategories');
     }
     const deleted = await FoodCategory.findByIdAndDelete(id).lean();
     return deleted ? { id } : null;
@@ -3755,6 +3797,19 @@ export async function getFoods(query) {
         : [];
     const restaurantMap = new Map(restaurants.map((r) => [String(r._id), r.restaurantName]));
 
+    // Parent category name for items filed under a subcategory (customer category matching).
+    const foodCategoryIds = Array.from(new Set(list.map((f) => (f.categoryId ? String(f.categoryId) : '')).filter(Boolean)));
+    const foodCategoryDocs = foodCategoryIds.length
+        ? await FoodCategory.find({ _id: { $in: foodCategoryIds }, parentId: { $exists: true, $ne: null } }).select('parentId').lean()
+        : [];
+    const foodParentDocs = foodCategoryDocs.length
+        ? await FoodCategory.find({ _id: { $in: foodCategoryDocs.map((c) => c.parentId) } }).select('name').lean()
+        : [];
+    const foodParentNameById = new Map(foodParentDocs.map((p) => [String(p._id), String(p.name || '').trim()]));
+    const parentNameByCategoryId = new Map(
+        foodCategoryDocs.map((c) => [String(c._id), foodParentNameById.get(String(c.parentId)) || ''])
+    );
+
     const foods = list.map((f) => ({
         id: f._id,
         _id: f._id,
@@ -3762,6 +3817,7 @@ export async function getFoods(query) {
         restaurantName: restaurantMap.get(String(f.restaurantId)) || 'Unknown Restaurant',
         categoryId: f.categoryId || null,
         categoryName: f.categoryName || '',
+        parentCategoryName: f.categoryId ? parentNameByCategoryId.get(String(f.categoryId)) || '' : '',
         name: f.name,
         description: f.description || '',
         basePrice: f.price,
@@ -3772,6 +3828,8 @@ export async function getFoods(query) {
         foodType: f.foodType || 'Non-Veg',
         isAvailable: f.isAvailable !== false,
         preparationTime: f.preparationTime || '',
+        availableFrom: f.availableFrom || '',
+        availableTo: f.availableTo || '',
         approvalStatus: f.approvalStatus || 'approved',
         createdAt: f.createdAt,
         updatedAt: f.updatedAt
@@ -3907,6 +3965,7 @@ export async function createFood(body) {
         foodType,
         isAvailable: body.isAvailable !== false,
         preparationTime: typeof body.preparationTime === 'string' ? body.preparationTime.trim() : '',
+        ...(readAvailabilityWindow(body) || {}),
         approvalStatus: 'approved'
     });
     await doc.save();
@@ -3936,6 +3995,7 @@ export async function updateFood(id, body) {
     if (body.foodType !== undefined) doc.foodType = targetFoodType;
     if (body.isAvailable !== undefined) doc.isAvailable = body.isAvailable !== false;
     if (body.preparationTime !== undefined) doc.preparationTime = String(body.preparationTime || '').trim();
+    Object.assign(doc, readAvailabilityWindow(body) || {});
     if (body.categoryId !== undefined || body.categoryName !== undefined || body.category !== undefined || body.foodType !== undefined) {
         const nextCategoryName = body.categoryName !== undefined
             ? String(body.categoryName || '').trim()

@@ -25,6 +25,8 @@ const createFoodForm = () => ({
   foodType: "Non-Veg",
   isAvailable: true,
   preparationTime: "",
+  availableFrom: "",
+  availableTo: "",
 })
 
 const createVariantDraft = (variant = {}) => ({
@@ -265,6 +267,8 @@ export default function FoodsList() {
       foodType: String(food.foodType || "Non-Veg"),
       isAvailable: food.isAvailable !== false,
       preparationTime: String(food.preparationTime || ""),
+      availableFrom: String(food.availableFrom || ""),
+      availableTo: String(food.availableTo || ""),
     })
     setSelectedImageFile(null)
     setImagePreviewUrl(food.image ? getImageUrl(food.image) : "")
@@ -287,7 +291,16 @@ export default function FoodsList() {
         const list = res?.data?.data?.categories || []
         const options = Array.isArray(list)
           ? list
-              .map((c) => ({ id: String(c.id || c._id || c.name), name: String(c.name || "").trim() }))
+              .map((c) => {
+                const name = String(c.name || "").trim()
+                const parentName = String(c.parentName || "").trim()
+                return {
+                  id: String(c.id || c._id || c.name),
+                  parentId: c.parentId ? String(c.parentId) : "",
+                  name,
+                  label: parentName ? `${parentName} › ${name}` : name,
+                }
+              })
               .filter((c) => c.name)
           : []
         if (!cancelled) setCategoryOptions(options)
@@ -304,6 +317,18 @@ export default function FoodsList() {
       cancelled = true
     }
   }, [showFoodFormModal])
+
+  // Category / Sub Category split. foodForm.categoryId always holds the final selection
+  // (the subcategory if one is chosen, otherwise the main category).
+  const categoryIdSet = new Set(categoryOptions.map((c) => c.id))
+  const topLevelCategoryOptions = categoryOptions.filter((c) => !c.parentId || !categoryIdSet.has(c.parentId))
+  const selectedCategoryOption = categoryOptions.find((c) => c.id === String(foodForm.categoryId || ""))
+  const selectedParentCategoryId =
+    selectedCategoryOption?.parentId && categoryIdSet.has(selectedCategoryOption.parentId)
+      ? selectedCategoryOption.parentId
+      : selectedCategoryOption?.id || ""
+  const selectedParentCategory = categoryOptions.find((c) => c.id === selectedParentCategoryId)
+  const subCategoryOptions = categoryOptions.filter((c) => selectedParentCategoryId && c.parentId === selectedParentCategoryId)
 
   const handleVariantChange = (variantId, field, value) => {
     setFoodForm((prev) => ({
@@ -400,6 +425,8 @@ export default function FoodsList() {
         foodType: (restaurantOptions.find(r => r.id === foodForm.restaurantId)?.pureVegRestaurant || foodForm.foodType === "Veg") ? "Veg" : "Non-Veg",
         isAvailable: foodForm.isAvailable !== false,
         preparationTime: String(foodForm.preparationTime || "").trim(),
+        availableFrom: String(foodForm.availableFrom || ""),
+        availableTo: String(foodForm.availableTo || ""),
       }
 
       if (foodFormMode === "edit") {
@@ -757,8 +784,8 @@ export default function FoodsList() {
                       type="button"
                       className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-left flex items-center justify-between"
                     >
-                      <span className={foodForm.categoryName ? "text-slate-900" : "text-slate-400"}>
-                        {foodForm.categoryName || "Select category"}
+                      <span className={selectedParentCategory?.name || foodForm.categoryName ? "text-slate-900" : "text-slate-400"}>
+                        {selectedParentCategory?.name || foodForm.categoryName || "Select category"}
                       </span>
                       <ChevronDown className="w-4 h-4 text-slate-500" />
                     </button>
@@ -773,11 +800,11 @@ export default function FoodsList() {
                       autoFocus
                     />
                     <div className="max-h-56 overflow-y-auto">
-                      {categoryOptions
+                      {topLevelCategoryOptions
                         .filter((c) => {
                           const q = String(categorySearch || "").trim().toLowerCase()
                           if (!q) return true
-                          return String(c.name || "").toLowerCase().includes(q)
+                          return String(c.label || c.name || "").toLowerCase().includes(q)
                         })
                         .map((c) => (
                           <button
@@ -788,10 +815,10 @@ export default function FoodsList() {
                               setCategoryPopoverOpen(false)
                             }}
                             className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 ${
-                              String(foodForm.categoryName || "") === String(c.name) ? "bg-slate-100 font-medium" : ""
+                              String(foodForm.categoryId || "") === String(c.id) ? "bg-slate-100 font-medium" : ""
                             }`}
                           >
-                            {c.name}
+                            {c.label || c.name}
                           </button>
                         ))}
                       {categoryOptions.length === 0 && (
@@ -800,6 +827,31 @@ export default function FoodsList() {
                     </div>
                   </PopoverContent>
                 </Popover>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sub Category</label>
+                <select
+                  value={selectedCategoryOption?.parentId && categoryIdSet.has(selectedCategoryOption.parentId) ? selectedCategoryOption.id : ""}
+                  disabled={!selectedParentCategoryId || subCategoryOptions.length === 0}
+                  onChange={(e) => {
+                    const sub = categoryOptions.find((c) => c.id === e.target.value)
+                    const target = sub || selectedParentCategory
+                    if (!target) return
+                    setFoodForm((prev) => ({ ...prev, categoryId: target.id, categoryName: target.name }))
+                  }}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {!selectedParentCategoryId
+                      ? "Select category first"
+                      : subCategoryOptions.length === 0
+                        ? "No subcategories"
+                        : "---Select---"}
+                  </option>
+                  {subCategoryOptions.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Food Name</label>
@@ -873,6 +925,28 @@ export default function FoodsList() {
                   className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Available Time (optional)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={foodForm.availableFrom}
+                    onChange={(e) => setFoodForm((prev) => ({ ...prev, availableFrom: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white"
+                  />
+                  <span className="text-xs text-slate-500">to</span>
+                  <input
+                    type="time"
+                    value={foodForm.availableTo}
+                    onChange={(e) => setFoodForm((prev) => ({ ...prev, availableTo: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Item stays visible all day; customers can order it only in this window. Leave empty for all day.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Timing</label>
                 <div className="relative">

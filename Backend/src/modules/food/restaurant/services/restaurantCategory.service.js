@@ -97,8 +97,8 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
         .limit(limit)
         .select(
             compact
-                ? 'name image type foodTypeScope approvalStatus rejectionReason zoneId restaurantId createdByRestaurantId isActive sortOrder requestedAt approvedAt rejectedAt globalizedAt'
-                : 'name image type foodTypeScope approvalStatus rejectionReason zoneId restaurantId createdByRestaurantId isActive sortOrder requestedAt approvedAt rejectedAt globalizedAt createdAt updatedAt'
+                ? 'name image type foodTypeScope parentId approvalStatus rejectionReason zoneId restaurantId createdByRestaurantId isActive sortOrder requestedAt approvedAt rejectedAt globalizedAt'
+                : 'name image type foodTypeScope parentId approvalStatus rejectionReason zoneId restaurantId createdByRestaurantId isActive sortOrder requestedAt approvedAt rejectedAt globalizedAt createdAt updatedAt'
         );
 
     const [list, total] = await Promise.all([
@@ -193,10 +193,30 @@ export async function listPublicCategories(query = {}) {
         });
         itemFilter.restaurantId = { $in: zoneRestaurantIds };
     }
-    const itemCountRows = await FoodItem.aggregate([
+    const rawItemCountRows = await FoodItem.aggregate([
         { $match: itemFilter },
         { $group: { _id: '$categoryId', count: { $sum: 1 } } }
     ]);
+
+    // Subcategories: items filed under a subcategory also count for its parent, so a parent such
+    // as "Pizza" stays visible and complete even when all its items live in subcategories.
+    const subDocs = await FoodCategory.find({
+        isActive: true,
+        parentId: { $exists: true, $ne: null },
+        $and: [{ $or: GLOBAL_CATEGORY_FILTER }, { $or: APPROVED_CATEGORY_FILTER }]
+    }).select('name image parentId').lean();
+    const parentOfSub = new Map(subDocs.map((s) => [String(s._id), String(s.parentId)]));
+    const rolledCounts = new Map();
+    for (const row of rawItemCountRows) {
+        const id = String(row._id);
+        rolledCounts.set(id, (rolledCounts.get(id) || 0) + row.count);
+        const parentKey = parentOfSub.get(id);
+        if (parentKey) rolledCounts.set(parentKey, (rolledCounts.get(parentKey) || 0) + row.count);
+    }
+    const itemCountRows = Array.from(rolledCounts, ([id, count]) => ({
+        _id: new mongoose.Types.ObjectId(id),
+        count
+    }));
     const approvedCategoryIds = itemCountRows.map((row) => row._id);
 
     let visibleCategoryIds = approvedCategoryIds;
@@ -227,6 +247,8 @@ export async function listPublicCategories(query = {}) {
         return result;
     }
     filter._id = { $in: visibleCategoryIds };
+    // Customers browse main categories; subcategories come nested inside them (subCategories).
+    filter.parentId = null;
 
     if (search) {
         const term = escapeRegex(search.slice(0, 80));
@@ -248,7 +270,19 @@ export async function listPublicCategories(query = {}) {
     await backfillLegacyCategoryWorkflow(list);
 
     // `list` is already A-Z (case-insensitive collation), the same order admin and restaurants see.
-    const categories = list.map((category) => serializeCategoryForResponse(category));
+    const subsByParent = new Map();
+    for (const sub of subDocs) {
+        if (!rolledCounts.has(String(sub._id))) continue;
+        const key = String(sub.parentId);
+        if (!subsByParent.has(key)) subsByParent.set(key, []);
+        subsByParent.get(key).push({ id: String(sub._id), name: sub.name, image: sub.image || '' });
+    }
+    subsByParent.forEach((subs) => subs.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+
+    const categories = list.map((category) => ({
+        ...serializeCategoryForResponse(category),
+        subCategories: subsByParent.get(String(category._id)) || []
+    }));
 
     const result = { categories, total, page, limit };
     publicCategoriesCache.set(cacheKey, { data: result, lastFetched: now });

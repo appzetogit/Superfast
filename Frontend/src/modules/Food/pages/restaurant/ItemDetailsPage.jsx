@@ -74,6 +74,8 @@ export default function ItemDetailsPage() {
   const [basePrice, setBasePrice] = useState("")
   const [variants, setVariants] = useState([])
   const [preparationTime, setPreparationTime] = useState("")
+  const [availableFrom, setAvailableFrom] = useState("")
+  const [availableTo, setAvailableTo] = useState("")
   const [gst, setGst] = useState("5.0")
   const [isRecommended, setIsRecommended] = useState(false)
   const [isInStock, setIsInStock] = useState(true)
@@ -102,6 +104,7 @@ export default function ItemDetailsPage() {
   const [direction, setDirection] = useState(0)
   const carouselRef = useRef(null)
   const [isCategoryPopupOpen, setIsCategoryPopupOpen] = useState(false)
+  const [isSubCategoryPopupOpen, setIsSubCategoryPopupOpen] = useState(false)
   const [isServesPopupOpen, setIsServesPopupOpen] = useState(false)
   const [isItemSizePopupOpen, setIsItemSizePopupOpen] = useState(false)
   const [isGstPopupOpen, setIsGstPopupOpen] = useState(false)
@@ -122,6 +125,48 @@ export default function ItemDetailsPage() {
     }
     return filtered
   }, [categories, foodType])
+
+  // Admin subcategories nest under their parent in the picker; items store the innermost category id.
+  const categoryRows = useMemo(() => {
+    const ids = new Set(displayedCategories.map((c) => String(c.id)))
+    const childrenOf = new Map()
+    const roots = []
+    for (const cat of displayedCategories) {
+      if (cat.parentId && ids.has(String(cat.parentId))) {
+        const list = childrenOf.get(String(cat.parentId)) || []
+        list.push(cat)
+        childrenOf.set(String(cat.parentId), list)
+      } else {
+        roots.push(cat)
+      }
+    }
+    return roots.flatMap((root) => [
+      { ...root, depth: 0 },
+      ...(childrenOf.get(String(root.id)) || []).map((child) => ({ ...child, depth: 1 })),
+    ])
+  }, [displayedCategories])
+
+  const selectedCategoryLabel = useMemo(() => {
+    const current = categories.find((c) => String(c.id) === String(selectedCategoryId || ""))
+    if (!current) return ""
+    const parent = current.parentId ? categories.find((c) => String(c.id) === String(current.parentId)) : null
+    return parent ? `${parent.name} › ${current.name}` : current.name
+  }, [categories, selectedCategoryId])
+
+  // Category -> Sub Category: the item stores the innermost id (sub if chosen, else the category).
+  const selectedCategoryObj = categories.find((c) => String(c.id) === String(selectedCategoryId || ""))
+  const selectedRootId = selectedCategoryObj
+    ? selectedCategoryObj.parentId && categories.some((c) => String(c.id) === String(selectedCategoryObj.parentId))
+      ? String(selectedCategoryObj.parentId)
+      : String(selectedCategoryObj.id)
+    : ""
+  const selectedRoot = categories.find((c) => String(c.id) === selectedRootId)
+  const rootCategoryRows = categoryRows.filter((row) => !row.depth)
+  const subCategoryOptions = displayedCategories.filter(
+    (c) => selectedRootId && String(c.parentId || "") === selectedRootId,
+  )
+  const selectedSubCategory =
+    selectedCategoryObj && String(selectedCategoryObj.id) !== selectedRootId ? selectedCategoryObj : null
 
   // Restore draft if exists
   useEffect(() => {
@@ -171,6 +216,8 @@ export default function ItemDetailsPage() {
     setVariants(itemVariants.map(createVariantDraft))
     setBasePrice(itemVariants.length === 0 ? item.price?.toString() || "" : "")
     setPreparationTime(item.preparationTime || "")
+    setAvailableFrom(item.availableFrom || "")
+    setAvailableTo(item.availableTo || "")
     setGst(item.gst?.toString() || "5.0")
     setIsRecommended(item.isRecommended || false)
     setIsInStock(item.isAvailable !== false)
@@ -311,6 +358,7 @@ export default function ItemDetailsPage() {
             id: cat._id || cat.id,
             name: cat.name,
             foodTypeScope: cat.foodTypeScope || "Both",
+            parentId: cat.parentId ? String(cat.parentId) : "",
           }))
 
           debugLog('Formatted restaurant categories:', formattedCategories)
@@ -752,6 +800,14 @@ export default function ItemDetailsPage() {
         return
       }
 
+      // New items: when the category has sub categories, one of them must be chosen.
+      if (isNewItem && subCategoryOptions.length > 0 && String(categoryId) === selectedRootId) {
+        toast.error("Please select a sub category")
+        setIsSubCategoryPopupOpen(true)
+        setUploadingImages(false)
+        return
+      }
+
       if (
         matchedCategory?.foodTypeScope &&
         matchedCategory.foodTypeScope !== "Both" &&
@@ -817,6 +873,8 @@ export default function ItemDetailsPage() {
           isAvailable: isInStock,
           isRecommended: Boolean(isRecommended),
           preparationTime: preparationTime || "",
+          availableFrom: availableFrom || "",
+          availableTo: availableTo || "",
           categoryId: categoryId || undefined,
           categoryName,
         })
@@ -840,6 +898,8 @@ export default function ItemDetailsPage() {
           isAvailable: isInStock,
           isRecommended: Boolean(isRecommended),
           preparationTime: preparationTime || "",
+          availableFrom: availableFrom || "",
+          availableTo: availableTo || "",
           categoryId: categoryId || undefined,
           categoryName,
         })
@@ -1080,7 +1140,36 @@ export default function ItemDetailsPage() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors"
             >
               <span className="text-sm text-gray-900">
-                {category || "Select category"}
+                {selectedRoot?.name || category || "Select category"}
+              </span>
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          {/* Sub Category Selector (only the sub categories of the chosen category) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Sub Category
+            </label>
+            <button
+              onClick={() => {
+                if (!selectedRootId) {
+                  toast.error("Please select a category first")
+                  return
+                }
+                if (subCategoryOptions.length === 0) return
+                setIsSubCategoryPopupOpen(true)
+              }}
+              disabled={Boolean(selectedRootId) && subCategoryOptions.length === 0}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <span className={`text-sm ${selectedSubCategory ? "text-gray-900" : "text-gray-400"}`}>
+                {selectedSubCategory?.name ||
+                  (!selectedRootId
+                    ? "Select category first"
+                    : subCategoryOptions.length === 0
+                      ? "No sub categories"
+                      : "Select sub category")}
               </span>
               <ChevronDown className="w-5 h-5 text-gray-500" />
             </button>
@@ -1286,6 +1375,29 @@ export default function ItemDetailsPage() {
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
                 </div>
               </div>
+
+              {/* Sale window (optional): item stays visible all day, but can only be ordered in this window */}
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Available Time (optional)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={availableFrom}
+                    onChange={(e) => setAvailableFrom(e.target.value)}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <span className="text-xs text-gray-500">to</span>
+                  <input
+                    type="time"
+                    value={availableTo}
+                    onChange={(e) => setAvailableTo(e.target.value)}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Outside this time customers still see the item, with a note about when it can be ordered. Leave empty for all day.
+                </p>
+              </div>
               {/* <div>
                 <label className="block text-xs text-gray-600 mb-1">GST</label>
                 <button
@@ -1372,11 +1484,17 @@ export default function ItemDetailsPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {displayedCategories.map((cat) => (
+                    {rootCategoryRows.map((cat) => (
                       <button
                         key={cat.id}
-                        onClick={() => handleCategorySelect(cat.id, cat.name)}
-                        className={`w-full rounded-lg px-4 py-3 text-left transition-colors ${String(selectedCategoryId || "") === String(cat.id)
+                        onClick={() => {
+                          handleCategorySelect(cat.id, cat.name)
+                          // If this category has sub categories, go straight to picking one.
+                          if (displayedCategories.some((c) => String(c.parentId || "") === String(cat.id))) {
+                            setTimeout(() => setIsSubCategoryPopupOpen(true), 200)
+                          }
+                        }}
+                        className={`w-full rounded-lg px-4 py-3 text-left transition-colors ${selectedRootId === String(cat.id)
                           ? "bg-gray-900 text-white"
                           : "bg-gray-50 text-gray-900 hover:bg-gray-100"
                           }`}
@@ -1396,6 +1514,63 @@ export default function ItemDetailsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Sub Category Popup */}
+      <AnimatePresence>
+        {isSubCategoryPopupOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSubCategoryPopupOpen(false)}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[85vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-bold text-gray-900">
+                  Select sub category{selectedRoot?.name ? ` · ${selectedRoot.name}` : ""}
+                </h2>
+                <button
+                  onClick={() => setIsSubCategoryPopupOpen(false)}
+                  className="p-1 rounded-full hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                <div className="space-y-2">
+                  {subCategoryOptions.map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => {
+                        setSelectedCategoryId(sub.id)
+                        setCategory(sub.name)
+                        setSubCategory(sub.name)
+                        setIsSubCategoryPopupOpen(false)
+                      }}
+                      className={`w-full rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors ${
+                        String(selectedCategoryId || "") === String(sub.id)
+                          ? "bg-gray-900 text-white"
+                          : "bg-gray-50 text-gray-900 hover:bg-gray-100"
+                      }`}
+                    >
+                      {sub.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             </motion.div>
           </>

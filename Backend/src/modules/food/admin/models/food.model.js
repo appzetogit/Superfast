@@ -22,6 +22,10 @@ const foodSchema = new mongoose.Schema(
         isAvailable: { type: Boolean, default: true, index: true },
         isRecommended: { type: Boolean, default: false, index: true },
         preparationTime: { type: String, trim: true, default: '' },
+        // Optional daily sale window ("HH:mm", 24h, India time). Empty = available all day.
+        // Outside the window the item stays visible but cannot be ordered.
+        availableFrom: { type: String, trim: true, default: '' },
+        availableTo: { type: String, trim: true, default: '' },
         approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved', index: true },
         rejectionReason: { type: String, trim: true, default: '' },
         requestedAt: { type: Date },

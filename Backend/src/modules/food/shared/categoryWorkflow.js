@@ -177,6 +177,10 @@ export const serializeCategoryForResponse = (category = {}, options = {}) => {
         isApproved: approvalStatus === 'approved',
         approvalStatus,
         foodTypeScope: normalizeCategoryFoodTypeScope(category.foodTypeScope, 'Both'),
+        parentId: category?.parentId?._id
+            ? String(category.parentId._id)
+            : (category?.parentId ? String(category.parentId) : null),
+        parentName: category?.parentId?.name || options.parentNamesById?.get?.(String(category?.parentId || '')) || '',
         rejectionReason: category.rejectionReason || '',
         restaurantId,
         createdByRestaurantId,

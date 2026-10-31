@@ -31,6 +31,12 @@ const foodCategorySchema = new mongoose.Schema(
          * - When null/undefined: category is global (visible for all zones).
          */
         zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', index: true, default: undefined },
+        /**
+         * Optional parent category. When set, this category is a subcategory of the parent.
+         * Only one level is supported (a parent cannot itself be a subcategory).
+         * Foods keep pointing at this category's _id, so linking never moves or hides items.
+         */
+        parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodCategory', index: true, default: undefined },
         sortOrder: { type: Number, default: 0, index: true },
         isActive: { type: Boolean, default: true, index: true },
         slug: { type: String, unique: true, sparse: true, trim: true },

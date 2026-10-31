@@ -118,7 +118,8 @@ const resolveCategoryForRestaurant = async (context, body = {}) => {
         isActive: { $ne: false }
     };
     if (context.pureVegRestaurant) {
-        baseFilter.foodTypeScope = 'Veg';
+        // Same rule as the category list: a pure-veg restaurant can use Veg and Both categories.
+        baseFilter.foodTypeScope = { $in: ['Veg', 'Both', null, ''] };
     }
 
     let category = null;
@@ -169,6 +170,8 @@ const resolveCategoryForRestaurant = async (context, body = {}) => {
     };
 };
 
+import { readAvailabilityWindow } from '../../shared/foodAvailabilityWindow.js';
+
 export async function createRestaurantFood(restaurantId, body = {}) {
     const context = await getRestaurantContext(restaurantId);
 
@@ -202,6 +205,7 @@ export async function createRestaurantFood(restaurantId, body = {}) {
         isAvailable,
         isRecommended,
         preparationTime,
+        ...(readAvailabilityWindow(body) || {}),
         approvalStatus: 'pending',
         requestedAt: new Date()
     });
@@ -247,6 +251,8 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
     Object.assign(update, getUpdatedFoodPricing(existing, body));
     if (body.preparationTime !== undefined) update.preparationTime = toStr(body.preparationTime);
     if (body.isAvailable !== undefined) update.isAvailable = body.isAvailable === true;
+    // Sale window is operational (not content), so changing it does not trigger re-approval.
+    Object.assign(update, readAvailabilityWindow(body) || {});
     if (body.isRecommended !== undefined) update.isRecommended = body.isRecommended === true;
 
     const targetFoodType = body.foodType !== undefined ? normalizeFoodType(body.foodType) : normalizeFoodType(existing.foodType);

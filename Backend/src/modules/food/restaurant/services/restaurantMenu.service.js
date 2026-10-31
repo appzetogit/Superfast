@@ -5,6 +5,7 @@ import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
 import { getFoodDisplayPrice, serializeFoodVariants } from '../../admin/services/foodVariant.service.js';
 import { getDeveloperModeFilter } from '../../../common/utils/developerMode.js';
+import { isWithinAvailabilityWindow } from '../../shared/foodAvailabilityWindow.js';
 
 const buildMenuFromFoods = async (foods = []) => {
     const categoryIds = Array.from(
@@ -21,10 +22,17 @@ const buildMenuFromFoods = async (foods = []) => {
 
     const categoryDocs = categoryIds.length
         ? await FoodCategory.find({ _id: { $in: categoryIds } })
-            .select('name image sortOrder')
+            .select('name image sortOrder parentId')
             .lean()
         : [];
     const categoryMap = new Map(categoryDocs.map((doc) => [String(doc._id), doc]));
+
+    // Parent names for subcategories (display only; sections stay flat so no item can be hidden).
+    const parentIds = Array.from(new Set(categoryDocs.map((d) => (d.parentId ? String(d.parentId) : '')).filter(Boolean)));
+    const parentDocs = parentIds.length
+        ? await FoodCategory.find({ _id: { $in: parentIds } }).select('name').lean()
+        : [];
+    const parentNameById = new Map(parentDocs.map((d) => [String(d._id), String(d.name || '').trim()]));
 
     const byCategory = new Map();
     for (const food of foods) {
@@ -38,6 +46,8 @@ const buildMenuFromFoods = async (foods = []) => {
                 id: categoryId || null,
                 name: sectionName,
                 image: categoryDoc?.image || '',
+                parentId: categoryDoc?.parentId ? String(categoryDoc.parentId) : null,
+                parentName: categoryDoc?.parentId ? parentNameById.get(String(categoryDoc.parentId)) || '' : '',
                 sortOrder: Number.isFinite(Number(categoryDoc?.sortOrder)) ? Number(categoryDoc.sortOrder) : Number.MAX_SAFE_INTEGER,
                 items: []
             });
@@ -49,6 +59,7 @@ const buildMenuFromFoods = async (foods = []) => {
             categoryId: categoryId || null,
             categoryName: sectionName,
             category: sectionName,
+            parentCategoryName: categoryDoc?.parentId ? parentNameById.get(String(categoryDoc.parentId)) || '' : '',
             name: food.name,
             description: food.description || '',
             basePrice: food.price,
@@ -65,18 +76,26 @@ const buildMenuFromFoods = async (foods = []) => {
             approvedAt: food.approvedAt,
             rejectedAt: food.rejectedAt,
             preparationTime: food.preparationTime || '',
+            availableFrom: food.availableFrom || '',
+            availableTo: food.availableTo || '',
+            // Server-computed (India time) so the app never depends on the phone's clock.
+            availableNow: isWithinAvailabilityWindow(food.availableFrom, food.availableTo),
             createdAt: food.createdAt,
             updatedAt: food.updatedAt
         });
     }
 
     const byName = (a, b) => String(a || '').localeCompare(String(b || ''), 'en', { sensitivity: 'base' });
-    const orderedGroups = Array.from(byCategory.values()).sort((a, b) => byName(a.name, b.name));
+    // Subcategories sort right after their parent's name (parent first, then its children).
+    const groupSortKey = (g) => (g.parentName ? `${g.parentName}\u0001${g.name}` : `${g.name}`);
+    const orderedGroups = Array.from(byCategory.values()).sort((a, b) => byName(groupSortKey(a), groupSortKey(b)));
 
     const sections = orderedGroups.map((group, idx) => ({
         id: group.id || `section-${idx}`,
         categoryId: group.id || null,
         name: group.name,
+        parentId: group.parentId || null,
+        parentName: group.parentName || '',
         image: group.image || '',
         sortOrder: Number.isFinite(Number(group.sortOrder)) ? Number(group.sortOrder) : 0,
         itemCount: group.items.length,

@@ -277,7 +277,8 @@ export default function CategoryPage() {
         if (food?.isAvailable === false) return false
         if (String(food?.approvalStatus || "").toLowerCase() !== "approved") return false
 
-        const categoryName = String(food?.categoryName || food?.category || "").toLowerCase()
+        // Items in a subcategory belong to the customer-facing category of their parent.
+        const categoryName = String(food?.parentCategoryName || food?.categoryName || food?.category || "").toLowerCase()
         const foodName = String(food?.name || "").toLowerCase()
         return (
           matchesCategoryText(categoryName, keywords) ||
@@ -669,7 +670,7 @@ export default function CategoryPage() {
     }
 
     for (const section of menu.sections) {
-      const sectionNameLower = (section.name || '').toLowerCase()
+      const sectionNameLower = (section.parentName || section.name || '').toLowerCase()
       if (matchesCategoryText(sectionNameLower, keywords)) {
         return true
       }
@@ -677,7 +678,7 @@ export default function CategoryPage() {
       if (section.items && Array.isArray(section.items)) {
         for (const item of section.items) {
           const itemNameLower = (item.name || '').toLowerCase()
-          const itemCategoryLower = (item.categoryName || item.category || '').toLowerCase()
+          const itemCategoryLower = (item.parentCategoryName || item.categoryName || item.category || '').toLowerCase()
 
           if (
             matchesCategoryText(itemNameLower, keywords) ||
@@ -699,7 +700,7 @@ export default function CategoryPage() {
           const subItems = Array.isArray(subsection?.items) ? subsection.items : []
           for (const item of subItems) {
             const itemNameLower = (item?.name || "").toLowerCase()
-            const itemCategoryLower = (item?.categoryName || item?.category || "").toLowerCase()
+            const itemCategoryLower = (item?.parentCategoryName || item?.categoryName || item?.category || "").toLowerCase()
             if (
               matchesCategoryText(itemNameLower, keywords) ||
               matchesCategoryText(itemCategoryLower, keywords)
@@ -728,13 +729,13 @@ export default function CategoryPage() {
     const matchingDishes = []
 
     for (const section of menu.sections) {
-      const sectionNameLower = (section?.name || "").toLowerCase()
+      const sectionNameLower = (section?.parentName || section?.name || "").toLowerCase()
       const sectionMatches = matchesCategoryText(sectionNameLower, keywords)
 
       if (section.items && Array.isArray(section.items)) {
         for (const item of section.items) {
           const itemNameLower = (item.name || '').toLowerCase()
-          const itemCategoryLower = (item.categoryName || item.category || '').toLowerCase()
+          const itemCategoryLower = (item.parentCategoryName || item.categoryName || item.category || '').toLowerCase()
 
           const itemMatches =
             matchesCategoryText(itemNameLower, keywords) ||
@@ -773,7 +774,7 @@ export default function CategoryPage() {
 
           for (const item of subItems) {
             const itemNameLower = (item?.name || "").toLowerCase()
-            const itemCategoryLower = (item?.categoryName || item?.category || "").toLowerCase()
+            const itemCategoryLower = (item?.parentCategoryName || item?.categoryName || item?.category || "").toLowerCase()
             const itemMatches =
               matchesCategoryText(itemNameLower, keywords) ||
               matchesCategoryText(itemCategoryLower, keywords)

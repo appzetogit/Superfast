@@ -73,6 +73,27 @@ const FOOD_IMAGE_FALLBACK = getFallbackImage('food')
 const RUPEE_SYMBOL = "\u20B9"
 const RESTAURANT_DETAILS_FILTERS_STORAGE_KEY = "food-restaurant-details-filters"
 
+const formatSaleTime = (hhmm) => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""))
+  if (!match) return ""
+  const h = Number(match[1])
+  return `${h % 12 === 0 ? 12 : h % 12}:${match[2]} ${h < 12 ? "AM" : "PM"}`
+}
+
+// Shown under an item that is only sold during certain hours, when it is currently outside them.
+// Plain English: the app-wide translator renders it in the language the user picked.
+function SaleWindowNotice({ item }) {
+  if (item?.availableNow !== false) return null
+  const from = formatSaleTime(item?.availableFrom)
+  const to = formatSaleTime(item?.availableTo)
+  if (!from || !to) return null
+  return (
+    <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+      Available only {from} - {to}. Please order during this time.
+    </p>
+  )
+}
+
 function RestaurantDetailsContent() {
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -2043,6 +2064,7 @@ function RestaurantDetailsContent() {
   // Disables add buttons. The page-wide grey filter is only for out-of-service, so the
   // open-alternatives banner of an offline restaurant stays in colour.
   const shouldShowGrayscale = isOutOfService || isRestaurantOffline
+  const modalBlocked = shouldShowGrayscale || selectedItem?.availableNow === false
 
   return (
     <AnimatedPage
@@ -2328,6 +2350,7 @@ function RestaurantDetailsContent() {
                   {/* Section Header */}
                   <div className="pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
                     <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
+                      {!isRecommended && section?.parentName ? `${section.parentName} › ` : ""}
                       {isRecommended
                         ? getSectionDisplayName(section)
                         : (section?.name && typeof section.name === 'string' && section.name.trim())
@@ -2361,6 +2384,7 @@ function RestaurantDetailsContent() {
                     <div className="space-y-0">
                       {sectionItems.map((item) => {
                         const quantity = getDishQuantity(item)
+                        const itemBlocked = shouldShowGrayscale || item?.availableNow === false
                         // Determine veg/non-veg based on foodType
                         const isVeg = item.foodType === "Veg"
 
@@ -2399,6 +2423,7 @@ function RestaurantDetailsContent() {
                               </div>
 
                               <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
+                              <SaleWindowNotice item={item} />
 
                               {/* Highly Reordered Progress Bar - Show if recommended */}
                               {isRecommendedItem(item) && (
@@ -2477,7 +2502,7 @@ function RestaurantDetailsContent() {
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.8 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 ${shouldShowGrayscale
+                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 ${itemBlocked
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                     : 'border-[#ed840c] text-[#ed840c] hover:bg-[#ed840c]/10'
                                     }`}
@@ -2485,20 +2510,20 @@ function RestaurantDetailsContent() {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      if (!shouldShowGrayscale) {
+                                      if (!itemBlocked) {
                                         updateItemQuantity(item, Math.max(0, quantity - 1), e)
                                       }
                                     }}
-                                    disabled={shouldShowGrayscale}
-                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
+                                    disabled={itemBlocked}
+                                    className={itemBlocked ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
                                   >
                                     <Minus size={14} />
                                   </button>
-                                  <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                  <span className={`mx-2 text-sm ${itemBlocked ? 'text-gray-400' : ''}`}>{quantity}</span>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      if (!shouldShowGrayscale) {
+                                      if (!itemBlocked) {
                                         if (hasFoodVariants(item) || item.customisable) {
                                           handleItemClick(item)
                                         } else {
@@ -2506,8 +2531,8 @@ function RestaurantDetailsContent() {
                                         }
                                       }
                                     }}
-                                    disabled={shouldShowGrayscale}
-                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
+                                    disabled={itemBlocked}
+                                    className={itemBlocked ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
                                   >
                                     <Plus size={14} className="stroke-[3px]" />
                                   </button>
@@ -2520,7 +2545,7 @@ function RestaurantDetailsContent() {
                                   transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    if (!shouldShowGrayscale) {
+                                    if (!itemBlocked) {
                                       if (hasFoodVariants(item) || item.customisable) {
                                         handleItemClick(item)
                                       } else {
@@ -2528,8 +2553,8 @@ function RestaurantDetailsContent() {
                                       }
                                     }
                                   }}
-                                  disabled={shouldShowGrayscale}
-                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-colors ${shouldShowGrayscale
+                                  disabled={itemBlocked}
+                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-colors ${itemBlocked
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                     : 'border-[#ed840c] text-[#ed840c] hover:bg-[#ed840c]/10'
                                     }`}
@@ -2564,6 +2589,7 @@ function RestaurantDetailsContent() {
                               <div className="space-y-0">
                                 {subsectionItems.map((item) => {
                                   const quantity = getDishQuantity(item)
+                                  const itemBlocked = shouldShowGrayscale || item?.availableNow === false
                                   // Determine veg/non-veg based on foodType
                                   const isVeg = item.foodType === "Veg"
 
@@ -2602,6 +2628,7 @@ function RestaurantDetailsContent() {
                                         </div>
 
                                         <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
+                                        <SaleWindowNotice item={item} />
 
                                         {/* Highly Reordered Progress Bar - Show if recommended */}
                                         {isRecommendedItem(item) && (
@@ -2680,7 +2707,7 @@ function RestaurantDetailsContent() {
                                           <motion.div
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 ${shouldShowGrayscale
+                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 ${itemBlocked
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                               : 'border-[#ed840c] text-[#ed840c] hover:bg-[#ed840c]/10'
                                               }`}
@@ -2688,20 +2715,20 @@ function RestaurantDetailsContent() {
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (!shouldShowGrayscale) {
+                                                if (!itemBlocked) {
                                                   updateItemQuantity(item, Math.max(0, quantity - 1), e)
                                                 }
                                               }}
-                                              disabled={shouldShowGrayscale}
-                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
+                                              disabled={itemBlocked}
+                                              className={itemBlocked ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
                                             >
                                               <Minus size={14} />
                                             </button>
-                                            <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                            <span className={`mx-2 text-sm ${itemBlocked ? 'text-gray-400' : ''}`}>{quantity}</span>
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (!shouldShowGrayscale) {
+                                                if (!itemBlocked) {
                                                   if (hasFoodVariants(item) || item.customisable) {
                                                     handleItemClick(item)
                                                   } else {
@@ -2709,8 +2736,8 @@ function RestaurantDetailsContent() {
                                                   }
                                                 }
                                               }}
-                                              disabled={shouldShowGrayscale}
-                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
+                                              disabled={itemBlocked}
+                                              className={itemBlocked ? 'text-gray-400 cursor-not-allowed' : 'text-[#ed840c] hover:text-[#d6760b]'}
                                             >
                                               <Plus size={14} className="stroke-[3px]" />
                                             </button>
@@ -2723,7 +2750,7 @@ function RestaurantDetailsContent() {
                                             transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
                                             onClick={(e) => {
                                               e.stopPropagation()
-                                              if (!shouldShowGrayscale) {
+                                              if (!itemBlocked) {
                                                 if (hasFoodVariants(item) || item.customisable) {
                                                   handleItemClick(item)
                                                 } else {
@@ -2731,8 +2758,8 @@ function RestaurantDetailsContent() {
                                                 }
                                               }
                                             }}
-                                            disabled={shouldShowGrayscale}
-                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-colors ${shouldShowGrayscale
+                                            disabled={itemBlocked}
+                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-colors ${itemBlocked
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                               : 'border-[#ed840c] text-[#ed840c] hover:bg-[#ed840c]/10'
                                               }`}
@@ -3389,6 +3416,7 @@ function RestaurantDetailsContent() {
                           </span>
                         </div>
 
+                        <SaleWindowNotice item={selectedItem} />
                         {/* Highly Reordered Progress Indicator */}
                         {isRecommendedItem(selectedItem) && (
                           <div className="flex items-center gap-2 mt-2">
@@ -3502,7 +3530,7 @@ function RestaurantDetailsContent() {
                         <button
                           type="button"
                           onClick={(e) => {
-                            if (!shouldShowGrayscale) {
+                            if (!modalBlocked) {
                               const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                               updateItemQuantity(
                                 selectedItem,
@@ -3512,7 +3540,7 @@ function RestaurantDetailsContent() {
                               );
                             }
                           }}
-                          disabled={shouldShowGrayscale || (getDishQuantity(selectedItem, selectedVariantId) === 0)}
+                          disabled={modalBlocked || (getDishQuantity(selectedItem, selectedVariantId) === 0)}
                           className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold disabled:opacity-40"
                         >
                           <Minus className="h-4 w-4 stroke-[3]" />
@@ -3523,7 +3551,7 @@ function RestaurantDetailsContent() {
                         <button
                           type="button"
                           onClick={(e) => {
-                            if (!shouldShowGrayscale) {
+                            if (!modalBlocked) {
                               const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                               updateItemQuantity(
                                 selectedItem,
@@ -3533,7 +3561,7 @@ function RestaurantDetailsContent() {
                               );
                             }
                           }}
-                          disabled={shouldShowGrayscale}
+                          disabled={modalBlocked}
                           className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold"
                         >
                           <Plus className="h-4 w-4 stroke-[3]" />
@@ -3544,12 +3572,12 @@ function RestaurantDetailsContent() {
                       <button
                         type="button"
                         className={`flex-1 py-3 px-4 rounded-xl font-bold text-base flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98] ${
-                          shouldShowGrayscale
+                          modalBlocked
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-[#0e8345] hover:bg-[#0c723c] text-white"
                         }`}
                         onClick={(e) => {
-                          if (!shouldShowGrayscale) {
+                          if (!modalBlocked) {
                             const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                             if (currentQty === 0) {
                               updateItemQuantity(
@@ -3562,7 +3590,7 @@ function RestaurantDetailsContent() {
                             setShowItemDetail(false);
                           }
                         }}
-                        disabled={shouldShowGrayscale}
+                        disabled={modalBlocked}
                       >
                         <span>Add item</span>
                         <span>-</span>

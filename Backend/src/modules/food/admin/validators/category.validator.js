@@ -26,6 +26,7 @@ const upsertSchema = z.object({
     type: z.string().max(100).optional(),
     foodTypeScope: z.enum(['Veg', 'Non-Veg', 'Both']).optional(),
     zoneId: z.string().max(100).optional(),
+    parentId: z.string().max(100).nullable().optional(),
     status: z.boolean().optional(),
     isActive: z.boolean().optional(),
     sortOrder: z.coerce.number().int().optional()
