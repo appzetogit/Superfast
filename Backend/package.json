@@ -12,13 +12,6 @@
     "worker:order": "node src/queues/workers/order.worker.js",
     "worker:tracking": "node src/queues/workers/tracking.worker.js",
     "worker:payment": "node src/queues/workers/payment.worker.js",
-    "migrate:cloudinary-webp": "node scripts/migrate-cloudinary-image-urls-to-webp.js",
-    "migrate:fcm-tokens": "node scripts/migrate-fcm-tokens-to-profile-models.js",
-    "migrate:order-payments": "node scripts/migrate-orders-to-transactions.js",
-    "migrate:global-auth": "node scripts/migrate-global-auth-collections.js",
-    "migrate:seller-quick-shared": "node scripts/migrate-seller-quick-commerce-to-shared.js",
-    "cleanup:legacy-collections": "node scripts/cleanup-legacy-collections.js",
-    "backup:db": "node scripts/exportDbBackup.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
