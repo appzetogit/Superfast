@@ -243,9 +243,9 @@ export default function Category() {
       } else if (error?.response?.status === 403) {
         toast.error("Access denied. You do not have permission.")
       } else if (error?.response?.status === 404) {
-        toast.error("Categories endpoint not found. Please check backend server.")
+        toast.error("Unable to load categories right now. Please try again.")
       } else if (error?.code === "ERR_NETWORK" || error?.message === "Network Error") {
-        toast.error("Cannot connect to server. Please check if backend is running on " + API_BASE_URL.replace("/api", ""))
+        toast.error("Connection problem. Please check your internet and try again.")
       } else {
         toast.error(error?.response?.data?.message || "Failed to load categories")
       }
@@ -486,7 +486,7 @@ Press OK only if you still want to create a new one.`)) {
       fetchCategories()
     } catch (error) {
       if (error?.code === "ERR_NETWORK" || error?.message === "Network Error") {
-        toast.error("Cannot connect to server. Please check if backend is running on " + API_BASE_URL.replace("/api", ""))
+        toast.error("Connection problem. Please check your internet and try again.")
       } else {
         toast.error(error?.response?.data?.message || "Failed to save category")
       }

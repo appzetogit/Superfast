@@ -1190,12 +1190,8 @@ function RestaurantDetailsContent() {
   }, [restaurant?.name, cart])
 
   useEffect(() => {
-    if (!selectedItem) {
-      setSelectedVariantId("")
-      return
-    }
-    const defaultVariant = getDefaultFoodVariant(selectedItem)
-    setSelectedVariantId(defaultVariant?.id || "")
+    // Never auto-select a variant: only what the user explicitly picks gets added to the cart.
+    setSelectedVariantId("")
   }, [selectedItem])
 
   // Helper function to update item quantity in both local state and cart
@@ -3323,6 +3319,8 @@ function RestaurantDetailsContent() {
                 : 0;
 
               const hasDistinctBasePrice = rawPrice > 0;
+              // When there is no base price, a variant must be chosen explicitly
+              const variantRequired = variants.length > 0 && !hasDistinctBasePrice && !currentVariant;
               const dishBasePrice = rawPrice > 0 ? rawPrice : minVariantPrice;
               const variantPrice = currentVariant ? Number(currentVariant.price || 0) : 0;
               const unitPrice = dishBasePrice + variantPrice;
@@ -3564,7 +3562,7 @@ function RestaurantDetailsContent() {
                               );
                             }
                           }}
-                          disabled={modalBlocked || (getDishQuantity(selectedItem, selectedVariantId) === 0)}
+                          disabled={modalBlocked || variantRequired || (getDishQuantity(selectedItem, selectedVariantId) === 0)}
                           className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold disabled:opacity-40"
                         >
                           <Minus className="h-4 w-4 stroke-[3]" />
@@ -3585,8 +3583,8 @@ function RestaurantDetailsContent() {
                               );
                             }
                           }}
-                          disabled={modalBlocked}
-                          className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold"
+                          disabled={modalBlocked || variantRequired}
+                          className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold disabled:opacity-40"
                         >
                           <Plus className="h-4 w-4 stroke-[3]" />
                         </button>
@@ -3596,12 +3594,12 @@ function RestaurantDetailsContent() {
                       <button
                         type="button"
                         className={`flex-1 py-3 px-4 rounded-xl font-bold text-base flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.98] ${
-                          modalBlocked
+                          modalBlocked || variantRequired
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-[#0e8345] hover:bg-[#0c723c] text-white"
                         }`}
                         onClick={(e) => {
-                          if (!modalBlocked) {
+                          if (!modalBlocked && !variantRequired) {
                             const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                             if (currentQty === 0) {
                               updateItemQuantity(
@@ -3614,11 +3612,11 @@ function RestaurantDetailsContent() {
                             setShowItemDetail(false);
                           }
                         }}
-                        disabled={modalBlocked}
+                        disabled={modalBlocked || variantRequired}
                       >
-                        <span>Add item</span>
-                        <span>-</span>
-                        <span>{RUPEE_SYMBOL}{totalPrice}</span>
+                        <span>{variantRequired ? "Select an option" : "Add item"}</span>
+                        {!variantRequired && <span>-</span>}
+                        {!variantRequired && <span>{RUPEE_SYMBOL}{totalPrice}</span>}
                       </button>
                     </div>
                   </motion.div>
