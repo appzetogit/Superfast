@@ -301,13 +301,13 @@ async function syncItemsWithDatabase(items = []) {
           const vPrice = Number(dbVariant.price || 0);
           item.variantName = dbVariant.name;
           item.variantPrice = vPrice;
-          item.price = hasDistinctBasePrice ? (rawPrice + vPrice) : vPrice;
+          item.price = vPrice > 0 ? vPrice : rawPrice;
         } else {
           item.variantPrice = rawPrice;
-          item.price = rawPrice;
+          item.price = variants.length > 0 && minVariantPrice > 0 ? minVariantPrice : rawPrice;
         }
       } else {
-        item.price = rawPrice;
+        item.price = variants.length > 0 && minVariantPrice > 0 ? minVariantPrice : rawPrice;
         if (item.variantPrice) {
           item.variantPrice = rawPrice;
         }

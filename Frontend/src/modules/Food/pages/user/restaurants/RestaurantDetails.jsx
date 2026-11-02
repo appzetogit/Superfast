@@ -174,8 +174,16 @@ function RestaurantDetailsContent() {
   }
 
   const getDishQuantity = (item, preferredVariantId = "") => {
-    const variant = getVariantForDish(item, preferredVariantId)
-    const lineItemId = getLineItemIdForDish(item, variant)
+    const variants = getFoodVariants(item)
+    if (preferredVariantId) {
+      const variant = getVariantForDish(item, preferredVariantId)
+      const lineItemId = getLineItemIdForDish(item, variant)
+      return quantities[lineItemId] || 0
+    }
+    if (variants.length > 0) {
+      return variants.reduce((sum, v) => sum + (quantities[getLineItemIdForDish(item, v)] || 0), 0)
+    }
+    const lineItemId = getLineItemIdForDish(item, null)
     return quantities[lineItemId] || 0
   }
 
@@ -1258,17 +1266,17 @@ function RestaurantDetailsContent() {
       restaurant_restaurantId: restaurant.restaurantId
     });
 
-    // Calculate correct unit price (Base Price + Variant Price if base price exists)
+    // Calculate correct unit price (Variant price replaces base price when variants exist)
     const rawPrice = Number(item.price || 0);
     const variants = getFoodVariants(item);
-    const minVariantPrice = variants.length > 0
+    const hasVariants = variants.length > 0;
+    const minVariantPrice = hasVariants
       ? Math.min(...variants.map((v) => Number(v.price) || 0))
       : 0;
-    const dishBasePrice = rawPrice > 0 ? rawPrice : minVariantPrice;
     const variantPrice = resolvedVariant ? Number(resolvedVariant.price || 0) : 0;
-    const cartUnitPrice = rawPrice > 0
-      ? (rawPrice + variantPrice)
-      : (resolvedVariant ? variantPrice : minVariantPrice);
+    const cartUnitPrice = hasVariants
+      ? (variantPrice > 0 ? variantPrice : minVariantPrice)
+      : (rawPrice > 0 ? rawPrice : minVariantPrice);
 
     // Prepare cart item with all required properties
     const cartItem = {
@@ -1277,10 +1285,10 @@ function RestaurantDetailsContent() {
       itemId: item.id,
       name: item.name,
       price: cartUnitPrice,
-      basePrice: dishBasePrice,
+      basePrice: cartUnitPrice,
       variantId: resolvedVariant?.id || "",
       variantName: resolvedVariant?.name || "",
-      variantPrice: resolvedVariant?.price ?? 0,
+      variantPrice: variantPrice > 0 ? variantPrice : cartUnitPrice,
       image: item.image,
       restaurant: restaurant.name, // Use restaurant.name directly (already validated)
       restaurantId: validRestaurantId, // Use validated restaurantId
@@ -1728,7 +1736,15 @@ function RestaurantDetailsContent() {
   // Handle item card click
   const handleItemClick = (item) => {
     setSelectedItem(item)
-    setSelectedVariantId("")
+    const variants = getFoodVariants(item)
+    if (variants.length > 0) {
+      const existingVariant = variants.find(
+        (v) => (quantities[getLineItemIdForDish(item, v)] || 0) > 0
+      )
+      setSelectedVariantId(existingVariant ? existingVariant.id : variants[0].id)
+    } else {
+      setSelectedVariantId("")
+    }
     setShowItemDetail(true)
   }
 
@@ -3322,20 +3338,21 @@ function RestaurantDetailsContent() {
           <AnimatePresence>
             {showItemDetail && selectedItem && (() => {
               const variants = getFoodVariants(selectedItem);
-              const currentVariant = getVariantForDish(selectedItem, selectedVariantId);
+              const hasVariants = variants.length > 0;
+              const currentVariant = getVariantForDish(selectedItem, selectedVariantId) || (hasVariants ? variants[0] : null);
               const rawPrice = Number(selectedItem.price || 0);
-              const minVariantPrice = variants.length > 0
+              const minVariantPrice = hasVariants
                 ? Math.min(...variants.map((v) => Number(v.price) || 0))
                 : 0;
 
-              const hasDistinctBasePrice = rawPrice > 0;
-              // When there is no base price, a variant must be chosen explicitly
-              const variantRequired = variants.length > 0 && !hasDistinctBasePrice && !currentVariant;
-              const dishBasePrice = rawPrice > 0 ? rawPrice : minVariantPrice;
-              const variantPrice = currentVariant ? Number(currentVariant.price || 0) : 0;
-              const unitPrice = dishBasePrice + variantPrice;
+              // When item has variants, selection is required (Select 1 option)
+              const variantRequired = hasVariants && !currentVariant;
+              const unitPrice = hasVariants
+                ? (currentVariant ? Number(currentVariant.price || 0) : minVariantPrice)
+                : (rawPrice > 0 ? rawPrice : minVariantPrice);
 
-              const qty = getDishQuantity(selectedItem, selectedVariantId) || 1;
+              const activeVariantId = currentVariant ? currentVariant.id : selectedVariantId;
+              const qty = getDishQuantity(selectedItem, activeVariantId) || 1;
               const totalPrice = Math.round(unitPrice * qty);
               const isVeg = selectedItem.foodType === "Veg" || selectedItem.isVeg !== false;
 
@@ -3444,7 +3461,7 @@ function RestaurantDetailsContent() {
                             {selectedItem.name}
                           </h2>
                           <span className="text-base font-bold text-gray-900 dark:text-white flex-shrink-0">
-                            {hasDistinctBasePrice ? `${RUPEE_SYMBOL}${Math.round(dishBasePrice)}` : getFoodPriceLabel(selectedItem)}
+                            {RUPEE_SYMBOL}{Math.round(unitPrice)}
                           </span>
                         </div>
 
@@ -3475,14 +3492,14 @@ function RestaurantDetailsContent() {
                         </div>
                       </div>
 
-                      {/* Card 2: Variants Selection (Extra / Size options) */}
-                      {hasFoodVariants(selectedItem) && (
+                      {/* Card 2: Variants Selection (Size / Portion options) */}
+                      {hasVariants && (
                         <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-xs border border-gray-100 dark:border-gray-800/80">
                           <h3 className="text-base font-bold text-gray-900 dark:text-white">
                             Choose a variant
                           </h3>
                           <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-3">
-                            {hasDistinctBasePrice ? "Select option (optional)" : "Select 1 option"}
+                            Select 1 option
                           </p>
 
                           <div className="space-y-1">
@@ -3492,11 +3509,7 @@ function RestaurantDetailsContent() {
                                 <div
                                   key={variant.id}
                                   onClick={() => {
-                                    if (selectedVariantId && String(selectedVariantId) === String(variant.id)) {
-                                      setSelectedVariantId("");
-                                    } else {
-                                      setSelectedVariantId(variant.id);
-                                    }
+                                    setSelectedVariantId(variant.id);
                                   }}
                                   className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                                 >
@@ -3517,9 +3530,7 @@ function RestaurantDetailsContent() {
 
                                   <div className="flex items-center gap-3">
                                     <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                      {hasDistinctBasePrice
-                                        ? `+${RUPEE_SYMBOL}${Math.round(variant.price)}`
-                                        : `${RUPEE_SYMBOL}${Math.round(variant.price)}`}
+                                      {RUPEE_SYMBOL}{Math.round(variant.price)}
                                     </span>
                                     <div
                                       className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -3563,33 +3574,33 @@ function RestaurantDetailsContent() {
                           type="button"
                           onClick={(e) => {
                             if (!modalBlocked) {
-                              const currentQty = getDishQuantity(selectedItem, selectedVariantId);
+                              const currentQty = getDishQuantity(selectedItem, activeVariantId);
                               updateItemQuantity(
                                 selectedItem,
                                 Math.max(0, currentQty - 1),
                                 e,
-                                getVariantForDish(selectedItem, selectedVariantId)
+                                currentVariant
                               );
                             }
                           }}
-                          disabled={modalBlocked || variantRequired || (getDishQuantity(selectedItem, selectedVariantId) === 0)}
+                          disabled={modalBlocked || variantRequired || (getDishQuantity(selectedItem, activeVariantId) === 0)}
                           className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold disabled:opacity-40"
                         >
                           <Minus className="h-4 w-4 stroke-[3]" />
                         </button>
                         <span className="text-base font-extrabold text-emerald-800 dark:text-emerald-300 min-w-[1.2rem] text-center">
-                          {getDishQuantity(selectedItem, selectedVariantId) || 1}
+                          {getDishQuantity(selectedItem, activeVariantId) || 1}
                         </span>
                         <button
                           type="button"
                           onClick={(e) => {
                             if (!modalBlocked) {
-                              const currentQty = getDishQuantity(selectedItem, selectedVariantId);
+                              const currentQty = getDishQuantity(selectedItem, activeVariantId);
                               updateItemQuantity(
                                 selectedItem,
                                 (currentQty || 0) + 1,
                                 e,
-                                getVariantForDish(selectedItem, selectedVariantId)
+                                currentVariant
                               );
                             }
                           }}
@@ -3610,13 +3621,13 @@ function RestaurantDetailsContent() {
                         }`}
                         onClick={(e) => {
                           if (!modalBlocked && !variantRequired) {
-                            const currentQty = getDishQuantity(selectedItem, selectedVariantId);
+                            const currentQty = getDishQuantity(selectedItem, activeVariantId);
                             if (currentQty === 0) {
                               updateItemQuantity(
                                 selectedItem,
                                 1,
                                 e,
-                                getVariantForDish(selectedItem, selectedVariantId)
+                                currentVariant
                               );
                             }
                             setShowItemDetail(false);

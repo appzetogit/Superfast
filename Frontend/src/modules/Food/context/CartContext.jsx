@@ -103,8 +103,8 @@ const normalizeCartData = (rawCart) => {
       const rawBasePrice = Number(item.basePrice ?? item.dishBasePrice ?? item.product?.price ?? 0)
       const rawVariantPrice = Number(item.variantPrice ?? item.variant?.price ?? 0)
       let resolvedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0
-      if (rawBasePrice > 0 && rawVariantPrice > 0 && rawBasePrice > rawVariantPrice && variantId) {
-        resolvedPrice = rawBasePrice + rawVariantPrice
+      if (variantId && rawVariantPrice > 0) {
+        resolvedPrice = rawVariantPrice;
       }
 
       const orderType = item.orderType === "quick" ? "quick" : "food"
