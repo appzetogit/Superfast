@@ -295,6 +295,15 @@ const restaurantSchema = new mongoose.Schema(
       default: 0,
       index: true
     },
+    // Paid/admin-granted promotion. While active (and inside startsAt..endsAt), the restaurant is
+    // pinned to the top of its zone's list, and also tops search results whose text matches `keywords`.
+    sponsorship: {
+      isSponsored: { type: Boolean, default: false, index: true },
+      startsAt: { type: Date },
+      endsAt: { type: Date },
+      keywords: { type: [String], default: [] },
+      label: { type: String, trim: true, default: 'Sponsored' }
+    },
   },
   {
     collection: 'food_restaurants',

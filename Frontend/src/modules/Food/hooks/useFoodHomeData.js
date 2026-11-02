@@ -320,6 +320,8 @@ export const useFoodHomeData = ({
             isOpen: restaurant.isOpen,
             coverImages: restaurant.coverImages,
             recommendedItems: restaurant.recommendedItems || [],
+            isSponsored: restaurant.isSponsored === true,
+            sponsoredLabel: restaurant.sponsoredLabel || null,
           };
         });
 
@@ -386,16 +388,19 @@ export const useFoodHomeData = ({
       return { ...r, _isOpen: status.isOpen };
     });
 
-    // Apply sorting: Open restaurants first, then by rating
+    // Order: open first, then sponsored, then rating (only if explicitly chosen), else A-Z by name.
     filtered.sort((a, b) => {
       if (a._isOpen !== b._isOpen) {
         return a._isOpen ? -1 : 1;
       }
-      if (sortBy === "rating-high") {
-        return b.rating - a.rating;
+      if (Boolean(a.isSponsored) !== Boolean(b.isSponsored)) {
+        return a.isSponsored ? -1 : 1;
       }
-      // Default: Rating
-      return b.rating - a.rating;
+      if (sortBy === "rating-high") {
+        const diff = b.rating - a.rating;
+        if (diff !== 0) return diff;
+      }
+      return String(a.name || "").localeCompare(String(b.name || ""), "en", { sensitivity: "base", numeric: true });
     });
     return filtered;
   }, [deferredRestaurants, vegMode, sortBy, activeFilters, availabilityTick]);

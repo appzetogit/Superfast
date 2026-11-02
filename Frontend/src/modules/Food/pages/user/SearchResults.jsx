@@ -30,6 +30,13 @@ const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
 
 // Mock data removed - using backend data only
 
+// Sponsored restaurants first, then everything else A-Z by name.
+const sortSponsoredThenAlphabetical = (list) =>
+  [...list].sort((a, b) => {
+    if (Boolean(a.isSponsored) !== Boolean(b.isSponsored)) return a.isSponsored ? -1 : 1
+    return String(a.name || "").localeCompare(String(b.name || ""), "en", { sensitivity: "base", numeric: true })
+  })
+
 export default function SearchResults() {
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get("q") || ""
@@ -318,6 +325,9 @@ export default function SearchResults() {
                 offer: offer, // Use backend offer or null (defaults filtered out)
                 slug: restaurant.slug || restaurant.name?.toLowerCase().replace(/\s+/g, '-'),
                 restaurantId: restaurantId,
+                isSponsored: restaurant.isSponsored === true,
+                sponsoredLabel: restaurant.sponsoredLabel || null,
+                sponsorKeywords: Array.isArray(restaurant.sponsorKeywords) ? restaurant.sponsorKeywords : [],
                 hasPaneer: false, // Will be updated after menu fetch
                 category: 'all',
               }
@@ -566,6 +576,7 @@ export default function SearchResults() {
         r.name?.toLowerCase().includes(lowerQuery) ||
         r.cuisine?.toLowerCase().includes(lowerQuery) ||
         r.featuredDish?.toLowerCase().includes(lowerQuery) ||
+        (r.isSponsored && (r.sponsorKeywords || []).some((k) => k.includes(lowerQuery) || lowerQuery.includes(k))) ||
         r.category === selectedCategory
       )
     }
@@ -638,7 +649,7 @@ export default function SearchResults() {
       filtered = filtered.filter(r => r.offer && r.offer.includes('50%'))
     }
 
-    return uniqueRestaurants(filtered)
+    return sortSponsoredThenAlphabetical(uniqueRestaurants(filtered))
   }, [deferredQuery, selectedCategory, activeFilters, restaurantsData, categoryKeywords, loadingCategories])
 
   const filteredAllRestaurants = useMemo(() => {
@@ -671,7 +682,9 @@ export default function SearchResults() {
           }
         }
 
-        return nameMatch || cuisineMatch || dishMatch || menuMatch || r.category === selectedCategory
+        const sponsorMatch = r.isSponsored && (r.sponsorKeywords || []).some((k) => k.includes(lowerQuery) || lowerQuery.includes(k))
+
+        return nameMatch || cuisineMatch || dishMatch || menuMatch || sponsorMatch || r.category === selectedCategory
       })
     }
 
@@ -746,7 +759,7 @@ export default function SearchResults() {
       filtered = filtered.filter(r => r.offer && r.offer.includes('50%'))
     }
 
-    return uniqueRestaurants(filtered)
+    return sortSponsoredThenAlphabetical(uniqueRestaurants(filtered))
   }, [deferredQuery, selectedCategory, activeFilters, restaurantsData, categoryKeywords, loadingCategories])
 
   const recommendedIds = useMemo(
@@ -1045,6 +1058,11 @@ export default function SearchResults() {
                       {/* Restaurant Name & Rating */}
                       <div className="flex items-start justify-between gap-2 mb-2 lg:mb-3">
                         <div className="flex-1 min-w-0">
+                          {restaurant.isSponsored && (
+                            <span className="mb-1 inline-block rounded-full bg-gray-900/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white">
+                              {restaurant.sponsoredLabel || "Sponsored"}
+                            </span>
+                          )}
                           <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white line-clamp-1 lg:line-clamp-2">
                             {restaurant.name}
                           </h3>

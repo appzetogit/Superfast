@@ -73,6 +73,7 @@ const editDistanceAtMostOne = (a, b) => {
 
 export default function Category() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [parentSearch, setParentSearch] = useState("")
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [showPendingOnly, setShowPendingOnly] = useState(false)
@@ -132,7 +133,7 @@ export default function Category() {
       fetchCategories()
     }, 300)
     return () => window.clearTimeout(timer)
-  }, [searchQuery, showPendingOnly])
+  }, [showPendingOnly])
 
   const filteredCategories = useMemo(() => {
     const query = String(searchQuery || "").trim().toLowerCase()
@@ -225,8 +226,9 @@ export default function Category() {
     try {
       setLoading(true)
       // Backend defaults to 100 rows; load all so parents and their subcategories are present together.
+      // Search is applied client-side (filteredCategories). Sending it to the server would drop a
+      // matching sub category's parent, making it look orphaned with an empty parent dropdown.
       const params = { limit: 1000 }
-      if (searchQuery) params.search = searchQuery
       if (showPendingOnly) params.approvalStatus = "pending"
 
       const response = await adminAPI.getCategories(params)
@@ -833,6 +835,14 @@ Press OK only if you still want to create a new one.`)) {
                           return (
                             <div>
                               <label className="mb-2 block text-sm font-medium text-slate-700">Category (this Sub Category goes under)</label>
+                              <input
+                                type="text"
+                                value={parentSearch}
+                                onChange={(event) => setParentSearch(event.target.value)}
+                                disabled={hasChildren}
+                                placeholder="Search category..."
+                                className="mb-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-900 disabled:bg-slate-100"
+                              />
                               <select
                                 value={formData.parentId}
                                 disabled={hasChildren}
@@ -840,10 +850,16 @@ Press OK only if you still want to create a new one.`)) {
                                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-900 disabled:bg-slate-100"
                               >
                                 <option value="">Select category</option>
-                                {parentOptions.map((c) => {
-                                  const id = String(c._id || c.id)
-                                  return <option key={id} value={id}>{c.name}</option>
-                                })}
+                                {parentOptions
+                                  .filter((c) => {
+                                    const id = String(c._id || c.id)
+                                    const q = parentSearch.trim().toLowerCase()
+                                    return !q || id === String(formData.parentId) || String(c.name || "").toLowerCase().includes(q)
+                                  })
+                                  .map((c) => {
+                                    const id = String(c._id || c.id)
+                                    return <option key={id} value={id}>{c.name}</option>
+                                  })}
                               </select>
                               <p className="mt-1 text-xs text-slate-500">
                                 {hasChildren

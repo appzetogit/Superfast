@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus, Megaphone } from "lucide-react"
 import { adminAPI, restaurantAPI, uploadAPI } from "@food/api"
 import { clearModuleAuth } from "@food/utils/auth"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -162,6 +162,8 @@ export default function RestaurantsList() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null)
   const [restaurantDetails, setRestaurantDetails] = useState(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [sponsorDialog, setSponsorDialog] = useState(null) // { restaurant, form }
+  const [savingSponsor, setSavingSponsor] = useState(false)
   const [banConfirmDialog, setBanConfirmDialog] = useState(null) // { restaurant, action: 'ban' | 'unban' }
   const [banning, setBanning] = useState(false)
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState(null) // { restaurant }
@@ -1250,6 +1252,61 @@ export default function RestaurantsList() {
     setRestaurantDetails(null)
   }
 
+  // Sponsorship (pins restaurant to top of its zone + boosts it for matching search keywords)
+  const toDateInput = (value) => {
+    if (!value) return ""
+    const d = new Date(value)
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10)
+  }
+
+  const handleOpenSponsor = (restaurant) => {
+    const s = restaurant?.originalData?.sponsorship || {}
+    setSponsorDialog({
+      restaurant,
+      form: {
+        isSponsored: s.isSponsored === true,
+        label: s.label || "Sponsored",
+        keywords: Array.isArray(s.keywords) ? s.keywords.join(", ") : "",
+        startsAt: toDateInput(s.startsAt),
+        endsAt: toDateInput(s.endsAt),
+      },
+    })
+  }
+
+  const handleSaveSponsor = async () => {
+    if (!sponsorDialog) return
+    const { restaurant, form } = sponsorDialog
+    const restaurantId = restaurant._id || restaurant.id
+    if (form.startsAt && form.endsAt && form.endsAt < form.startsAt) {
+      alert("End date must be after start date")
+      return
+    }
+    const sponsorship = {
+      isSponsored: form.isSponsored,
+      label: form.label.trim() || "Sponsored",
+      keywords: form.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+      startsAt: form.startsAt || null,
+      // Sponsorship stays active through the whole end date.
+      endsAt: form.endsAt ? `${form.endsAt}T23:59:59.999` : null,
+    }
+    try {
+      setSavingSponsor(true)
+      await adminAPI.updateRestaurant(restaurantId, { sponsorship })
+      setRestaurants((prev) =>
+        prev.map((r) =>
+          (r._id || r.id) === restaurantId
+            ? { ...r, originalData: { ...r.originalData, sponsorship } }
+            : r
+        )
+      )
+      setSponsorDialog(null)
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to update sponsorship")
+    } finally {
+      setSavingSponsor(false)
+    }
+  }
+
   // Handle ban/unban restaurant
   const handleBanRestaurant = (restaurant) => {
     const isBanned = !restaurant.isActive
@@ -1639,6 +1696,16 @@ export default function RestaurantsList() {
                               title="View Details"
                             >
                               <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenSponsor(restaurant)}
+                              className={`p-1.5 rounded transition-colors ${restaurant.originalData?.sponsorship?.isSponsored
+                                ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                                : "text-slate-500 hover:bg-slate-100"
+                                }`}
+                              title={restaurant.originalData?.sponsorship?.isSponsored ? "Sponsored - edit" : "Sponsor Restaurant"}
+                            >
+                              <Megaphone className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleBanRestaurant(restaurant)}
@@ -2817,6 +2884,96 @@ export default function RestaurantsList() {
                   <p className="text-sm text-slate-500">Unable to load restaurant details</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sponsor Dialog */}
+      {sponsorDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => !savingSponsor && setSponsorDialog(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-amber-100">
+                  <Megaphone className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Sponsor Restaurant</h3>
+                  <p className="text-sm text-slate-600">{sponsorDialog.restaurant.name} · {sponsorDialog.restaurant.zone}</p>
+                </div>
+              </div>
+
+              <label className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3 cursor-pointer">
+                <span className="text-sm font-medium text-slate-800">Sponsored</span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={sponsorDialog.form.isSponsored}
+                  onChange={(e) => setSponsorDialog((d) => ({ ...d, form: { ...d.form, isSponsored: e.target.checked } }))}
+                />
+              </label>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Badge label</label>
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={sponsorDialog.form.label}
+                  onChange={(e) => setSponsorDialog((d) => ({ ...d, form: { ...d.form, label: e.target.value } }))}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Search keywords</label>
+                <input
+                  type="text"
+                  placeholder="pizza, burger, momos"
+                  value={sponsorDialog.form.keywords}
+                  onChange={(e) => setSponsorDialog((d) => ({ ...d, form: { ...d.form, keywords: e.target.value } }))}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm"
+                />
+                <p className="mt-1 text-xs text-slate-500">Comma separated. Restaurant shows on top when a user in this zone searches these words.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Start date</label>
+                  <input
+                    type="date"
+                    value={sponsorDialog.form.startsAt}
+                    onChange={(e) => setSponsorDialog((d) => ({ ...d, form: { ...d.form, startsAt: e.target.value } }))}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">End date</label>
+                  <input
+                    type="date"
+                    value={sponsorDialog.form.endsAt}
+                    onChange={(e) => setSponsorDialog((d) => ({ ...d, form: { ...d.form, endsAt: e.target.value } }))}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">Leave dates empty to keep it sponsored until you turn it off.</p>
+            </div>
+            <div className="flex gap-3 p-6 pt-0">
+              <button
+                onClick={() => setSponsorDialog(null)}
+                disabled={savingSponsor}
+                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSponsor}
+                disabled={savingSponsor}
+                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+              >
+                {savingSponsor ? "Saving..." : "Save"}
+              </button>
             </div>
           </div>
         </div>

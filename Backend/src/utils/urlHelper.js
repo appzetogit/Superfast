@@ -15,7 +15,8 @@ const KNOWN_IMAGE_KEYS = new Set([
     'shopLicenseImage', 'upiQrImage', 'headerVideoUrl', 'profileImage',
     'coverImages', 'menuImages', 'licenseImage', 'panImage',
     'fssaiImage', 'gstImage', 'itemImage', 'icon', 'url', 'secure_url',
-    'documentUrl', 'photoUrl', 'favicon', 'footerLogo'
+    'documentUrl', 'photoUrl', 'favicon', 'footerLogo',
+    'images', 'photos', 'gallery', 'pictures'
 ]);
 
 const isImageKey = (key) => {
@@ -183,7 +184,9 @@ export const transformImageFields = (data, req = null) => {
     }
 
     if (Array.isArray(target)) {
-        return target.map((item) => (typeof item === 'string' ? toFullUrl(item, req) : transformImageFields(item, req)));
+        // Plain strings here are NOT necessarily images (e.g. cuisines: ["North Indian"]).
+        // Arrays under an image key (galleryImages, coverImages...) are converted in the key loop below.
+        return target.map((item) => (typeof item === 'string' ? item : transformImageFields(item, req)));
     }
 
     const transformed = {};

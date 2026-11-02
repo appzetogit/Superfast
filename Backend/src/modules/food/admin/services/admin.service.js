@@ -419,7 +419,7 @@ export async function getRestaurants(query) {
             .collation({ locale: 'en', strength: 2 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId priority pureVegRestaurant')
+            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId priority pureVegRestaurant sponsorship')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)
@@ -3097,6 +3097,28 @@ export async function updateRestaurantById(id, body = {}) {
 
     if (body.priority !== undefined) {
         doc.priority = toFinite(body.priority) ?? 0;
+    }
+
+    if (body.sponsorship !== undefined && body.sponsorship !== null && typeof body.sponsorship === 'object') {
+        const s = body.sponsorship;
+        const startsAt = s.startsAt ? new Date(s.startsAt) : undefined;
+        const endsAt = s.endsAt ? new Date(s.endsAt) : undefined;
+        if ((startsAt && Number.isNaN(startsAt.getTime())) || (endsAt && Number.isNaN(endsAt.getTime()))) {
+            throw new ValidationError('Invalid sponsorship dates');
+        }
+        if (startsAt && endsAt && endsAt < startsAt) {
+            throw new ValidationError('Sponsorship end date must be after start date');
+        }
+        const keywords = Array.isArray(s.keywords)
+            ? s.keywords
+            : String(s.keywords || '').split(',');
+        doc.sponsorship = {
+            isSponsored: s.isSponsored === true || s.isSponsored === 'true',
+            startsAt,
+            endsAt,
+            keywords: [...new Set(keywords.map((k) => String(k).trim().toLowerCase()).filter(Boolean))].slice(0, 20),
+            label: toStr(s.label) || 'Sponsored'
+        };
     }
 
     // Zone assignment — allows admin to assign restaurant to a delivery zone

@@ -344,6 +344,11 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
                         <img src={getImageUrl(res.profileImage || res.image)} alt={res.restaurantName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        {res.isSponsored && (
+                          <span className="mb-0.5 w-fit rounded-full bg-slate-800 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-white">
+                            {res.sponsoredLabel || "Sponsored"}
+                          </span>
+                        )}
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1 group-hover:text-[var(--primary-theme)]">{res.restaurantName}</h4>
                         <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">{res.cuisines?.join(", ") || "Multi-cuisine"}</p>
                         <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-1">

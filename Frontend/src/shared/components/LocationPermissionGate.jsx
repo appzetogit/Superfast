@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { MapPin, Navigation, X } from 'lucide-react'
 import { isModuleAuthenticated } from '@food/utils/auth'
 import { getNativeLocation, isNativeWrapper } from '@shared/utils/nativeLocation'
+import { useSettings } from '@core/context/SettingsContext'
 
 /**
  * Asks for location as soon as a signed-in user / rider / restaurant / seller opens the app,
@@ -23,7 +24,9 @@ const MODULES = [
 ]
 
 const AUTH_PATH_RE = /\/(auth|login|signup|otp|terms|privacy|support)(\/|$)/i
-const DISMISS_KEY = 'locationGateDismissed'
+// "Not now" only lasts until the app is closed/reloaded. It lives in memory (not sessionStorage /
+// localStorage, which Android WebViews keep across launches) so the prompt returns on every app open.
+let dismissedThisLaunch = false
 
 function resolveModule(pathname) {
   if (/^\/admin/.test(pathname) || AUTH_PATH_RE.test(pathname) || /^\/account-deletion/.test(pathname)) return null
@@ -68,14 +71,10 @@ export default function LocationPermissionGate() {
 
   // null = fine / unknown, 'denied' = permission blocked, 'off' = device GPS off
   const [problem, setProblem] = useState(null)
-  const [dismissed, setDismissed] = useState(() => {
-    // Session-only: a past "Not now" must not silence the prompt forever.
-    try {
-      return sessionStorage.getItem(DISMISS_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
+  const { settings } = useSettings()
+  // Admin can switch the customer location popup off; riders/restaurants/sellers always need it.
+  const popupEnabled = required || (settings?.showLocationPopup ?? true)
+  const [dismissed, setDismissed] = useState(() => dismissedThisLaunch)
   const checkingRef = useRef(false)
   const hadProblemRef = useRef(false)
   const gotFixRef = useRef(false)
@@ -200,11 +199,7 @@ export default function LocationPermissionGate() {
   useEffect(() => {
     if (!moduleKey) return undefined
     const onShow = (e) => {
-      try {
-        sessionStorage.removeItem(DISMISS_KEY)
-      } catch {
-        /* ignore */
-      }
+      dismissedThisLaunch = false
       setDismissed(false)
       hadProblemRef.current = true
       setProblem(e?.detail?.denied ? 'denied' : 'off')
@@ -215,11 +210,7 @@ export default function LocationPermissionGate() {
   }, [moduleKey])
 
   const handleDismiss = useCallback(() => {
-    try {
-      sessionStorage.setItem(DISMISS_KEY, '1')
-    } catch {
-      /* ignore */
-    }
+    dismissedThisLaunch = true
     setDismissed(true)
     setProblem(null)
   }, [])
@@ -257,9 +248,9 @@ export default function LocationPermissionGate() {
     )
   }
 
-  // Customers get no custom screen/sheet: the system "Turn on device location" dialog
-  // (triggered by check()) is all they see. The sheet below is for delivery/restaurant/seller only.
-  if (!target || !problem || dismissed || !required) return null
+  // Everyone (customers too) gets the "turn on location" sheet whenever location is blocked or the
+  // device GPS is off - on every app open until it is fixed or dismissed with "Not now".
+  if (!target || !problem || dismissed || !popupEnabled) return null
 
   const isOff = problem === 'off'
 

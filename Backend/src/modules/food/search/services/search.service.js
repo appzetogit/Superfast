@@ -314,6 +314,28 @@ export const searchUnified = async (query = {}, options = {}) => {
             });
         });
 
+        // D2. Sponsored restaurants whose configured keywords match the search (same zone/filters apply)
+        try {
+            const nowDate = new Date();
+            const sponsoredByKeyword = await FoodRestaurant.find({
+                ...restaurantFilter,
+                'sponsorship.isSponsored': true,
+                'sponsorship.keywords': { $regex: regex },
+                $and: [
+                    { $or: [{ 'sponsorship.startsAt': null }, { 'sponsorship.startsAt': { $lte: nowDate } }] },
+                    { $or: [{ 'sponsorship.endsAt': null }, { 'sponsorship.endsAt': { $gte: nowDate } }] }
+                ]
+            }).limit(limit).lean();
+            sponsoredByKeyword.forEach(r => {
+                restaurantIds.add(r._id.toString());
+                if (!restaurantDetailsMap.has(r._id.toString())) {
+                    restaurantDetailsMap.set(r._id.toString(), { ...r, matchType: 'sponsored' });
+                }
+            });
+        } catch (sponsorErr) {
+            console.warn('[Search-Service] Sponsored keyword search error:', sponsorErr);
+        }
+
         // E. Global Fallback Search (If zero items matched, search without restrictive filters)
         if (restaurantDetailsMap.size === 0 && matchedDishes.length === 0) {
             const fallbackFoods = await FoodItem.find({
@@ -398,8 +420,28 @@ export const searchUnified = async (query = {}, options = {}) => {
                 res.distanceScore = 999;
             }
         });
-        results.sort((a, b) => (a.distanceScore || 999) - (b.distanceScore || 999));
     }
+
+    // Order: active sponsored restaurants first, then A-Z by name.
+    const nowTs = Date.now();
+    const isSponsoredNow = (r) => {
+        const s = r?.sponsorship;
+        if (!s || s.isSponsored !== true) return false;
+        if (s.startsAt && new Date(s.startsAt).getTime() > nowTs) return false;
+        if (s.endsAt && new Date(s.endsAt).getTime() < nowTs) return false;
+        return true;
+    };
+    const byName = (a, b) => String(a || '').localeCompare(String(b || ''), 'en', { sensitivity: 'base', numeric: true });
+    results.forEach(r => {
+        r.isSponsored = isSponsoredNow(r);
+        r.sponsoredLabel = r.isSponsored ? (r.sponsorship?.label || 'Sponsored') : null;
+    });
+    results.sort((a, b) => {
+        if (a.isSponsored !== b.isSponsored) return a.isSponsored ? -1 : 1;
+        return byName(a.restaurantName || a.name, b.restaurantName || b.name);
+    });
+    matchedDishes.sort((a, b) => byName(a.name, b.name));
+    matchedCategories.sort((a, b) => byName(a.name, b.name));
 
     const finalResult = {
         success: true,

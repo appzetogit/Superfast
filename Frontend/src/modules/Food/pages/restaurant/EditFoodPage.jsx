@@ -60,6 +60,8 @@ export default function EditFoodPage() {
   const { id } = useParams()
   const isNewFood = id === "new" || !id
   const [showMenu, setShowMenu] = useState(false)
+  const [catSearch, setCatSearch] = useState("")
+  const [subCatSearch, setSubCatSearch] = useState("")
   const [menuSections, setMenuSections] = useState([])
   const [availableCategories, setAvailableCategories] = useState([])
   const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
@@ -601,12 +603,24 @@ export default function EditFoodPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category
                   </label>
+                  <input
+                    type="text"
+                    value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                    placeholder="Search category..."
+                    className="w-full mb-2 px-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#ff8100] focus:border-transparent"
+                  />
                   <select
                     value={selectedParentId}
                     onChange={(e) => handleInputChange("category", e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
                   >
-                    {topLevelCategoryOptions.map((category) => (
+                    {topLevelCategoryOptions
+                      .filter((category) => {
+                        const q = catSearch.trim().toLowerCase()
+                        return !q || String(category.id) === String(selectedParentId) || String(category.name || "").toLowerCase().includes(q)
+                      })
+                      .map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}{category.foodTypeScope ? ` (${category.foodTypeScope})` : ""}
                       </option>
@@ -624,13 +638,25 @@ export default function EditFoodPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Sub Category
                     </label>
+                    <input
+                      type="text"
+                      value={subCatSearch}
+                      onChange={(e) => setSubCatSearch(e.target.value)}
+                      placeholder="Search sub category..."
+                      className="w-full mb-2 px-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#ff8100] focus:border-transparent"
+                    />
                     <select
                       value={selectedCategoryId === selectedParentId ? "" : selectedCategoryId}
                       onChange={(e) => handleInputChange("category", e.target.value || selectedParentId)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
                     >
                       <option value="">None (directly in category)</option>
-                      {subCategoryOptions.map((category) => (
+                      {subCategoryOptions
+                        .filter((category) => {
+                          const q = subCatSearch.trim().toLowerCase()
+                          return !q || String(category.id) === String(selectedCategoryId) || String(category.name || "").toLowerCase().includes(q)
+                        })
+                        .map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}{category.foodTypeScope ? ` (${category.foodTypeScope})` : ""}
                         </option>

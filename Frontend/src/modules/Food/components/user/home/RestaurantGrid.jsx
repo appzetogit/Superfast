@@ -56,6 +56,12 @@ const FoodRestaurantCard = memo(({
                 backendOrigin={backendOrigin}
               />
 
+              {restaurant?.isSponsored && (
+                <div className="absolute left-4 top-4 z-10 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white backdrop-blur-sm">
+                  {restaurant.sponsoredLabel || "Sponsored"}
+                </div>
+              )}
+
               <div className="absolute right-4 top-4 z-10 transform transition-transform duration-300 group-hover:scale-110">
                 <Button
                   variant="ghost"
@@ -92,6 +98,12 @@ const FoodRestaurantCard = memo(({
                       >
                         {availability.isOpen ? "Open now" : "Offline"}
                       </span>
+                      {!availability.isOpen && availability.reopenLabel && (
+                        <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-700 max-w-[170px] sm:max-w-full">
+                          <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
+                          <span className="truncate">{availability.reopenLabel}</span>
+                        </div>
+                      )}
                       {availability.isOpen && availability.closingCountdownLabel && (
                         <div className="flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-amber-700 max-w-[150px] sm:max-w-full">
                           <Timer className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />

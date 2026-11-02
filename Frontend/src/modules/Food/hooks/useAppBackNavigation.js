@@ -166,14 +166,16 @@ export default function useAppBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
-    const explicitBackPath = toFoodPath(location.state?.backTo) || toFoodPath(location.state?.from)
-    if (explicitBackPath && explicitBackPath !== location.pathname) {
-      navigate(explicitBackPath, { replace: true })
+    // Go exactly one step back in history when possible; fixed paths are only a fallback
+    // (e.g. page opened directly via link with no previous entry).
+    if (typeof window !== "undefined" && window.history.length > 1 && window.history.state?.idx > 0) {
+      navigate(-1)
       return
     }
 
-    if (typeof window !== "undefined" && window.history.length > 1 && window.history.state?.idx > 0) {
-      navigate(-1)
+    const explicitBackPath = toFoodPath(location.state?.backTo) || toFoodPath(location.state?.from)
+    if (explicitBackPath && explicitBackPath !== location.pathname) {
+      navigate(explicitBackPath, { replace: true })
       return
     }
 

@@ -144,6 +144,35 @@ const formatClosingCountdown = (minutesUntilClose, closingTime) => {
   return `Closes in ${minutesUntilClose} min`
 }
 
+// Finds the next scheduled opening (today, tomorrow, or within the next week) from real outlet timings.
+const getReopenLabel = (restaurant, now) => {
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const dayIndex = (now.getDay() + offset) % 7
+    const dayName = DAY_NAMES[dayIndex]
+
+    const openDays = Array.isArray(restaurant?.openDays) ? restaurant.openDays : []
+    if (openDays.length > 0) {
+      const normalized = new Set(openDays.map((d) => normalizeDay(d)).filter(Boolean))
+      if (normalized.size > 0 && !normalized.has(dayName)) continue
+    }
+
+    const timing = getTodayTiming(restaurant, dayName)
+    if (!timing || timing.isOpen === false) continue
+
+    const opMin = parseTimeToMinutes(timing.openingTime)
+    if (opMin === null) continue
+    if (offset === 0 && opMin <= nowMinutes) continue
+
+    const time = formatTimeLabel(timing.openingTime)
+    if (!time) continue
+    if (offset === 0) return `Opens today at ${time}`
+    if (offset === 1) return `Opens tomorrow at ${time}`
+    return `Opens ${dayName.slice(0, 3)} at ${time}`
+  }
+  return null
+}
+
 export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), options = {}) => {
   if (!restaurant) {
     return {
@@ -162,8 +191,14 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
   const isAcceptingOrders = !manualOffline
 
   if (!ignoreOperationalStatus && (!isActive || manualOffline)) {
+    let manualReopenLabel = null
+    if (isActive) {
+      const scheduled = getRestaurantAvailabilityStatus(restaurant, now, { ignoreOperationalStatus: true })
+      manualReopenLabel = scheduled.isOpen ? "Temporarily closed" : scheduled.reopenLabel || "Temporarily closed"
+    }
     return {
       isOpen: false,
+      reopenLabel: manualReopenLabel,
       isActive,
       isAcceptingOrders: false,
       isWithinTimings: false,
@@ -256,6 +291,7 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     const clt = todayTiming.closingTime
     return {
       isOpen: false,
+      reopenLabel: getReopenLabel(restaurant, now),
       isActive,
       isAcceptingOrders,
       isWithinTimings: false,
@@ -318,6 +354,7 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
 
   return {
     isOpen: isWithinTimings,
+    reopenLabel: isWithinTimings ? null : getReopenLabel(restaurant, now),
     isActive,
     isAcceptingOrders,
     isWithinTimings,

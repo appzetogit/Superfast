@@ -38,6 +38,7 @@ import {
   Plus,
   Check,
   Share2,
+  ArrowUp,
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -198,6 +199,21 @@ export default function Home() {
     return settings?.moduleThemes?.food?.secondaryThemeColor || "#b3202c";
   });
   const [showToast, setShowToast] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        setShowBackToTop(window.scrollY > 900);
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   const heroShellRef = useRef(null);
@@ -508,6 +524,27 @@ export default function Home() {
             </Suspense>
             )}
           </div>
+
+          {activeTab === "food" && typeof document !== "undefined" &&
+            createPortal(
+              <AnimatePresence>
+                {showBackToTop && (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                    className="fixed left-1/2 top-24 z-[60] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-[var(--primary-theme,#e23744)] px-4 py-2 text-xs font-bold text-white shadow-lg active:scale-95"
+                  >
+                    Back to Top
+                    <ArrowUp className="h-3.5 w-3.5" strokeWidth={3} />
+                  </motion.button>
+                )}
+              </AnimatePresence>,
+              document.body
+            )}
 
           {hasMountedQuick && (
             <div className={cn("bg-white dark:bg-[#0a0a0a]", activeTab === "quick" ? "block" : "hidden")}>

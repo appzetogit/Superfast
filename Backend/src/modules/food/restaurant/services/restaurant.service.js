@@ -1315,6 +1315,28 @@ export const uploadRestaurantMenuImages = async (restaurantId, files = []) => {
     };
 };
 
+const isSponsorshipActive = (s, now = new Date()) => {
+    if (!s || s.isSponsored !== true) return false;
+    if (s.startsAt && new Date(s.startsAt) > now) return false;
+    if (s.endsAt && new Date(s.endsAt) < now) return false;
+    return true;
+};
+
+// Aggregation expression: 0 when sponsorship is currently active, 1 otherwise (sorts sponsored first).
+const SPONSOR_RANK_EXPR = {
+    $cond: [
+        {
+            $and: [
+                { $eq: [{ $ifNull: ['$sponsorship.isSponsored', false] }, true] },
+                { $lte: [{ $ifNull: ['$sponsorship.startsAt', new Date(0)] }, '$$NOW'] },
+                { $gte: [{ $ifNull: ['$sponsorship.endsAt', new Date('9999-12-31')] }, '$$NOW'] }
+            ]
+        },
+        0,
+        1
+    ]
+};
+
 const toRestaurantSummary = (doc) => {
     if (!doc) return null;
     
@@ -1388,6 +1410,9 @@ const toRestaurantSummary = (doc) => {
     return {
         id: doc._id,
         _id: doc._id,
+        isSponsored: isSponsorshipActive(doc.sponsorship),
+        sponsoredLabel: isSponsorshipActive(doc.sponsorship) ? (doc.sponsorship?.label || 'Sponsored') : null,
+        sponsorKeywords: isSponsorshipActive(doc.sponsorship) && Array.isArray(doc.sponsorship?.keywords) ? doc.sponsorship.keywords : [],
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
         profileImage: doc.profileImage ? { url: doc.profileImage } : null,
@@ -1506,7 +1531,16 @@ export const listApprovedRestaurants = async (query = {}) => {
                 { city: { $regex: term, $options: 'i' } },
                 { 'location.area': { $regex: term, $options: 'i' } },
                 { 'location.city': { $regex: term, $options: 'i' } },
-                { cuisines: { $in: [new RegExp(term, 'i')] } }
+                { cuisines: { $in: [new RegExp(term, 'i')] } },
+                // Sponsored restaurants also surface for their configured search keywords.
+                {
+                    'sponsorship.isSponsored': true,
+                    'sponsorship.keywords': { $in: [new RegExp(term, 'i')] },
+                    $and: [
+                        { $or: [{ 'sponsorship.startsAt': null }, { 'sponsorship.startsAt': { $lte: new Date() } }] },
+                        { $or: [{ 'sponsorship.endsAt': null }, { 'sponsorship.endsAt': { $gte: new Date() } }] }
+                    ]
+                }
             ];
         }
     }
@@ -1537,6 +1571,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         slug: 1,
         restaurantNameNormalized: 1,
         priority: 1,
+        sponsorship: 1,
         recommendedItems: 1
     };
 
@@ -1642,14 +1677,14 @@ export const listApprovedRestaurants = async (query = {}) => {
         }
 
         const sortStage = (() => {
-            if (sortBy === 'rating' || sortBy === 'rating-high') return { $sort: { isAcceptingOrders: -1, rating: -1, distanceMeters: 1 } };
-            if (sortBy === 'rating-low') return { $sort: { isAcceptingOrders: -1, rating: 1, distanceMeters: 1 } };
-            if (sortBy === 'price-low') return { $sort: { isAcceptingOrders: -1, featuredPrice: 1, distanceMeters: 1 } };
-            if (sortBy === 'price-high') return { $sort: { isAcceptingOrders: -1, featuredPrice: -1, distanceMeters: 1 } };
-            if (sortBy === 'newest') return { $sort: { isAcceptingOrders: -1, createdAt: -1 } };
-            if (sortBy === 'deliveryTime') return { $sort: { isAcceptingOrders: -1, estimatedDeliveryTimeMinutes: 1, distanceMeters: 1 } };
+            if (sortBy === 'rating' || sortBy === 'rating-high') return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, rating: -1, distanceMeters: 1 } };
+            if (sortBy === 'rating-low') return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, rating: 1, distanceMeters: 1 } };
+            if (sortBy === 'price-low') return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, featuredPrice: 1, distanceMeters: 1 } };
+            if (sortBy === 'price-high') return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, featuredPrice: -1, distanceMeters: 1 } };
+            if (sortBy === 'newest') return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, createdAt: -1 } };
+            if (sortBy === 'deliveryTime') return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, estimatedDeliveryTimeMinutes: 1, distanceMeters: 1 } };
             // nearest (default)
-            return { $sort: { isAcceptingOrders: -1, effectivePriority: 1, distanceMeters: 1 } };
+            return { $sort: { isAcceptingOrders: -1, sponsorRank: 1, effectivePriority: 1, distanceMeters: 1 } };
         })();
 
         const basePipeline = [
@@ -1657,6 +1692,7 @@ export const listApprovedRestaurants = async (query = {}) => {
             ...foodItemsLookupFilter,
             {
                 $addFields: {
+                    sponsorRank: SPONSOR_RANK_EXPR,
                     distanceInKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
                     effectivePriority: {
                         $cond: {
@@ -1705,12 +1741,12 @@ export const listApprovedRestaurants = async (query = {}) => {
 
     // Non-geo path: normal query + sort.
     const sort = (() => {
-        if (sortBy === 'rating' || sortBy === 'rating-high') return { isAcceptingOrders: -1, rating: -1, createdAt: -1 };
-        if (sortBy === 'rating-low') return { isAcceptingOrders: -1, rating: 1, createdAt: -1 };
-        if (sortBy === 'price-low') return { isAcceptingOrders: -1, featuredPrice: 1, createdAt: -1 };
-        if (sortBy === 'price-high') return { isAcceptingOrders: -1, featuredPrice: -1, createdAt: -1 };
-        if (sortBy === 'deliveryTime') return { isAcceptingOrders: -1, estimatedDeliveryTimeMinutes: 1, createdAt: -1 };
-        return { isAcceptingOrders: -1, restaurantName: 1 };
+        if (sortBy === 'rating' || sortBy === 'rating-high') return { isAcceptingOrders: -1, sponsorRank: 1, rating: -1, createdAt: -1 };
+        if (sortBy === 'rating-low') return { isAcceptingOrders: -1, sponsorRank: 1, rating: 1, createdAt: -1 };
+        if (sortBy === 'price-low') return { isAcceptingOrders: -1, sponsorRank: 1, featuredPrice: 1, createdAt: -1 };
+        if (sortBy === 'price-high') return { isAcceptingOrders: -1, sponsorRank: 1, featuredPrice: -1, createdAt: -1 };
+        if (sortBy === 'deliveryTime') return { isAcceptingOrders: -1, sponsorRank: 1, estimatedDeliveryTimeMinutes: 1, createdAt: -1 };
+        return { isAcceptingOrders: -1, sponsorRank: 1, restaurantName: 1 };
     })();
 
     const basePipeline = [
@@ -1718,6 +1754,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         ...foodItemsLookupFilter,
         {
             $addFields: {
+                sponsorRank: SPONSOR_RANK_EXPR,
                 effectivePriority: {
                     $cond: {
                         if: {

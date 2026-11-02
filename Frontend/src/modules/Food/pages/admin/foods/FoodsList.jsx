@@ -52,6 +52,8 @@ export default function FoodsList() {
   const [categoryOptions, setCategoryOptions] = useState([])
   const [categorySearch, setCategorySearch] = useState("")
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false)
+  const [subCategorySearch, setSubCategorySearch] = useState("")
+  const [subCategoryPopoverOpen, setSubCategoryPopoverOpen] = useState(false)
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -329,6 +331,8 @@ export default function FoodsList() {
       : selectedCategoryOption?.id || ""
   const selectedParentCategory = categoryOptions.find((c) => c.id === selectedParentCategoryId)
   const subCategoryOptions = categoryOptions.filter((c) => selectedParentCategoryId && c.parentId === selectedParentCategoryId)
+  const selectedSubCategoryOption =
+    selectedCategoryOption?.parentId && categoryIdSet.has(selectedCategoryOption.parentId) ? selectedCategoryOption : null
 
   const handleVariantChange = (variantId, field, value) => {
     setFoodForm((prev) => ({
@@ -830,28 +834,61 @@ export default function FoodsList() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Sub Category</label>
-                <select
-                  value={selectedCategoryOption?.parentId && categoryIdSet.has(selectedCategoryOption.parentId) ? selectedCategoryOption.id : ""}
-                  disabled={!selectedParentCategoryId || subCategoryOptions.length === 0}
-                  onChange={(e) => {
-                    const sub = categoryOptions.find((c) => c.id === e.target.value)
-                    const target = sub || selectedParentCategory
-                    if (!target) return
-                    setFoodForm((prev) => ({ ...prev, categoryId: target.id, categoryName: target.name }))
+                <Popover
+                  open={subCategoryPopoverOpen}
+                  onOpenChange={(open) => {
+                    setSubCategoryPopoverOpen(open)
+                    if (!open) setSubCategorySearch("")
                   }}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white disabled:bg-slate-100"
                 >
-                  <option value="">
-                    {!selectedParentCategoryId
-                      ? "Select category first"
-                      : subCategoryOptions.length === 0
-                        ? "No subcategories"
-                        : "---Select---"}
-                  </option>
-                  {subCategoryOptions.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={!selectedParentCategoryId || subCategoryOptions.length === 0}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-left flex items-center justify-between disabled:bg-slate-100"
+                    >
+                      <span className={selectedSubCategoryOption ? "text-slate-900" : "text-slate-400"}>
+                        {selectedSubCategoryOption?.name ||
+                          (!selectedParentCategoryId
+                            ? "Select category first"
+                            : subCategoryOptions.length === 0
+                              ? "No subcategories"
+                              : "---Select---")}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+                    <input
+                      type="text"
+                      value={subCategorySearch}
+                      onChange={(e) => setSubCategorySearch(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-white mb-2"
+                      placeholder="Search sub category..."
+                      autoFocus
+                    />
+                    <div className="max-h-56 overflow-y-auto">
+                      {subCategoryOptions
+                        .filter((c) => String(c.name || "").toLowerCase().includes(subCategorySearch.trim().toLowerCase()))
+                        .map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setFoodForm((prev) => ({ ...prev, categoryId: c.id, categoryName: c.name }))
+                              setSubCategoryPopoverOpen(false)
+                              setSubCategorySearch("")
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 ${
+                              String(foodForm.categoryId || "") === String(c.id) ? "bg-slate-100 font-medium" : ""
+                            }`}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Food Name</label>

@@ -876,18 +876,23 @@ function RestaurantDetailsContent() {
                      description: typeof item.description === "string" ? item.description : "",
                    }
                  }
+                const byNameAZ = (a, b) =>
+                  String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base", numeric: true })
+                const sectionSortKey = (s) => `${s?.parentName ? `${s.parentName} ` : ""}${s?.name || ""}`
                 const menuSections = toArray(rawSections).map((section, sectionIndex) => ({
                   ...section,
                   id: String(section.id || section._id || `section-${sectionIndex}`),
                   name: section.name || section.title || "Unnamed Section",
-                  items: toArray(section.items).map(normalizeItem),
+                  items: toArray(section.items).map(normalizeItem).sort(byNameAZ),
                   subsections: toArray(section.subsections).map((subsection, subsectionIndex) => ({
                     ...subsection,
                     id: String(subsection.id || subsection._id || `subsection-${sectionIndex}-${subsectionIndex}`),
                     name: subsection.name || "Unnamed Subsection",
-                    items: toArray(subsection.items).map(normalizeItem),
-                  })),
-                }))
+                    items: toArray(subsection.items).map(normalizeItem).sort(byNameAZ),
+                  })).sort(byNameAZ),
+                })).sort((a, b) =>
+                  sectionSortKey(a).localeCompare(sectionSortKey(b), "en", { sensitivity: "base", numeric: true })
+                )
 
                 // Collect all recommended items from all sections
                 // Only include items that are both recommended (isRecommended === true) AND available (isAvailable !== false)
@@ -947,7 +952,7 @@ function RestaurantDetailsContent() {
                   finalMenuSections.splice(existingRecIndex, 1)
                 }
                 
-                const uniqueRecItems = Array.from(new Map(mergedRecItems.map(item => [item.id || item._id, item])).values())
+                const uniqueRecItems = Array.from(new Map(mergedRecItems.map(item => [item.id || item._id, item])).values()).sort(byNameAZ)
 
                 if (uniqueRecItems.length > 0 && (hasPreviousOrderForRestaurant || existingRecIndex !== -1)) {
                   finalMenuSections = [{ name: "Recommended for you", items: uniqueRecItems, subsections: [] }, ...finalMenuSections]
@@ -2205,6 +2210,12 @@ function RestaurantDetailsContent() {
             <Clock className="h-4 w-4 text-gray-400" />
             <span>{restaurant?.deliveryTime || "25-30 mins"}</span>
           </div>
+          {isRestaurantOffline && availabilityStatus.reopenLabel && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{availabilityStatus.reopenLabel}</span>
+            </div>
+          )}
         </div>
 
 
@@ -2370,7 +2381,6 @@ function RestaurantDetailsContent() {
                   {/* Section Header */}
                   <div className="pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
                     <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
-                      {!isRecommended && section?.parentName ? `${section.parentName} › ` : ""}
                       {isRecommended
                         ? getSectionDisplayName(section)
                         : (section?.name && typeof section.name === 'string' && section.name.trim())
@@ -2844,7 +2854,7 @@ function RestaurantDetailsContent() {
 
       {/* Menu Button - Sticky at page bottom right (hidden when filter or menu sheet open) */}
       {!showFilterSheet && !showMenuSheet && !showMenuOptionsSheet && restaurant?.menuSections && Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0 && (
-        <div className="sticky dark:bg-[#1a1a1a] bottom-4 flex justify-end px-4 z-50 mt-auto">
+        <div className="sticky dark:bg-[#1a1a1a] bottom-[calc(5rem+env(safe-area-inset-bottom))] flex justify-end px-4 z-50 mt-auto">
           <Button
             className="bg-[#1a1a1a] dark:bg-[var(--primary-theme)] hover:bg-black dark:hover:bg-[#a81e29] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[var(--primary-theme)]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group"
             size="lg"
@@ -2931,7 +2941,7 @@ function RestaurantDetailsContent() {
                   </div>
 
                   {/* Close Button */}
-                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-4 bg-white dark:bg-[#1a1a1a]">
+                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-4 bg-white dark:bg-[#1a1a1a]">
                     <Button
                       className="w-full bg-[#1a1a1a] dark:bg-[var(--primary-theme)] hover:bg-[var(--primary-theme)] dark:hover:bg-[#a81e29] text-white border-0 flex items-center justify-center gap-2 py-6 rounded-xl font-bold transition-all shadow-lg"
                       onClick={() => setShowMenuSheet(false)}
