@@ -7,6 +7,14 @@ export default function ServiceUnavailable({ type = "zone", moduleName = "", onR
   // Unique taglines based on module and type
   const getMessage = () => {
     if (type === "module") {
+      const name = moduleName.toLowerCase();
+      if (name.includes('quick') || name.includes('mart')) {
+        return {
+          title: "Under Maintenance",
+          desc: "SuperfastMart is currently under maintenance. We're making things better and will be back very soon. Thank you for your patience!",
+          icon: <Construction className="w-16 h-16 text-orange-400" />
+        };
+      }
       return {
         title: "Currently Unavailable",
         desc: `${moduleName} is temporarily unavailable in your area. We're working hard to bring it to you soon.`,
