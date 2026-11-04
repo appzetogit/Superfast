@@ -198,6 +198,10 @@ export async function updateGlobalSettings(req, res, next) {
         if (showLocationPopup !== undefined) updateQuery.$set.showLocationPopup = showLocationPopup;
         if (bannedNumbers !== undefined && Array.isArray(bannedNumbers)) updateQuery.$set.bannedNumbers = bannedNumbers;
         if (dynamicModuleThemes !== undefined) updateQuery.$set.dynamicModuleThemes = dynamicModuleThemes;
+        if (modules !== undefined && modules !== null) {
+            if (modules.food !== undefined) updateQuery.$set['modules.food'] = Boolean(modules.food);
+            if (modules.quickCommerce !== undefined) updateQuery.$set['modules.quickCommerce'] = Boolean(modules.quickCommerce);
+        }
         updateQuery.$set.updatedBy = req.user ? req.user.userId : null;
 
         if (data.moduleThemes !== undefined) {
