@@ -82,6 +82,11 @@ const ModuleManagement = () => {
   const [maxCodDistance, setMaxCodDistance] = useState(5);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(true);
   const [showLocationPopup, setShowLocationPopup] = useState(true);
+  const emptyNotice = { title: '', message: '', theme: 'diwali' };
+  const [notices, setNotices] = useState({ food: { ...emptyNotice }, quickCommerce: { ...emptyNotice } });
+
+  const setNotice = (key, field, value) =>
+    setNotices(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
 
   const fetchSettings = async () => {
     try {
@@ -101,6 +106,10 @@ const ModuleManagement = () => {
         setMaxCodDistance(settings.maxCodDistance ?? 5);
         setOnlinePaymentEnabled(settings.onlinePaymentEnabled ?? true);
         setShowLocationPopup(settings.showLocationPopup ?? true);
+        setNotices({
+          food: { ...emptyNotice, ...(settings.moduleNotices?.food || {}) },
+          quickCommerce: { ...emptyNotice, ...(settings.moduleNotices?.quickCommerce || {}) },
+        });
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -124,7 +133,7 @@ const ModuleManagement = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await adminAPI.updateBusinessSettings({ modules, codEnabled, maxCodDistance: Number(maxCodDistance), onlinePaymentEnabled, showLocationPopup });
+      const response = await adminAPI.updateBusinessSettings({ modules, codEnabled, maxCodDistance: Number(maxCodDistance), onlinePaymentEnabled, showLocationPopup, moduleNotices: notices });
       const updatedSettings = response?.data?.data || response?.data;
 
       if (updatedSettings) {
@@ -250,6 +259,47 @@ const ModuleManagement = () => {
                 color="pink"
               />
 
+            </div>
+
+            <div className="mt-10 space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Closed Message for Customers</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Shown with an animation when a module is switched OFF. Write in English - it is auto-translated to each customer's selected language. Leave empty for the default message.
+                </p>
+              </div>
+              {[['food', 'Food Delivery'], ['quickCommerce', 'Quick Commerce']].map(([key, label]) => (
+                <div key={key} className="p-5 rounded-2xl border-2 border-gray-100 bg-white space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-gray-900 text-sm">{label}</h4>
+                    <select
+                      value={notices[key].theme}
+                      onChange={(e) => setNotice(key, 'theme', e.target.value)}
+                      className="border border-gray-300 rounded-lg px-2 py-1 text-xs font-semibold bg-white"
+                    >
+                      <option value="diwali">Diwali (diyas + fireworks)</option>
+                      <option value="festival">Festival (confetti)</option>
+                      <option value="none">Plain</option>
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    placeholder="Title e.g. Happy Diwali! 🪔"
+                    value={notices[key].title}
+                    onChange={(e) => setNotice(key, 'title', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-500"
+                  />
+                  <textarea
+                    rows={3}
+                    maxLength={600}
+                    placeholder="Message e.g. Restaurants are closed for Diwali. We will be back soon. Wishing you and your family a very Happy Diwali!"
+                    value={notices[key].message}
+                    onChange={(e) => setNotice(key, 'message', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  />
+                </div>
+              ))}
             </div>
 
             <div className="mt-12 bg-indigo-50 rounded-2xl p-6 flex items-start gap-4 border border-indigo-100">

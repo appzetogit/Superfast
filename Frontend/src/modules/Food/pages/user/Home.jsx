@@ -265,7 +265,7 @@ export default function Home() {
   const { zoneId: effectiveZoneId, isInService: isLiveInService, isOutOfService: isEffectiveOutOfService } = useZone(location);
 
   // --- Serviceability ---
-  const { isModuleEnabled, loading: serviceabilityLoading } = useServiceability(activeTab);
+  const { isModuleEnabled, loading: serviceabilityLoading, notice: moduleNotice } = useServiceability(activeTab);
 
   const hideExtras = !isModuleEnabled || isEffectiveOutOfService;
 
@@ -451,6 +451,7 @@ export default function Home() {
           <ServiceUnavailable
             type={!isModuleEnabled ? "module" : "zone"}
             moduleName={activeTab === 'food' ? 'Food Delivery' : 'SuperfastMart'}
+            notice={!isModuleEnabled ? moduleNotice : null}
             onRefresh={() => window.location.reload()}
           />
         </div>

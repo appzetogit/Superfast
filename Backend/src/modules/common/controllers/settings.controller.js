@@ -202,6 +202,15 @@ export async function updateGlobalSettings(req, res, next) {
             if (modules.food !== undefined) updateQuery.$set['modules.food'] = Boolean(modules.food);
             if (modules.quickCommerce !== undefined) updateQuery.$set['modules.quickCommerce'] = Boolean(modules.quickCommerce);
         }
+        if (data.moduleNotices && typeof data.moduleNotices === 'object') {
+            for (const key of ['food', 'quickCommerce']) {
+                const n = data.moduleNotices[key];
+                if (!n || typeof n !== 'object') continue;
+                if (n.title !== undefined) updateQuery.$set[`moduleNotices.${key}.title`] = String(n.title).slice(0, 120);
+                if (n.message !== undefined) updateQuery.$set[`moduleNotices.${key}.message`] = String(n.message).slice(0, 600);
+                if (n.theme !== undefined) updateQuery.$set[`moduleNotices.${key}.theme`] = String(n.theme).slice(0, 30);
+            }
+        }
         updateQuery.$set.updatedBy = req.user ? req.user.userId : null;
 
         if (data.moduleThemes !== undefined) {

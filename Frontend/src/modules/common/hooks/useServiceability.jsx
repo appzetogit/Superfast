@@ -9,6 +9,7 @@ import { loadBusinessSettings } from '@common/utils/businessSettings';
 export function useServiceability(activeTab) {
   const [isModuleEnabled, setIsModuleEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -26,6 +27,10 @@ export function useServiceability(activeTab) {
         if (settings && settings.modules && isMounted) {
           // If the module is explicitly set to false, it is disabled. Otherwise default to true.
           setIsModuleEnabled(settings.modules[moduleKey] !== false);
+        }
+        if (settings && isMounted) {
+          const n = settings.moduleNotices?.[moduleKey];
+          setNotice(n && (n.title || n.message) ? n : null);
         }
       } catch (err) {
          if (isMounted) setIsModuleEnabled(true); // Fallback to true so we don't accidentally block the UI
@@ -48,5 +53,5 @@ export function useServiceability(activeTab) {
     };
   }, [activeTab]);
 
-  return { isModuleEnabled, loading };
+  return { isModuleEnabled, loading, notice };
 }

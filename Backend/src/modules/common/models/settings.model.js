@@ -70,6 +70,19 @@ const globalSettingsSchema = new mongoose.Schema(
 
             quickCommerce: { type: Boolean, default: true },
         },
+        // Admin-written message shown to customers when a module is switched off (e.g. festival closure)
+        moduleNotices: {
+            food: {
+                title: { type: String, default: '' },
+                message: { type: String, default: '' },
+                theme: { type: String, default: 'diwali' }
+            },
+            quickCommerce: {
+                title: { type: String, default: '' },
+                message: { type: String, default: '' },
+                theme: { type: String, default: 'diwali' }
+            }
+        },
         codEnabled: { type: Boolean, default: true },
         maxCodDistance: { type: Number, default: 5 },
         onlinePaymentEnabled: { type: Boolean, default: true },
