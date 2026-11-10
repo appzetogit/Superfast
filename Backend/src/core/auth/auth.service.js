@@ -544,7 +544,20 @@ export const logout = async (refreshToken, fcmToken, platform) => {
     }
   }
 
-  // 2. Invalidate the refresh token (standard logout procedure)
+  // 2. If this is a delivery partner, force them offline so they stop receiving order requests
+  try {
+    const stored = await FoodRefreshToken.findOne({ token: refreshToken }).select("userId").lean();
+    if (stored?.userId) {
+      await FoodDeliveryPartner.updateOne(
+        { _id: stored.userId, availabilityStatus: "online" },
+        { $set: { availabilityStatus: "offline" } },
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to set delivery partner offline during logout");
+  }
+
+  // 3. Invalidate the refresh token (standard logout procedure)
   const deleted = await FoodRefreshToken.deleteOne({ token: refreshToken });
   return { invalidated: deleted.deletedCount > 0 };
 };
@@ -590,7 +603,17 @@ export const logoutAll = async (refreshToken, fcmToken, platform) => {
     }
   }
 
-  // 3. Delete ALL refresh tokens for this user
+  // 3. Force delivery partner offline (no-op for other roles)
+  try {
+    await FoodDeliveryPartner.updateOne(
+      { _id: userId, availabilityStatus: "online" },
+      { $set: { availabilityStatus: "offline" } },
+    );
+  } catch (err) {
+    logger.warn({ err }, "Failed to set delivery partner offline during logoutAll");
+  }
+
+  // 4. Delete ALL refresh tokens for this user
   const deleted = await FoodRefreshToken.deleteMany({ userId });
   return { invalidatedCount: deleted.deletedCount, success: true };
 };

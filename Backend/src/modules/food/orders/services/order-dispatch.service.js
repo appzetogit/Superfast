@@ -26,6 +26,8 @@ const PHASE1_RIDER_COUNT = 3;
 const RETRY_DELAY_MS = 15000;
 const NO_RIDER_RETRY_DELAY_MS = 10000;
 const RECYCLE_COOLDOWN_MS = 10000;
+const ADMIN_ALERT_COOLDOWN_MS = 10 * 60 * 1000;
+const adminAlertSentAt = new Map();
 
 async function listNearbyOnlineDeliveryPartners(
   sourceId,
@@ -71,6 +73,7 @@ async function listNearbyOnlineDeliveryPartners(
     const partners = await FoodDeliveryPartner.find({
       status: "approved",
       availabilityStatus: "online",
+      lastLocationAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) },
     })
       .select("_id status name lastLocationAt")
       .limit(Math.max(1, limit * 2))
@@ -116,7 +119,9 @@ async function listNearbyOnlineDeliveryPartners(
     const isStale =
       !p.lastLocationAt ||
       Date.now() - new Date(p.lastLocationAt).getTime() > STALE_GPS_MS;
-    if (p.lastLat == null || p.lastLng == null || isStale) {
+    // No recent heartbeat => app closed / logged out / killed. Don't send requests to them.
+    if (isStale) continue;
+    if (p.lastLat == null || p.lastLng == null) {
       scored.push({ partnerId: p._id, distanceKm: 999, status: p.status });
       continue;
     }
@@ -134,6 +139,7 @@ async function listNearbyOnlineDeliveryPartners(
     const anyOnline = await FoodDeliveryPartner.find({
       status: "approved",
       availabilityStatus: "online",
+      lastLocationAt: { $gte: new Date(Date.now() - STALE_GPS_MS) },
     })
       .select("_id status name lastLocationAt")
       .limit(Math.max(1, limit))
@@ -275,7 +281,11 @@ export async function tryAutoAssign(orderId, options = {}) {
     const isPhase2 = attempt >= 2;
     const isPhase3 = attempt >= 6; // ~6 minutes (60s * 6)
 
-    if (isPhase3) {
+    // Throttle the admin alert: at most once per order every 10 minutes (it used to fire on every retry).
+    const lastAlertAt = adminAlertSentAt.get(String(order._id)) || 0;
+    const shouldAlertAdmin = isPhase3 && Date.now() - lastAlertAt > ADMIN_ALERT_COOLDOWN_MS;
+    if (shouldAlertAdmin) {
+      adminAlertSentAt.set(String(order._id), Date.now());
       logger.error(
         `[CRITICAL] Order ${order._id} unassigned for ${attempt} mins. Triggering Admin Alert (Phase 3).`,
       );
