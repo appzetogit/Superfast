@@ -28,6 +28,11 @@ const NO_RIDER_RETRY_DELAY_MS = 10000;
 const RECYCLE_COOLDOWN_MS = 10000;
 const ADMIN_ALERT_COOLDOWN_MS = 10 * 60 * 1000;
 const adminAlertSentAt = new Map();
+// Stop ringing riders for an order nobody picked up within this window (stale / test / stuck orders
+// used to be re-offered forever, so riders heard the alert with no real new order).
+const MAX_DISPATCH_AGE_MS = 30 * 60 * 1000;
+const isDispatchExpired = (createdAt) =>
+  createdAt && Date.now() - new Date(createdAt).getTime() > MAX_DISPATCH_AGE_MS;
 
 async function listNearbyOnlineDeliveryPartners(
   sourceId,
@@ -223,6 +228,16 @@ export async function tryAutoAssign(orderId, options = {}) {
     logger.info(
       `tryAutoAssign: Skip for ${orderId} (already dispatching, accepted, or multi-attempt lock active).`,
     );
+    return null;
+  }
+
+  if (isDispatchExpired(order.createdAt)) {
+    logger.warn(
+      `tryAutoAssign: Order ${order._id} is older than ${MAX_DISPATCH_AGE_MS / 60000} min and still unassigned. Not re-offering to riders.`,
+    );
+    await FoodOrder.findByIdAndUpdate(orderId, {
+      $unset: { "dispatch.dispatchingAt": "" },
+    });
     return null;
   }
 
@@ -577,6 +592,7 @@ export async function runDispatchWatchdog() {
         },
       ],
       "dispatch.status": { $ne: "accepted" },
+      createdAt: { $gte: new Date(Date.now() - MAX_DISPATCH_AGE_MS) },
     })
       .select("_id orderStatus orderType restaurantId items dispatch")
       .limit(30)
