@@ -226,7 +226,8 @@ const buildMessagePayload = (payload = {}, token) => {
 
     message.android = {
         priority: 'HIGH',
-        ttl: '86400s',
+        // Order offers expire in 2 min so a queued push never rings hours later when the phone reconnects.
+        ttl: (payload.data?.type === 'new_order' || payload.type === 'new_order') ? '120s' : '86400s',
         notification: {
             title,
             body,

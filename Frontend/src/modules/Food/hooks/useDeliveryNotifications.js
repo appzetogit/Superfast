@@ -557,6 +557,9 @@ export const useDeliveryNotifications = () => {
             : [];
 
       const recoverableOrder = availableOrders.find((order) => {
+        // Never ring on app focus/reconnect for stale orders (>30 min old).
+        const createdMs = new Date(order?.createdAt || 0).getTime();
+        if (createdMs && Date.now() - createdMs > 30 * 60 * 1000) return false;
         if (order?.type === 'RETURN_PICKUP') return true;
         if (order?.isReassignment || order?.reassignmentStatus === 'pending') return true;
         const dispatchStatus = String(order?.dispatch?.status || '').toLowerCase();
