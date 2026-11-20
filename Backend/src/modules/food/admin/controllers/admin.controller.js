@@ -1676,3 +1676,23 @@ export async function saveDeliveryTargetRuleAdmin(req, res, next) {
         next(error);
     }
 }
+
+export async function getRestaurantSalesList(req, res, next) {
+    try {
+        const { getAdminRestaurantSales } = await import('../services/restaurantSales.service.js');
+        const data = await getAdminRestaurantSales(req.query || {});
+        res.status(200).json({ success: true, message: 'Restaurant sales fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getRestaurantSalesDetail(req, res, next) {
+    try {
+        const { getAdminRestaurantSalesDetail } = await import('../services/restaurantSales.service.js');
+        const data = await getAdminRestaurantSalesDetail(req.params.id, req.query || {});
+        res.status(200).json({ success: true, message: 'Restaurant sales detail fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}

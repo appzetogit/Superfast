@@ -62,6 +62,8 @@ router.patch('/restaurants/complaints/:id', adminController.updateRestaurantComp
 router.get('/restaurants', adminController.getRestaurants);
 router.get('/dashboard-stats', adminController.getDashboardStats);
 router.get('/reports/restaurants', adminController.getRestaurantReport);
+router.get('/reports/restaurant-sales', adminController.getRestaurantSalesList);
+router.get('/reports/restaurant-sales/:id', adminController.getRestaurantSalesDetail);
 router.get('/reports/transactions', adminController.getTransactionReport);
 router.get('/reports/earnings', adminController.getEarningsReport);
 router.get('/reports/disbursement', adminController.getDisbursementReport);

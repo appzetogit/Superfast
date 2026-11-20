@@ -62,6 +62,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
       { id: 8, name: "Reservations", icon: Calendar, route: "/restaurant/reservations" },
       { id: 9, name: "Menu Categories", icon: Settings, route: "/restaurant/menu-categories" },
       { id: 10, name: "Delivery Settings", icon: Truck, route: "/restaurant/delivery-settings" },
+      { id: 17, name: "Sales & Earnings", icon: IndianRupee, route: "/restaurant/sales-report" },
       { id: 11, name: "Finance", icon: IndianRupee, route: "/restaurant/hub-finance" },
       { id: 12, name: "Support", icon: LifeBuoy, route: "/restaurant/help-centre/support" },
       { id: 13, name: "FSSAI", icon: BadgeCheck, route: "/restaurant/fssai" },

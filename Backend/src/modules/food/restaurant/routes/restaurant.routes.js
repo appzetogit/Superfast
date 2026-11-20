@@ -53,7 +53,7 @@ import {
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
-import { getRestaurantFinanceController } from '../controllers/restaurantFinance.controller.js';
+import { getRestaurantFinanceController, getRestaurantSalesReportController } from '../controllers/restaurantFinance.controller.js';
 
 import { cacheResponse, invalidateCache } from '../../../../middleware/cache.js';
 
@@ -107,6 +107,7 @@ router.put('/outlet-timings', authMiddleware, requireRestaurant, async (req, res
     next();
 }, upsertCurrentRestaurantOutletTimingsController);
 router.get('/finance', authMiddleware, requireRestaurant, getRestaurantFinanceController);
+router.get('/sales-report', authMiddleware, requireRestaurant, getRestaurantSalesReportController);
 const payoutAccount = payoutAccountControllers('restaurant');
 router.get('/payout-account', authMiddleware, requireRestaurant, payoutAccount.get);
 router.post('/payout-account', authMiddleware, requireRestaurant, payoutAccount.save);

@@ -99,7 +99,7 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
 };
 
 // Always-on test login for payment-gateway/app-store reviewers. Works without Developer Mode.
-const HARDCODED_TEST_PHONES = ['9111111111'];
+const HARDCODED_TEST_PHONES = ['9111111111', '7354126134', '8989931140', '0987654356'];
 const HARDCODED_TEST_OTP = '1234'; // app OTP screen has 4 boxes
 const isHardcodedTestPhone = (phoneCandidates = []) =>
     HARDCODED_TEST_PHONES.some((p) => phoneCandidates.includes(p));

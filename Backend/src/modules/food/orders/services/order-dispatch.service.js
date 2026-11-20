@@ -31,6 +31,9 @@ const adminAlertSentAt = new Map();
 // Stop ringing riders for an order nobody picked up within this window (stale / test / stuck orders
 // used to be re-offered forever, so riders heard the alert with no real new order).
 const MAX_DISPATCH_AGE_MS = 30 * 60 * 1000;
+// A rider whose app is closed/backgrounded stops sending GPS heartbeats, but is still "online" and
+// reachable by FCM push. Keep them dispatchable (ranked after riders with fresh GPS) for this long.
+const STALE_PUSH_WINDOW_MS = 12 * 60 * 60 * 1000;
 const isDispatchExpired = (createdAt) =>
   createdAt && Date.now() - new Date(createdAt).getTime() > MAX_DISPATCH_AGE_MS;
 
@@ -78,7 +81,7 @@ async function listNearbyOnlineDeliveryPartners(
     const partners = await FoodDeliveryPartner.find({
       status: "approved",
       availabilityStatus: "online",
-      lastLocationAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) },
+      lastLocationAt: { $gte: new Date(Date.now() - STALE_PUSH_WINDOW_MS) },
     })
       .select("_id status name lastLocationAt")
       .limit(Math.max(1, limit * 2))
@@ -124,8 +127,15 @@ async function listNearbyOnlineDeliveryPartners(
     const isStale =
       !p.lastLocationAt ||
       Date.now() - new Date(p.lastLocationAt).getTime() > STALE_GPS_MS;
-    // No recent heartbeat => app closed / logged out / killed. Don't send requests to them.
-    if (isStale) continue;
+    // No recent heartbeat => app closed/backgrounded. They are still online and reachable via push,
+    // so rank them after fresh-GPS riders instead of dropping them (that left a lone rider with the
+    // app closed never getting the order). Truly long-dead sessions are still skipped.
+    if (isStale) {
+      const age = p.lastLocationAt ? Date.now() - new Date(p.lastLocationAt).getTime() : Infinity;
+      if (age > STALE_PUSH_WINDOW_MS) continue;
+      scored.push({ partnerId: p._id, distanceKm: 999, status: p.status });
+      continue;
+    }
     if (p.lastLat == null || p.lastLng == null) {
       scored.push({ partnerId: p._id, distanceKm: 999, status: p.status });
       continue;
@@ -144,7 +154,7 @@ async function listNearbyOnlineDeliveryPartners(
     const anyOnline = await FoodDeliveryPartner.find({
       status: "approved",
       availabilityStatus: "online",
-      lastLocationAt: { $gte: new Date(Date.now() - STALE_GPS_MS) },
+      lastLocationAt: { $gte: new Date(Date.now() - STALE_PUSH_WINDOW_MS) },
     })
       .select("_id status name lastLocationAt")
       .limit(Math.max(1, limit))

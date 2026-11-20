@@ -210,6 +210,7 @@ export const adminSidebarMenu = [
       { type: "link", label: "Expense Report", path: "/admin/food/expense-report", icon: "FileText", permissionKey: "reports" },
       { type: "link", label: "Restaurant Disbursement", path: "/admin/food/disbursement-report/restaurants", icon: "FileText", permissionKey: "reports" },
       { type: "link", label: "Deliveryman Disbursement", path: "/admin/food/disbursement-report/deliverymen", icon: "FileText", permissionKey: "reports" },
+      { type: "link", label: "Restaurant Sales & Commission", path: "/admin/food/restaurant-sales", icon: "FileText", permissionKey: "reports" },
       {
         type: "expandable",
         label: "Restaurant Report",

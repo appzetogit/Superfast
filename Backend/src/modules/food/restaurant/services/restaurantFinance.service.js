@@ -235,3 +235,103 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
 }
 
 
+
+function resolvePeriodRange(query = {}) {
+    const now = new Date();
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const period = String(query.period || 'month').toLowerCase();
+    if (period === 'today') return { start: startOfDay(now), end: now };
+    if (period === 'week') {
+        const s = startOfDay(now);
+        s.setDate(s.getDate() - 6);
+        return { start: s, end: now };
+    }
+    if (period === 'month') {
+        const s = startOfDay(now);
+        s.setDate(s.getDate() - 29);
+        return { start: s, end: now };
+    }
+    if (period === 'custom') {
+        const s = parseISODateParam(query.startDate);
+        const e = parseISODateParamEnd(query.endDate);
+        if (s && e) return { start: s, end: e };
+    }
+    return { start: null, end: null }; // all time
+}
+
+/**
+ * Sales report for the restaurant panel: orders delivered, gross sales,
+ * admin commission and the restaurant's net earning, plus a paginated order list.
+ */
+export async function getRestaurantSalesReport(restaurantId, query = {}) {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+    const { start, end } = resolvePeriodRange(query);
+    const page = Math.max(1, parseInt(query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 20));
+
+    const match = { restaurantId: rid, orderStatus: 'delivered' };
+    if (start && end) match.createdAt = { $gte: start, $lte: end };
+
+    const [docs, total] = await Promise.all([
+        FoodOrder.find(match)
+            .select('orderId createdAt items pricing payment orderStatus userId')
+            .populate('userId', 'name phone')
+            .sort({ createdAt: -1 })
+            .lean(),
+        FoodOrder.countDocuments(match)
+    ]);
+
+    const txs = await FoodTransaction.find({ orderId: { $in: docs.map((d) => d._id) } })
+        .select('orderId amounts')
+        .lean();
+    const txByOrder = new Map(txs.map((t) => [String(t.orderId), t]));
+
+    const rows = docs.map((o) => {
+        const tx = txByOrder.get(String(o._id));
+        const subtotal = Number(o.pricing?.subtotal) || 0;
+        const commission = Number(tx?.amounts?.restaurantCommission ?? o.pricing?.restaurantCommission) || 0;
+        const earning = tx?.amounts?.restaurantShare != null
+            ? Number(tx.amounts.restaurantShare) || 0
+            : Math.max(0, subtotal - commission);
+        return {
+            _id: o._id,
+            orderId: o.orderId,
+            createdAt: o.createdAt,
+            customerName: o.userId?.name || '',
+            itemsSummary: (o.items || []).map((i) => `${i?.quantity || 1}x ${i?.name}`).filter(Boolean).join(', '),
+            itemCount: (o.items || []).reduce((s, i) => s + (Number(i?.quantity) || 1), 0),
+            paymentMethod: o.payment?.method || '',
+            sale: subtotal,
+            commission,
+            earning
+        };
+    });
+
+    const summary = rows.reduce(
+        (a, r) => ({
+            totalSales: a.totalSales + r.sale,
+            totalCommission: a.totalCommission + r.commission,
+            totalEarning: a.totalEarning + r.earning
+        }),
+        { totalSales: 0, totalCommission: 0, totalEarning: 0 }
+    );
+    const round = (n) => Math.round(n * 100) / 100;
+
+    // Cancelled orders count for context.
+    const cancelledMatch = { restaurantId: rid, orderStatus: { $in: ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'] } };
+    if (start && end) cancelledMatch.createdAt = match.createdAt;
+    const cancelledOrders = await FoodOrder.countDocuments(cancelledMatch);
+
+    return {
+        summary: {
+            totalOrders: total,
+            cancelledOrders,
+            totalSales: round(summary.totalSales),
+            totalCommission: round(summary.totalCommission),
+            totalEarning: round(summary.totalEarning)
+        },
+        orders: rows.slice((page - 1) * limit, page * limit),
+        pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) }
+    };
+}
