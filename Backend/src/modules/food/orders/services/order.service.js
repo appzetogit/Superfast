@@ -4260,6 +4260,22 @@ export async function rejectOrderDelivery(orderId, deliveryPartnerId) {
     throw new ForbiddenError('Order assigned to another delivery partner');
   }
 
+  // Once the assigned rider is at the restaurant (or further), a "reject" can only be a stale/late
+  // offer popup firing (e.g. auto-reject on timeout). Honouring it silently unassigned an order
+  // the rider was already collecting (FOD-YACVC9).
+  if (
+    assignedPartnerIdStr === partnerIdStr &&
+    (["at_pickup", "en_route_to_delivery", "at_drop", "delivered", "completed"].includes(
+      String(order.deliveryState?.currentPhase || ""),
+    ) ||
+      ["reached_pickup", "picked_up", "reached_drop", "delivered"].includes(String(order.orderStatus || "")))
+  ) {
+    logger.warn(
+      `rejectOrderDelivery: Ignored reject from ${partnerIdStr} for order ${order._id} (already at pickup or beyond).`,
+    );
+    throw new ValidationError('Order is already in progress and cannot be rejected.');
+  }
+
   if (!order.dispatch) order.dispatch = {};
   if (!Array.isArray(order.dispatch.offeredTo)) order.dispatch.offeredTo = [];
 
