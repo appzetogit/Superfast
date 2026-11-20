@@ -7,10 +7,7 @@ import {
 import { toast } from 'sonner';
 import { gigAPI, adminAPI } from '@food/api';
 
-const DEFAULT_ZONES = [
-  'ALL ZONES',
-  'Indore Central',
-];
+const DEFAULT_ZONES = ['ALL ZONES'];
 
 function getTodayDateString() {
   const d = new Date();
@@ -40,7 +37,7 @@ export default function AdminGigsManagement() {
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    zoneName: 'Indore Central',
+    zoneName: 'ALL ZONES',
     title: 'Morning shift',
     shiftType: 'MORNING',
     startTime: '09:55',
@@ -177,7 +174,7 @@ export default function AdminGigsManagement() {
     setIsEditing(false);
     setEditingGigId(null);
     setFormData({
-      zoneName: selectedZoneFilter !== 'ALL ZONES' ? selectedZoneFilter : 'Indore Central',
+      zoneName: selectedZoneFilter || 'ALL ZONES',
       title: 'Morning shift',
       shiftType: 'MORNING',
       startTime: '09:55',
@@ -569,7 +566,7 @@ export default function AdminGigsManagement() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                        Phone: {driver?.phone || 'N/A'} • Zone: {driver?.zoneName || driver?.city || 'Indore Central'}
+                        Phone: {driver?.phone || 'N/A'} • Zone: {driver?.zoneName || driver?.city || 'ALL ZONES'}
                       </p>
                       {order && (
                         <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mt-1">
@@ -831,7 +828,12 @@ export default function AdminGigsManagement() {
                   onChange={(e) => setFormData({ ...formData, zoneName: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold outline-none"
                 >
-                  {zonesList.map((z) => (
+                  {/* Keep the saved zone selectable even if it is not a drawn zone any more, otherwise the
+                      select shows the first option while the form still submits the old value. */}
+                  {(zonesList.includes(formData.zoneName) || !formData.zoneName
+                    ? zonesList
+                    : [...zonesList, formData.zoneName]
+                  ).map((z) => (
                     <option key={z} value={z}>{z}</option>
                   ))}
                 </select>

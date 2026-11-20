@@ -847,7 +847,7 @@ export async function getZoneDriversListController(req, res) {
         vehicleNumber: p.vehicleNumber || 'MP-09',
         rating: p.rating > 0 ? p.rating : null,
         availabilityStatus: isOnline ? 'online' : 'offline',
-        zoneName: p.zoneName || p.city || 'Indore Central',
+        zoneName: p.zoneName || p.city || 'ALL ZONES',
         statusDisplay,
         statusColor,
         isOnline,
@@ -897,7 +897,7 @@ export async function getZoneDriversListController(req, res) {
 export async function adminCreateGigController(req, res) {
   try {
     const {
-      zoneName = 'Indore Central',
+      zoneName = 'ALL ZONES',
       title,
       shiftType = 'MORNING',
       startTime,
