@@ -76,6 +76,7 @@ router.get('/restaurants/custom-orders/pending', adminController.getPendingCusto
 router.get('/restaurants/reviews', adminController.getRestaurantReviews);
 router.get('/restaurants/:id', adminController.getRestaurantById);
 router.get('/restaurants/:id/analytics', adminController.getRestaurantAnalytics);
+router.get('/restaurants/:id/overview', adminController.getRestaurantOverviewStats);
 router.get('/restaurants/:id/menu', adminController.getRestaurantMenuById);
 router.post('/restaurants', adminController.createRestaurant);
 router.patch('/restaurants/:id', adminController.updateRestaurantById);

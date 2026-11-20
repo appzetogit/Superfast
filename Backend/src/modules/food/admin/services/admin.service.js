@@ -36,6 +36,7 @@ import {
 } from './adminFilters.service.js';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurantWithdrawal.model.js';
+import { FoodRestaurantWallet } from '../../restaurant/models/restaurantWallet.model.js';
 import {
     creditWallet,
     debitWallet
@@ -2701,6 +2702,10 @@ export async function getRestaurantReviews(query = {}) {
         orderType: 'food'
     };
 
+    if (query.restaurantId && mongoose.Types.ObjectId.isValid(query.restaurantId)) {
+        filter.restaurantId = new mongoose.Types.ObjectId(query.restaurantId);
+    }
+
     if (query.search && String(query.search).trim()) {
         const term = String(query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const searchRegex = new RegExp(term, 'i');
@@ -2754,6 +2759,50 @@ export async function getRestaurantById(id) {
         .select('-__v')
         .populate('zoneId', 'name zoneName serviceLocation isActive')
         .lean();
+}
+
+/** Summary numbers for the admin restaurant view page (wallet, withdrawals, order and food counts). */
+export async function getRestaurantOverviewStats(restaurantId) {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
+    const rId = new mongoose.Types.ObjectId(restaurantId);
+    const cancelled = ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
+    const [wallet, withdrawalAgg, orderAgg, scheduled, foodAgg] = await Promise.all([
+        FoodRestaurantWallet.findOne({ restaurantId: rId }).lean(),
+        FoodRestaurantWithdrawal.aggregate([
+            { $match: { restaurantId: rId } },
+            { $group: { _id: '$status', total: { $sum: '$amount' } } },
+        ]),
+        FoodOrder.aggregate([
+            { $match: { restaurantId: rId } },
+            { $group: { _id: '$orderStatus', count: { $sum: 1 } } },
+        ]),
+        FoodOrder.countDocuments({ restaurantId: rId, scheduledAt: { $ne: null }, orderStatus: { $nin: ['delivered', ...cancelled] } }),
+        FoodItem.aggregate([
+            { $match: { restaurantId: rId } },
+            { $group: { _id: '$isAvailable', count: { $sum: 1 } } },
+        ]),
+    ]);
+    const wd = Object.fromEntries(withdrawalAgg.map((r) => [r._id, r.total]));
+    const byStatus = Object.fromEntries(orderAgg.map((r) => [r._id, r.count]));
+    const sumOf = (keys) => keys.reduce((n, k) => n + (byStatus[k] || 0), 0);
+    const active = foodAgg.find((r) => r._id !== false)?.count || 0;
+    const inactive = foodAgg.find((r) => r._id === false)?.count || 0;
+    return {
+        wallet: {
+            balance: Number(wallet?.balance || 0),
+            totalEarnings: Number(wallet?.totalEarnings || 0),
+            pendingWithdraw: Number(wd.pending || 0),
+            totalWithdrawn: Number(wd.approved || 0),
+        },
+        orders: {
+            all: Object.values(byStatus).reduce((a, b) => a + b, 0),
+            scheduled,
+            pending: sumOf(['created', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up']),
+            delivered: sumOf(['delivered']),
+            canceled: sumOf(cancelled),
+        },
+        foods: { all: active + inactive, active, inactive },
+    };
 }
 
 export async function getRestaurantAnalytics(restaurantId) {

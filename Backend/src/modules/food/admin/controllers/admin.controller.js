@@ -308,6 +308,16 @@ export async function getRestaurantById(req, res, next) {
     }
 }
 
+export async function getRestaurantOverviewStats(req, res, next) {
+    try {
+        const data = await adminService.getRestaurantOverviewStats(req.params.id);
+        if (!data) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+        res.status(200).json({ success: true, message: 'Restaurant overview fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getRestaurantAnalytics(req, res, next) {
     try {
         const { id } = req.params;

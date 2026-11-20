@@ -1691,7 +1691,7 @@ export default function RestaurantsList() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => handleViewDetails(restaurant)}
+                              onClick={() => navigate(`/admin/food/restaurants/view/${restaurant.originalData?._id || restaurant.id}`)}
                               className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
                               title="View Details"
                             >

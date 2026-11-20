@@ -522,6 +522,11 @@ export const adminAPI = {
     apiClient.get(`/food/admin/restaurants/${id}/analytics`, {
       contextModule: "admin",
     }),
+  /** Restaurant view page summary: wallet, withdrawals, order and food counts. */
+  getRestaurantOverview: (id) =>
+    apiClient.get(`/food/admin/restaurants/${id}/overview`, {
+      contextModule: "admin",
+    }),
   /** Update restaurant basic details (admin). */
   updateRestaurant: (id, body) =>
     apiClient.patch(`/food/admin/restaurants/${String(id)}`, body ?? {}, {

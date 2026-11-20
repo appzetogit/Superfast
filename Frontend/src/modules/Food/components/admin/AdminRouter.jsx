@@ -130,6 +130,7 @@ const LandingContentSettings = lazy(() => import("@food/pages/admin/system/Landi
 const LandingPageManagement = lazy(() => import("@food/pages/admin/system/LandingPageManagement"));
 const DiningManagement = lazy(() => import("@food/pages/admin/system/DiningManagement"));
 const DiningList = lazy(() => import("@food/pages/admin/system/DiningList"));
+const RestaurantView = lazy(() => import("@food/pages/admin/restaurant/RestaurantView"));
 const EditRestaurant = lazy(() => import("@food/pages/admin/restaurant/EditRestaurant"));
 const QuickCommerceDashboard = lazy(() => import("@food/pages/admin/quick-commerce/QuickCommerceDashboard"));
 const QuickCommerceOrders = lazy(() => import("@food/pages/admin/quick-commerce/QuickCommerceOrders"));
@@ -221,6 +222,7 @@ export default function AdminRouter() {
             <Route path="food-approval" element={<FoodApproval />} />
             <Route path="restaurants" element={<RestaurantsList />} />
             <Route path="restaurants/add" element={<AddRestaurant />} />
+            <Route path="restaurants/view/:id" element={<RestaurantView />} />
             <Route path="restaurants/edit/:id" element={<EditRestaurant />} />
             <Route path="restaurants/joining-request" element={<JoiningRequest />} />
             <Route path="restaurants/commission" element={<RestaurantCommission />} />
