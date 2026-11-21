@@ -255,10 +255,13 @@ export default function Cart() {
   const [selectedAddressId, setSelectedAddressId] = useState(null)
   const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
     try {
-      if (typeof window === "undefined") return "saved"
-      return localStorage.getItem("deliveryAddressMode") || "saved"
+      // Every time the cart opens, deliver to the user's live location by default (a stale saved
+      // address from another zone used to be picked silently). They can still change it here.
+      if (typeof window === "undefined") return "current"
+      localStorage.setItem("deliveryAddressMode", "current")
+      return "current"
     } catch {
-      return "saved"
+      return "current"
     }
   })
 
@@ -519,7 +522,8 @@ export default function Cart() {
       longitude: selectedAddressCoordinates[0]
     }
     : currentLocation
-  const { zoneId } = useZone(zoneLocation) // Prefer selected/saved address zone
+  const { zoneId, zoneStatus: deliveryZoneStatus } = useZone(zoneLocation) // Prefer selected/saved address zone
+  const isDeliveryOutOfZone = deliveryZoneStatus === "OUT_OF_SERVICE"
   const defaultPayment = getDefaultPaymentMethod()
 
   useEffect(() => {
@@ -1617,6 +1621,11 @@ export default function Cart() {
       return
     }
 
+    if (isDeliveryOutOfZone) {
+      toast.error("We don't deliver to this location. Please choose an address inside our service zone.")
+      return
+    }
+
     if (isScheduled) {
       if (!scheduledDate || !scheduledTime) {
         toast.error("Please select both date and time to schedule your order")
@@ -2700,6 +2709,11 @@ export default function Cart() {
                       {!hasSavedAddress && (
                         <p className="text-sm text-[var(--primary-theme)] mt-2 font-medium">
                           Select a delivery location to continue
+                        </p>
+                      )}
+                      {hasSavedAddress && isDeliveryOutOfZone && (
+                        <p className="text-sm text-red-600 mt-2 font-semibold">
+                          This location is outside our delivery zone. Please change your delivery address.
                         </p>
                       )}
                       {/* Address Selection Buttons */}

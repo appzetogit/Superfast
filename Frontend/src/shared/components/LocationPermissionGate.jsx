@@ -250,7 +250,8 @@ export default function LocationPermissionGate() {
 
   // Everyone (customers too) gets the "turn on location" sheet whenever location is blocked or the
   // device GPS is off - on every app open until it is fixed or dismissed with "Not now".
-  if (!target || !problem || dismissed || !popupEnabled) return null
+  // Customers only get the system/browser permission prompt (triggered by check()), no custom sheet.
+  if (!target || !problem || dismissed || !popupEnabled || !required) return null
 
   const isOff = problem === 'off'
 

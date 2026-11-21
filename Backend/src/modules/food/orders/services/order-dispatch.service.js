@@ -8,6 +8,7 @@ import {
   NotFoundError,
 } from "../../../../core/auth/errors.js";
 import { logger } from "../../../../utils/logger.js";
+import { isPointInPolygon } from "../../../../utils/geo.js";
 import { config } from "../../../../config/env.js";
 import { getIO, rooms } from "../../../../config/socket.js";
 import { addOrderJob } from "../../../../queues/producers/order.producer.js";
@@ -111,13 +112,33 @@ async function listNearbyOnlineDeliveryPartners(
     .select("_id status lastLat lastLng lastLocationAt name")
     .lean();
 
+  // Service zone of the pickup point. Riders last seen outside this zone (e.g. another city) must
+  // never be asked, no matter how stale their GPS is or how far the radius has expanded.
+  let sourceZone = null;
+  try {
+    const { FoodZone } = await import("../../admin/models/zone.model.js");
+    if (source.zoneId) {
+      sourceZone = await FoodZone.findOne({ _id: source.zoneId, isActive: true }).lean();
+    }
+    if (!sourceZone) {
+      const zones = await FoodZone.find({ isActive: true }).lean();
+      sourceZone = zones.find((z) => isPointInPolygon(rLat, rLng, z.coordinates)) || null;
+    }
+  } catch (err) {
+    logger.warn(`Dispatch zone lookup failed: ${err.message}`);
+  }
+  const hasLoc = (p) => Number.isFinite(Number(p.lastLat)) && Number.isFinite(Number(p.lastLng)) &&
+    !(Number(p.lastLat) === 0 && Number(p.lastLng) === 0);
+  const outsideZone = (p) =>
+    Boolean(sourceZone) && hasLoc(p) && !isPointInPolygon(Number(p.lastLat), Number(p.lastLng), sourceZone.coordinates);
+
   const scored = [];
-  const allowedStatuses = ["approved"];
   const STALE_GPS_MS = 10 * 60 * 1000;
 
   for (const p of allOnline) {
     if (p.status !== "approved") continue;
     if (busyPartnerIds.has(p._id.toString())) continue;
+    if (outsideZone(p)) continue;
 
     if (isCodOrder) {
       const ok = await isPartnerEligibleForCodOrder(p._id);
@@ -128,11 +149,15 @@ async function listNearbyOnlineDeliveryPartners(
       !p.lastLocationAt ||
       Date.now() - new Date(p.lastLocationAt).getTime() > STALE_GPS_MS;
     // No recent heartbeat => app closed/backgrounded. They are still online and reachable via push,
-    // so rank them after fresh-GPS riders instead of dropping them (that left a lone rider with the
-    // app closed never getting the order). Truly long-dead sessions are still skipped.
+    // so rank them after fresh-GPS riders instead of dropping them. Truly long-dead sessions are
+    // skipped, and a stale rider whose last known position is beyond the radius is skipped too.
     if (isStale) {
       const age = p.lastLocationAt ? Date.now() - new Date(p.lastLocationAt).getTime() : Infinity;
       if (age > STALE_PUSH_WINDOW_MS) continue;
+      if (hasLoc(p)) {
+        const sd = haversineKm(rLat, rLng, Number(p.lastLat), Number(p.lastLng));
+        if (!Number.isFinite(sd) || sd > maxKm) continue;
+      }
       scored.push({ partnerId: p._id, distanceKm: 999, status: p.status });
       continue;
     }
@@ -156,13 +181,13 @@ async function listNearbyOnlineDeliveryPartners(
       availabilityStatus: "online",
       lastLocationAt: { $gte: new Date(Date.now() - STALE_PUSH_WINDOW_MS) },
     })
-      .select("_id status name lastLocationAt")
-      .limit(Math.max(1, limit))
+      .select("_id status name lastLocationAt lastLat lastLng")
+      .limit(Math.max(1, limit * 4))
       .lean();
 
-    const availableAnyOnline = anyOnline.filter(
-      (p) => !busyPartnerIds.has(p._id.toString()),
-    );
+    const availableAnyOnline = anyOnline
+      .filter((p) => !busyPartnerIds.has(p._id.toString()) && !outsideZone(p))
+      .slice(0, Math.max(1, limit));
 
     return {
       source,

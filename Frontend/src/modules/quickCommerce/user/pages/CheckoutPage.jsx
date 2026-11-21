@@ -388,10 +388,12 @@ const CheckoutPage = () => {
   );
   const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
     try {
-      if (typeof window === "undefined") return "saved";
-      return localStorage.getItem("deliveryAddressMode") || "saved";
+      // Default to the user's live location each time checkout opens; they can change it here.
+      if (typeof window === "undefined") return "current";
+      localStorage.setItem("deliveryAddressMode", "current");
+      return "current";
     } catch {
-      return "saved";
+      return "current";
     }
   });
   const [selectedAddressId, setSelectedAddressId] = useState(null);

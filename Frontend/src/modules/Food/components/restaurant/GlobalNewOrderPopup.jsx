@@ -142,7 +142,7 @@ export default function GlobalNewOrderPopup() {
   };
 
   // Restaurant notifications hook for real-time orders
-  const { newOrder, clearNewOrder, isConnected } = useRestaurantNotifications();
+  const { newOrder, clearNewOrder, silenceAlerts, unsilenceAlerts, isConnected } = useRestaurantNotifications();
 
   const rejectReasons = [
     'Restaurant is too busy',
@@ -456,6 +456,10 @@ export default function GlobalNewOrderPopup() {
     // Use popupOrder (from Socket.IO or API fallback) or newOrder (from hook)
     const orderToAccept = popupOrder || newOrder;
 
+    // Stop every ring source (hook audio, loop, native bridge) the instant accept is tapped,
+    // not after the API call returns.
+    silenceAlerts?.(orderToAccept);
+
     // Ensure this order can't re-trigger fallback popup by using a different id key.
     markOrderAsShown(orderToAccept);
 
@@ -492,6 +496,7 @@ export default function GlobalNewOrderPopup() {
         setIsAcceptingOrder(false);
         setAcceptSwipeProgress(0);
         // Accept failed (e.g. server busy): the order is still pending, so the ring must continue.
+        unsilenceAlerts?.(orderToAccept);
         if (audioRef.current && !isMutedRef.current) {
           audioRef.current.loop = true;
           audioRef.current.currentTime = 0;

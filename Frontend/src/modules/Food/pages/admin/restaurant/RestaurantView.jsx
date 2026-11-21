@@ -49,6 +49,36 @@ const fmtDateTime = (d) => {
 
 const imgUrl = (v) => (typeof v === "string" ? v : v?.url || v?.secure_url || "")
 
+// Old imported restaurants only have a bare file name (e.g. "2025-10-27-xxx.png") which the browser
+// cannot load, so only treat real URLs as images and fall back to a placeholder otherwise.
+const isLoadableUrl = (u) => /^(https?:)?\/\//i.test(u) || u.startsWith("/") || u.startsWith("data:")
+const pickRestaurantImage = (r) => {
+  const list = [
+    r?.profileImage,
+    r?.logo,
+    r?.restaurantImage,
+    ...(Array.isArray(r?.coverImages) ? r.coverImages : []),
+    ...(Array.isArray(r?.menuImages) ? r.menuImages : []),
+  ]
+  return list.map(imgUrl).find((u) => u && isLoadableUrl(u)) || ""
+}
+
+function SafeImage({ src, alt = "", className = "", fallbackClassName = "", label = "" }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
+  if (!src || failed) {
+    return (
+      <div
+        className={`flex flex-col items-center justify-center bg-slate-100 text-slate-400 ${fallbackClassName || className}`}
+      >
+        <Store className="w-1/3 h-1/3 min-w-4 min-h-4" />
+        {label ? <span className="mt-1 text-[10px] font-medium uppercase tracking-wide">{label}</span> : null}
+      </div>
+    )
+  }
+  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} loading="lazy" />
+}
+
 const ORDER_STATUS_STYLE = {
   delivered: "bg-emerald-50 text-emerald-600",
   cancelled_by_user: "bg-rose-50 text-rose-500",
@@ -148,13 +178,13 @@ function OverviewTab({ restaurant, overview }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-5">
           <div className="flex gap-4">
             <div className="w-28 h-28 shrink-0 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-              {imgUrl(restaurant?.profileImage) ? (
-                <img src={imgUrl(restaurant.profileImage)} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                  <Store className="w-8 h-8" />
-                </div>
-              )}
+              <SafeImage
+                src={pickRestaurantImage(restaurant)}
+                alt={restaurant?.restaurantName}
+                className="w-full h-full object-cover"
+                fallbackClassName="w-full h-full"
+                label="No image"
+              />
             </div>
             <div className="min-w-0 space-y-2 text-sm">
               <p className="text-lg font-semibold text-slate-900">{restaurant?.restaurantName}</p>
@@ -697,7 +727,12 @@ function FoodsTab({ restaurantId, counts, onChanged }) {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                          {f.image && <img src={f.image} alt="" className="w-full h-full object-cover" />}
+                          <SafeImage
+                            src={f.image && isLoadableUrl(f.image) ? f.image : ""}
+                            alt={f.name}
+                            className="w-full h-full object-cover"
+                            fallbackClassName="w-full h-full"
+                          />
                         </div>
                         <div>
                           <p className="font-medium text-slate-800">{f.name}</p>

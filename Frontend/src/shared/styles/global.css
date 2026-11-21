@@ -223,6 +223,28 @@
     @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
   }
 
+  /* Always-visible horizontal scrollbar for wide admin tables (also on phones, where overlay
+     scrollbars stay hidden until you touch the table). */
+  .table-scroll {
+    overflow-x: scroll;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+  }
+  .table-scroll::-webkit-scrollbar {
+    height: 12px;
+  }
+  .table-scroll::-webkit-scrollbar-track {
+    background: #e2e8f0;
+  }
+  .table-scroll::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 9999px;
+    border: 2px solid #e2e8f0;
+  }
+
   .scrollbar-hide,
   .no-scrollbar {
     -ms-overflow-style: none;

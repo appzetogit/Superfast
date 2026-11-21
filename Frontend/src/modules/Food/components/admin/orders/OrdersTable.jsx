@@ -86,8 +86,8 @@ export default function OrdersTable({
 
   return (
     <div className="bg-white rounded-2xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden w-full max-w-full">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-full">
+      <div className="table-scroll">
+        <table className="w-full min-w-[1200px]">
           <thead className="bg-white border-b border-gray-100">
             <tr>
               {visibleColumns.si && (

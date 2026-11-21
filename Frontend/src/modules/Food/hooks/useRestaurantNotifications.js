@@ -96,6 +96,8 @@ export const useRestaurantNotifications = () => {
   const [newOrder, setNewOrder] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const audioRef = useRef(null);
+  const soundGenerationRef = useRef(0);
+  const fallbackAudioRef = useRef(null);
   const activeOrderRef = useRef(null);
   const alertLoopTimerRef = useRef(null);
   const alertLoopStartedAtRef = useRef(0);
@@ -229,7 +231,10 @@ export const useRestaurantNotifications = () => {
     }
   };
 
-  const stopAlertLoop = () => {
+  const stopAlertLoop = (invalidatePending = true) => {
+    // A playNotificationSound() call that is still awaiting the native bridge must not start the
+    // ring after we were told to stop (that made the ring continue right after accept).
+    if (invalidatePending) soundGenerationRef.current += 1;
     if (alertLoopTimerRef.current) {
       clearInterval(alertLoopTimerRef.current);
       alertLoopTimerRef.current = null;
@@ -241,10 +246,37 @@ export const useRestaurantNotifications = () => {
         audioRef.current.currentTime = 0;
       } catch (e) {}
     }
+    if (fallbackAudioRef.current) {
+      try {
+        fallbackAudioRef.current.pause();
+        fallbackAudioRef.current.currentTime = 0;
+      } catch (e) {}
+      fallbackAudioRef.current = null;
+    }
+    if (invalidatePending) {
+      try {
+        window.flutter_inappwebview?.callHandler?.('stopNotificationSound')?.catch?.(() => {});
+      } catch (e) {}
+    }
+  };
+
+  // Called the instant the restaurant taps accept/reject: silence now, don't wait for the API.
+  const silenceAlerts = (handledOrder) => {
+    dismissOrder(handledOrder);
+    dismissOrder(activeOrderRef.current);
+    stopAlertLoop();
+  };
+
+  // The accept/reject call failed, so the order is still pending and must ring again.
+  const unsilenceAlerts = (handledOrder) => {
+    const key = getOrderAlertKey(handledOrder || {});
+    if (key) dismissedOrderKeysRef.current.delete(key);
+    const activeKey = getOrderAlertKey(activeOrderRef.current || {});
+    if (activeKey) dismissedOrderKeysRef.current.delete(activeKey);
   };
 
   const startAlertLoop = () => {
-    stopAlertLoop();
+    stopAlertLoop(false);
     alertLoopStartedAtRef.current = Date.now();
 
     alertLoopTimerRef.current = setInterval(() => {
@@ -845,7 +877,9 @@ export const useRestaurantNotifications = () => {
 
   const playNotificationSound = async (orderData = {}) => {
     try {
+      const generation = soundGenerationRef.current;
       const usedNativeBridge = await triggerWebViewNativeNotification(orderData);
+      if (generation !== soundGenerationRef.current) return; // stopped while waiting
       if (
         userInteractedRef.current &&
         typeof navigator !== 'undefined' &&
@@ -869,6 +903,7 @@ export const useRestaurantNotifications = () => {
             try {
               const fallbackAudio = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
               fallbackAudio.volume = 1;
+              fallbackAudioRef.current = fallbackAudio;
               fallbackAudio.play().catch(() => { });
             } catch (fallbackError) {
               debugWarn('Fallback audio playback failed:', fallbackError);
@@ -895,6 +930,8 @@ export const useRestaurantNotifications = () => {
   return {
     newOrder,
     clearNewOrder,
+    silenceAlerts,
+    unsilenceAlerts,
     isConnected,
     playNotificationSound
   };
