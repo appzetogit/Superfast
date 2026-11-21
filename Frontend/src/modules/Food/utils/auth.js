@@ -149,7 +149,15 @@ export function isProfileNameComplete(user) {
  */
 export function isModuleAuthenticated(module) {
   const token = getModuleToken(module);
-  if (!token || isTokenExpired(token)) return false;
+  if (!token) return false;
+
+  // Access token expired is NOT a logout: if a still-valid refresh token exists the axios
+  // interceptor silently gets a new access token on the first 401. Only treat the session as
+  // dead when there is nothing left to refresh with.
+  if (isTokenExpired(token)) {
+    const refreshToken = getModuleRefreshToken(module);
+    if (!refreshToken || isTokenExpired(refreshToken)) return false;
+  }
 
   if (module === "user") {
     const userStr = localStorage.getItem("user_user") || localStorage.getItem("user");

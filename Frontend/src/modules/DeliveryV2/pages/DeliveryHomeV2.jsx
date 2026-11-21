@@ -1370,7 +1370,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         </AnimatePresence>
       )}
 
-      {isOnline && activeOrder && tripStatus !== 'COMPLETED' && (
+      {/* Hidden while the pickup / verification sheets are open: they already show the full order and
+          bill, and this fixed strip used to sit on top of their content. */}
+      {isOnline && activeOrder && tripStatus !== 'COMPLETED' && tripStatus !== 'REACHED_PICKUP' && !showVerification && !incomingOrder && (
         <ActiveOrderDetailsBar
           orders={activeOrders && activeOrders.length > 0 ? activeOrders : [activeOrder]}
           onCall={callCustomer}

@@ -52,6 +52,7 @@ import { getFirebaseDB } from '../../../../config/firebase.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import { isStatusAdvance } from './order.helpers.js';
 import { isWithinAvailabilityWindow, formatAvailabilityTime12h } from '../../shared/foodAvailabilityWindow.js';
+import { startRestaurantOrderRing } from "./orderRing.service.js";
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
@@ -398,7 +399,7 @@ async function fetchPickupSourcesByType(items = []) {
   const [restaurants, sellers] = await Promise.all([
     foodSourceIds.length
       ? FoodRestaurant.find({ _id: { $in: foodSourceIds.filter((id) => mongoose.isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id)) } })
-        .select("restaurantName location addressLine1 area city state zoneId status isAcceptingOrders openingTime closingTime")
+        .select("restaurantName location addressLine1 area city state zoneId status isAcceptingOrders manualOffline isActive isOpen openingTime closingTime")
         .lean()
       : [],
     quickSourceIds.length
@@ -419,7 +420,16 @@ async function fetchPickupSourcesByType(items = []) {
       sourceId: String(restaurant._id),
       sourceName: restaurant.restaurantName || restaurant.name || "Restaurant",
       status: restaurant.status,
-      isAcceptingOrders: restaurant.isAcceptingOrders,
+      // Same "offline" rule the app uses to show a restaurant as offline (manual toggle in any form),
+      // otherwise a restaurant shown offline could still receive orders.
+      isAcceptingOrders:
+        restaurant.isAcceptingOrders === false ||
+        restaurant.manualOffline === true ||
+        restaurant.isOpen === false ||
+        restaurant.isActive === false ||
+        ["closed", "offline", "inactive"].includes(String(restaurant.status || "").toLowerCase())
+          ? false
+          : restaurant.isAcceptingOrders,
       isOpenByTimings: isRestaurantOpenByTimings(restaurant, timingsMap.get(String(restaurant._id))),
       location: restaurant.location,
       zoneId: restaurant.zoneId || null,
@@ -1226,19 +1236,22 @@ async function notifyRestaurantNewOrder(orderDoc) {
       );
     }
 
+    const restaurantPushPayload = {
+      title: "New order received",
+      body: `Order ${orderDoc.orderId} is waiting for review.`,
+      data: {
+        type: "new_order",
+        orderId: orderDoc.orderId,
+        orderMongoId: orderDoc._id?.toString?.() || "",
+        link: `/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,
+      },
+    };
     void notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: orderDoc.restaurantId }],
-      {
-        title: "New order received",
-        body: `Order ${orderDoc.orderId} is waiting for review.`,
-        data: {
-          type: "new_order",
-          orderId: orderDoc.orderId,
-          orderMongoId: orderDoc._id?.toString?.() || "",
-          link: `/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,
-        },
-      },
+      restaurantPushPayload,
     );
+    // Keep ringing (repeat push) until the restaurant accepts / rejects.
+    startRestaurantOrderRing(orderDoc, restaurantPushPayload);
   } catch {
     // Do not block order/payment flow if notification fails.
   }

@@ -232,6 +232,8 @@ const buildMessagePayload = (payload = {}, token) => {
             title,
             body,
             channel_id: 'high_importance_channel',
+            // Repeat rings share a tag so each one replaces (and re-alerts) the previous notification.
+            ...(data.ringTag ? { tag: String(data.ringTag) } : {}),
             ...(isTest
                 ? { default_sound: false, default_vibrate_timings: false }
                 : {

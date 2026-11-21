@@ -6,6 +6,7 @@ import {
 } from "../../../../core/notifications/firebase.service.js";
 import { getIO, rooms } from '../../../../config/socket.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
+import { startRestaurantOrderRing } from "./orderRing.service.js";
 
 export function enqueueOrderEvent(action, payload = {}) {
   try {
@@ -348,19 +349,22 @@ export async function notifyRestaurantNewOrder(orderDoc) {
       io.to(rooms.restaurant(orderDoc.restaurantId)).emit("new_order", payload);
     }
 
+    const restaurantPushPayload = {
+      title: "New order received",
+      body: `Order #${orderDoc.order_id || orderDoc._id} is waiting for review.`,
+      data: {
+        type: "new_order",
+        orderId: orderDoc._id.toString(),
+        orderMongoId: orderDoc._id?.toString?.() || "",
+        link: `/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,
+      },
+    };
     void notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: orderDoc.restaurantId }],
-      {
-        title: "New order received",
-        body: `Order #${orderDoc.order_id || orderDoc._id} is waiting for review.`,
-        data: {
-          type: "new_order",
-          orderId: orderDoc._id.toString(),
-          orderMongoId: orderDoc._id?.toString?.() || "",
-          link: `/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,
-        },
-      },
+      restaurantPushPayload,
     );
+    // Keep ringing (repeat push) until the restaurant accepts / rejects.
+    startRestaurantOrderRing(orderDoc, restaurantPushPayload);
   } catch {
     // Do not block order/payment flow if notification fails.
   }

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { FoodOrder, FoodSettings } from "../models/order.model.js";
+import { startDeliveryOrderRing } from "./orderRing.service.js";
 import { FoodRestaurant } from "../../restaurant/models/restaurant.model.js";
 import { Seller } from "../../../quick-commerce/seller/models/seller.model.js";
 import { FoodDeliveryPartner } from "../../delivery/models/deliveryPartner.model.js";
@@ -447,14 +448,16 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
 
       try {
+        const phase2Payload = {
+          title: "New order assigned!",
+          body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
+          data: { type: "new_order", orderId: order._id.toString(), orderMongoId: order._id.toString(), orderStatus: String(order.orderStatus || "preparing"), link: "/delivery" },
+        };
         await notifyOwnersSafely(
           eligible.map((p) => ({ ownerType: "DELIVERY_PARTNER", ownerId: p.partnerId })),
-          {
-            title: "New order assigned!",
-            body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
-            data: { type: "new_order", orderId: order._id.toString(), orderMongoId: order._id.toString(), orderStatus: String(order.orderStatus || "preparing"), link: "/delivery" },
-          }
+          phase2Payload,
         );
+        startDeliveryOrderRing(order, eligible.map((p) => p.partnerId), phase2Payload);
       } catch (err) {
         logger.warn(`Push notification failed for Phase 2: ${err.message}`);
       }
@@ -484,14 +487,16 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
 
       try {
+        const phase1Payload = {
+          title: "New order assigned!",
+          body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
+          data: { type: "new_order", orderId: order._id.toString(), orderMongoId: order._id.toString(), orderStatus: String(order.orderStatus || "preparing"), link: "/delivery" },
+        };
         await notifyOwnersSafely(
           phase1Riders.map((p) => ({ ownerType: "DELIVERY_PARTNER", ownerId: p.partnerId })),
-          {
-            title: "New order assigned!",
-            body: `You have 30 seconds to accept Order #${order.order_id || order._id}.`,
-            data: { type: "new_order", orderId: order._id.toString(), orderMongoId: order._id.toString(), orderStatus: String(order.orderStatus || "preparing"), link: "/delivery" },
-          },
+          phase1Payload,
         );
+        startDeliveryOrderRing(order, phase1Riders.map((p) => p.partnerId), phase1Payload);
       } catch (err) {
         logger.warn(`Push notification failed for Phase 1: ${err.message}`);
       }

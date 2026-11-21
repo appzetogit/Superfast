@@ -1054,5 +1054,25 @@ export const refreshAccessToken = async (token) => {
     role: payload.role,
   });
 
-  return { accessToken: newAccessToken, refreshToken: token };
+  // Sliding session: once less than half of the refresh token's life is left, issue a new one
+  // so an app that is used at least occasionally never gets logged out. The old token stays
+  // valid until it expires naturally (avoids races between parallel requests / devices).
+  let nextRefreshToken = token;
+  try {
+    const totalMs = ms(config.jwtRefreshExpiresIn || "30d");
+    const remainingMs = (Number(payload?.exp) || 0) * 1000 - Date.now();
+    if (remainingMs < totalMs / 2) {
+      nextRefreshToken = signRefreshToken({ userId: payload.userId, role: payload.role });
+      await FoodRefreshToken.create({
+        userId: stored.userId,
+        token: nextRefreshToken,
+        expiresAt: new Date(Date.now() + totalMs),
+      });
+    }
+  } catch (err) {
+    logger.warn({ err }, "Refresh token rotation failed; keeping existing refresh token");
+    nextRefreshToken = token;
+  }
+
+  return { accessToken: newAccessToken, refreshToken: nextRefreshToken };
 };
