@@ -1,6 +1,7 @@
 import { sendResponse } from '../../../../utils/response.js';
 import * as orderService from '../services/order.service.js';
 import * as foodOrderPaymentService from '../services/foodOrderPayment.service.js';
+import { stopOrderRings } from '../services/orderRing.service.js';
 import {
     validateCalculateOrderDto,
     validateCreateOrderDto,
@@ -95,6 +96,7 @@ export async function cancelOrderController(req, res, next) {
         const orderId = req.params.orderId;
         const dto = validateCancelOrderDto(req.body);
         const order = await orderService.cancelOrder(orderId, userId, dto.reason, dto.refundTo);
+        stopOrderRings(order?._id || orderId);
         return sendResponse(res, 200, 'Order cancelled', { order });
     } catch (err) {
         next(err);
@@ -172,6 +174,8 @@ export async function updateOrderStatusRestaurantController(req, res, next) {
         const orderId = req.params.orderId;
         const dto = validateOrderStatusDto(req.body);
         const order = await orderService.updateOrderStatusRestaurant(orderId, restaurantId, dto.orderStatus);
+        // Accepted / rejected: stop the repeating "ring" push immediately.
+        stopOrderRings(order?._id || orderId);
         return sendResponse(res, 200, 'Order status updated', { order });
     } catch (err) {
         next(err);
@@ -449,6 +453,7 @@ export async function cancelOrderAdminController(req, res, next) {
     try {
         const adminId = req.user?.userId;
         const result = await orderService.cancelOrderAdmin(req.params.orderId, adminId, req.body || {});
+        stopOrderRings(result?.order?._id || req.params.orderId);
         const refundNote = result.refund?.attempted
             ? (result.refund.success ? ' Refund processed.' : ` Refund failed: ${result.refund.message}`)
             : '';
@@ -469,6 +474,7 @@ export async function updateOrderStatusAdminController(req, res, next) {
         }
 
         const order = await orderService.updateOrderStatusAdmin(orderId, adminId, orderStatus, cancellationReason);
+        stopOrderRings(order?._id || orderId);
         return sendResponse(res, 200, 'Order status updated successfully', { order });
     } catch (err) {
         next(err);
