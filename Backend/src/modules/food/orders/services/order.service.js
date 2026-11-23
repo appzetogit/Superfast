@@ -1633,6 +1633,14 @@ async function refreshSplitDispatchLegCandidates(order) {
 async function notifySplitDispatchOffers(order, { restaurantDoc = null } = {}) {
   if (!order || !isSplitDispatchOrder(order)) return;
 
+  // Riders are pinged only after the restaurant marks the order ready (same rule as tryAutoAssign).
+  if (!["ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase())) {
+    logger.info(
+      `notifySplitDispatchOffers: holding rider offers for ${order.orderId} (status '${order.orderStatus}'), waiting for ready.`,
+    );
+    return;
+  }
+
   const refreshed = await refreshSplitDispatchLegCandidates(order);
   if (refreshed) {
     await order.save();
@@ -3595,13 +3603,9 @@ export async function updateOrderStatusRestaurant(
   try {
     const io = getIO();
     if (io) {
-      // Delivery request goes out (with ring) as soon as the restaurant accepts the order.
-      // Marking it ready later only dispatches if no rider was ever offered (fallback).
+      // Delivery request goes out only when the restaurant marks the order ready.
       const wasReadyBefore = ["ready_for_pickup", "ready"].includes(String(from));
-      const isAcceptDispatchTrigger =
-        finalStatus === "preparing" &&
-        !wasReadyBefore &&
-        String(from) !== "preparing";
+      const isAcceptDispatchTrigger = false;
       const isReadyDispatchTrigger =
         finalStatus === "ready_for_pickup" &&
         !wasReadyBefore &&

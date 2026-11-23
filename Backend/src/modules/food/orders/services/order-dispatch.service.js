@@ -277,15 +277,15 @@ export async function tryAutoAssign(orderId, options = {}) {
     return null;
   }
 
-  // Guard: For food orders, DO NOT send requests to delivery partners until the restaurant has
-  // accepted the order (preparing onwards). Riders get the ringing request on accept; "ready" is
-  // only a normal notification afterwards.
-  const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
-  const isAcceptedByRestaurant = ["confirmed", "preparing", "ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
+  // Guard: For food orders, DO NOT send requests/notifications to delivery partners until the
+  // restaurant marks the order ready (ready_for_pickup).
+  // Quick-commerce orders follow the same rule: riders are pinged only after the seller marks it ready.
+  const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || order.orderType === "quick" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
+  const isReadyByRestaurant = ["ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
 
-  if (isFoodOrder && !isAcceptedByRestaurant) {
+  if (isFoodOrder && !isReadyByRestaurant) {
     logger.info(
-      `tryAutoAssign: Holding delivery assignment for food order ${order._id} (Status is '${order.orderStatus}'). Waiting for restaurant to accept the order.`
+      `tryAutoAssign: Holding delivery assignment for food order ${order._id} (Status is '${order.orderStatus}'). Waiting for restaurant to mark the order ready.`
     );
     await FoodOrder.findByIdAndUpdate(orderId, {
       $unset: { "dispatch.dispatchingAt": "" },
@@ -641,7 +641,7 @@ export async function runDispatchWatchdog() {
     if (!pendingOrders.length) return;
 
     for (const order of pendingOrders) {
-      const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
+      const isFoodOrder = Boolean(order.restaurantId) || order.orderType === "food" || order.orderType === "quick" || (order.orderType === "mixed" && !order.items?.some(i => i.type === "quick"));
       const isReadyForPickup = ["ready_for_pickup", "ready"].includes(String(order.orderStatus || "").toLowerCase());
 
       if (!isFoodOrder || isReadyForPickup) {

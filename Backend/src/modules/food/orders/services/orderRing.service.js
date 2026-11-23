@@ -58,10 +58,12 @@ const startRing = ({ key, orderId, targets, payload, maxMs, stillPending }) => {
       const pending = order ? stillPending(order, targets) : false;
       if (!pending || (Array.isArray(pending) && pending.length === 0)) return stopRing(key);
 
-      await notifyOwnersSafely(Array.isArray(pending) ? pending : targets, {
+      const res = await notifyOwnersSafely(Array.isArray(pending) ? pending : targets, {
         ...payload,
         data: { ...(payload.data || {}), ringTag: key, isRepeat: "true" },
       });
+      const sent = (Array.isArray(res) ? res : []).reduce((n, r) => n + (r?.successCount || 0), 0);
+      logger.info(`[OrderRing] repeat push ${key}: delivered to ${sent} device(s)`);
     } catch (err) {
       logger.warn(`[OrderRing] repeat push failed for ${key}: ${err?.message || err}`);
     }

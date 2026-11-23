@@ -27,6 +27,7 @@ const AUTH_PATH_RE = /\/(auth|login|signup|otp|terms|privacy|support)(\/|$)/i
 // "Not now" only lasts until the app is closed/reloaded. It lives in memory (not sessionStorage /
 // localStorage, which Android WebViews keep across launches) so the prompt returns on every app open.
 let dismissedThisLaunch = false
+const SHOW_POLLING = false
 
 function resolveModule(pathname) {
   if (/^\/admin/.test(pathname) || AUTH_PATH_RE.test(pathname) || /^\/account-deletion/.test(pathname)) return null
@@ -79,6 +80,7 @@ export default function LocationPermissionGate() {
   const hadProblemRef = useRef(false)
   const gotFixRef = useRef(false)
   const announcedRef = useRef(false)
+  const promptedRef = useRef(false)
 
   // Tell location providers that GPS just became available so they replace the default city.
   // Also fires on the very first fix: when the browser/iOS prompt is answered with "Allow" there
@@ -146,7 +148,20 @@ export default function LocationPermissionGate() {
     } finally {
       checkingRef.current = false
     }
-  }, [moduleKey, announceGranted])
+    // Customers have no custom sheet: when location is blocked / GPS is off, bring up the phone's own
+    // popup ("Allow location" + "Turn on device location") through the native app, then re-check.
+    // Once per app open, so declining the popup does not make it reappear in a loop.
+    if (!required && hadProblemRef.current && !gotFixRef.current && !promptedRef.current && isNativeWrapper()) {
+      promptedRef.current = true
+      await callNativeBridge('requestLocationPermission')
+      const native = await getNativeLocation()
+      if (native) {
+        gotFixRef.current = true
+        setProblem(null)
+        announceGranted()
+      }
+    }
+  }, [moduleKey, announceGranted, required])
 
   // Ask right away, and re-check when the person returns from system settings.
   useEffect(() => {
@@ -189,7 +204,9 @@ export default function LocationPermissionGate() {
   // While blocked, keep polling so the sheet disappears once location is turned on.
   useEffect(() => {
     // Customers have no sheet to wait on; re-polling would keep re-opening the system dialog.
-    if (!problem || dismissed || !required) return undefined
+    // No sheet is shown any more, so do not poll (it would re-open the system dialog every 5s);
+    // focus / visibility changes already re-check when the person returns from settings.
+    if (!SHOW_POLLING || !problem || dismissed || !required) return undefined
     const id = setInterval(check, 5000)
     return () => clearInterval(id)
   }, [problem, dismissed, required, check])
@@ -204,10 +221,12 @@ export default function LocationPermissionGate() {
       hadProblemRef.current = true
       setProblem(e?.detail?.denied ? 'denied' : 'off')
       callNativeBridge('requestLocationPermission')
+      // No sheet: ask the system directly (permission + "turn on location" dialogs).
+      check()
     }
     window.addEventListener('showLocationGate', onShow)
     return () => window.removeEventListener('showLocationGate', onShow)
-  }, [moduleKey])
+  }, [moduleKey, check])
 
   const handleDismiss = useCallback(() => {
     dismissedThisLaunch = true
@@ -250,8 +269,12 @@ export default function LocationPermissionGate() {
 
   // Everyone (customers too) gets the "turn on location" sheet whenever location is blocked or the
   // device GPS is off - on every app open until it is fixed or dismissed with "Not now".
-  // Customers only get the system/browser permission prompt (triggered by check()), no custom sheet.
-  if (!target || !problem || dismissed || !popupEnabled || !required) return null
+  // Customers, riders, restaurants and sellers all see the same sheet; its button triggers the system prompt.
+  // The custom "turn on location" sheet is disabled: it could not switch GPS on by itself. The system
+  // permission dialog (high accuracy request in check()) is used instead; tapping "Allow" there also
+  // makes Android show/apply its own "Turn on device location" prompt.
+  const SHOW_CUSTOM_SHEET = false
+  if (!SHOW_CUSTOM_SHEET || !target || !problem || dismissed || !popupEnabled) return null
 
   const isOff = problem === 'off'
 

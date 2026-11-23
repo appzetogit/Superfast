@@ -150,8 +150,8 @@ export const updateSellerOrderStatus = async (sellerOrderId, sellerId, nextStatu
       
       // Handle Side Effects (Post-Save to avoid race conditions)
       
-      // If confirmed or beyond -> trigger dispatch if not already assigned
-      const isAcceptedStatus = ['confirmed', 'preparing', 'packed', 'ready_for_pickup', 'out_for_delivery'].includes(nextStatus);
+      // Trigger dispatch only once the seller marks the order ready (no rider pings before that)
+      const isAcceptedStatus = nextStatus === 'ready_for_pickup';
       const isDispatchUnassigned = !parentOrder.dispatch?.status || parentOrder.dispatch.status === 'unassigned';
       
       if (isAcceptedStatus && isDispatchUnassigned) {
