@@ -54,8 +54,34 @@ function getTargetPathFromPayload(payload = {}) {
   }
 }
 
+// Orders already accepted/rejected by the restaurant: close their notifications and never re-show
+// late repeat pushes for them (in-memory; resets when the worker restarts).
+const handledOrderIds = new Set();
+
+const isHandledOrderPayload = (payload) => {
+  const d = payload?.data || {};
+  const type = String(d.type || "").toLowerCase();
+  if (type && type !== "new_order" && String(d.isRepeat) !== "true") return false;
+  return [d.orderMongoId, d.orderId].some((v) => v && handledOrderIds.has(String(v)));
+};
+
+self.addEventListener("message", (event) => {
+  if (event?.data?.type !== "order-handled") return;
+  const ids = (event.data.ids || []).map(String);
+  ids.forEach((id) => handledOrderIds.add(id));
+  event.waitUntil(
+    self.registration.getNotifications().then((list) => {
+      list.forEach((n) => {
+        const d = n?.data || {};
+        if (ids.includes(String(d.orderMongoId || "")) || ids.includes(String(d.orderId || ""))) n.close();
+      });
+    })
+  );
+});
+
 // 1. Synchronously registered Background Message handler
 messaging.onBackgroundMessage(async (payload) => {
+  if (isHandledOrderPayload(payload)) return;
   const title = payload?.notification?.title || payload?.data?.title || "New Notification";
   const body = payload?.notification?.body || payload?.data?.body || "";
   const image =
@@ -99,6 +125,8 @@ self.addEventListener("push", (event) => {
   } catch {
     payload = { notification: { title: "New Notification", body: event.data.text() } };
   }
+
+  if (isHandledOrderPayload(payload)) return;
 
   event.waitUntil(
     (async () => {

@@ -231,7 +231,34 @@ export const useRestaurantNotifications = () => {
     }
   };
 
+  // Close the system notification(s) already shown for this order (they use requireInteraction, so they
+  // otherwise stay - and keep ringing - until tapped) and tell the service worker not to show late
+  // repeat pushes for it.
+  const closeOrderNotifications = async (order) => {
+    try {
+      if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+      const ids = new Set(
+        [order?.orderMongoId, order?.orderId, order?._id, order?.id, order?.order_id]
+          .filter(Boolean)
+          .map((v) => String(v)),
+      );
+      if (!ids.size) return; // never close unrelated notifications
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) return;
+      const shown = (await reg.getNotifications?.()) || [];
+      shown.forEach((n) => {
+        const d = n?.data || {};
+        if (ids.has(String(d.orderMongoId || '')) || ids.has(String(d.orderId || ''))) n.close();
+      });
+      (reg.active || navigator.serviceWorker.controller)?.postMessage?.({
+        type: 'order-handled',
+        ids: [...ids],
+      });
+    } catch (e) {}
+  };
+
   const stopAlertLoop = (invalidatePending = true) => {
+    if (invalidatePending && activeOrderRef.current) void closeOrderNotifications(activeOrderRef.current);
     // A playNotificationSound() call that is still awaiting the native bridge must not start the
     // ring after we were told to stop (that made the ring continue right after accept).
     if (invalidatePending) soundGenerationRef.current += 1;
@@ -264,6 +291,7 @@ export const useRestaurantNotifications = () => {
   const silenceAlerts = (handledOrder) => {
     dismissOrder(handledOrder);
     dismissOrder(activeOrderRef.current);
+    void closeOrderNotifications(handledOrder);
     stopAlertLoop();
   };
 
@@ -922,6 +950,7 @@ export const useRestaurantNotifications = () => {
   const clearNewOrder = (handledOrder) => {
     dismissOrder(handledOrder);
     dismissOrder(activeOrderRef.current);
+    void closeOrderNotifications(handledOrder);
     stopAlertLoop();
     activeOrderRef.current = null;
     setNewOrder(null);
