@@ -31,6 +31,7 @@ const recentForegroundNotifications = new Map();
 let pushSoundAudio = null;
 let pushSoundUnlocked = false;
 let pushSoundContext = null;
+const activePlaybackAudios = new Set();
 const PUSH_DEBUG_PREFIX = "[push-debug]";
 const notificationDedupWindowMs = 8000;
 const pushDebugLog = () => {};
@@ -433,6 +434,112 @@ async function triggerWebViewNativeNotification(payload = {}) {
   return false;
 }
 
+export function stopPushNotificationSound() {
+  if (typeof window === "undefined") return;
+  try {
+    if (pushSoundAudio) {
+      pushSoundAudio.pause();
+      pushSoundAudio.currentTime = 0;
+    }
+  } catch {
+    // ignore
+  }
+  activePlaybackAudios.forEach((audio) => {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch {
+      // ignore
+    }
+  });
+  activePlaybackAudios.clear();
+  try {
+    window.flutter_inappwebview?.callHandler?.("stopNotificationSound")?.catch?.(() => {});
+  } catch {
+    // ignore
+  }
+}
+
+export async function closeDeliveryNotificationsInTray({ orderIds = [], keepIds = null } = {}) {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    const swTarget = reg.active || navigator.serviceWorker.controller;
+
+    const normalizedOrderIds = (orderIds || [])
+      .map((v) => (v == null ? "" : String(v).trim()))
+      .filter(Boolean);
+
+    if (normalizedOrderIds.length > 0) {
+      const idSet = new Set(normalizedOrderIds);
+      const shown = (await reg.getNotifications?.()) || [];
+      shown.forEach((n) => {
+        const d = n?.data || {};
+        const tag = String(n?.tag || "");
+        const nIds = [d.orderMongoId, d.order_mongo_id, d.orderId, d.order_id, d.returnId, d._id, d.id]
+          .map((v) => (v == null ? "" : String(v).trim()))
+          .filter(Boolean);
+        if (
+          nIds.some((id) => idSet.has(id)) ||
+          normalizedOrderIds.some(
+            (id) => tag === `delivery-order-${id}` || tag === `delivery-return-${id}` || tag === `delivery:${id}`,
+          )
+        ) {
+          n.close();
+        }
+      });
+      swTarget?.postMessage?.({
+        type: "order-handled",
+        ids: normalizedOrderIds,
+      });
+      return;
+    }
+
+    if (Array.isArray(keepIds)) {
+      const keepSet = new Set(keepIds.map((v) => (v == null ? "" : String(v).trim())).filter(Boolean));
+      const shown = (await reg.getNotifications?.()) || [];
+      const closedIds = [];
+      const offerTypes = ["new_order", "new_order_available", "reassignment_request", "return_pickup"];
+      shown.forEach((n) => {
+        const d = n?.data || {};
+        const tag = String(n?.tag || "");
+        const type = String(d.type || "").toLowerCase();
+        const role = String(d.role || d.ownerType || d.targetRole || "").toLowerCase();
+        const link = String(d.link || d.click_action || d.targetUrl || "");
+        const isDeliveryOffer =
+          tag.startsWith("delivery-order-") ||
+          tag.startsWith("delivery-return-") ||
+          tag.startsWith("delivery:") ||
+          (offerTypes.includes(type) && (role === "delivery" || role === "delivery_partner" || link.includes("/delivery")));
+        if (!isDeliveryOffer) return;
+        const nIds = [d.orderMongoId, d.order_mongo_id, d.orderId, d.order_id, d.returnId, d._id, d.id]
+          .map((v) => (v == null ? "" : String(v).trim()))
+          .filter(Boolean);
+        const matchesKeep =
+          nIds.some((id) => keepSet.has(id)) ||
+          [...keepSet].some((id) => tag === `delivery-order-${id}` || tag === `delivery-return-${id}` || tag === `delivery:${id}`);
+        if (!matchesKeep) {
+          closedIds.push(...nIds);
+          n.close();
+        }
+      });
+      swTarget?.postMessage?.({
+        type: "close-stale-delivery-notifications",
+        keepIds: [...keepSet],
+      });
+      if (closedIds.length > 0) {
+        swTarget?.postMessage?.({
+          type: "order-handled",
+          ids: [...new Set(closedIds)],
+        });
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 async function playPushSound(payload = {}) {
   try {
     pushDebugLog(PUSH_DEBUG_PREFIX, "playPushSound called", {
@@ -461,11 +568,25 @@ async function playPushSound(payload = {}) {
     const players = createPushPlaybackAudio();
     for (const audio of players) {
       try {
+        activePlaybackAudios.forEach((existing) => {
+          try {
+            existing.pause();
+            existing.currentTime = 0;
+          } catch {
+            // ignore
+          }
+        });
+        activePlaybackAudios.clear();
+        activePlaybackAudios.add(audio);
+        const cleanup = () => activePlaybackAudios.delete(audio);
+        audio.addEventListener("ended", cleanup, { once: true });
+        audio.addEventListener("error", cleanup, { once: true });
         audio.currentTime = 0;
         await audio.play();
         pushDebugLog(PUSH_DEBUG_PREFIX, "Audio playback succeeded", { source: audio.src });
         return;
       } catch (error) {
+        activePlaybackAudios.delete(audio);
         pushDebugWarn(PUSH_DEBUG_PREFIX, "Audio playback failed", {
           source: audio.src,
           error: error?.message || error,
@@ -888,12 +1009,25 @@ function showForegroundNotification(payload = {}) {
     }
   }
 
-  if (!isTestNotification) {
+  const deliveryHookOwnsSound =
+    moduleName === "delivery" &&
+    isNewOrderOffer &&
+    typeof window !== "undefined" &&
+    Boolean(window.__deliveryNotificationsHookActive);
+
+  if (!isTestNotification && !deliveryHookOwnsSound) {
     playPushSound(payload);
   }
 
-  // Force system notification even when the tab is in focus
-  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+  const isVisibleDeliveryOffer =
+    moduleName === "delivery" &&
+    isNewOrderOffer &&
+    typeof document !== "undefined" &&
+    document.visibilityState === "visible";
+
+  // Force system notification even when the tab is in focus (skip for visible delivery offers so
+  // unclicked requireInteraction notifications don't linger in the tray after the rider handles them).
+  if (!isVisibleDeliveryOffer && typeof Notification !== "undefined" && Notification.permission === "granted") {
     try {
       pushDebugLog(PUSH_DEBUG_PREFIX, "Showing browser notification from page", {
         title,

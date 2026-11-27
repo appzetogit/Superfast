@@ -18,6 +18,7 @@ if (!firebase.apps.length) {
 const messaging = firebase.messaging();
 
 const getNotificationKey = (payload) =>
+  payload?.data?.ringTag ||
   payload?.data?.notificationId ||
   payload?.data?.messageId ||
   payload?.messageId ||
@@ -54,29 +55,77 @@ function getTargetPathFromPayload(payload = {}) {
   }
 }
 
-// Orders already accepted/rejected by the restaurant: close their notifications and never re-show
+// Orders already accepted/rejected/completed: close their notifications and never re-show
 // late repeat pushes for them (in-memory; resets when the worker restarts).
 const handledOrderIds = new Set();
+
+const OFFER_PUSH_TYPES = ["new_order", "new_order_available", "reassignment_request", "return_pickup"];
+
+const getPayloadOrderIds = (d = {}) =>
+  [d.orderMongoId, d.order_mongo_id, d.orderId, d.order_id, d.returnId, d._id, d.id]
+    .map((v) => (v == null ? "" : String(v).trim()))
+    .filter(Boolean);
+
+const isDeliveryOfferNotification = (notification) => {
+  const d = notification?.data || {};
+  const tag = String(notification?.tag || "");
+  const type = String(d.type || "").toLowerCase();
+  const role = String(d.role || d.ownerType || d.targetRole || "").toLowerCase();
+  const link = String(d.link || d.click_action || d.targetUrl || "");
+  if (tag.startsWith("delivery-order-") || tag.startsWith("delivery-return-") || tag.startsWith("delivery:")) {
+    return true;
+  }
+  if (OFFER_PUSH_TYPES.includes(type) && (role === "delivery" || role === "delivery_partner" || link.includes("/delivery"))) {
+    return true;
+  }
+  return false;
+};
 
 const isHandledOrderPayload = (payload) => {
   const d = payload?.data || {};
   const type = String(d.type || "").toLowerCase();
-  if (type && type !== "new_order" && String(d.isRepeat) !== "true") return false;
-  return [d.orderMongoId, d.orderId].some((v) => v && handledOrderIds.has(String(v)));
+  if (type && !OFFER_PUSH_TYPES.includes(type) && String(d.isRepeat) !== "true") return false;
+  return getPayloadOrderIds(d).some((id) => handledOrderIds.has(id));
 };
 
 self.addEventListener("message", (event) => {
-  if (event?.data?.type !== "order-handled") return;
-  const ids = (event.data.ids || []).map(String);
-  ids.forEach((id) => handledOrderIds.add(id));
-  event.waitUntil(
-    self.registration.getNotifications().then((list) => {
-      list.forEach((n) => {
-        const d = n?.data || {};
-        if (ids.includes(String(d.orderMongoId || "")) || ids.includes(String(d.orderId || ""))) n.close();
-      });
-    })
-  );
+  const msgType = event?.data?.type;
+  if (msgType === "order-handled") {
+    const ids = (event.data.ids || []).map((v) => String(v || "").trim()).filter(Boolean);
+    ids.forEach((id) => handledOrderIds.add(id));
+    event.waitUntil(
+      self.registration.getNotifications().then((list) => {
+        list.forEach((n) => {
+          const nIds = getPayloadOrderIds(n?.data || {});
+          const tag = String(n?.tag || "");
+          if (nIds.some((id) => ids.includes(id)) || ids.some((id) => tag === `delivery-order-${id}` || tag === `delivery-return-${id}` || tag === `delivery:${id}`)) {
+            n.close();
+          }
+        });
+      })
+    );
+    return;
+  }
+
+  if (msgType === "close-stale-delivery-notifications") {
+    const keepSet = new Set((event.data.keepIds || []).map((v) => String(v || "").trim()).filter(Boolean));
+    event.waitUntil(
+      self.registration.getNotifications().then((list) => {
+        list.forEach((n) => {
+          if (!isDeliveryOfferNotification(n)) return;
+          const nIds = getPayloadOrderIds(n?.data || {});
+          const tag = String(n?.tag || "");
+          const matchesKeep =
+            nIds.some((id) => keepSet.has(id)) ||
+            [...keepSet].some((id) => tag === `delivery-order-${id}` || tag === `delivery-return-${id}` || tag === `delivery:${id}`);
+          if (!matchesKeep) {
+            nIds.forEach((id) => handledOrderIds.add(id));
+            n.close();
+          }
+        });
+      })
+    );
+  }
 });
 
 // 1. Synchronously registered Background Message handler

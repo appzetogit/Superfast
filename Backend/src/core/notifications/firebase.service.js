@@ -386,6 +386,26 @@ export const upsertFirebaseDeviceToken = async ({ ownerType, ownerId, token, pla
     await doc.save();
     await model.updateOne({ _id: ownerId }, { $set: { [field]: tokens } });
     console.log(`[FCM-DEBUG] upsert - Token list updated in DB. New count: ${tokens.length}`);
+
+    // A device token belongs to ONE account at a time. If this phone was used by another account
+    // (e.g. the same phone logged in as a customer earlier), drop the token from that account so
+    // its notifications (e.g. "your order was cancelled") no longer ring on this device.
+    try {
+        const uniqueModels = [...new Set(Object.values(OWNER_MODELS))];
+        await Promise.all(
+            uniqueModels.map((m) =>
+                m.updateMany(
+                    {
+                        _id: { $ne: doc._id },
+                        $or: [{ fcmTokens: normalizedToken }, { fcmTokenMobile: normalizedToken }],
+                    },
+                    { $pull: { fcmTokens: normalizedToken, fcmTokenMobile: normalizedToken } },
+                ),
+            ),
+        );
+    } catch (err) {
+        console.warn(`[FCM-DEBUG] upsert - failed to detach token from other accounts: ${err?.message || err}`);
+    }
     return { success: true };
 };
 

@@ -2,7 +2,10 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Loader from "@food/components/Loader";
-import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
+import {
+  registerWebPushForCurrentModule,
+  stopPushNotificationSound,
+} from '@food/utils/firebaseMessaging';
 
 // Auth Pages (Lazy loaded)
 const Welcome = lazy(() => import("./pages/auth/Welcome"))
@@ -45,6 +48,22 @@ const DeliveryV2Router = () => {
   useEffect(() => {
     registerWebPushForCurrentModule('/food/delivery').catch(console.error);
   }, [location.pathname]);
+
+  // Stop any lingering background/native push sound as soon as the rider opens any Delivery screen.
+  useEffect(() => {
+    stopPushNotificationSound();
+    const stopOnForeground = () => {
+      if (document.visibilityState === 'visible') {
+        stopPushNotificationSound();
+      }
+    };
+    window.addEventListener('focus', stopPushNotificationSound);
+    document.addEventListener('visibilitychange', stopOnForeground);
+    return () => {
+      window.removeEventListener('focus', stopPushNotificationSound);
+      document.removeEventListener('visibilitychange', stopOnForeground);
+    };
+  }, []);
 
   return (
     <Suspense fallback={null}>

@@ -1293,14 +1293,22 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
           </div>
         </div>
 
-        {/* Reassign Driver Modal */}
-        {showReassignModal && (
+        {/* Reassign / Assign Driver Modal */}
+        {showReassignModal && (() => {
+          const hasAssignedDriver = Boolean(
+            order?.deliveryPartnerName ||
+            order?.deliveryPartnerPhone ||
+            order?.dispatch?.deliveryPartnerId ||
+            order?.deliveryPartnerId ||
+            order?.deliveryBoyId
+          );
+          return (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200 text-slate-800">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-950 flex items-center gap-2">
                   <Truck className="w-5 h-5 text-[var(--primary-theme)]" />
-                  Reassign Delivery Partner
+                  {hasAssignedDriver ? "Reassign Delivery Partner" : "Assign Delivery Partner"}
                 </h3>
                 <button
                   type="button"
@@ -1313,8 +1321,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
 
               <div className="p-6 space-y-4">
                 {reassignMessage && (
-                  <div className={`p-3 rounded-lg text-xs font-semibold ${reassignMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                    }`}>
+                  <div className={`p-3 rounded-lg text-xs font-semibold ${reassignMessage.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
                     {reassignMessage.text}
                   </div>
                 )}
@@ -1346,17 +1353,18 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                   )}
                 </div>
 
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Reason for Reassignment</label>
-                  <textarea
-                    value={reassignReason}
-                    onChange={(e) => setReassignReason(e.target.value)}
-                    placeholder="Optional reason..."
-                    rows={3}
-                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] resize-none bg-white"
-                  />
-                </div>
+                {hasAssignedDriver && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Reason for Reassignment</label>
+                    <textarea
+                      value={reassignReason}
+                      onChange={(e) => setReassignReason(e.target.value)}
+                      placeholder="Optional reason..."
+                      rows={3}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] resize-none bg-white"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 justify-end">
@@ -1372,35 +1380,50 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onStatusU
                   disabled={isSubmittingReassign || !selectedDriverId}
                   onClick={async () => {
                     setIsSubmittingReassign(true);
+                    setReassignMessage(null);
                     try {
-                      const { adminAPI } = await import('@/services/api');
-                      const res = await adminAPI.reassignOrder(order.id || order._id, selectedDriverId, reassignReason);
+                      const { adminAPI } = await import("@/services/api");
+                      const targetOrderId = order.id || order._id;
+                      const res = hasAssignedDriver
+                        ? await adminAPI.reassignOrder(targetOrderId, selectedDriverId, reassignReason)
+                        : await adminAPI.assignOrder(targetOrderId, selectedDriverId);
                       if (res?.data?.success || res?.success) {
-                        setReassignMessage({ type: 'success', text: 'Reassignment request sent to the driver successfully!' });
+                        setReassignMessage({
+                          type: "success",
+                          text: hasAssignedDriver
+                            ? "Reassignment request sent to the driver successfully!"
+                            : "Delivery partner assigned successfully!",
+                        });
+                        if (typeof window !== "undefined") {
+                          window.dispatchEvent(new CustomEvent("ordersRefresh"));
+                        }
                         setTimeout(() => {
                           setShowReassignModal(false);
                           setReassignMessage(null);
                           setSelectedDriverId("");
                           setReassignReason("");
-                          onOpenChange(false); // Close details dialog
-                        }, 2000);
+                          onOpenChange(false);
+                        }, 1500);
                       } else {
-                        setReassignMessage({ type: 'error', text: res?.data?.message || 'Failed to reassign driver' });
+                        setReassignMessage({ type: "error", text: res?.data?.message || "Failed to assign driver" });
                       }
                     } catch (err) {
-                      setReassignMessage({ type: 'error', text: err?.response?.data?.message || err?.message || 'Failed to reassign driver' });
+                      setReassignMessage({ type: "error", text: err?.response?.data?.message || err?.message || "Failed to assign driver" });
                     } finally {
                       setIsSubmittingReassign(false);
                     }
                   }}
                   className="px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-300 rounded-lg shadow-sm"
                 >
-                  {isSubmittingReassign ? 'Reassigning...' : 'Confirm Reassign'}
+                  {isSubmittingReassign
+                    ? (hasAssignedDriver ? "Reassigning..." : "Assigning...")
+                    : (hasAssignedDriver ? "Confirm Reassign" : "Confirm Assign")}
                 </button>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
       </DialogContent>
     </Dialog>
   )

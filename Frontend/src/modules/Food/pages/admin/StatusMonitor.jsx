@@ -885,14 +885,22 @@ export default function StatusMonitor() {
           </motion.div>
         </div>
       )}
-      {/* Reassign Driver Modal */}
-      {showReassignModal && activeReassignOrder && (
+      {/* Reassign / Assign Driver Modal */}
+      {showReassignModal && activeReassignOrder && (() => {
+        const hasAssignedDriver = Boolean(
+          activeReassignOrder?.deliveryPartnerName ||
+          activeReassignOrder?.deliveryPartnerPhone ||
+          activeReassignOrder?.dispatch?.deliveryPartnerId ||
+          activeReassignOrder?.deliveryPartnerId ||
+          activeReassignOrder?.deliveryBoyId
+        );
+        return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#111115] rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-neutral-800 animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-neutral-200">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
                 <Truck className="w-5 h-5 text-[var(--primary-theme)]" />
-                Reassign Delivery Partner
+                {hasAssignedDriver ? 'Reassign Delivery Partner' : 'Assign Delivery Partner'}
               </h3>
               <button 
                 type="button"
@@ -936,17 +944,18 @@ export default function StatusMonitor() {
                 )}
               </div>
 
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Reason for Reassignment</label>
-                <textarea
-                  value={reassignReason}
-                  onChange={(e) => setReassignReason(e.target.value)}
-                  placeholder="Optional reason..."
-                  rows={3}
-                  className="w-full text-sm border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] resize-none bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
-                />
-              </div>
+              {hasAssignedDriver && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Reason for Reassignment</label>
+                  <textarea
+                    value={reassignReason}
+                    onChange={(e) => setReassignReason(e.target.value)}
+                    placeholder="Optional reason..."
+                    rows={3}
+                    className="w-full text-sm border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary-theme)] resize-none bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-4 bg-slate-50 dark:bg-neutral-900/50 border-t border-slate-100 dark:border-neutral-800 flex gap-3 justify-end">
@@ -962,34 +971,46 @@ export default function StatusMonitor() {
                 disabled={isSubmittingReassign || !selectedDriverId}
                 onClick={async () => {
                   setIsSubmittingReassign(true);
+                  setReassignMessage(null);
                   try {
-                    const res = await adminAPI.reassignOrder(activeReassignOrder._id || activeReassignOrder.id, selectedDriverId, reassignReason);
+                    const targetOrderId = activeReassignOrder._id || activeReassignOrder.id;
+                    const res = hasAssignedDriver
+                      ? await adminAPI.reassignOrder(targetOrderId, selectedDriverId, reassignReason)
+                      : await adminAPI.assignOrder(targetOrderId, selectedDriverId);
                     if (res?.data?.success || res?.success) {
-                      setReassignMessage({ type: 'success', text: 'Reassignment request sent to the driver successfully!' });
+                      setReassignMessage({
+                        type: 'success',
+                        text: hasAssignedDriver
+                          ? 'Reassignment request sent to the driver successfully!'
+                          : 'Delivery partner assigned successfully!',
+                      });
                       setTimeout(() => {
                         setShowReassignModal(false);
                         setReassignMessage(null);
                         setSelectedDriverId("");
                         setReassignReason("");
                         fetchOrdersForActivePartner();
-                      }, 2000);
+                      }, 1500);
                     } else {
-                      setReassignMessage({ type: 'error', text: res?.data?.message || 'Failed to reassign driver' });
+                      setReassignMessage({ type: 'error', text: res?.data?.message || 'Failed to assign driver' });
                     }
                   } catch (err) {
-                    setReassignMessage({ type: 'error', text: err?.response?.data?.message || err?.message || 'Failed to reassign driver' });
+                    setReassignMessage({ type: 'error', text: err?.response?.data?.message || err?.message || 'Failed to assign driver' });
                   } finally {
                     setIsSubmittingReassign(false);
                   }
                 }}
                 className="px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-theme)] hover:bg-orange-700 disabled:bg-slate-300 rounded-lg shadow-sm"
               >
-                {isSubmittingReassign ? 'Reassigning...' : 'Confirm Reassign'}
+                {isSubmittingReassign
+                  ? (hasAssignedDriver ? 'Reassigning...' : 'Assigning...')
+                  : (hasAssignedDriver ? 'Confirm Reassign' : 'Confirm Assign')}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -52,7 +52,7 @@ import { getFirebaseDB } from '../../../../config/firebase.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import { isStatusAdvance } from './order.helpers.js';
 import { isWithinAvailabilityWindow, formatAvailabilityTime12h } from '../../shared/foodAvailabilityWindow.js';
-import { startRestaurantOrderRing } from "./orderRing.service.js";
+import { startDeliveryOrderRing, startRestaurantOrderRing } from "./orderRing.service.js";
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
@@ -5261,11 +5261,63 @@ export async function assignDeliveryPartnerAdmin(
     );
   }
 
+  const prevDispatchStatus = order.dispatch?.status || 'unassigned';
+  const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
   order.dispatch.status = 'assigned';
-  order.dispatch.deliveryPartnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+  order.dispatch.deliveryPartnerId = partnerObjectId;
   order.dispatch.assignedAt = new Date();
-  pushStatusHistory(order, { byRole: 'ADMIN', byId: adminId, from: order.dispatch.status, to: 'assigned' });
+  if (!Array.isArray(order.dispatch.offeredTo)) order.dispatch.offeredTo = [];
+  order.dispatch.offeredTo = order.dispatch.offeredTo.filter(
+    (o) => String(o?.partnerId || '') !== String(partnerObjectId),
+  );
+  order.dispatch.offeredTo.push({
+    partnerId: partnerObjectId,
+    at: new Date(),
+    action: 'offered',
+  });
+  if (order.reassignmentStatus && order.reassignmentStatus !== 'none') {
+    order.reassignmentStatus = 'none';
+    order.pendingDriverId = null;
+  }
+  pushStatusHistory(order, { byRole: 'ADMIN', byId: adminId, from: prevDispatchStatus, to: 'assigned' });
   await order.save();
+  await order.populate('restaurantId');
+
+  try {
+    const io = getIO();
+    const socketPayload = buildDeliverySocketPayload(order, order.restaurantId);
+    if (io) {
+      const roomName = rooms.delivery(partnerObjectId);
+      io.to(roomName).emit('new_order', socketPayload);
+      io.to(roomName).emit('new_order_available', socketPayload);
+      io.to(roomName).emit('play_notification_sound', {
+        orderId: order.orderId,
+        orderMongoId: order._id.toString(),
+      });
+    }
+
+    const pushPayload = {
+      title: 'New order assigned!',
+      body: `You have 30 seconds to accept Order #${order.order_id || order.orderId || order._id}.`,
+      data: {
+        type: 'new_order',
+        orderId: order._id.toString(),
+        orderMongoId: order._id.toString(),
+        orderStatus: String(order.orderStatus || 'preparing'),
+        link: '/delivery',
+      },
+    };
+    await notifyOwnersSafely(
+      [{ ownerType: 'DELIVERY_PARTNER', ownerId: partnerObjectId }],
+      pushPayload,
+    );
+    if (['confirmed', 'preparing', 'ready_for_pickup', 'ready'].includes(String(order.orderStatus || '').toLowerCase())) {
+      startDeliveryOrderRing(order, [partnerObjectId], pushPayload);
+    }
+  } catch (notifyErr) {
+    logger.warn(`Notification on admin assign failed for order ${order._id}: ${notifyErr?.message || notifyErr}`);
+  }
+
   enqueueOrderEvent('delivery_partner_assigned', {
     orderMongoId: order._id?.toString?.(),
     orderId: order.orderId,
@@ -5574,8 +5626,28 @@ export async function reassignDeliveryPartnerAdmin(orderId, { newDriverId, reaso
     throw new ValidationError("Proposed driver is offline");
   }
 
-  const existingOrder = await FoodOrder.findOne(identity).select("payment paymentMethod").lean();
-  if (existingOrder && (existingOrder.payment?.method === "cash" || existingOrder.paymentMethod === "cash")) {
+  const existingOrder = await FoodOrder.findOne(identity)
+    .select("payment paymentMethod orderStatus reassignmentStatus dispatch")
+    .lean();
+  if (!existingOrder) {
+    throw new NotFoundError("Order not found");
+  }
+  if (['delivered', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'].includes(String(existingOrder.orderStatus || '').toLowerCase())) {
+    throw new ValidationError("Cannot reassign a delivered or cancelled order");
+  }
+  if (existingOrder.reassignmentStatus === 'pending') {
+    throw new ValidationError("A reassignment request is already pending for this order");
+  }
+  // No delivery partner is assigned yet: perform a direct assignment instead of failing with a
+  // misleading "driver is already assigned" error.
+  if (!existingOrder.dispatch?.deliveryPartnerId) {
+    return assignDeliveryPartnerAdmin(orderId, newDriverId, adminId);
+  }
+  if (String(existingOrder.dispatch.deliveryPartnerId) === String(newDriverObjectId)) {
+    throw new ValidationError("This delivery partner is already assigned to this order");
+  }
+
+  if (existingOrder.payment?.method === "cash" || existingOrder.paymentMethod === "cash") {
     const { isPartnerEligibleForCodOrder } = await import('../../delivery/services/deliveryFinance.service.js');
     const isCodEligible = await isPartnerEligibleForCodOrder(newDriverId);
     if (!isCodEligible) {
@@ -5594,32 +5666,41 @@ export async function reassignDeliveryPartnerAdmin(orderId, { newDriverId, reaso
   const { config } = await import('../../../../config/env.js');
   const { getRedisClient } = await import('../../../../config/redis.js');
   const redis = getRedisClient();
+  const lockKey = `reassignment_lock_order_${orderId}`;
+  let lockAcquired = false;
   if (redis && config.redisEnabled) {
-    const lockKey = `reassignment_lock_order_${orderId}`;
-    const acquired = await redis.set(lockKey, '1', { NX: true, PX: 70000 });
-    if (!acquired) {
+    lockAcquired = Boolean(await redis.set(lockKey, '1', { NX: true, PX: 70000 }));
+    if (!lockAcquired) {
       throw new ValidationError("Reassignment lock active (reassignment already in progress)");
     }
   }
 
-  const order = await FoodOrder.findOneAndUpdate(
-    {
-      ...identity,
-      orderStatus: { $nin: ['delivered', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'] },
-      reassignmentStatus: { $ne: 'pending' },
-      'dispatch.deliveryPartnerId': { $ne: newDriverObjectId, $exists: true }
-    },
-    {
-      $set: {
-        reassignmentStatus: 'pending',
-        pendingDriverId: newDriverObjectId
-      }
-    },
-    { new: true }
-  ).populate('restaurantId');
+  let order;
+  try {
+    order = await FoodOrder.findOneAndUpdate(
+      {
+        ...identity,
+        orderStatus: { $nin: ['delivered', 'cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'] },
+        reassignmentStatus: { $ne: 'pending' },
+        'dispatch.deliveryPartnerId': { $nin: [newDriverObjectId, null], $exists: true }
+      },
+      {
+        $set: {
+          reassignmentStatus: 'pending',
+          pendingDriverId: newDriverObjectId
+        }
+      },
+      { new: true }
+    ).populate('restaurantId');
 
-  if (!order) {
-    throw new ValidationError("Order is not in reassignable state or driver is already assigned");
+    if (!order) {
+      throw new ValidationError("Order is not in reassignable state or driver is already assigned");
+    }
+  } catch (err) {
+    if (lockAcquired && redis) {
+      await redis.del(lockKey).catch(() => {});
+    }
+    throw err;
   }
 
   const fromDriverId = order.dispatch.deliveryPartnerId;

@@ -9,7 +9,10 @@ import { deliveryAPI, gigAPI } from '@food/api';
 import { requireLocation } from '../utils/requireLocation';
 import { findRunningBooking } from '../utils/gigWindow';
 import { toast } from 'sonner';
-import { registerWebPushForCurrentModule } from '@food/utils/firebaseMessaging';
+import {
+  closeDeliveryNotificationsInTray,
+  registerWebPushForCurrentModule,
+} from '@food/utils/firebaseMessaging';
 
 // Components
 import LiveMap from '@/modules/DeliveryV2/components/map/LiveMap';
@@ -710,16 +713,28 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   availableOrdersRef.current = availableOrdersList;
   useEffect(() => {
     if (tripStatus !== 'COMPLETED') return;
+    if (activeOrder) {
+      const doneIds = [activeOrder?.orderMongoId, activeOrder?.orderId, activeOrder?._id, activeOrder?.id]
+        .filter(Boolean)
+        .map(String);
+      if (doneIds.length > 0) {
+        void closeDeliveryNotificationsInTray({ orderIds: doneIds });
+      }
+    }
     const idOf = (o) => String(o?.orderId || o?._id || o?.id || '');
     const next = availableOrdersRef.current.find((o) => {
       const id = idOf(o);
       return id && !rejectedOrderIdsRef.current.has(id) && !timedOutOrdersMapRef.current.has(id);
     });
-    if (!next) return;
+    if (!next) {
+      stopAlertLoop();
+      void closeDeliveryNotificationsInTray({ keepIds: [] });
+      return;
+    }
     setTripOfferBanner(null);
     setIncomingOrder({ ...next, _forceShow: true });
     ringForOrder(next);
-  }, [tripStatus]);
+  }, [tripStatus, activeOrder, stopAlertLoop, ringForOrder]);
 
   // Keeps the active trips in sync even while one is running, so orders the rider takes on
   // top (multi-order) or the admin assigns show up. activeOrder is deliberately not a dependency:
@@ -1152,7 +1167,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               rejectOrder(o);
               if (incomingOrder && String(incomingOrder?.orderId || incomingOrder?._id) === targetId) {
                 setIncomingOrder(null);
-                clearNewOrder();
+                clearNewOrder(o || incomingOrder);
               }
               setAvailableOrdersList((prev) => prev.filter((item) => String(item.orderId || item._id || item.id) !== targetId));
             }}
@@ -1219,26 +1234,27 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                         .finally(() => setAcceptInFlight(false));
                     }}
                     onReject={(o) => {
-                      if (stopAlertLoop) stopAlertLoop();
-                      clearNewOrder();
                       const target = o || incomingOrder;
+                      if (stopAlertLoop) stopAlertLoop();
+                      clearNewOrder(target);
                       const targetId = String(target?.orderId || target?._id || target?.id || '');
                       if (targetId) rejectedOrderIdsRef.current.add(targetId);
                       rejectOrder(target);
                       setIncomingOrder(null);
                     }}
                     onTimeout={(o) => {
-                      if (stopAlertLoop) stopAlertLoop();
-                      clearNewOrder();
                       const target = o || incomingOrder;
+                      if (stopAlertLoop) stopAlertLoop();
+                      clearNewOrder(target);
                       const targetId = String(target?.orderId || target?._id || target?.id || '');
                       if (targetId) timedOutOrdersMapRef.current.set(targetId, Date.now());
                       rejectOrder(target);
                       setIncomingOrder(null);
                     }}
                     onCardClick={(o) => {
+                      const target = o || incomingOrder;
                       if (stopAlertLoop) stopAlertLoop();
-                      clearNewOrder();
+                      clearNewOrder(target);
                       setIncomingOrder(null);
                       setCurrentTab('feed');
                       setIsModalMinimized(false);

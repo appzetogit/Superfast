@@ -7,6 +7,10 @@ import alertSound from '@food/assets/audio/alert.mp3';
 import originalSound from '@food/assets/audio/original.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
+import {
+  closeDeliveryNotificationsInTray,
+  stopPushNotificationSound,
+} from '@food/utils/firebaseMessaging';
 
 const shouldLogDeliverySocket = () => {
   if (typeof window === 'undefined') return import.meta.env.DEV;
@@ -292,6 +296,7 @@ export const useDeliveryNotifications = () => {
   // Step 1: All refs first (unconditional)
   const socketRef = useRef(null);
   const audioRef = useRef(null);
+  const soundGenerationRef = useRef(0);
   const audioUnlockAttemptedRef = useRef(false);
   const activeOrderRef = useRef(null);
   const acceptInFlightRef = useRef(false);
@@ -353,22 +358,50 @@ export const useDeliveryNotifications = () => {
     return true;
   };
 
-  const stopAlertLoop = useCallback(() => {
-    if (alertLoopTimerRef.current) {
-      clearInterval(alertLoopTimerRef.current);
-      alertLoopTimerRef.current = null;
-    }
-    alertLoopStartedAtRef.current = 0;
+  const closeOrderNotifications = useCallback((order) => {
+    const ids = alertOrderIds(order || {});
+    if (ids.length === 0) return;
+    void closeDeliveryNotificationsInTray({ orderIds: ids });
+  }, []);
+
+  const stopNativeAndPushSound = useCallback(() => {
+    stopPushNotificationSound();
     if (audioRef.current) {
       try {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       } catch (e) { }
     }
+    if (sharedAlertAudio && sharedAlertAudio !== audioRef.current) {
+      try {
+        sharedAlertAudio.pause();
+        sharedAlertAudio.currentTime = 0;
+      } catch (e) { }
+    }
   }, []);
 
+  const stopAlertLoop = useCallback((invalidatePending = true) => {
+    if (invalidatePending) {
+      soundGenerationRef.current += 1;
+      if (activeOrderRef.current) {
+        closeOrderNotifications(activeOrderRef.current);
+      }
+      stopNativeAndPushSound();
+    } else if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) { }
+    }
+    if (alertLoopTimerRef.current) {
+      clearInterval(alertLoopTimerRef.current);
+      alertLoopTimerRef.current = null;
+    }
+    alertLoopStartedAtRef.current = 0;
+  }, [closeOrderNotifications, stopNativeAndPushSound]);
+
   const startAlertLoop = useCallback((playSoundFn) => {
-    stopAlertLoop();
+    stopAlertLoop(false);
     alertLoopStartedAtRef.current = Date.now();
 
     alertLoopTimerRef.current = setInterval(() => {
@@ -385,7 +418,9 @@ export const useDeliveryNotifications = () => {
 
   const playNotificationSound = useCallback(async (orderData = {}) => {
     try {
-      triggerWebViewNativeNotification(orderData).catch(() => { });
+      const generation = soundGenerationRef.current;
+      await triggerWebViewNativeNotification(orderData).catch(() => { });
+      if (generation !== soundGenerationRef.current) return;
 
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         navigator.vibrate([200, 100, 200, 100, 300]);
@@ -517,7 +552,7 @@ export const useDeliveryNotifications = () => {
     startAlertLoop(playNotificationSound);
   }, [playNotificationSound, startAlertLoop]);
 
-  const recoverDeliveryState = useCallback(async () => {
+  const recoverDeliveryState = useCallback(async ({ silent = false } = {}) => {
     if (!deliveryPartnerId) return;
 
     try {
@@ -533,14 +568,14 @@ export const useDeliveryNotifications = () => {
           null
           : null;
 
-      if (currentTrip) {
-        debugLog('Recovered current delivery trip after reconnect/focus:', currentTrip);
-        setOrderStatusUpdate({
-          ...currentTrip,
-          recoverySource: 'delivery_reconnect',
-        });
-        return;
-      }
+      const activeTripList = Array.isArray(currentTrip?.activeOrders)
+        ? currentTrip.activeOrders
+        : currentTrip?.activeOrder
+          ? [currentTrip.activeOrder]
+          : currentTrip?._id || currentTrip?.orderId
+            ? [currentTrip]
+            : [];
+      const hasCurrentTrip = activeTripList.length > 0;
 
       const availablePayload =
         availableResult.status === 'fulfilled'
@@ -556,10 +591,18 @@ export const useDeliveryNotifications = () => {
             ? availablePayload
             : [];
 
-      const recoverableOrder = availableOrders.find((order) => {
+      const recoverableOffers = availableOrders.filter((order) => {
         // Never ring on app focus/reconnect for stale orders (>30 min old).
         const createdMs = new Date(order?.createdAt || 0).getTime();
         if (createdMs && Date.now() - createdMs > 30 * 60 * 1000) return false;
+        if (isAlertOrderDismissed(order)) return false;
+        const offeredTo = Array.isArray(order?.dispatch?.offeredTo) ? order.dispatch.offeredTo : [];
+        const rejectedOrTimedOutByMe = offeredTo.some(
+          (o) =>
+            String(o?.partnerId || '') === String(deliveryPartnerId) &&
+            ['rejected', 'timeout'].includes(String(o?.action || '').toLowerCase()),
+        );
+        if (rejectedOrTimedOutByMe) return false;
         if (order?.type === 'RETURN_PICKUP') return true;
         if (order?.isReassignment || order?.reassignmentStatus === 'pending') return true;
         const dispatchStatus = String(order?.dispatch?.status || '').toLowerCase();
@@ -570,20 +613,63 @@ export const useDeliveryNotifications = () => {
         );
       });
 
-      const hasActiveTrip = Boolean(
-        useDeliveryStore.getState().activeOrder ||
-        (useDeliveryStore.getState().tripStatus && useDeliveryStore.getState().tripStatus !== 'IDLE')
-      );
+      const pendingOfferIds = [...new Set(recoverableOffers.flatMap((o) => alertOrderIds(o)))];
+
+      // Close any old/unclicked notifications for orders that were already accepted, completed,
+      // cancelled, or expired — even if the rider opened the app without tapping those notifications.
+      for (const activeTripOrder of activeTripList) {
+        closeOrderNotifications(activeTripOrder);
+      }
+      void closeDeliveryNotificationsInTray({
+        keepIds: hasCurrentTrip ? [] : pendingOfferIds,
+      });
+
+      if (hasCurrentTrip) {
+        debugLog('Recovered current delivery trip after reconnect/focus:', currentTrip);
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+        setOrderStatusUpdate({
+          ...currentTrip,
+          recoverySource: 'delivery_reconnect',
+        });
+        return;
+      }
+
+      const recoverableOrder = recoverableOffers[0] || null;
+      const storeState = useDeliveryStore.getState();
+      const hasActiveTrip =
+        storeState.tripStatus !== 'COMPLETED' &&
+        storeState.tripStatus !== 'IDLE' &&
+        Boolean(storeState.activeOrder || (storeState.activeOrders && storeState.activeOrders.length > 0));
+
+      if (!recoverableOrder) {
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+        return;
+      }
+
+      if (
+        activeOrderRef.current &&
+        !recoverableOffers.some((o) => isSameAlertOrder(o, activeOrderRef.current))
+      ) {
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+      }
 
       if (recoverableOrder && !activeOrderRef.current && !hasActiveTrip) {
         debugLog('Recovered available delivery order after reconnect/focus:', recoverableOrder);
         setNewOrder(recoverableOrder);
-        handleIncomingOrderAlert(recoverableOrder);
+        if (!silent) {
+          handleIncomingOrderAlert(recoverableOrder);
+        }
       }
     } catch (error) {
       debugWarn('Delivery recovery sync failed:', error?.message || error);
     }
-  }, [deliveryPartnerId, handleIncomingOrderAlert]);
+  }, [closeOrderNotifications, deliveryPartnerId, handleIncomingOrderAlert, stopAlertLoop]);
 
   const joinDeliveryRoomIfPossible = useCallback(() => {
     if (!socketRef.current?.connected || !deliveryPartnerId) {
@@ -962,7 +1048,9 @@ export const useDeliveryNotifications = () => {
         socketId: socketRef.current?.id,
       });
       socketRef.current.emit('resync');
-      void recoverDeliveryState();
+      void recoverDeliveryState({
+        silent: typeof document !== 'undefined' && document.visibilityState === 'visible',
+      });
     });
 
     socketRef.current.on('delivery-room-joined', (data) => {
@@ -1024,7 +1112,9 @@ export const useDeliveryNotifications = () => {
       joinedDeliveryRoomRef.current = null;
       joinDeliveryRoomIfPossible();
       socketRef.current.emit('resync');
-      void recoverDeliveryState();
+      void recoverDeliveryState({
+        silent: typeof document !== 'undefined' && document.visibilityState === 'visible',
+      });
     });
 
     socketRef.current.on('new_order', (orderData) => {
@@ -1145,11 +1235,14 @@ export const useDeliveryNotifications = () => {
         ['picked_up', 'on_the_way', 'delivered', 'cancelled', 'deleted'].includes(statusValue) ||
         statusValue.includes('cancel');
 
-      if (offerEnded && activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
+      if (offerEnded) {
         dismissAlertOrder(statusData);
-        stopAlertLoop();
-        activeOrderRef.current = null;
-        setNewOrder(null);
+        closeOrderNotifications(statusData);
+        if (activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
+          stopAlertLoop();
+          activeOrderRef.current = null;
+          setNewOrder(null);
+        }
       }
       setOrderStatusUpdate(statusData || null);
     });
@@ -1164,8 +1257,9 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_cancelled', (statusData) => {
       debugLog('?? Delivery order cancelled event received via socket:', statusData);
+      dismissAlertOrder(statusData);
+      closeOrderNotifications(statusData);
       if (activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
-        dismissAlertOrder(statusData);
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -1178,8 +1272,9 @@ export const useDeliveryNotifications = () => {
 
     socketRef.current.on('order_deleted', (statusData) => {
       debugLog('?? Delivery order deleted event received via socket:', statusData);
+      dismissAlertOrder(statusData);
+      closeOrderNotifications(statusData);
       if (activeOrderRef.current && isSameAlertOrder(statusData, activeOrderRef.current)) {
-        dismissAlertOrder(statusData);
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -1234,6 +1329,7 @@ export const useDeliveryNotifications = () => {
       debugLog('?? Order reassigned to another partner:', data);
       window.dispatchEvent(new CustomEvent('deliveryOrderClaimed', { detail: data || {} }));
       dismissAlertOrder(data);
+      closeOrderNotifications(data);
       if (activeOrderRef.current && isSameAlertOrder(data, activeOrderRef.current)) {
         debugLog('?? Removing reassigned order from local state');
         stopAlertLoop();
@@ -1247,6 +1343,7 @@ export const useDeliveryNotifications = () => {
       // Lets the Orders tab drop the order from "New Orders" right away (not on the next poll).
       window.dispatchEvent(new CustomEvent('deliveryOrderClaimed', { detail: data || {} }));
       dismissAlertOrder(data);
+      closeOrderNotifications(data);
       if (activeOrderRef.current && isSameAlertOrder(data, activeOrderRef.current)) {
         stopAlertLoop();
         activeOrderRef.current = null;
@@ -1329,14 +1426,21 @@ export const useDeliveryNotifications = () => {
     };
 
     const handleWindowFocus = () => {
-      void recoverDeliveryState();
+      stopAlertLoop();
+      void recoverDeliveryState({ silent: true });
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        void recoverDeliveryState();
+        stopAlertLoop();
+        void recoverDeliveryState({ silent: true });
       }
     };
+
+    if (typeof window !== 'undefined') {
+      window.__deliveryNotificationsHookActive = true;
+    }
+    stopNativeAndPushSound();
 
     window.addEventListener('deliveryAuthChanged', handleAuthChange);
     window.addEventListener('authRefreshed', handleAuthRefreshed);
@@ -1345,6 +1449,9 @@ export const useDeliveryNotifications = () => {
 
     return () => {
       debugLog('? Cleaning up socket connection...');
+      if (typeof window !== 'undefined') {
+        window.__deliveryNotificationsHookActive = false;
+      }
       stopAlertLoop();
       joinedDeliveryRoomRef.current = null;
       window.removeEventListener('deliveryAuthChanged', handleAuthChange);
@@ -1357,7 +1464,7 @@ export const useDeliveryNotifications = () => {
         socketRef.current = null;
       }
     };
-  }, [deliveryPartnerId, handleIncomingOrderAlert, joinDeliveryRoomIfPossible, playNotificationSound, recoverDeliveryState, showBackgroundOrderNotification, startAlertLoop, stopAlertLoop]);
+  }, [deliveryPartnerId, handleIncomingOrderAlert, joinDeliveryRoomIfPossible, playNotificationSound, recoverDeliveryState, showBackgroundOrderNotification, startAlertLoop, stopAlertLoop, stopNativeAndPushSound]);
 
   useEffect(() => {
     if (!deliveryPartnerId) {
@@ -1374,7 +1481,7 @@ export const useDeliveryNotifications = () => {
       });
       socketRef.current.emit('resync');
     }
-    void recoverDeliveryState();
+    void recoverDeliveryState({ silent: true });
   }, [deliveryPartnerId, joinDeliveryRoomIfPossible, recoverDeliveryState]);
 
   useEffect(() => {
@@ -1403,7 +1510,9 @@ export const useDeliveryNotifications = () => {
 
       debugLog('Received FCM popup trigger event', normalizedData);
       setNewOrder(normalizedData);
-      handleIncomingOrderAlert(normalizedData);
+      if (!normalizedData?.fromClick) {
+        handleIncomingOrderAlert(normalizedData);
+      }
     };
 
     window.addEventListener('fcm-delivery-popup', handleFcmPopup);
@@ -1417,13 +1526,15 @@ export const useDeliveryNotifications = () => {
   }, [handleIncomingOrderAlert]);
 
   // Helper functions
-  const clearNewOrder = (handledOrder) => {
+  const clearNewOrder = useCallback((handledOrder) => {
     dismissAlertOrder(handledOrder);
     dismissAlertOrder(activeOrderRef.current);
+    closeOrderNotifications(handledOrder);
+    closeOrderNotifications(activeOrderRef.current);
     stopAlertLoop();
     activeOrderRef.current = null;
     setNewOrder(null);
-  };
+  }, [closeOrderNotifications, stopAlertLoop]);
 
   // While true, incoming offers do not ring (rider just accepted a trip that isn't in the store yet).
   const setAcceptInFlight = useCallback((value) => {

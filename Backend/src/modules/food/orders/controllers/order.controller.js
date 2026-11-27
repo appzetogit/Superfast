@@ -197,6 +197,7 @@ export async function acceptOrderDeliveryController(req, res, next) {
         const deliveryPartnerId = req.user?.userId;
         const orderId = req.params.orderId;
         const order = await orderService.acceptOrderDelivery(orderId, deliveryPartnerId, req.body || {});
+        stopOrderRings(order?._id || orderId);
         return sendResponse(res, 200, 'Order accepted', { order });
     } catch (err) {
         next(err);
@@ -265,6 +266,7 @@ export async function completeDeliveryController(req, res, next) {
         const deliveryPartnerId = req.user?.userId;
         const orderId = req.params.orderId;
         const order = await orderService.completeDelivery(orderId, deliveryPartnerId, req.body || {});
+        stopOrderRings(order?._id || orderId);
         return sendResponse(res, 200, 'Delivery completed', { order });
     } catch (err) {
         next(err);
@@ -432,6 +434,7 @@ export async function acceptReassignmentDeliveryController(req, res, next) {
         const driverId = req.user?.userId;
         const orderId = req.params.orderId;
         const result = await orderService.acceptReassignmentDelivery(orderId, driverId);
+        stopOrderRings(result?.order?._id || orderId);
         return sendResponse(res, 200, 'Reassignment accepted successfully', result);
     } catch (err) {
         next(err);

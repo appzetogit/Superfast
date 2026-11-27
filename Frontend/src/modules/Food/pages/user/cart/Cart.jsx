@@ -1382,7 +1382,14 @@ export default function Cart() {
   }
 
   const handleBack = () => {
-    // Priority 1: Navigate to restaurant if item/restaurant data is present
+    // Priority 0: go exactly one step back in history (usually the restaurant menu the cart was opened
+    // from). Pushing the restaurant URL as a NEW entry made menu -> back return to the cart (a loop).
+    if (typeof window !== "undefined" && window.history.length > 1 && window.history.state?.idx > 0) {
+      navigate(-1)
+      return
+    }
+
+    // Priority 1: Navigate to restaurant if item/restaurant data is present (no history to go back to)
     const idOrSlug = restaurantData?.slug || restaurantId
     if (idOrSlug) {
       navigate(`/food/user/restaurants/${idOrSlug}`)
